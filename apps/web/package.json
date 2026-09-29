@@ -1,0 +1,6 @@
+{
+  "name": "@hrms/web",
+  "version": "0.0.1",
+  "private": true,
+  "description": "HRMS Portal — Next.js Frontend (scaffolded in Chunk 12)"
+}

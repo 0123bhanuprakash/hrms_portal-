@@ -1,0 +1,6 @@
+{
+  "name": "@hrms/api",
+  "version": "0.0.1",
+  "private": true,
+  "description": "HRMS Portal — NestJS Backend API (scaffolded in Chunk 4)"
+}
