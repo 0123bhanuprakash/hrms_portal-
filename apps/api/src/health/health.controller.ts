@@ -2,6 +2,7 @@ import { Controller, Get, Logger, ServiceUnavailableException } from '@nestjs/co
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import type { HealthStatus, ReadinessStatus } from '@hrms/types';
 import { PrismaService } from '../modules/prisma/prisma.service';
+import { Public } from '../modules/auth/decorators/public.decorator';
 
 // ============================================================
 // HealthController
@@ -18,6 +19,7 @@ export class HealthController {
 
   constructor(private readonly prisma: PrismaService) {}
 
+  @Public()
   @Get()
   @ApiOperation({ summary: 'Liveness probe — returns 200 if the API is up' })
   @ApiResponse({ status: 200, description: 'API is alive' })
@@ -30,6 +32,7 @@ export class HealthController {
     };
   }
 
+  @Public()
   @Get('ready')
   @ApiOperation({
     summary: 'Readiness probe — checks database and Redis connectivity',

@@ -73,12 +73,13 @@ export interface PaginationQuery {
 
 export interface JwtPayload {
   sub: string;                  // User UUID
+  email: string;                // User email (embedded for convenience)
   company_id: string | null;    // null for Super Admin
   is_super_admin: boolean;
-  roles: DefaultRole[];
+  roles: string[];
   permissions: string[];        // e.g. ['employee:create', 'leave:approve']
-  iat: number;
-  exp: number;
+  iat?: number;
+  exp?: number;
 }
 
 export interface TenantContext {
