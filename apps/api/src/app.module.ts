@@ -11,6 +11,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { EmailModule } from './modules/email/email.module';
 import { CompaniesModule } from './modules/companies/companies.module';
 import { UsersModule } from './modules/users/users.module';
+import { AdminModule } from './modules/admin/admin.module';
 import { DepartmentsModule } from './modules/departments/departments.module';
 import { DesignationsModule } from './modules/designations/designations.module';
 import { LocationsModule } from './modules/locations/locations.module';
@@ -61,6 +62,7 @@ import { TenantContextMiddleware } from './common/middleware/tenant-context.midd
     EmailModule,          // Chunk 7
     CompaniesModule,      // Chunk 9
     UsersModule,          // Chunk 9
+    AdminModule,          // Chunk 9 Super Admin
     DepartmentsModule,   // Chunk 10
     DesignationsModule,  // Chunk 10
     LocationsModule,     // Chunk 10
