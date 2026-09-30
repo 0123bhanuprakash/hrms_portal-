@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Body,
+  Query,
   HttpCode,
   HttpStatus,
   Req,
@@ -19,6 +20,8 @@ import { AuthService } from './auth.service';
 import {
   LoginDto,
   RefreshTokenDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
   LoginResponse,
   RefreshResponse,
   AuthUserResponse,
@@ -111,5 +114,62 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   async me(@CurrentUser() user: JwtPayload): Promise<AuthUserResponse> {
     return this.authService.me(user.sub);
+  }
+
+  // ── POST /auth/forgot-password ──────────────────────────────
+
+  @Public()
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Request password reset email',
+    description:
+      'Sends a reset link to the provided email. Always returns 200 to prevent ' +
+      'email enumeration attacks — even if the email does not exist.',
+  })
+  @ApiResponse({ status: 200, description: 'Reset email sent (if account exists)' })
+  async forgotPassword(
+    @Body() dto: ForgotPasswordDto,
+  ): Promise<{ message: string }> {
+    await this.authService.forgotPassword(dto.email);
+    return { message: 'If that email exists, a reset link has been sent.' };
+  }
+
+  // ── POST /auth/reset-password ───────────────────────────────
+
+  @Public()
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Reset password using a token from email',
+    description:
+      'Validates the token, updates the password, and revokes all existing ' +
+      'sessions (refresh tokens) for maximum security.',
+  })
+  @ApiResponse({ status: 200, description: 'Password updated successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid, expired, or already-used token' })
+  async resetPassword(
+    @Body() dto: ResetPasswordDto,
+  ): Promise<{ message: string }> {
+    await this.authService.resetPassword(dto.token, dto.password);
+    return { message: 'Password updated successfully. Please log in with your new password.' };
+  }
+
+  // ── GET /auth/verify-email ──────────────────────────────────
+
+  @Public()
+  @Get('verify-email')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Verify email address using token from email link',
+    description: 'Validates the verification token and marks the email as verified.',
+  })
+  @ApiResponse({ status: 200, description: 'Email verified successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid or expired token' })
+  async verifyEmail(
+    @Query('token') token: string,
+  ): Promise<{ message: string }> {
+    await this.authService.verifyEmail(token);
+    return { message: 'Email verified successfully. You can now log in.' };
   }
 }

@@ -8,6 +8,7 @@ import { validate } from './config/env.validation';
 import { HealthModule } from './health/health.module';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { EmailModule } from './modules/email/email.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 
 // ============================================================
@@ -57,7 +58,7 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 
     // ── Feature modules ───────────────────────────────────
     AuthModule,           // Chunk 6
-    // EmailModule        — Chunk 7
+    EmailModule,          // Chunk 7
     // CompaniesModule    — Chunk 9
     // BrandingModule     — Chunk 10
     // PreferencesModule  — Chunk 10
