@@ -9,6 +9,8 @@ import { HealthModule } from './health/health.module';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { EmailModule } from './modules/email/email.module';
+import { CompaniesModule } from './modules/companies/companies.module';
+import { UsersModule } from './modules/users/users.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { PermissionGuard } from './common/guards/permission.guard';
 import { SuperAdminGuard } from './common/guards/super-admin.guard';
@@ -17,15 +19,6 @@ import { TenantContextMiddleware } from './common/middleware/tenant-context.midd
 
 // ============================================================
 // AppModule — Root NestJS module
-//
-// Feature modules added per chunk:
-//   Chunk 5:  PrismaModule
-//   Chunk 6:  AuthModule + JwtAuthGuard (global)
-//   Chunk 7:  EmailModule
-//   Chunk 8:  TenantContextMiddleware + PermissionGuard + SuperAdminGuard + AuditInterceptor
-//   Chunk 9:  CompaniesModule, AuditModule
-//   Chunk 10: BrandingModule, PreferencesModule
-//   Chunk 11: QueueModule (BullMQ)
 // ============================================================
 
 @Module({
@@ -62,15 +55,12 @@ import { TenantContextMiddleware } from './common/middleware/tenant-context.midd
     // ── Feature modules ───────────────────────────────────
     AuthModule,           // Chunk 6
     EmailModule,          // Chunk 7
-    // CompaniesModule    — Chunk 9
-    // BrandingModule     — Chunk 10
-    // PreferencesModule  — Chunk 10
-    // QueueModule        — Chunk 11
+    CompaniesModule,      // Chunk 9
+    UsersModule,          // Chunk 9
   ],
 
   providers: [
     // ── Global JWT guard — all routes protected by default ──
-    // Routes decorated with @Public() bypass this guard.
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
@@ -96,9 +86,6 @@ import { TenantContextMiddleware } from './common/middleware/tenant-context.midd
   ],
 })
 export class AppModule implements NestModule {
-  // ── Apply TenantContextMiddleware to all routes ──────────
-  // Decodes JWT (without verifying) and attaches tenantContext
-  // to every request before guards run.
   configure(consumer: MiddlewareConsumer): void {
     consumer
       .apply(TenantContextMiddleware)
