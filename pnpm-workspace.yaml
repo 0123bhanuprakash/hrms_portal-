@@ -2,8 +2,11 @@ packages:
   - 'apps/*'
   - 'packages/*'
 
-# pnpm 11+ settings — allow build scripts for native packages
 onlyBuiltDependencies:
   - '@nestjs/core'
-  - esbuild
+  - '@prisma/client'
+  - '@prisma/engines'
+  - 'prisma'
+  - 'esbuild'
   - '@scarf/scarf'
+

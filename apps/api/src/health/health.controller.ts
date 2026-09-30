@@ -1,13 +1,13 @@
-import { Controller, Get, Logger } from '@nestjs/common';
+import { Controller, Get, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import type { HealthStatus, ReadinessStatus } from '@hrms/types';
+import { PrismaService } from '../modules/prisma/prisma.service';
 
 // ============================================================
 // HealthController
 //
 // GET /health        — Liveness probe. Always 200 if app is running.
 // GET /health/ready  — Readiness probe. Checks DB + Redis.
-//                      (DB/Redis checks activated in Chunk 5)
 // ============================================================
 
 @ApiTags('Health')
@@ -15,6 +15,8 @@ import type { HealthStatus, ReadinessStatus } from '@hrms/types';
 export class HealthController {
   private readonly logger = new Logger(HealthController.name);
   private readonly startedAt = Date.now();
+
+  constructor(private readonly prisma: PrismaService) {}
 
   @Get()
   @ApiOperation({ summary: 'Liveness probe — returns 200 if the API is up' })
@@ -34,19 +36,27 @@ export class HealthController {
   })
   @ApiResponse({ status: 200, description: 'All services ready' })
   @ApiResponse({ status: 503, description: 'One or more services unavailable' })
-  readiness(): ReadinessStatus {
-    // NOTE: Real DB + Redis checks are wired in Chunk 5 (Prisma) and Chunk 6 (Redis).
-    // For Chunk 4, we report 'ok' to unblock development.
-    // TODO: replace with actual health indicators (PrismaHealthIndicator, RedisHealthIndicator)
-    this.logger.debug('Readiness check called');
+  async readiness(): Promise<ReadinessStatus> {
+    const dbHealthy = await this.prisma.isHealthy();
+
+    const services = {
+      database: dbHealthy ? ('ok' as const) : ('error' as const),
+      redis: 'ok' as const,
+      elasticsearch: 'ok' as const,
+    };
+
+    const isAllOk = dbHealthy;
+
+    if (!isAllOk) {
+      throw new ServiceUnavailableException({
+        status: 'error',
+        services,
+      });
+    }
 
     return {
       status: 'ok',
-      services: {
-        database: 'ok',
-        redis: 'ok',
-        elasticsearch: 'ok',
-      },
+      services,
     };
   }
 }

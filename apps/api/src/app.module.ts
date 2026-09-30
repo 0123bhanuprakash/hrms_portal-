@@ -5,6 +5,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { configuration } from './config/configuration';
 import { validate } from './config/env.validation';
 import { HealthModule } from './health/health.module';
+import { PrismaModule } from './modules/prisma/prisma.module';
 
 // ============================================================
 // AppModule — Root NestJS module
@@ -49,6 +50,7 @@ import { HealthModule } from './health/health.module';
 
     // ── Infrastructure ────────────────────────────────────
     HealthModule,
+    PrismaModule,
 
     // ── Feature modules (added progressively per chunk) ───
     // PrismaModule       — Chunk 5
