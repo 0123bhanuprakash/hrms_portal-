@@ -7,6 +7,7 @@ import { configuration } from './config/configuration';
 import { validate } from './config/env.validation';
 import { HealthModule } from './health/health.module';
 import { PrismaModule } from './modules/prisma/prisma.module';
+import { StorageModule } from './modules/storage/storage.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { EmailModule } from './modules/email/email.module';
 import { CompaniesModule } from './modules/companies/companies.module';
@@ -56,6 +57,7 @@ import { TenantContextMiddleware } from './common/middleware/tenant-context.midd
     // ── Infrastructure ────────────────────────────────────
     HealthModule,
     PrismaModule,
+    StorageModule,        // Chunk 10 Object Storage (MinIO / S3)
 
     // ── Feature modules ───────────────────────────────────
     AuthModule,           // Chunk 6

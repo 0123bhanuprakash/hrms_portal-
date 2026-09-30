@@ -2,10 +2,12 @@ import {
   Injectable,
   ConflictException,
   NotFoundException,
+  BadRequestException,
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
+import { MinioService } from '../storage/minio.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { UpdateBrandingDto } from './dto/update-branding.dto';
@@ -21,6 +23,7 @@ export class CompaniesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
+    private readonly minioService: MinioService,
   ) {}
 
   /**
@@ -380,5 +383,75 @@ export class CompaniesService {
       departmentCount,
       activeUserCount: activeCount,
     };
+  }
+
+  /**
+   * Upload logo file to MinIO and update CompanyBranding.logoUrl
+   */
+  async uploadLogo(companyId: string, file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('No logo file provided');
+    }
+
+    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/svg+xml', 'image/webp'];
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      throw new BadRequestException(
+        `Invalid file type '${file.mimetype}'. Allowed types: JPEG, PNG, SVG, WebP.`,
+      );
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      throw new BadRequestException('File size exceeds maximum 2MB limit');
+    }
+
+    const ext = file.originalname.split('.').pop() || 'png';
+    const objectKey = `${companyId}/branding/logo.${ext}`;
+
+    const logoUrl = await this.minioService.uploadFile(
+      this.minioService.brandingBucket,
+      objectKey,
+      file.buffer,
+      file.mimetype,
+    );
+
+    return this.updateBranding(companyId, { logoUrl });
+  }
+
+  /**
+   * Upload favicon file to MinIO and update CompanyBranding.faviconUrl
+   */
+  async uploadFavicon(companyId: string, file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('No favicon file provided');
+    }
+
+    const allowedMimeTypes = [
+      'image/x-icon',
+      'image/vnd.microsoft.icon',
+      'image/png',
+      'image/svg+xml',
+      'image/jpeg',
+    ];
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      throw new BadRequestException(
+        `Invalid file type '${file.mimetype}'. Allowed types: ICO, PNG, SVG, JPEG.`,
+      );
+    }
+
+    if (file.size > 500 * 1024) {
+      throw new BadRequestException('File size exceeds maximum 500KB limit');
+    }
+
+    const ext = file.originalname.split('.').pop() || 'ico';
+    const objectKey = `${companyId}/branding/favicon.${ext}`;
+
+    const faviconUrl = await this.minioService.uploadFile(
+      this.minioService.brandingBucket,
+      objectKey,
+      file.buffer,
+      file.mimetype,
+    );
+
+    return this.updateBranding(companyId, { faviconUrl });
   }
 }

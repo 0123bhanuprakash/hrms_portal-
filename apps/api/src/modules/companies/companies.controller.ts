@@ -7,7 +7,10 @@ import {
   Param,
   Query,
   ForbiddenException,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { CompaniesService } from './companies.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
@@ -112,6 +115,40 @@ export class CompaniesController {
   ) {
     this.assertTenantAccess(id, ctx);
     return this.companiesService.updateBranding(id, dto);
+  }
+
+  /**
+   * Upload logo file to MinIO (Company Admin / Super Admin)
+   * POST /companies/:id/branding/logo
+   */
+  @RequirePermission('branding:manage')
+  @Audit('company:branding:logo:upload', 'company_branding')
+  @UseInterceptors(FileInterceptor('file'))
+  @Post(':id/branding/logo')
+  async uploadLogo(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @TenantCtx() ctx: TenantContext,
+  ) {
+    this.assertTenantAccess(id, ctx);
+    return this.companiesService.uploadLogo(id, file);
+  }
+
+  /**
+   * Upload favicon file to MinIO (Company Admin / Super Admin)
+   * POST /companies/:id/branding/favicon
+   */
+  @RequirePermission('branding:manage')
+  @Audit('company:branding:favicon:upload', 'company_branding')
+  @UseInterceptors(FileInterceptor('file'))
+  @Post(':id/branding/favicon')
+  async uploadFavicon(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @TenantCtx() ctx: TenantContext,
+  ) {
+    this.assertTenantAccess(id, ctx);
+    return this.companiesService.uploadFavicon(id, file);
   }
 
   /**
