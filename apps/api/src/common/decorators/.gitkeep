@@ -1,0 +1,2 @@
+# Decorators directory — populated in Chunk 8 (RBAC)
+# @Public(), @RequirePermission(), @CurrentUser(), @TenantCtx(), @SuperAdminOnly(), @Audit()

@@ -1,0 +1,2 @@
+# Guards directory — populated in Chunk 8 (RBAC)
+# JwtAuthGuard, PermissionGuard, TenantGuard, SuperAdminGuard

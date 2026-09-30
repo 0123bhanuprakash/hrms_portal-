@@ -1,0 +1,2 @@
+# Middleware directory — populated in Chunk 8
+# TenantContextMiddleware — sets PostgreSQL session variables for RLS

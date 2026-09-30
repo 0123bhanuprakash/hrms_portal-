@@ -1,0 +1,8 @@
+# Modules directory — feature modules added per chunk:
+# Chunk 5:  PrismaModule
+# Chunk 6:  AuthModule
+# Chunk 7:  EmailModule
+# Chunk 8:  (guards/decorators inline in common/)
+# Chunk 9:  CompaniesModule, AuditModule, UsersModule
+# Chunk 10: BrandingModule, PreferencesModule
+# Chunk 11: QueueModule
