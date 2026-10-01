@@ -46,11 +46,15 @@ function FormError({ message }: { message: string | null }) {
   );
 }
 
-function PasswordInput(props: React.ComponentProps<typeof Input>) {
+// forwardRef: react-hook-form's register() reads the value through the ref
+const PasswordInput = React.forwardRef<HTMLInputElement, React.ComponentPropsWithoutRef<typeof Input>>(function PasswordInput(
+  props,
+  ref,
+) {
   const [visible, setVisible] = useState(false);
   return (
     <div className="relative">
-      <Input {...props} type={visible ? 'text' : 'password'} className={cn('pr-9', props.className)} />
+      <Input {...props} ref={ref} type={visible ? 'text' : 'password'} className={cn('pr-9', props.className)} />
       <button
         type="button"
         onClick={() => setVisible((v) => !v)}
@@ -61,7 +65,7 @@ function PasswordInput(props: React.ComponentProps<typeof Input>) {
       </button>
     </div>
   );
-}
+});
 
 function StatusPanel({
   tone,

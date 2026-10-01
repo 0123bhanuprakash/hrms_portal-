@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import type { ThemeTokens } from '@hrms/types';
 import { api } from '@/lib/api';
 import { companyThemeTokens, type CompanyThemeResponse } from '@/lib/company/queries';
@@ -110,7 +111,8 @@ export function useWorkspace(slug: string | null) {
     queryKey: ['workspace', slug],
     queryFn: async () => (await api.get(`/companies/branding/by-slug/${slug}`)).data.data as Workspace,
     enabled: Boolean(slug),
-    retry: false,
+    // A missing workspace is final; network blips / API restarts are retried
+    retry: (count, err) => !(isAxiosError(err) && err.response?.status === 404) && count < 3,
     staleTime: 5 * 60_000,
   });
 }
