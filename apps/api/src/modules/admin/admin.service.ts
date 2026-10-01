@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { CompanyStatus, Prisma, UserStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailProducerService } from '../email/email.producer.service';
+import { EmailService } from '../email/email.service';
 import { AuthService } from '../auth/auth.service';
 import { HealthService } from '../../health/health.service';
 import { generateTemporaryPassword, hashPassword } from '../auth/password.util';
@@ -55,6 +56,7 @@ export class AdminService {
     private readonly emailProducerService: EmailProducerService,
     private readonly authService: AuthService,
     private readonly healthService: HealthService,
+    private readonly emailService: EmailService,
   ) {}
 
   // ─── Platform ──────────────────────────────────────────────
@@ -71,9 +73,28 @@ export class AdminService {
       },
       queue: { enabled: isQueueEnabled() },
       storage: { driver: this.config.get<string>('storage.driver') ?? 'local' },
-      email: { provider: this.config.get<string>('email.provider') ?? 'console' },
+      email: this.emailService.getStatus(),
       search: { enabled: Boolean(this.config.get<string>('elasticsearch.url')) },
     };
+  }
+
+  /** Re-checks the SMTP connection and sends a small test email to `to`. */
+  async sendTestEmail(to: string) {
+    const status = await this.emailService.verifyConnection();
+    if (status.state === 'error') {
+      throw new BadRequestException(`Email is not working: ${status.detail}`);
+    }
+    try {
+      await this.emailService.send({
+        to,
+        subject: 'HRMS Portal — test email',
+        html: `<p style="font-family:system-ui,sans-serif">This is a test email from your HRMS Portal.</p>
+               <p style="font-family:system-ui,sans-serif;color:#71717a">Sent ${new Date().toUTCString()} via ${status.provider}.</p>`,
+      });
+    } catch {
+      throw new BadRequestException(`Sending failed: ${this.emailService.getStatus().detail}`);
+    }
+    return { id: to, to, message: `Test email sent to ${to}`, email: this.emailService.getStatus() };
   }
 
   async getPlatformStats() {

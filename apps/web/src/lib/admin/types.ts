@@ -96,7 +96,13 @@ export interface SystemStatus {
   api: { version: string; nodeVersion: string; environment: string; uptimeSeconds: number };
   queue: { enabled: boolean };
   storage: { driver: 'local' | 's3' | string };
-  email: { provider: string };
+  email: {
+    provider: string;
+    state: 'ok' | 'error' | 'unverified' | 'disabled';
+    detail: string;
+    from: string;
+    checkedAt?: string;
+  };
   search: { enabled: boolean };
 }
 

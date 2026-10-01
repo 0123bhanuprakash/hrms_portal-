@@ -67,3 +67,9 @@ export class UpdateCompanyAdminStatusDto {
   @IsIn([UserStatus.ACTIVE, UserStatus.INACTIVE])
   status!: 'ACTIVE' | 'INACTIVE';
 }
+
+/** POST /admin/system/test-email */
+export class SendTestEmailDto {
+  @IsEmail()
+  to!: string;
+}

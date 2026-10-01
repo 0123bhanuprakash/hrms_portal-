@@ -41,9 +41,14 @@ const envSchema = z.object({
   // console → print to terminal + save .html to apps/api/.mail (no mail server)
   // smtp    → any SMTP server (Mailpit, Gmail, ...). 'mailpit' kept as an alias.
   // resend  → Resend API (production)
-  EMAIL_PROVIDER: z.enum(['console', 'smtp', 'mailpit', 'resend']).default('console'),
-  SMTP_HOST: z.string().default('localhost'),
-  SMTP_PORT: z.coerce.number().int().default(1025),
+  EMAIL_PROVIDER: z.enum(['console', 'smtp', 'gmail', 'mailpit', 'resend']).default('console'),
+  // gmail → defaults to smtp.gmail.com:587 (STARTTLS); needs SMTP_USER + an App Password
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65535).optional(),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
+  // true = implicit TLS (port 465). Default: true only for port 465; STARTTLS is required otherwise (except localhost)
+  SMTP_SECURE: z.enum(['true', 'false']).optional(),
   SMTP_FROM: z.string().default('HRMS Portal <noreply@hrms.local>'),
   RESEND_API_KEY: z.string().optional(),
   RESEND_FROM: z.string().optional(),
@@ -74,6 +79,16 @@ const envSchema = z.object({
       path: ['MINIO_ACCESS_KEY'],
       message: 'MINIO_ACCESS_KEY and MINIO_SECRET_KEY are required when STORAGE_DRIVER=s3',
     });
+  }
+  if (env.EMAIL_PROVIDER === 'gmail' && (!env.SMTP_USER || !env.SMTP_PASSWORD)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['SMTP_USER'],
+      message: 'SMTP_USER and SMTP_PASSWORD (a Google App Password) are required when EMAIL_PROVIDER=gmail',
+    });
+  }
+  if (env.SMTP_USER && !env.SMTP_PASSWORD) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['SMTP_PASSWORD'], message: 'SMTP_PASSWORD is required when SMTP_USER is set' });
   }
   if (env.EMAIL_PROVIDER === 'resend' && !env.RESEND_API_KEY) {
     ctx.addIssue({

@@ -306,3 +306,12 @@ export function useUpdateThemeSettings() {
     },
   });
 }
+
+export function useSendTestEmail() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (to: string) =>
+      unwrap<{ message: string; email: SystemStatus['email'] }>(api.post('/admin/system/test-email', { to })),
+    onSettled: () => qc.invalidateQueries({ queryKey: adminKeys.system() }),
+  });
+}

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { toast } from 'sonner';
 import {
   Activity,
@@ -19,8 +19,10 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, ErrorState, Skeleton } from '@/components/ui/feedback';
-import { useOpenQueueDashboard, useSystemStatus } from '@/lib/admin/queries';
-import type { ServiceName, ServiceState } from '@/lib/admin/types';
+import { useOpenQueueDashboard, useSendTestEmail, useSystemStatus } from '@/lib/admin/queries';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/field';
+import type { ServiceName, ServiceState, SystemStatus } from '@/lib/admin/types';
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatDuration, formatRelative } from '@/lib/format';
 import { cn } from '@/lib/cn';
@@ -159,7 +161,7 @@ export default function SystemPage() {
                     icon={<Mail />}
                     label="Email delivery"
                     value={data.email.provider}
-                    note={data.email.provider === 'console' ? 'Emails are printed in the API terminal and saved to apps/api/.mail/' : data.email.provider === 'resend' ? 'Sent via Resend' : 'Sent via SMTP'}
+                    note={data.email.provider === 'console' ? 'Emails are printed in the API terminal and saved to apps/api/.mail/' : data.email.provider === 'resend' ? 'Sent via Resend' : data.email.provider === 'gmail' ? 'Sent via Gmail SMTP' : 'Sent via SMTP'}
                   />
                   <ConfigRow
                     icon={<HardDrive />}
@@ -198,9 +200,70 @@ export default function SystemPage() {
               )}
             </Card>
           </div>
+
+          {data && <EmailDeliveryCard email={data.email} />}
         </>
       )}
     </div>
+  );
+}
+
+const EMAIL_STATE: Record<SystemStatus['email']['state'], { label: string; tone: 'success' | 'danger' | 'warning' | 'neutral' }> = {
+  ok: { label: 'Connected', tone: 'success' },
+  error: { label: 'Not working', tone: 'danger' },
+  unverified: { label: 'Not checked yet', tone: 'warning' },
+  disabled: { label: 'Not sending', tone: 'neutral' },
+};
+
+/** Live email delivery status + a "send test email" form. */
+function EmailDeliveryCard({ email }: { email: SystemStatus['email'] }) {
+  const sendTest = useSendTestEmail();
+  const [to, setTo] = useState('');
+  const state = EMAIL_STATE[email.state];
+  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!valid) return;
+    try {
+      const result = await sendTest.mutateAsync(to.trim());
+      toast.success(result.message);
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Test email failed'));
+    }
+  };
+
+  return (
+    <Card className="p-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0 space-y-1">
+          <h2 className="flex items-center gap-2 text-sm font-semibold">
+            <Mail className="h-4 w-4 text-muted-foreground" /> Email delivery
+            <Badge tone={state.tone} dot>{state.label}</Badge>
+          </h2>
+          <p className="text-sm text-muted-foreground">{email.detail}</p>
+          <p className="text-xs text-muted-foreground">
+            Provider <code>{email.provider}</code>
+            {email.from && <> · From <code>{email.from}</code></>}
+            {email.checkedAt && <> · checked {formatRelative(email.checkedAt)}</>}
+          </p>
+        </div>
+        {email.provider !== 'console' && (
+          <form onSubmit={submit} className="flex w-full max-w-md gap-2">
+            <Input
+              type="email"
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+              placeholder="you@example.com"
+              aria-label="Send test email to"
+            />
+            <Button type="submit" variant="secondary" loading={sendTest.isPending} disabled={!valid}>
+              Send test email
+            </Button>
+          </form>
+        )}
+      </div>
+    </Card>
   );
 }
 

@@ -19,6 +19,7 @@ import { QueryAuditLogsDto } from './dto/query-audit-logs.dto';
 import { QueryCompaniesDto } from './dto/query-companies.dto';
 import {
   AdminUpdateCompanyDto,
+  SendTestEmailDto,
   UpdateCompanyAdminStatusDto,
   UpdateCompanyStatusDto,
 } from './dto/admin-company.dto';
@@ -61,6 +62,14 @@ export class AdminController {
   @ApiOperation({ summary: 'Optional services enabled on this deployment (queue, storage, email, search)' })
   getSystemStatus() {
     return this.adminService.getSystemStatus();
+  }
+
+  @Post('system/test-email')
+  @HttpCode(HttpStatus.OK)
+  @Audit('system:email:test', 'email')
+  @ApiOperation({ summary: 'Verify email settings and send a test email' })
+  sendTestEmail(@Body() dto: SendTestEmailDto) {
+    return this.adminService.sendTestEmail(dto.to.trim().toLowerCase());
   }
 
   @Get('stats')

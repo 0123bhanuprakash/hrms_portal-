@@ -3,6 +3,21 @@
 // Use ConfigService.get<AppConfig>() for type-safe access
 // ============================================================
 
+/** SMTP settings; EMAIL_PROVIDER=gmail fills in Gmail's host/port. */
+function smtpConfig() {
+  const gmail = process.env['EMAIL_PROVIDER'] === 'gmail';
+  const port = parseInt(process.env['SMTP_PORT'] || (gmail ? '587' : '1025'), 10);
+  return {
+    host: process.env['SMTP_HOST'] || (gmail ? 'smtp.gmail.com' : 'localhost'),
+    port,
+    // Implicit TLS on 465; everything else upgrades with STARTTLS
+    secure: process.env['SMTP_SECURE'] ? process.env['SMTP_SECURE'] === 'true' : port === 465,
+    user: process.env['SMTP_USER'] || '',
+    password: process.env['SMTP_PASSWORD'] || '',
+    from: process.env['SMTP_FROM'] || 'HRMS Portal <noreply@hrms.local>',
+  };
+}
+
 const configuration = () => ({
   nodeEnv: process.env['NODE_ENV'] || 'development',
   port: parseInt(process.env['API_PORT'] || '4000', 10),
@@ -26,13 +41,9 @@ const configuration = () => ({
   },
 
   email: {
-    provider: (process.env['EMAIL_PROVIDER'] || 'console') as 'console' | 'smtp' | 'mailpit' | 'resend',
+    provider: (process.env['EMAIL_PROVIDER'] || 'console') as 'console' | 'smtp' | 'gmail' | 'mailpit' | 'resend',
     outputDir: '.mail',
-    smtp: {
-      host: process.env['SMTP_HOST'] || 'localhost',
-      port: parseInt(process.env['SMTP_PORT'] || '1025', 10),
-      from: process.env['SMTP_FROM'] || 'HRMS Portal <noreply@hrms.local>',
-    },
+    smtp: smtpConfig(),
     resend: {
       apiKey: process.env['RESEND_API_KEY'] || '',
       from: process.env['RESEND_FROM'] || '',
