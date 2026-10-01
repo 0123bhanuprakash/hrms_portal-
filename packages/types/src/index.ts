@@ -16,3 +16,6 @@ export * from './schemas';
 
 // Permission constants, Redis keys, system constants
 export * from './constants';
+
+// Theme tokens (types only)
+export * from './theme';

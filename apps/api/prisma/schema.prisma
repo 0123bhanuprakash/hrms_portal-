@@ -838,3 +838,31 @@ model AuditLog {
   @@index([createdAt])
   @@map("audit_logs")
 }
+
+// ─────────────────────────────────────────────────────────────
+// THEMING
+// ─────────────────────────────────────────────────────────────
+
+/// Custom theme saved in the platform theme library (built-in presets live in code).
+/// `tokens` follows the ThemeTokens contract in @hrms/types.
+model Theme {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String
+  description String?
+  tokens      Json
+  createdById String?  @db.Uuid @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("themes")
+}
+
+/// Platform-wide key/value settings (e.g. superAdminTheme, defaultCompanyTheme).
+model PlatformSetting {
+  key         String   @id
+  value       Json
+  updatedById String?  @db.Uuid @map("updated_by_id")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("platform_settings")
+}
