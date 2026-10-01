@@ -20,7 +20,7 @@ export function ThemeToggle({ className }: { className?: string }) {
   const change = async (mode: Mode) => {
     setTheme(mode);
     try {
-      await api.patch('/users/me/preferences', { theme: mode.toUpperCase() });
+      await api.patch('/users/me/preferences', { theme: mode });
     } catch {
       // Already persisted locally by next-themes
     }

@@ -10,12 +10,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailProducerService } from '../email/email.producer.service';
 import { StorageService } from '../storage/storage.service';
 import { getSystemRole } from '../prisma/system-roles';
-import { companyThemeFields } from '../themes/company-theme';
+import { companyThemeFields, type CompanyThemeInput } from '../themes/company-theme';
+import { ThemesService } from '../themes/themes.service';
+import type { ThemeRef, ThemeTokens } from '@hrms/types';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { UpdateBrandingDto } from './dto/update-branding.dto';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
-import { CompanyStatus, UserStatus } from '@prisma/client';
+import { CompanyStatus, Prisma, UserStatus } from '@prisma/client';
 import { generateTemporaryPassword, hashPassword } from '../auth/password.util';
 
 @Injectable()
@@ -27,6 +29,7 @@ export class CompaniesService {
     private readonly config: ConfigService,
     private readonly emailProducerService: EmailProducerService,
     private readonly storage: StorageService,
+    private readonly themes: ThemesService,
   ) {}
 
   /**
@@ -243,6 +246,51 @@ export class CompaniesService {
   /**
    * Semi-public branding lookup by company slug (for login UI branding)
    */
+  // ─── Company theme ───────────────────────────────────────
+
+  /**
+   * The company's theme, or — when it has none yet — the platform's default
+   * theme for companies (custom default tokens are included so any client can
+   * render it; presets resolve client-side by key).
+   */
+  async getTheme(companyId: string) {
+    const company = await this.findOne(companyId);
+    return this.describeTheme(company.branding);
+  }
+
+  /** Company Admins replace their own theme (validated strictly). */
+  async updateTheme(companyId: string, input: CompanyThemeInput) {
+    const company = await this.findOne(companyId);
+    const fields = companyThemeFields(input);
+    if (!fields.themeTokens) {
+      throw new BadRequestException('themeTokens is required');
+    }
+
+    const branding = await this.prisma.companyBranding.upsert({
+      where: { companyId },
+      update: { ...fields, themeSource: fields.themeSource ?? Prisma.DbNull },
+      create: { companyId, displayName: company.name, ...fields },
+    });
+    return this.describeTheme(branding);
+  }
+
+  private async describeTheme(branding: { themeTokens: Prisma.JsonValue; themeSource: Prisma.JsonValue } | null) {
+    const themeTokens = (branding?.themeTokens ?? null) as ThemeTokens | null;
+    let platformDefault: { ref: ThemeRef; tokens: ThemeTokens | null } | null = null;
+
+    if (!themeTokens) {
+      const settings = await this.themes.getSettingsResolved();
+      const ref = settings.defaultCompanyTheme;
+      platformDefault = { ref, tokens: ref.kind === 'custom' ? (settings.customTokens[ref.id] ?? null) : null };
+    }
+
+    return {
+      themeTokens,
+      themeSource: (branding?.themeSource ?? null) as ThemeRef | null,
+      platformDefault,
+    };
+  }
+
   async findBrandingBySlug(slug: string) {
     const company = await this.prisma.company.findUnique({
       where: { slug: slug.toLowerCase() },
@@ -258,6 +306,8 @@ export class CompaniesService {
             faviconUrl: true,
             primaryColor: true,
             secondaryColor: true,
+            themeTokens: true,
+            themeSource: true,
           },
         },
       },
@@ -267,10 +317,13 @@ export class CompaniesService {
       throw new NotFoundException(`Active company with slug '${slug}' not found`);
     }
 
+    const { themeTokens: _t, themeSource: _s, ...branding } = company.branding ?? { themeTokens: null, themeSource: null };
     return {
       companyName: company.name,
       slug: company.slug,
-      branding: company.branding,
+      branding: company.branding ? branding : null,
+      // Lets the public login page render the company's theme
+      theme: await this.describeTheme(company.branding),
     };
   }
 

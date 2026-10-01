@@ -240,10 +240,11 @@ export const themeKeys = {
   settings: ['admin', 'theme-settings'] as const,
 };
 
-export function useCustomThemes() {
+export function useCustomThemes(options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: themeKeys.list,
     queryFn: () => unwrap<CustomTheme[]>(api.get('/admin/themes')),
+    enabled: options.enabled ?? true,
   });
 }
 

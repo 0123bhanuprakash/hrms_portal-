@@ -7,6 +7,8 @@ import {
   Param,
   Query,
   ForbiddenException,
+  ParseUUIDPipe,
+  Put,
   UseInterceptors,
   UploadedFile,
 } from '@nestjs/common';
@@ -16,6 +18,7 @@ import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { UpdateBrandingDto } from './dto/update-branding.dto';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
+import { UpdateCompanyThemeDto } from './dto/update-company-theme.dto';
 import { Public } from '../auth/decorators/public.decorator';
 import {
   SuperAdminOnly,
@@ -189,6 +192,32 @@ export class CompaniesController {
   ) {
     this.assertTenantAccess(id, ctx);
     return this.companiesService.getStats(id);
+  }
+
+  /**
+   * Company theme (any user of the company — needed to render their portal)
+   * GET /companies/:id/theme
+   */
+  @Get(':id/theme')
+  async getTheme(@Param('id', new ParseUUIDPipe()) id: string, @TenantCtx() ctx: TenantContext) {
+    this.assertTenantAccess(id, ctx);
+    return this.companiesService.getTheme(id);
+  }
+
+  /**
+   * Replace the company theme (Company Admin / Super Admin)
+   * PUT /companies/:id/theme
+   */
+  @RequirePermission('branding:manage')
+  @Audit('company:theme:update', 'company_branding', { companyIdParam: 'id' })
+  @Put(':id/theme')
+  async updateTheme(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: UpdateCompanyThemeDto,
+    @TenantCtx() ctx: TenantContext,
+  ) {
+    this.assertTenantAccess(id, ctx);
+    return this.companiesService.updateTheme(id, dto);
   }
 
   /**

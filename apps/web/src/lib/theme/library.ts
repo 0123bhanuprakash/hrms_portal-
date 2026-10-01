@@ -22,9 +22,12 @@ export function sameThemeRef(a: ThemeRef | null | undefined, b: ThemeRef | null 
   return a.kind === 'preset' ? a.key === (b as { key: string }).key : a.id === (b as { id: string }).id;
 }
 
-/** Presets + the platform's custom themes, in display order (premium, essentials, custom). */
-export function useThemeLibrary() {
-  const custom = useCustomThemes();
+/**
+ * Presets + the platform's custom themes, in display order (premium, essentials, custom).
+ * Pass `includeCustom: false` for company users (custom themes are a Super Admin library).
+ */
+export function useThemeLibrary(options: { includeCustom?: boolean } = {}) {
+  const custom = useCustomThemes({ enabled: options.includeCustom ?? true });
 
   const items = useMemo<ThemeLibraryItem[]>(() => {
     const presets = THEME_PRESETS.map<ThemeLibraryItem>((p) => ({
