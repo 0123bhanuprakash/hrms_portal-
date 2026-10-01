@@ -1,0 +1,250 @@
+'use client';
+
+import React, { Suspense, useEffect, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { toast } from 'sonner';
+import { Download, FileText, Filter, Search, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, EmptyState, ErrorState, Pagination, Skeleton } from '@/components/ui/feedback';
+import { inputClass } from '@/components/ui/field';
+import { AuditEntryDrawer } from '@/components/super-admin/audit-entry-drawer';
+import { useAuditActions, useAuditLogs, useCompanies } from '@/lib/admin/queries';
+import type { AuditLogEntry, AuditLogsQuery, Paginated } from '@/lib/admin/types';
+import { api } from '@/lib/api';
+import { getApiErrorMessage } from '@/lib/errors';
+import { formatDateTime, formatRelative, humanizeAction } from '@/lib/format';
+import { cn } from '@/lib/cn';
+
+const PAGE_SIZE = 25;
+const RANGES = [
+  { id: 'all', label: 'All time', days: null },
+  { id: '1', label: 'Today', days: 1 },
+  { id: '7', label: '7 days', days: 7 },
+  { id: '30', label: '30 days', days: 30 },
+] as const;
+type RangeId = (typeof RANGES)[number]['id'];
+
+export default function AuditLogsPage() {
+  return (
+    <Suspense fallback={<Skeleton className="h-96" />}>
+      <AuditLogsView />
+    </Suspense>
+  );
+}
+
+function rangeStart(range: RangeId): string | undefined {
+  const r = RANGES.find((x) => x.id === range);
+  if (!r?.days) return undefined;
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - (r.days - 1));
+  return d.toISOString();
+}
+
+function AuditLogsView() {
+  const params = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const range = (params.get('range') as RangeId | null) ?? 'all';
+  const query: AuditLogsQuery = {
+    page: Number(params.get('page')) || 1,
+    limit: PAGE_SIZE,
+    companyId: params.get('companyId') ?? undefined,
+    action: params.get('action') ?? undefined,
+    userEmail: params.get('userEmail') ?? undefined,
+    dateFrom: rangeStart(range),
+  };
+
+  const update = (patch: Record<string, string | number | undefined>) => {
+    const next = new URLSearchParams(params.toString());
+    for (const [key, value] of Object.entries(patch)) {
+      if (value === undefined || value === '' || value === 'all' || (key === 'page' && value === 1)) next.delete(key);
+      else next.set(key, String(value));
+    }
+    if (!('page' in patch)) next.delete('page');
+    const qs = next.toString();
+    router.replace(`${pathname}${qs ? `?${qs}` : ''}`, { scroll: false });
+  };
+
+  const { data, isLoading, isError, error, refetch, isFetching } = useAuditLogs(query);
+  const actions = useAuditActions();
+  const companies = useCompanies({ limit: 100, sortBy: 'name', sortOrder: 'asc' });
+  const [selected, setSelected] = useState<AuditLogEntry | null>(null);
+  const [email, setEmail] = useState(query.userEmail ?? '');
+  const [exporting, setExporting] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if ((query.userEmail ?? '') !== email.trim()) update({ userEmail: email.trim() || undefined });
+    }, 350);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [email]);
+
+  const filtersActive = Boolean(query.companyId || query.action || query.userEmail || range !== 'all');
+
+  /** Downloads every entry matching the current filters (up to 1000) as CSV. */
+  const exportCsv = async () => {
+    setExporting(true);
+    try {
+      const rows: AuditLogEntry[] = [];
+      for (let page = 1; page <= 10; page++) {
+        const res = await api.get<Paginated<AuditLogEntry>>('/admin/audit-logs', {
+          params: { ...query, page, limit: 100 },
+        });
+        rows.push(...res.data.data);
+        if (page >= res.data.meta.totalPages) break;
+      }
+      const header = ['timestamp', 'action', 'actor_email', 'company', 'resource_type', 'resource_id', 'ip_address', 'request_id'];
+      const escape = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const csv = [
+        header.join(','),
+        ...rows.map((r) =>
+          [r.createdAt, r.action, r.user?.email, r.company?.name, r.resourceType, r.resourceId, r.ipAddress, r.requestId].map(escape).join(','),
+        ),
+      ].join('\n');
+      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `audit-logs-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`Exported ${rows.length} entr${rows.length === 1 ? 'y' : 'ies'}`);
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Export failed'));
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Audit logs</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Who did what, when and where — across every company.</p>
+        </div>
+        <Button variant="secondary" icon={<Download className="h-4 w-4" />} loading={exporting} disabled={!data?.meta.total} onClick={exportCsv}>
+          Export CSV
+        </Button>
+      </div>
+
+      {/* Filters */}
+      <Card className="p-3">
+        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_auto]">
+          <select
+            aria-label="Filter by company"
+            value={query.companyId ?? ''}
+            onChange={(e) => update({ companyId: e.target.value || undefined })}
+            className={cn(inputClass, 'h-9')}
+          >
+            <option value="">All companies</option>
+            {companies.data?.data.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+          <select
+            aria-label="Filter by action"
+            value={query.action ?? ''}
+            onChange={(e) => update({ action: e.target.value || undefined })}
+            className={cn(inputClass, 'h-9')}
+          >
+            <option value="">All actions</option>
+            {actions.data?.map((a) => (
+              <option key={a} value={a}>{humanizeAction(a)}</option>
+            ))}
+          </select>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Actor email…" aria-label="Filter by actor email" className={cn(inputClass, 'h-9 pl-9')} />
+          </div>
+          <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 p-0.5">
+            {RANGES.map((r) => (
+              <button
+                key={r.id}
+                onClick={() => update({ range: r.id })}
+                className={cn('rounded-md px-3 py-1 text-xs font-medium whitespace-nowrap', range === r.id ? 'bg-indigo-600 text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800')}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        {filtersActive && (
+          <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
+            <Filter className="h-3.5 w-3.5" />
+            {data ? `${data.meta.total} matching entr${data.meta.total === 1 ? 'y' : 'ies'}` : 'Filtering…'}
+            <button
+              onClick={() => { setEmail(''); update({ companyId: undefined, action: undefined, userEmail: undefined, range: undefined }); }}
+              className="ml-1 flex items-center gap-1 rounded-md px-1.5 py-0.5 text-indigo-600 hover:bg-indigo-500/10 dark:text-indigo-400"
+            >
+              <X className="h-3 w-3" /> Clear filters
+            </button>
+          </div>
+        )}
+      </Card>
+
+      <Card className={cn('overflow-hidden transition-opacity', isFetching && !isLoading && 'opacity-70')}>
+        {isError ? (
+          <ErrorState message={getApiErrorMessage(error, 'Could not load audit logs')} onRetry={() => refetch()} />
+        ) : isLoading ? (
+          <div className="space-y-2 p-4">{Array.from({ length: 8 }, (_, i) => <Skeleton key={i} className="h-10" />)}</div>
+        ) : !data?.data.length ? (
+          <EmptyState icon={<FileText />} title={filtersActive ? 'No entries match these filters' : 'No audit entries yet'} />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 dark:bg-slate-900 text-left text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">When</th>
+                  <th className="px-4 py-3 font-semibold">Action</th>
+                  <th className="px-4 py-3 font-semibold">Actor</th>
+                  <th className="px-4 py-3 font-semibold hidden md:table-cell">Company</th>
+                  <th className="px-4 py-3 font-semibold hidden lg:table-cell">IP</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {data.data.map((entry) => (
+                  <tr
+                    key={entry.id}
+                    onClick={() => setSelected(entry)}
+                    onKeyDown={(e) => e.key === 'Enter' && setSelected(entry)}
+                    tabIndex={0}
+                    className="cursor-pointer transition-colors hover:bg-indigo-50/60 dark:hover:bg-indigo-500/5 focus:outline-none focus-visible:bg-indigo-50 dark:focus-visible:bg-indigo-500/10"
+                  >
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="block">{formatRelative(entry.createdAt)}</span>
+                      <span className="block text-xs text-slate-500">{formatDateTime(entry.createdAt)}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="block font-medium">{humanizeAction(entry.action)}</span>
+                      <code className="text-[11px] text-slate-500">{entry.action}</code>
+                    </td>
+                    <td className="px-4 py-3">
+                      {entry.user ? (
+                        <>
+                          <span className="block">{entry.user.firstName} {entry.user.lastName}</span>
+                          <span className="block text-xs text-slate-500">{entry.user.email}</span>
+                        </>
+                      ) : (
+                        <span className="text-slate-400">System</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 hidden md:table-cell">{entry.company?.name ?? <span className="text-slate-400">Platform</span>}</td>
+                    <td className="px-4 py-3 hidden lg:table-cell font-mono text-xs text-slate-500">{entry.ipAddress ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {data && (
+          <Pagination page={data.meta.page} totalPages={data.meta.totalPages} total={data.meta.total} limit={data.meta.limit} onPageChange={(page) => update({ page })} />
+        )}
+      </Card>
+
+      <AuditEntryDrawer entry={selected} onClose={() => setSelected(null)} />
+    </div>
+  );
+}
