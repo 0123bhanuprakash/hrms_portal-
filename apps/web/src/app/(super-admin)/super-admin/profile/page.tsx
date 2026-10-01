@@ -20,19 +20,19 @@ export default function ProfilePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Profile &amp; security</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">Your Super Admin account, password and signed-in devices.</p>
+        <h1 className="text-2xl font-semibold tracking-tight">Profile &amp; security</h1>
+        <p className="text-sm text-muted-foreground">Your Super Admin account, password and signed-in devices.</p>
       </div>
 
       <Card className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
-        <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-xl font-bold text-white shadow-lg shadow-indigo-600/25">
+        <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/70 text-xl font-semibold text-primary-foreground shadow-card">
           {initials(`${user.firstName} ${user.lastName}`)}
         </span>
         <div className="flex-1">
           <p className="text-lg font-semibold">{user.firstName} {user.lastName}</p>
-          <p className="text-sm text-slate-500 dark:text-slate-400">{user.email}</p>
+          <p className="text-sm text-muted-foreground">{user.email}</p>
         </div>
-        <span className="inline-flex items-center gap-1.5 self-start rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300 sm:self-center">
+        <span className="inline-flex items-center gap-1.5 self-start rounded-full bg-primary-soft px-3 py-1 text-xs font-semibold text-primary-soft-foreground sm:self-center">
           <ShieldCheck className="h-3.5 w-3.5" /> Super Admin
         </span>
       </Card>
@@ -55,12 +55,12 @@ function strength(pw: string): { score: number; label: string; color: string } {
   if (/\d/.test(pw)) score++;
   if (/[^A-Za-z0-9]/.test(pw)) score++;
   const levels = [
-    { label: 'Too weak', color: 'bg-red-500' },
-    { label: 'Weak', color: 'bg-red-500' },
-    { label: 'Fair', color: 'bg-amber-500' },
-    { label: 'Good', color: 'bg-lime-500' },
-    { label: 'Strong', color: 'bg-emerald-500' },
-    { label: 'Excellent', color: 'bg-emerald-600' },
+    { label: 'Too weak', color: 'bg-destructive' },
+    { label: 'Weak', color: 'bg-destructive' },
+    { label: 'Fair', color: 'bg-warning' },
+    { label: 'Good', color: 'bg-success/70' },
+    { label: 'Strong', color: 'bg-success' },
+    { label: 'Excellent', color: 'bg-success' },
   ];
   return { score, ...levels[score]! };
 }
@@ -70,7 +70,7 @@ function PasswordInput({ id, value, onChange, autoComplete, invalid }: { id: str
   return (
     <div className="relative">
       <Input id={id} type={show ? 'text' : 'password'} value={value} autoComplete={autoComplete} invalid={invalid} onChange={(e) => onChange(e.target.value)} className="pr-10" />
-      <button type="button" onClick={() => setShow((s) => !s)} aria-label={show ? 'Hide password' : 'Show password'} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white">
+      <button type="button" onClick={() => setShow((s) => !s)} aria-label={show ? 'Hide password' : 'Show password'} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground">
         {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
       </button>
     </div>
@@ -106,8 +106,8 @@ function ChangePasswordCard() {
 
   return (
     <Card className="p-5">
-      <h2 className="flex items-center gap-2 text-sm font-semibold"><KeyRound className="h-4 w-4 text-slate-400" />Change password</h2>
-      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Other devices are signed out automatically; this one stays signed in.</p>
+      <h2 className="flex items-center gap-2 text-sm font-semibold"><KeyRound className="h-4 w-4 text-muted-foreground" />Change password</h2>
+      <p className="mt-1 text-xs text-muted-foreground">Other devices are signed out automatically; this one stays signed in.</p>
       <form onSubmit={submit} className="mt-5 space-y-4">
         <Field label="Current password" htmlFor="current" required>
           <PasswordInput id="current" value={current} onChange={setCurrent} autoComplete="current-password" />
@@ -118,10 +118,10 @@ function ChangePasswordCard() {
             <div className="space-y-1 pt-1">
               <div className="flex gap-1">
                 {[0, 1, 2, 3, 4].map((i) => (
-                  <span key={i} className={cn('h-1.5 flex-1 rounded-full transition-colors duration-300', i < s.score ? s.color : 'bg-slate-200 dark:bg-slate-800')} />
+                  <span key={i} className={cn('h-1.5 flex-1 rounded-full transition-colors duration-300', i < s.score ? s.color : 'bg-muted')} />
                 ))}
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 {s.label}
                 {next.length < 8 && ' · at least 8 characters'}
               </p>
@@ -178,8 +178,8 @@ function SessionsCard() {
     <Card className="p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="flex items-center gap-2 text-sm font-semibold"><Monitor className="h-4 w-4 text-slate-400" />Active sessions</h2>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Devices signed in to your account.</p>
+          <h2 className="flex items-center gap-2 text-sm font-semibold"><Monitor className="h-4 w-4 text-muted-foreground" />Active sessions</h2>
+          <p className="mt-1 text-xs text-muted-foreground">Devices signed in to your account.</p>
         </div>
         <Button variant="secondary" size="sm" icon={<LogOut className="h-3.5 w-3.5" />} disabled={others === 0} onClick={() => setConfirmOthers(true)}>
           Sign out others
@@ -203,18 +203,18 @@ function SessionsCard() {
                   key={session.id}
                   className={cn(
                     'flex items-center gap-3 rounded-xl border p-3 transition-colors',
-                    session.current ? 'border-indigo-300 bg-indigo-50/60 dark:border-indigo-800 dark:bg-indigo-500/5' : 'border-slate-200 dark:border-slate-800',
+                    session.current ? 'border-primary/30 bg-primary-soft/50' : 'border-border',
                   )}
                 >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
                     <Icon className="h-5 w-5" />
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
                       {device.browser} on {device.os}
-                      {session.current && <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-[10px] font-semibold uppercase text-white">This device</span>}
+                      {session.current && <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase text-white">This device</span>}
                     </p>
-                    <p className="truncate text-xs text-slate-500 dark:text-slate-400" title={`Signed in ${formatDateTime(session.signedInAt)}`}>
+                    <p className="truncate text-xs text-muted-foreground" title={`Signed in ${formatDateTime(session.signedInAt)}`}>
                       {session.ipAddress ?? 'Unknown IP'} · active {formatRelative(session.lastActiveAt)}
                     </p>
                   </div>
@@ -223,7 +223,7 @@ function SessionsCard() {
                     size="sm"
                     loading={revoke.isPending && revoke.variables === session.id}
                     onClick={() => signOut(session)}
-                    className="text-red-600 hover:bg-red-500/10 dark:text-red-400"
+                    className="text-destructive hover:bg-destructive-soft"
                   >
                     Sign out
                   </Button>

@@ -161,3 +161,13 @@ export interface Session {
   expiresAt: string;
   current: boolean;
 }
+
+// ─── Themes ───────────────────────────────────────────────
+export type { CustomTheme, PlatformThemeSettings, ThemeRef, ThemeTokens } from '@hrms/types';
+
+export interface ThemeSettingsResolved {
+  superAdminTheme: import('@hrms/types').ThemeRef;
+  defaultCompanyTheme: import('@hrms/types').ThemeRef;
+  /** Tokens of custom themes referenced by the settings, keyed by id */
+  customTokens: Record<string, import('@hrms/types').ThemeTokens>;
+}

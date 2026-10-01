@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
+import * as Menu from '@radix-ui/react-dropdown-menu';
 import { cn } from '@/lib/cn';
 
 export interface MenuItem {
@@ -9,72 +10,70 @@ export interface MenuItem {
   onSelect: () => void;
   danger?: boolean;
   disabled?: boolean;
+  /** Explanation shown under the label (e.g. why it is disabled) */
   hint?: string;
+  shortcut?: string;
 }
 
 interface DropdownMenuProps {
-  trigger: (props: { open: boolean; toggle: () => void }) => React.ReactNode;
+  /** Render the trigger element. `toggle` is kept for API compatibility (Radix handles opening). */
+  trigger: (props: { open: boolean; toggle: () => void }) => React.ReactElement;
   items: Array<MenuItem | 'separator'>;
   align?: 'left' | 'right';
+  label?: string;
   className?: string;
 }
 
-/** Lightweight dropdown: click to open, closes on outside click / Escape / select. */
-export function DropdownMenu({ trigger, items, align = 'right', className }: DropdownMenuProps) {
+/** Accessible dropdown (Radix): keyboard navigation, typeahead, focus return. */
+export function DropdownMenu({ trigger, items, align = 'right', label, className }: DropdownMenuProps) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false);
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
 
   return (
-    <div ref={ref} className={cn('relative inline-block', className)}>
-      {trigger({ open, toggle: () => setOpen((o) => !o) })}
-      {open && (
-        <div
-          role="menu"
+    <Menu.Root open={open} onOpenChange={setOpen} modal={false}>
+      <Menu.Trigger asChild>{trigger({ open, toggle: () => undefined })}</Menu.Trigger>
+      <Menu.Portal>
+        <Menu.Content
+          align={align === 'right' ? 'end' : 'start'}
+          sideOffset={6}
           className={cn(
-            'absolute z-40 mt-1.5 min-w-[13rem] rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-1 shadow-xl animate-scale-in',
-            align === 'right' ? 'right-0 origin-top-right' : 'left-0 origin-top-left',
+            'z-50 min-w-[14rem] overflow-hidden rounded-lg border border-border bg-raised p-1 text-raised-foreground shadow-menu',
+            'data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-1',
+            'data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95',
+            className,
           )}
         >
+          {label && <Menu.Label className="px-2 pb-1 pt-1.5 text-2xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</Menu.Label>}
           {items.map((item, i) =>
             item === 'separator' ? (
-              <div key={`sep-${i}`} className="my-1 h-px bg-slate-200 dark:bg-slate-800" />
+              <Menu.Separator key={`sep-${i}`} className="-mx-1 my-1 h-px bg-border" />
             ) : (
-              <button
+              <Menu.Item
                 key={item.label}
-                role="menuitem"
-                type="button"
                 disabled={item.disabled}
-                title={item.hint}
-                onClick={() => {
-                  setOpen(false);
-                  item.onSelect();
-                }}
+                onSelect={item.onSelect}
                 className={cn(
-                  'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
+                  'relative flex cursor-default select-none items-start gap-2.5 rounded-md px-2 py-1.5 text-sm outline-none transition-colors',
+                  'data-[disabled]:pointer-events-none data-[disabled]:opacity-45',
                   item.danger
-                    ? 'text-red-600 dark:text-red-400 hover:bg-red-500/10'
-                    : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800',
+                    ? 'text-destructive data-[highlighted]:bg-destructive-soft'
+                    : 'text-foreground data-[highlighted]:bg-subtle',
                 )}
               >
-                {item.icon && <span className="h-4 w-4 shrink-0 [&>svg]:h-4 [&>svg]:w-4">{item.icon}</span>}
-                {item.label}
-              </button>
+                {item.icon && (
+                  <span className={cn('mt-0.5 shrink-0 [&_svg]:size-4', item.danger ? 'text-destructive' : 'text-muted-foreground')}>
+                    {item.icon}
+                  </span>
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="block">{item.label}</span>
+                  {item.hint && <span className="block text-xs text-muted-foreground">{item.hint}</span>}
+                </span>
+                {item.shortcut && <span className="ml-4 text-xs tracking-widest text-muted-foreground">{item.shortcut}</span>}
+              </Menu.Item>
             ),
           )}
-        </div>
-      )}
-    </div>
+        </Menu.Content>
+      </Menu.Portal>
+    </Menu.Root>
   );
 }

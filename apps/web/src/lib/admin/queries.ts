@@ -22,6 +22,9 @@ import type {
   Session,
   SystemStatus,
   UpdateCompanyInput,
+  CustomTheme,
+  ThemeSettingsResolved,
+  ThemeTokens,
 } from './types';
 
 // ============================================================
@@ -226,5 +229,79 @@ export function useRevokeOtherSessions() {
 export function useOpenQueueDashboard() {
   return useMutation({
     mutationFn: () => api.post('/admin/queues/session'),
+  });
+}
+
+// ─── Themes ───────────────────────────────────────────────
+
+export const themeKeys = {
+  list: ['admin', 'themes'] as const,
+  one: (id: string) => ['admin', 'themes', id] as const,
+  settings: ['admin', 'theme-settings'] as const,
+};
+
+export function useCustomThemes() {
+  return useQuery({
+    queryKey: themeKeys.list,
+    queryFn: () => unwrap<CustomTheme[]>(api.get('/admin/themes')),
+  });
+}
+
+export function useCustomTheme(id: string | null) {
+  return useQuery({
+    queryKey: themeKeys.one(id ?? ''),
+    queryFn: () => unwrap<CustomTheme>(api.get(`/admin/themes/${id}`)),
+    enabled: Boolean(id),
+  });
+}
+
+export function useThemeSettings(options: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: themeKeys.settings,
+    queryFn: () => unwrap<ThemeSettingsResolved>(api.get('/admin/theme-settings')),
+    staleTime: 60_000,
+    enabled: options.enabled ?? true,
+  });
+}
+
+function useInvalidateThemes() {
+  const qc = useQueryClient();
+  return () =>
+    Promise.all([
+      qc.invalidateQueries({ queryKey: themeKeys.list }),
+      qc.invalidateQueries({ queryKey: themeKeys.settings }),
+      qc.invalidateQueries({ queryKey: [...adminKeys.all, 'audit-logs'] }),
+    ]);
+}
+
+export function useSaveTheme() {
+  const invalidate = useInvalidateThemes();
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id?: string; name: string; description?: string | null; tokens: ThemeTokens }) =>
+      id
+        ? unwrap<CustomTheme>(api.patch(`/admin/themes/${id}`, body))
+        : unwrap<CustomTheme>(api.post('/admin/themes', body)),
+    onSuccess: () => invalidate(),
+  });
+}
+
+export function useDeleteTheme() {
+  const invalidate = useInvalidateThemes();
+  return useMutation({
+    mutationFn: (id: string) => unwrap<{ id: string; name: string }>(api.delete(`/admin/themes/${id}`)),
+    onSuccess: () => invalidate(),
+  });
+}
+
+export function useUpdateThemeSettings() {
+  const qc = useQueryClient();
+  const invalidate = useInvalidateThemes();
+  return useMutation({
+    mutationFn: (body: Partial<Pick<ThemeSettingsResolved, 'superAdminTheme' | 'defaultCompanyTheme'>>) =>
+      unwrap<ThemeSettingsResolved>(api.put('/admin/theme-settings', body)),
+    onSuccess: (data) => {
+      qc.setQueryData(themeKeys.settings, data);
+      return invalidate();
+    },
   });
 }

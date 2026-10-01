@@ -130,8 +130,8 @@ function CompaniesView() {
     <div className="space-y-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Companies</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Every tenant on the platform, their status and usage.</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Companies</h1>
+          <p className="text-sm text-muted-foreground">Every tenant on the platform, their status and usage.</p>
         </div>
         <Link href="/super-admin/companies/new">
           <Button icon={<Plus className="h-4 w-4" />}>Onboard company</Button>
@@ -151,13 +151,13 @@ function CompaniesView() {
                   className={cn(
                     'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
                     active
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800',
+                      ? 'bg-primary text-white shadow-sm'
+                      : 'text-muted-foreground hover:bg-subtle',
                   )}
                 >
                   {chip.label}
                   {chip.count !== undefined && (
-                    <span className={cn('rounded-full px-1.5 text-[10px] tabular-nums', active ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-800')}>
+                    <span className={cn('rounded-full px-1.5 text-[10px] tabular-nums', active ? 'bg-white/20' : 'bg-muted')}>
                       {chip.count}
                     </span>
                   )}
@@ -168,28 +168,29 @@ function CompaniesView() {
 
           <div className="flex items-center gap-2">
             <div className="relative flex-1 lg:w-72">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                data-page-search
                 placeholder="Search name, slug or email…"
                 aria-label="Search companies"
                 className={cn(inputClass, 'h-9 pl-9 pr-8')}
               />
               {search && (
-                <button onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-400 hover:text-slate-700">
+                <button onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground">
                   <X className="h-3.5 w-3.5" />
                 </button>
               )}
             </div>
-            <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 p-0.5">
+            <div className="flex rounded-lg border border-border p-0.5">
               {([['table', List], ['grid', LayoutGrid]] as const).map(([v, Icon]) => (
                 <button
                   key={v}
                   onClick={() => changeView(v)}
                   aria-label={`${v} view`}
                   aria-pressed={view === v}
-                  className={cn('rounded-md p-1.5', view === v ? 'bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400' : 'text-slate-400 hover:text-slate-700')}
+                  className={cn('rounded-md p-1.5', view === v ? 'bg-muted text-primary' : 'text-muted-foreground hover:text-foreground')}
                 >
                   <Icon className="h-4 w-4" />
                 </button>
@@ -223,7 +224,7 @@ function CompaniesView() {
         ) : view === 'table' ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 dark:bg-slate-900 text-left text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <SortHeader label="Company" field="name" query={query} onSort={toggleSort} />
                   <SortHeader label="Status" field="status" query={query} onSort={toggleSort} />
@@ -233,27 +234,27 @@ function CompaniesView() {
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              <tbody className="divide-y divide-border">
                 {data.data.map((c) => (
-                  <tr key={c.id} className="group transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                  <tr key={c.id} className="group transition-colors hover:bg-muted/60">
                     <td className="px-4 py-3">
                       <Link href={`/super-admin/companies/${c.id}`} className="flex items-center gap-3">
                         <span className="h-9 w-1 rounded-full" style={{ backgroundColor: c.branding?.primaryColor ?? '#4F46E5' }} />
                         <CompanyAvatar name={c.name} logoUrl={c.branding?.logoUrl} color={c.branding?.primaryColor} />
                         <span className="min-w-0">
-                          <span className="block truncate font-medium group-hover:text-indigo-600 dark:group-hover:text-indigo-400">{c.name}</span>
-                          <span className="block truncate text-xs text-slate-500 dark:text-slate-400">{c.slug} · {c.email}</span>
+                          <span className="block truncate font-medium group-hover:text-primary">{c.name}</span>
+                          <span className="block truncate text-xs text-muted-foreground">{c.slug} · {c.email}</span>
                         </span>
                       </Link>
                     </td>
                     <td className="px-4 py-3"><StatusBadge status={c.status} /></td>
                     <td className="px-4 py-3 tabular-nums">
-                      <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-slate-400" />{c._count.users}</span>
+                      <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-muted-foreground" />{c._count.users}</span>
                     </td>
                     <td className="px-4 py-3 hidden md:table-cell">
-                      <code className="rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-xs">{c.settings?.employeeIdPrefix ?? '—'}</code>
+                      <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{c.settings?.employeeIdPrefix ?? '—'}</code>
                     </td>
-                    <td className="px-4 py-3 text-slate-500 dark:text-slate-400" title={formatDate(c.createdAt)}>{formatRelative(c.createdAt)}</td>
+                    <td className="px-4 py-3 text-muted-foreground" title={formatDate(c.createdAt)}>{formatRelative(c.createdAt)}</td>
                     <td className="px-4 py-3 text-right">
                       <RowActions company={c} onChangeStatus={() => setStatusTarget(c)} />
                     </td>
@@ -265,22 +266,22 @@ function CompaniesView() {
         ) : (
           <div className="grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3">
             {data.data.map((c, i) => (
-              <div key={c.id} className="group relative overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-all hover:-translate-y-0.5 hover:shadow-lg animate-fade-up" style={{ animationDelay: `${i * 30}ms` }}>
+              <div key={c.id} className="group relative overflow-hidden rounded-xl border border-border bg-surface transition-all hover:-translate-y-0.5 hover:shadow-lg animate-fade-up" style={{ animationDelay: `${i * 30}ms` }}>
                 <div className="h-1.5" style={{ backgroundColor: c.branding?.primaryColor ?? '#4F46E5' }} />
                 <div className="p-4">
                   <div className="flex items-start justify-between gap-2">
                     <Link href={`/super-admin/companies/${c.id}`} className="flex min-w-0 items-center gap-3">
                       <CompanyAvatar name={c.name} logoUrl={c.branding?.logoUrl} color={c.branding?.primaryColor} />
                       <span className="min-w-0">
-                        <span className="block truncate font-semibold group-hover:text-indigo-600 dark:group-hover:text-indigo-400">{c.name}</span>
-                        <span className="block truncate text-xs text-slate-500">{c.slug}</span>
+                        <span className="block truncate font-semibold group-hover:text-primary">{c.name}</span>
+                        <span className="block truncate text-xs text-muted-foreground">{c.slug}</span>
                       </span>
                     </Link>
                     <RowActions company={c} onChangeStatus={() => setStatusTarget(c)} />
                   </div>
-                  <div className="mt-4 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                  <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
                     <StatusBadge status={c.status} />
-                    <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{c._count.users} users</span>
+                    <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{c._count.users} user{c._count.users === 1 ? '' : 's'}</span>
                     <span>{formatRelative(c.createdAt)}</span>
                   </div>
                 </div>
@@ -319,7 +320,7 @@ function SortHeader({
   const Icon = !active ? ArrowUpDown : query.sortOrder === 'asc' ? ArrowUp : ArrowDown;
   return (
     <th className="px-4 py-3 font-semibold" aria-sort={active ? (query.sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}>
-      <button onClick={() => onSort(field)} className={cn('flex items-center gap-1 uppercase hover:text-slate-900 dark:hover:text-white', active && 'text-indigo-600 dark:text-indigo-400')}>
+      <button onClick={() => onSort(field)} className={cn('flex items-center gap-1 uppercase hover:text-foreground', active && 'text-primary')}>
         {label}
         <Icon className="h-3 w-3" />
       </button>
@@ -335,7 +336,7 @@ function RowActions({ company, onChangeStatus }: { company: CompanyListItem; onC
         <button
           onClick={toggle}
           aria-label={`Actions for ${company.name}`}
-          className={cn('rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white', open && 'bg-slate-100 dark:bg-slate-800')}
+          className={cn('rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-subtle hover:text-foreground', open && 'bg-muted')}
         >
           <MoreHorizontal className="h-4 w-4" />
         </button>

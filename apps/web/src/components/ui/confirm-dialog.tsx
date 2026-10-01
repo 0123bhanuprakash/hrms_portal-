@@ -1,20 +1,27 @@
 'use client';
 
-import React from 'react';
-import { AlertTriangle } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { AlertTriangle, Info } from 'lucide-react';
+import { Modal } from './modal';
+import { Button } from './button';
+import { Field, Input } from './field';
 
 interface ConfirmDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void | Promise<void>;
   title: string;
-  description: string;
+  description: React.ReactNode;
   confirmText?: string;
   cancelText?: string;
   isDanger?: boolean;
   isLoading?: boolean;
+  /** Require typing this exact text before confirming (high-impact actions) */
+  confirmPhrase?: string;
+  children?: React.ReactNode;
 }
 
+/** Confirmation dialog; destructive variant can require a typed phrase. */
 export function ConfirmDialog({
   isOpen,
   onClose,
@@ -25,58 +32,54 @@ export function ConfirmDialog({
   cancelText = 'Cancel',
   isDanger = false,
   isLoading = false,
+  confirmPhrase,
+  children,
 }: ConfirmDialogProps) {
-  if (!isOpen) return null;
+  const [typed, setTyped] = useState('');
+  useEffect(() => {
+    if (isOpen) setTyped('');
+  }, [isOpen]);
+
+  const blocked = Boolean(confirmPhrase) && typed.trim() !== confirmPhrase;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in duration-150">
-        <div className="flex items-start space-x-3">
-          <div
-            className={`p-2.5 rounded-lg ${
-              isDanger
-                ? 'bg-red-500/10 text-red-500'
-                : 'bg-indigo-500/10 text-indigo-500'
-            }`}
-          >
-            <AlertTriangle className="h-6 w-6" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-              {title}
-            </h3>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-              {description}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-end space-x-3 pt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isLoading}
-            className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-          >
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      busy={isLoading}
+      title={title}
+      description={description}
+      icon={isDanger ? <AlertTriangle className="text-destructive" /> : <Info className="text-primary" />}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={isLoading}>
             {cancelText}
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={isLoading}
-            className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors flex items-center space-x-2 ${
-              isDanger
-                ? 'bg-red-600 hover:bg-red-700 disabled:bg-red-400'
-                : 'bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400'
-            }`}
-          >
-            {isLoading && (
-              <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            )}
-            <span>{confirmText}</span>
-          </button>
+          </Button>
+          <Button variant={isDanger ? 'danger' : 'primary'} onClick={onConfirm} loading={isLoading} disabled={blocked}>
+            {confirmText}
+          </Button>
+        </>
+      }
+    >
+      {(children || confirmPhrase) && (
+        <div className="space-y-4">
+          {children}
+          {confirmPhrase && (
+            <Field
+              label={`Type “${confirmPhrase}” to confirm`}
+              htmlFor="confirm-phrase"
+            >
+              <Input
+                id="confirm-phrase"
+                autoComplete="off"
+                value={typed}
+                onChange={(e) => setTyped(e.target.value)}
+                className="font-mono"
+              />
+            </Field>
+          )}
         </div>
-      </div>
-    </div>
+      )}
+    </Modal>
   );
 }

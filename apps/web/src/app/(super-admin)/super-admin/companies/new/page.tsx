@@ -130,11 +130,11 @@ export default function OnboardCompanyPage() {
   if (created) {
     return (
       <Card className="mx-auto max-w-xl p-8 text-center animate-scale-in">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-600">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-success-soft text-success">
           <PartyPopper className="h-8 w-8" />
         </div>
         <h1 className="text-xl font-bold">{created.name} is ready</h1>
-        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+        <p className="mt-2 text-sm text-muted-foreground">
           A welcome email with a temporary password was sent to <b>{form.adminEmail}</b>.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
@@ -163,12 +163,12 @@ export default function OnboardCompanyPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex items-center gap-3">
-        <Link href="/super-admin/companies" className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Back to companies">
+        <Link href="/super-admin/companies" className="rounded-lg p-2 text-muted-foreground hover:bg-subtle" aria-label="Back to companies">
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Onboard a company</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Create the tenant, its branding and the first Company Admin.</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Onboard a company</h1>
+          <p className="text-sm text-muted-foreground">Create the tenant, its branding and the first Company Admin.</p>
         </div>
       </div>
 
@@ -185,9 +185,9 @@ export default function OnboardCompanyPage() {
                 onClick={() => i < step && setStep(i)}
                 className="group flex w-full flex-col gap-2 text-left disabled:cursor-default"
               >
-                <span className={cn('h-1.5 rounded-full transition-colors duration-300', done || current ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-800')} />
-                <span className={cn('flex items-center gap-2 text-xs font-medium', current ? 'text-indigo-600 dark:text-indigo-400' : done ? 'text-slate-700 dark:text-slate-300 group-hover:text-indigo-600' : 'text-slate-400')}>
-                  <span className={cn('flex h-6 w-6 items-center justify-center rounded-full', done ? 'bg-indigo-600 text-white' : current ? 'bg-indigo-500/15' : 'bg-slate-100 dark:bg-slate-800')}>
+                <span className={cn('h-1.5 rounded-full transition-colors duration-300', done || current ? 'bg-primary' : 'bg-muted')} />
+                <span className={cn('flex items-center gap-2 text-xs font-medium', current ? 'text-primary' : done ? 'text-foreground group-hover:text-primary' : 'text-muted-foreground')}>
+                  <span className={cn('flex h-6 w-6 items-center justify-center rounded-full', done ? 'bg-primary text-white' : current ? 'bg-primary-soft' : 'bg-muted')}>
                     {done ? <Check className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
                   </span>
                   <span className="hidden sm:inline">{label}</span>
@@ -242,7 +242,7 @@ export default function OnboardCompanyPage() {
                       type="button"
                       onClick={() => set('primaryColor', c)}
                       aria-label={`Use ${c}`}
-                      className={cn('h-8 w-8 rounded-full ring-offset-2 ring-offset-white dark:ring-offset-slate-900 transition-transform hover:scale-110', form.primaryColor === c && 'ring-2 ring-slate-900 dark:ring-white')}
+                      className={cn('h-8 w-8 rounded-full ring-offset-2 ring-offset-background transition-transform hover:scale-110', form.primaryColor === c && 'ring-2 ring-foreground')}
                       style={{ backgroundColor: c }}
                     />
                   ))}
@@ -273,11 +273,11 @@ export default function OnboardCompanyPage() {
             {step === 3 && (
               <>
                 <StepTitle title="Review & create" subtitle="Check everything before the company goes live." />
-                <div className="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+                <div className="flex items-center gap-3 rounded-xl border border-border p-4">
                   <CompanyAvatar name={form.name} color={form.primaryColor} />
                   <div className="min-w-0">
                     <p className="font-semibold">{form.name}</p>
-                    <p className="text-xs text-slate-500">{form.slug} · {form.email}</p>
+                    <p className="text-xs text-muted-foreground">{form.slug} · {form.email}</p>
                   </div>
                 </div>
                 <dl className="grid gap-3 text-sm sm:grid-cols-2">
@@ -296,7 +296,7 @@ export default function OnboardCompanyPage() {
                   <ReviewItem label="Company Admin" value={`${form.adminFirstName} ${form.adminLastName}`} onEdit={() => setStep(2)} />
                   <ReviewItem label="Admin email" value={form.adminEmail} onEdit={() => setStep(2)} />
                 </dl>
-                <p className="flex items-start gap-2 rounded-lg bg-sky-500/10 p-3 text-xs text-sky-700 dark:text-sky-300">
+                <p className="flex items-start gap-2 rounded-lg bg-info-soft p-3 text-xs text-info">
                   <Mail className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                   A welcome email with sign-in details will be sent to {form.adminEmail} as soon as you create the company.
                 </p>
@@ -304,7 +304,7 @@ export default function OnboardCompanyPage() {
             )}
           </div>
 
-          <div className="mt-8 flex justify-between border-t border-slate-200 dark:border-slate-800 pt-5">
+          <div className="mt-8 flex justify-between border-t border-border pt-5">
             <Button variant="ghost" icon={<ArrowLeft className="h-4 w-4" />} disabled={step === 0 || create.isPending} onClick={() => setStep((s) => s - 1)}>
               Back
             </Button>
@@ -322,9 +322,9 @@ export default function OnboardCompanyPage() {
 
         {/* Live preview, visible on every step */}
         <div className="space-y-3 lg:col-span-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Live preview</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Live preview</p>
           <BrandPreview name={form.name} primaryColor={form.primaryColor} secondaryColor={form.secondaryColor} />
-          <p className="text-xs text-slate-500 dark:text-slate-400">This is roughly how the company portal will look to its employees.</p>
+          <p className="text-xs text-muted-foreground">This is roughly how the company portal will look to its employees.</p>
         </div>
       </div>
     </div>
@@ -335,17 +335,17 @@ function StepTitle({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div>
       <h2 className="text-base font-semibold">{title}</h2>
-      <p className="text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>
+      <p className="text-sm text-muted-foreground">{subtitle}</p>
     </div>
   );
 }
 
 function ReviewItem({ label, value, onEdit }: { label: string; value: React.ReactNode; onEdit: () => void }) {
   return (
-    <div className="group rounded-lg bg-slate-50 dark:bg-slate-800/40 p-3">
-      <dt className="flex items-center justify-between text-xs text-slate-500">
+    <div className="group rounded-lg bg-muted p-3">
+      <dt className="flex items-center justify-between text-xs text-muted-foreground">
         {label}
-        <button type="button" onClick={onEdit} className="text-indigo-600 opacity-0 transition-opacity group-hover:opacity-100 dark:text-indigo-400">
+        <button type="button" onClick={onEdit} className="text-primary opacity-0 transition-opacity group-hover:opacity-100">
           Edit
         </button>
       </dt>

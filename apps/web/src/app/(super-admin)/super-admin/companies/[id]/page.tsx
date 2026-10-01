@@ -89,7 +89,7 @@ function CompanyDetailView() {
       <Card>
         <ErrorState message={getApiErrorMessage(error, 'Could not load this company')} onRetry={() => refetch()} />
         <div className="pb-8 text-center">
-          <Link href="/super-admin/companies" className="text-sm text-indigo-600 hover:underline">← Back to companies</Link>
+          <Link href="/super-admin/companies" className="text-sm text-primary hover:underline">← Back to companies</Link>
         </div>
       </Card>
     );
@@ -105,13 +105,13 @@ function CompanyDetailView() {
         <div className="h-24 sm:h-28" style={{ background: `linear-gradient(120deg, ${brand}, ${brand}99 60%, ${company.branding?.secondaryColor ?? '#EEF2FF'})` }} />
         <div className="flex flex-col gap-4 px-5 pb-5 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex items-end gap-4">
-            <CompanyAvatar name={company.name} logoUrl={company.branding?.logoUrl} color={brand} size="lg" className="-mt-8 shrink-0 ring-4 ring-white dark:ring-slate-900" />
+            <CompanyAvatar name={company.name} logoUrl={company.branding?.logoUrl} color={brand} size="lg" className="-mt-8 shrink-0 ring-4 ring-surface" />
             <div className="min-w-0 pt-3">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-xl font-bold tracking-tight">{company.name}</h1>
+                <h1 className="text-xl font-semibold tracking-tight">{company.name}</h1>
                 <StatusBadge status={company.status} />
               </div>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
+              <p className="text-sm text-muted-foreground">
                 {company.slug} · {company.email} · since {formatDate(company.createdAt)}
               </p>
             </div>
@@ -132,7 +132,7 @@ function CompanyDetailView() {
       </Card>
 
       {company.status !== 'ACTIVE' && (
-        <div className="flex items-start gap-3 rounded-xl border border-amber-300 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-500/10 p-4 text-sm text-amber-800 dark:text-amber-200 animate-fade-in">
+        <div className="flex items-start gap-3 rounded-xl border border-warning/30 bg-warning-soft p-4 text-sm text-foreground animate-fade-in">
           <Power className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
             This company is <b>{company.status.toLowerCase()}</b>. Its users cannot sign in and any open sessions were signed out.
@@ -186,7 +186,7 @@ function OverviewTab({ data }: { data: CompanyDetail }) {
         <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
           <Detail label="Legal name" value={company.name} />
           <Detail label="Display name" value={company.branding?.displayName ?? company.name} />
-          <Detail label="Contact email" value={<a href={`mailto:${company.email}`} className="text-indigo-600 dark:text-indigo-400 hover:underline">{company.email}</a>} />
+          <Detail label="Contact email" value={<a href={`mailto:${company.email}`} className="text-primary hover:underline">{company.email}</a>} />
           <Detail label="Slug" value={<code className="text-xs">{company.slug}</code>} />
           <Detail label="Created" value={formatDateTime(company.createdAt)} />
           <Detail label="Last updated" value={`${formatDateTime(company.updatedAt)} (${formatRelative(company.updatedAt)})`} />
@@ -197,16 +197,16 @@ function OverviewTab({ data }: { data: CompanyDetail }) {
 
       <div className="space-y-6">
         <Card className="p-5">
-          <h2 className="flex items-center gap-2 text-sm font-semibold"><Hash className="h-4 w-4 text-slate-400" />Employee IDs</h2>
-          <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">Next employee will be</p>
+          <h2 className="flex items-center gap-2 text-sm font-semibold"><Hash className="h-4 w-4 text-muted-foreground" />Employee IDs</h2>
+          <p className="mt-3 text-xs text-muted-foreground">Next employee will be</p>
           <p className="mt-1 font-mono text-2xl font-bold tracking-wider" style={{ color: company.branding?.primaryColor ?? undefined }}>{nextId}</p>
-          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-2 text-xs text-muted-foreground">
             Prefix <code>{prefix}</code> · {company.settings?.employeeIdSequence ?? 0} issued
           </p>
         </Card>
         <Card className="p-5">
           <h2 className="text-sm font-semibold">Login link</h2>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Branded sign-in page for this company.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Branded sign-in page for this company.</p>
           <CopyField value={loginUrl} />
         </Card>
       </div>
@@ -217,10 +217,10 @@ function OverviewTab({ data }: { data: CompanyDetail }) {
 function MiniStat({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
   return (
     <Card className="flex items-center gap-3 p-4">
-      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 [&>svg]:h-5 [&>svg]:w-5">{icon}</span>
+      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft text-primary [&>svg]:h-5 [&>svg]:w-5">{icon}</span>
       <span>
         <span className="block text-xl font-bold tabular-nums">{value}</span>
-        <span className="block text-xs text-slate-500 dark:text-slate-400">{label}</span>
+        <span className="block text-xs text-muted-foreground">{label}</span>
       </span>
     </Card>
   );
@@ -229,7 +229,7 @@ function MiniStat({ icon, label, value }: { icon: React.ReactNode; label: string
 function Detail({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-xs text-slate-500 dark:text-slate-400">{label}</dt>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd className="mt-0.5 break-words text-sm font-medium">{value}</dd>
     </div>
   );
@@ -247,9 +247,9 @@ function CopyField({ value }: { value: string }) {
     }
   };
   return (
-    <div className="mt-3 flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 p-1 pl-3">
+    <div className="mt-3 flex items-center gap-2 rounded-lg border border-border bg-background p-1 pl-3">
       <span className="min-w-0 flex-1 truncate font-mono text-xs">{value}</span>
-      <Button variant="ghost" size="sm" onClick={copy} aria-label="Copy link" icon={copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}>
+      <Button variant="ghost" size="sm" onClick={copy} aria-label="Copy link" icon={copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}>
         {copied ? 'Copied' : 'Copy'}
       </Button>
     </div>
@@ -293,7 +293,7 @@ function BrandingTab({ data }: { data: CompanyDetail }) {
       <Card className="space-y-5 p-5 lg:col-span-2">
         <div>
           <h2 className="text-sm font-semibold">Brand colors</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">The company portal and emails use these colors. Changes preview live.</p>
+          <p className="text-xs text-muted-foreground">The company portal and emails use these colors. Changes preview live.</p>
         </div>
         <Field label="Primary color" htmlFor="primary">
           <ColorInput id="primary" value={primary} onChange={setPrimary} />
@@ -304,7 +304,7 @@ function BrandingTab({ data }: { data: CompanyDetail }) {
               key={c}
               onClick={() => setPrimary(c)}
               aria-label={`Use ${c}`}
-              className={cn('h-7 w-7 rounded-full ring-offset-2 ring-offset-white dark:ring-offset-slate-900 transition-transform hover:scale-110', primary === c && 'ring-2 ring-slate-900 dark:ring-white')}
+              className={cn('h-7 w-7 rounded-full ring-offset-2 ring-offset-background transition-transform hover:scale-110', primary === c && 'ring-2 ring-foreground')}
               style={{ backgroundColor: c }}
             />
           ))}
@@ -312,10 +312,10 @@ function BrandingTab({ data }: { data: CompanyDetail }) {
         <Field label="Secondary color" htmlFor="secondary">
           <ColorInput id="secondary" value={secondary} onChange={setSecondary} />
         </Field>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
+        <p className="text-xs text-muted-foreground">
           Logo and favicon are uploaded by the Company Admin from their own branding settings.
         </p>
-        <div className="flex justify-end gap-2 border-t border-slate-200 dark:border-slate-800 pt-4">
+        <div className="flex justify-end gap-2 border-t border-border pt-4">
           <Button variant="ghost" size="sm" icon={<RotateCcw className="h-3.5 w-3.5" />} disabled={!dirty || update.isPending} onClick={() => { setPrimary(initial.primary); setSecondary(initial.secondary); }}>
             Reset
           </Button>
@@ -325,7 +325,7 @@ function BrandingTab({ data }: { data: CompanyDetail }) {
         </div>
       </Card>
       <div className="space-y-3 lg:col-span-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Live preview</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Live preview</p>
         <BrandPreview name={company.branding?.displayName ?? company.name} logoUrl={company.branding?.logoUrl} primaryColor={primary} secondaryColor={secondary} />
       </div>
     </div>
@@ -373,10 +373,10 @@ function AdminsTab({ companyId, admins }: { companyId: string; admins: CompanyAd
 
   return (
     <Card>
-      <div className="flex items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 px-5 py-4">
+      <div className="flex items-center justify-between gap-4 border-b border-border px-5 py-4">
         <div>
           <h2 className="text-sm font-semibold">Company administrators</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">{activeCount} active · full access to this company&apos;s portal</p>
+          <p className="text-xs text-muted-foreground">{activeCount} active · full access to this company&apos;s portal</p>
         </div>
         <Button size="sm" icon={<UserPlus className="h-4 w-4" />} onClick={() => setAddOpen(true)}>Add admin</Button>
       </div>
@@ -384,13 +384,13 @@ function AdminsTab({ companyId, admins }: { companyId: string; admins: CompanyAd
       {admins.length === 0 ? (
         <EmptyState icon={<ShieldCheck />} title="No admins" description="Add an admin so the company can manage its portal." />
       ) : (
-        <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+        <ul className="divide-y divide-border">
           {admins.map((admin) => {
             const neverLoggedIn = !admin.lastLoginAt;
             const isLastActive = admin.status === 'ACTIVE' && activeCount <= 1;
             return (
-              <li key={admin.id} className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold', admin.status === 'ACTIVE' ? 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400' : 'bg-slate-200 text-slate-500 dark:bg-slate-800')}>
+              <li key={admin.id} className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-muted/60">
+                <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold', admin.status === 'ACTIVE' ? 'bg-primary-soft text-primary' : 'bg-muted text-muted-foreground')}>
                   {initials(`${admin.firstName} ${admin.lastName}`)}
                 </span>
                 <div className="min-w-0 flex-1">
@@ -398,16 +398,16 @@ function AdminsTab({ companyId, admins }: { companyId: string; admins: CompanyAd
                     {admin.firstName} {admin.lastName}
                     {admin.status !== 'ACTIVE' && <StatusBadge status={admin.status} />}
                     {neverLoggedIn && (
-                      <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-sky-600 dark:text-sky-400">Invite pending</span>
+                      <span className="rounded-full bg-info-soft px-2 py-0.5 text-2xs font-medium text-info">Invite pending</span>
                     )}
                   </p>
-                  <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                  <p className="truncate text-xs text-muted-foreground">
                     {admin.email} · {neverLoggedIn ? `invited ${formatRelative(admin.createdAt)}` : `last login ${formatRelative(admin.lastLoginAt)}`}
                   </p>
                 </div>
                 <DropdownMenu
                   trigger={({ toggle, open }) => (
-                    <button onClick={toggle} aria-label={`Actions for ${admin.email}`} className={cn('rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800', open && 'bg-slate-100 dark:bg-slate-800')}>
+                    <button onClick={toggle} aria-label={`Actions for ${admin.email}`} className={cn('rounded-lg p-1.5 text-muted-foreground hover:bg-subtle hover:text-foreground', open && 'bg-muted')}>
                       <MoreHorizontal className="h-4 w-4" />
                     </button>
                   )}
@@ -462,7 +462,7 @@ function AdminsTab({ companyId, admins }: { companyId: string; admins: CompanyAd
             </>
           }
         >
-          <p className="text-sm text-slate-600 dark:text-slate-300">{copy[confirm.action].body}</p>
+          <p className="text-sm text-muted-foreground">{copy[confirm.action].body}</p>
         </Modal>
       )}
     </Card>
@@ -533,9 +533,9 @@ function ActivityTab({ companyId }: { companyId: string }) {
       <div className="mb-3 flex items-center justify-between">
         <div>
           <h2 className="text-sm font-semibold">Activity</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Everything done to or within this company</p>
+          <p className="text-xs text-muted-foreground">Everything done to or within this company</p>
         </div>
-        <Link href={`/super-admin/audit-logs?companyId=${companyId}`} className="flex items-center gap-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline">
+        <Link href={`/super-admin/audit-logs?companyId=${companyId}`} className="flex items-center gap-1 text-xs font-medium text-primary hover:underline">
           <FileText className="h-3.5 w-3.5" /> Open in audit logs
         </Link>
       </div>

@@ -17,21 +17,21 @@ const OPTIONS: Array<{ value: CompanyStatus; label: string; description: string;
     label: 'Active',
     description: 'Users can sign in and use the portal.',
     icon: <CheckCircle2 />,
-    tone: 'text-emerald-600 border-emerald-500 bg-emerald-500/5',
+    tone: 'text-success border-success bg-success-soft',
   },
   {
     value: 'INACTIVE',
     label: 'Inactive',
     description: 'Paused, e.g. trial ended. Users are signed out and blocked.',
     icon: <PauseCircle />,
-    tone: 'text-slate-600 border-slate-500 bg-slate-500/5',
+    tone: 'text-foreground border-foreground/40 bg-muted',
   },
   {
     value: 'SUSPENDED',
     label: 'Suspended',
     description: 'Blocked for a policy or billing issue. Users are signed out and blocked.',
     icon: <Ban />,
-    tone: 'text-red-600 border-red-500 bg-red-500/5',
+    tone: 'text-destructive border-destructive bg-destructive-soft',
   },
 ];
 
@@ -110,18 +110,18 @@ export function StatusChangeDialog({
                 onClick={() => setStatus(opt.value)}
                 className={cn(
                   'flex items-start gap-3 rounded-xl border-2 p-3 text-left transition-all',
-                  selected ? opt.tone : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700',
+                  selected ? opt.tone : 'border-border hover:border-foreground/20',
                 )}
               >
-                <span className={cn('mt-0.5 [&>svg]:h-5 [&>svg]:w-5', selected ? '' : 'text-slate-400')}>{opt.icon}</span>
+                <span className={cn('mt-0.5 [&>svg]:h-5 [&>svg]:w-5', selected ? '' : 'text-muted-foreground')}>{opt.icon}</span>
                 <span>
-                  <span className="block text-sm font-semibold text-slate-900 dark:text-white">
+                  <span className="block text-sm font-semibold text-foreground">
                     {opt.label}
                     {opt.value === company.status && (
-                      <span className="ml-2 text-[10px] font-medium uppercase text-slate-400">current</span>
+                      <span className="ml-2 text-[10px] font-medium uppercase text-muted-foreground">current</span>
                     )}
                   </span>
-                  <span className="block text-xs text-slate-500 dark:text-slate-400">{opt.description}</span>
+                  <span className="block text-xs text-muted-foreground">{opt.description}</span>
                 </span>
               </button>
             );

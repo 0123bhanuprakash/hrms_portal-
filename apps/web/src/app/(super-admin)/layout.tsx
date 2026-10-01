@@ -1,21 +1,26 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
   Activity,
   Building2,
-  ChevronDown,
-  ChevronsLeft,
-  ChevronsRight,
+  ChevronRight,
+  ChevronsUpDown,
   ExternalLink,
   FileText,
+  Keyboard,
   LayoutDashboard,
   Loader2,
   LogOut,
   Menu,
+  Palette,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Plus,
+  Search,
   ServerCog,
   ShieldCheck,
   UserCircle,
@@ -24,25 +29,81 @@ import {
 import { useAuthStore } from '@/store/useAuthStore';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { DropdownMenu } from '@/components/ui/dropdown-menu';
-import { useOpenQueueDashboard, useSystemStatus } from '@/lib/admin/queries';
+import { Tooltip } from '@/components/ui/tooltip';
+import { Kbd } from '@/components/ui/badge';
+import { CommandMenu, NAV_SHORTCUTS, ShortcutsDialog } from '@/components/super-admin/command-menu';
+import { useOpenQueueDashboard, useSystemStatus, useThemeSettings } from '@/lib/admin/queries';
+import { ThemeStyle } from '@/components/theme/theme-style';
+import { resolveTheme } from '@/lib/theme/presets';
+import type { ThemeTokens } from '@hrms/types';
 import { getApiErrorMessage } from '@/lib/errors';
 import { initials } from '@/lib/format';
 import { cn } from '@/lib/cn';
 
-const NAV = [
-  { name: 'Dashboard', href: '/super-admin', icon: LayoutDashboard, exact: true },
-  { name: 'Companies', href: '/super-admin/companies', icon: Building2 },
-  { name: 'Audit Logs', href: '/super-admin/audit-logs', icon: FileText },
-  { name: 'System', href: '/super-admin/system', icon: ServerCog },
+const NAV_GROUPS: Array<{
+  label: string;
+  items: Array<{ name: string; href: string; icon: React.ElementType; exact?: boolean }>;
+}> = [
+  { label: 'Overview', items: [{ name: 'Dashboard', href: '/super-admin', icon: LayoutDashboard, exact: true }] },
+  {
+    label: 'Tenants',
+    items: [
+      { name: 'Companies', href: '/super-admin/companies', icon: Building2, exact: true },
+      { name: 'Onboard company', href: '/super-admin/companies/new', icon: Plus },
+    ],
+  },
+  { label: 'Governance', items: [{ name: 'Audit logs', href: '/super-admin/audit-logs', icon: FileText }] },
+  {
+    label: 'Platform',
+    items: [
+      { name: 'Themes', href: '/super-admin/themes', icon: Palette },
+      { name: 'System', href: '/super-admin/system', icon: ServerCog },
+    ],
+  },
 ];
+
+const THEME_CACHE_KEY = 'sa-theme-tokens';
+
+/**
+ * Applies the Super Admin portal theme. The last theme is cached per browser
+ * so it paints immediately on reload, then refreshed from the API.
+ */
+function PortalTheme({ enabled }: { enabled: boolean }) {
+  const settings = useThemeSettings({ enabled });
+  const [cached, setCached] = useState<ThemeTokens | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(THEME_CACHE_KEY);
+      if (raw) setCached(JSON.parse(raw) as ThemeTokens);
+    } catch {
+      /* storage unavailable or corrupt */
+    }
+  }, []);
+
+  const tokens = settings.data ? resolveTheme(settings.data.superAdminTheme, settings.data.customTokens) : cached;
+
+  useEffect(() => {
+    if (!settings.data || !tokens) return;
+    try {
+      localStorage.setItem(THEME_CACHE_KEY, JSON.stringify(tokens));
+    } catch {
+      /* storage unavailable */
+    }
+  }, [settings.data, tokens]);
+
+  return <ThemeStyle tokens={tokens} />;
+}
 
 const SEGMENT_LABELS: Record<string, string> = {
   'super-admin': 'Platform',
   companies: 'Companies',
   new: 'Onboard',
-  'audit-logs': 'Audit Logs',
+  'audit-logs': 'Audit logs',
+  themes: 'Themes',
+  editor: 'Editor',
   system: 'System',
-  profile: 'Profile',
+  profile: 'Profile & security',
 };
 
 /**
@@ -63,6 +124,45 @@ function useAuthHydrated(): boolean {
   return hydrated;
 }
 
+/** Ctrl/⌘+K, "/", "?" and "g" + key navigation. Ignored while typing in a field. */
+function useShortcuts(handlers: { onCommand: () => void; onHelp: () => void; onGo: (href: string) => void }) {
+  const pendingG = useRef<number | null>(null);
+
+  useEffect(() => {
+    const isTyping = (el: EventTarget | null) =>
+      el instanceof HTMLElement && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName));
+
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        handlers.onCommand();
+        return;
+      }
+      if (e.ctrlKey || e.metaKey || e.altKey || isTyping(e.target)) return;
+
+      if (e.key === '/') {
+        const search = document.querySelector<HTMLInputElement>('[data-page-search]');
+        if (search) {
+          e.preventDefault();
+          search.focus();
+        }
+      } else if (e.key === '?') {
+        handlers.onHelp();
+      } else if (pendingG.current !== null) {
+        const nav = NAV_SHORTCUTS.find((n) => n.key === e.key.toLowerCase());
+        window.clearTimeout(pendingG.current);
+        pendingG.current = null;
+        if (nav) handlers.onGo(nav.href);
+      } else if (e.key.toLowerCase() === 'g') {
+        pendingG.current = window.setTimeout(() => (pendingG.current = null), 1000);
+      }
+    };
+
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [handlers]);
+}
+
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -70,6 +170,8 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
   const { user, isAuthenticated, logout } = useAuthStore();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const allowed = hydrated && isAuthenticated && Boolean(user?.isSuperAdmin);
 
@@ -94,7 +196,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
     }
   }, []);
 
-  const toggleCollapsed = () => {
+  const toggleCollapsed = () =>
     setCollapsed((c) => {
       try {
         localStorage.setItem('sa-sidebar-collapsed', c ? '0' : '1');
@@ -103,135 +205,191 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
       }
       return !c;
     });
-  };
+
+  const handleLogout = useCallback(() => {
+    logout();
+    router.replace('/login');
+  }, [logout, router]);
+
+  const shortcutHandlers = useRef({
+    onCommand: () => setCommandOpen((o) => !o),
+    onHelp: () => setHelpOpen(true),
+    onGo: (href: string) => router.push(href),
+  }).current;
+  useShortcuts(shortcutHandlers);
 
   if (!allowed) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
-        <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <PortalTheme enabled={false} />
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
-  const handleLogout = () => {
-    logout();
-    router.replace('/login');
-  };
+  const fullName = `${user!.firstName} ${user!.lastName}`;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex">
-      {/* Mobile backdrop */}
+    <div className="flex min-h-screen bg-canvas text-foreground">
+      <PortalTheme enabled />
       {mobileOpen && (
-        <div className="fixed inset-0 z-30 bg-slate-950/50 lg:hidden animate-fade-in" onClick={() => setMobileOpen(false)} />
+        <div className="fixed inset-0 z-30 bg-black/40 backdrop-blur-[2px] lg:hidden animate-in fade-in-0" onClick={() => setMobileOpen(false)} />
       )}
 
       {/* ── Sidebar ─────────────────────────────────────── */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-40 flex flex-col border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-all duration-200',
+          'fixed inset-y-0 left-0 z-40 flex flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width,transform] duration-200 ease-out',
           'lg:sticky lg:top-0 lg:h-screen lg:translate-x-0',
-          collapsed ? 'lg:w-[72px]' : 'lg:w-64',
-          mobileOpen ? 'w-64 translate-x-0' : 'w-64 -translate-x-full',
+          collapsed ? 'lg:w-[60px]' : 'lg:w-60',
+          mobileOpen ? 'w-60 translate-x-0' : 'w-60 -translate-x-full',
         )}
       >
-        <div className="flex h-16 items-center justify-between gap-2 px-4 border-b border-slate-200 dark:border-slate-800">
-          <Link href="/super-admin" className="flex items-center gap-2.5 overflow-hidden">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-600/30">
-              <ShieldCheck className="h-5 w-5" />
+        {/* Workspace */}
+        <div className={cn('flex h-14 items-center gap-2.5 px-3', collapsed && 'lg:justify-center lg:px-0')}>
+          <Link href="/super-admin" className="flex min-w-0 items-center gap-2.5 rounded-md">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-card shadow-inner-highlight">
+              <ShieldCheck className="h-[18px] w-[18px]" />
             </span>
-            {!collapsed && (
-              <span className="leading-tight">
-                <span className="block text-sm font-bold">HRMS</span>
-                <span className="block text-[11px] text-slate-500 dark:text-slate-400">Platform Admin</span>
-              </span>
-            )}
+            <span className={cn('min-w-0 leading-tight', collapsed && 'lg:hidden')}>
+              <span className="block truncate text-sm font-semibold text-foreground">HRMS Platform</span>
+              <span className="block truncate text-2xs text-sidebar-muted">Super Admin console</span>
+            </span>
           </Link>
-          <button className="lg:hidden p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => setMobileOpen(false)} aria-label="Close menu">
+          <button className="ml-auto rounded-md p-1.5 hover:bg-sidebar-active lg:hidden" onClick={() => setMobileOpen(false)} aria-label="Close menu">
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        <nav className="flex-1 space-y-1 p-3">
-          {NAV.map(({ name, href, icon: Icon, exact }) => {
-            const active = exact ? pathname === href : pathname.startsWith(href);
-            return (
-              <Link
-                key={href}
-                href={href}
-                title={collapsed ? name : undefined}
-                className={cn(
-                  'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all',
-                  collapsed && 'lg:justify-center lg:px-0',
-                  active
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/25'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white',
-                )}
-              >
-                <Icon className="h-[18px] w-[18px] shrink-0" />
-                <span className={cn(collapsed && 'lg:hidden')}>{name}</span>
-              </Link>
-            );
-          })}
+        {/* Search shortcut */}
+        <div className={cn('px-3 pb-2', collapsed && 'lg:px-2')}>
+          <Tooltip content="Search" shortcut="Ctrl K" side="right" disabled={!collapsed}>
+            <button
+              onClick={() => setCommandOpen(true)}
+              className={cn(
+                'flex h-8 w-full items-center gap-2 rounded-md border border-sidebar-border bg-background/60 px-2.5 text-xs text-sidebar-muted transition-colors hover:border-foreground/15 hover:text-sidebar-foreground',
+                collapsed && 'lg:justify-center lg:px-0',
+              )}
+            >
+              <Search className="h-3.5 w-3.5 shrink-0" />
+              <span className={cn('flex-1 text-left', collapsed && 'lg:hidden')}>Search…</span>
+              <span className={cn('flex gap-0.5', collapsed && 'lg:hidden')}>
+                <Kbd>Ctrl</Kbd>
+                <Kbd>K</Kbd>
+              </span>
+            </button>
+          </Tooltip>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto px-3 py-2" aria-label="Main">
+          {NAV_GROUPS.map((group) => (
+            <div key={group.label} className="mb-4">
+              <p className={cn('mb-1 px-2 text-2xs font-medium uppercase tracking-wider text-sidebar-muted', collapsed && 'lg:invisible lg:h-0 lg:mb-0')}>
+                {group.label}
+              </p>
+              <ul className="space-y-0.5">
+                {group.items.map(({ name, href, icon: Icon, exact }) => {
+                  const active = exact ? pathname === href : pathname.startsWith(href);
+                  return (
+                    <li key={href}>
+                      <Tooltip content={name} side="right" disabled={!collapsed}>
+                        <Link
+                          href={href}
+                          aria-current={active ? 'page' : undefined}
+                          className={cn(
+                            'group relative flex h-8 items-center gap-2.5 rounded-md px-2 text-[13px] font-medium transition-colors',
+                            collapsed && 'lg:justify-center lg:px-0',
+                            active
+                              ? 'bg-sidebar-active text-sidebar-active-foreground'
+                              : 'text-sidebar-foreground hover:bg-sidebar-active/60 hover:text-sidebar-active-foreground',
+                          )}
+                        >
+                          {active && <span className="absolute -left-3 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-primary" aria-hidden />}
+                          <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-primary' : 'text-sidebar-muted group-hover:text-sidebar-foreground')} />
+                          <span className={cn('truncate', collapsed && 'lg:hidden')}>{name}</span>
+                        </Link>
+                      </Tooltip>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
         </nav>
 
-        <div className="p-3 border-t border-slate-200 dark:border-slate-800">
+        {/* User card */}
+        <div className="border-t border-sidebar-border p-2">
+          <DropdownMenu
+            align="left"
+            label={user!.email}
+            trigger={() => (
+              <button
+                className={cn(
+                  'flex w-full items-center gap-2.5 rounded-md p-1.5 text-left transition-colors hover:bg-sidebar-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  collapsed && 'lg:justify-center',
+                )}
+              >
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-primary to-primary/70 text-xs font-semibold text-primary-foreground">
+                  {initials(fullName)}
+                </span>
+                <span className={cn('min-w-0 flex-1 leading-tight', collapsed && 'lg:hidden')}>
+                  <span className="block truncate text-[13px] font-medium text-foreground">{fullName}</span>
+                  <span className="block truncate text-2xs text-sidebar-muted">Super Admin</span>
+                </span>
+                <ChevronsUpDown className={cn('h-3.5 w-3.5 text-sidebar-muted', collapsed && 'lg:hidden')} />
+              </button>
+            )}
+            items={[
+              { label: 'Profile & security', icon: <UserCircle />, onSelect: () => router.push('/super-admin/profile') },
+              { label: 'Keyboard shortcuts', icon: <Keyboard />, shortcut: '?', onSelect: () => setHelpOpen(true) },
+              'separator',
+              { label: 'Sign out', icon: <LogOut />, danger: true, onSelect: handleLogout },
+            ]}
+          />
           <button
             onClick={toggleCollapsed}
-            className="hidden lg:flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="mt-1 hidden h-7 w-full items-center justify-center gap-2 rounded-md text-2xs text-sidebar-muted transition-colors hover:bg-sidebar-active hover:text-sidebar-foreground lg:flex"
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            {collapsed ? <ChevronsRight className="h-4 w-4" /> : <><ChevronsLeft className="h-4 w-4" /> Collapse</>}
+            {collapsed ? <PanelLeftOpen className="h-3.5 w-3.5" /> : <><PanelLeftClose className="h-3.5 w-3.5" /> Collapse</>}
           </button>
         </div>
       </aside>
 
       {/* ── Main column ─────────────────────────────────── */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur px-4 sm:px-6">
-          <div className="flex min-w-0 items-center gap-3">
-            <button className="lg:hidden p-2 -ml-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => setMobileOpen(true)} aria-label="Open menu">
+        <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-4 border-b border-border/70 bg-background/75 px-4 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60 sm:px-6">
+          <div className="flex min-w-0 items-center gap-2">
+            <button className="-ml-1.5 rounded-md p-1.5 hover:bg-subtle lg:hidden" onClick={() => setMobileOpen(true)} aria-label="Open menu">
               <Menu className="h-5 w-5" />
             </button>
             <Breadcrumbs pathname={pathname} />
           </div>
-
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5">
             <SystemPill />
             <QueueButton />
+            <Tooltip content="Search" shortcut="Ctrl K">
+              <button
+                onClick={() => setCommandOpen(true)}
+                aria-label="Open command menu"
+                className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-subtle hover:text-foreground lg:hidden"
+              >
+                <Search className="h-4 w-4" />
+              </button>
+            </Tooltip>
             <ThemeToggle />
-            <DropdownMenu
-              trigger={({ toggle, open }) => (
-                <button
-                  onClick={toggle}
-                  className={cn(
-                    'flex items-center gap-2 rounded-xl p-1 pr-2 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800',
-                    open && 'bg-slate-100 dark:bg-slate-800',
-                  )}
-                >
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-xs font-bold text-white">
-                    {initials(`${user!.firstName} ${user!.lastName}`)}
-                  </span>
-                  <span className="hidden md:block text-left leading-tight">
-                    <span className="block text-xs font-semibold">{user!.firstName} {user!.lastName}</span>
-                    <span className="block text-[10px] text-slate-500 dark:text-slate-400">Super Admin</span>
-                  </span>
-                  <ChevronDown className="hidden md:block h-3.5 w-3.5 text-slate-400" />
-                </button>
-              )}
-              items={[
-                { label: 'Profile & security', icon: <UserCircle />, onSelect: () => router.push('/super-admin/profile') },
-                'separator',
-                { label: 'Sign out', icon: <LogOut />, danger: true, onSelect: handleLogout },
-              ]}
-            />
           </div>
         </header>
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">
-          <div className="mx-auto max-w-7xl animate-fade-up" key={pathname}>
+        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+          <div className="mx-auto max-w-6xl animate-fade-up" key={pathname}>
             {children}
           </div>
         </main>
       </div>
+
+      <CommandMenu open={commandOpen} onOpenChange={setCommandOpen} onLogout={handleLogout} onShowShortcuts={() => setHelpOpen(true)} />
+      <ShortcutsDialog open={helpOpen} onOpenChange={setHelpOpen} />
     </div>
   );
 }
@@ -239,18 +397,18 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
 function Breadcrumbs({ pathname }: { pathname: string }) {
   const segments = pathname.split('/').filter(Boolean);
   return (
-    <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-sm">
+    <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 text-[13px]">
       {segments.map((seg, i) => {
         const href = '/' + segments.slice(0, i + 1).join('/');
         const last = i === segments.length - 1;
         const label = SEGMENT_LABELS[seg] ?? (/^[0-9a-f-]{36}$/.test(seg) ? 'Details' : seg);
         return (
           <React.Fragment key={href}>
-            {i > 0 && <span className="text-slate-300 dark:text-slate-600">/</span>}
+            {i > 0 && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />}
             {last ? (
-              <span className="truncate font-semibold text-slate-900 dark:text-white">{label}</span>
+              <span className="truncate font-medium text-foreground">{label}</span>
             ) : (
-              <Link href={href} className="truncate text-slate-500 hover:text-slate-900 dark:hover:text-white">
+              <Link href={href} className="truncate rounded px-1 text-muted-foreground transition-colors hover:bg-subtle hover:text-foreground">
                 {label}
               </Link>
             )}
@@ -261,22 +419,23 @@ function Breadcrumbs({ pathname }: { pathname: string }) {
   );
 }
 
-/** Green / red dot reflecting platform health; links to the System page. */
+/** Health dot reflecting platform status; links to the System page. */
 function SystemPill() {
   const { data, isError } = useSystemStatus({ refetchInterval: 60_000 });
   const ok = !isError && data?.health.status === 'ok';
   return (
-    <Link
-      href="/super-admin/system"
-      title={data ? (ok ? 'All systems operational' : 'Some services are unavailable') : 'Checking system status…'}
-      className="hidden sm:flex items-center gap-2 rounded-full border border-slate-200 dark:border-slate-700 px-3 py-1 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-    >
-      <span className="relative flex h-2 w-2">
-        {data && <span className={cn('absolute inline-flex h-full w-full animate-ping rounded-full opacity-60', ok ? 'bg-emerald-400' : 'bg-red-400')} />}
-        <span className={cn('relative inline-flex h-2 w-2 rounded-full', !data ? 'bg-slate-400' : ok ? 'bg-emerald-500' : 'bg-red-500')} />
-      </span>
-      {data ? (ok ? 'Operational' : 'Degraded') : 'Checking'}
-    </Link>
+    <Tooltip content={data ? (ok ? 'All systems operational' : 'Some services are unavailable') : 'Checking system status…'}>
+      <Link
+        href="/super-admin/system"
+        className="hidden h-8 items-center gap-2 rounded-md px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-subtle hover:text-foreground sm:flex"
+      >
+        <span className="relative flex h-2 w-2">
+          {data && <span className={cn('absolute inline-flex h-full w-full animate-ping rounded-full opacity-50', ok ? 'bg-success' : 'bg-destructive')} />}
+          <span className={cn('relative inline-flex h-2 w-2 rounded-full', !data ? 'bg-muted-foreground' : ok ? 'bg-success' : 'bg-destructive')} />
+        </span>
+        {data ? (ok ? 'Operational' : 'Degraded') : 'Checking'}
+      </Link>
+    </Tooltip>
   );
 }
 
@@ -299,13 +458,13 @@ function QueueButton() {
   };
 
   return (
-    <button
-      onClick={onClick}
-      className="hidden md:flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-    >
-      <Activity className="h-3.5 w-3.5 text-indigo-500" />
-      Queues
-      <ExternalLink className="h-3 w-3 text-slate-400" />
-    </button>
+    <Tooltip content="Open Bull Board">
+      <button
+        onClick={onClick}
+        className="hidden h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-subtle hover:text-foreground md:flex"
+      >
+        <Activity className="h-3.5 w-3.5" /> Queues <ExternalLink className="h-3 w-3 opacity-60" />
+      </button>
+    </Tooltip>
   );
 }

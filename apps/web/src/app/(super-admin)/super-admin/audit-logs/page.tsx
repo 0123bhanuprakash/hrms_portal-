@@ -122,8 +122,8 @@ function AuditLogsView() {
     <div className="space-y-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Audit logs</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Who did what, when and where — across every company.</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Audit logs</h1>
+          <p className="text-sm text-muted-foreground">Who did what, when and where — across every company.</p>
         </div>
         <Button variant="secondary" icon={<Download className="h-4 w-4" />} loading={exporting} disabled={!data?.meta.total} onClick={exportCsv}>
           Export CSV
@@ -156,15 +156,15 @@ function AuditLogsView() {
             ))}
           </select>
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Actor email…" aria-label="Filter by actor email" className={cn(inputClass, 'h-9 pl-9')} />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input value={email} onChange={(e) => setEmail(e.target.value)} data-page-search placeholder="Actor email…" aria-label="Filter by actor email" className={cn(inputClass, 'h-9 pl-9')} />
           </div>
-          <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 p-0.5">
+          <div className="flex rounded-lg border border-border p-0.5">
             {RANGES.map((r) => (
               <button
                 key={r.id}
                 onClick={() => update({ range: r.id })}
-                className={cn('rounded-md px-3 py-1 text-xs font-medium whitespace-nowrap', range === r.id ? 'bg-indigo-600 text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800')}
+                className={cn('rounded-md px-3 py-1 text-xs font-medium whitespace-nowrap', range === r.id ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-subtle')}
               >
                 {r.label}
               </button>
@@ -172,12 +172,12 @@ function AuditLogsView() {
           </div>
         </div>
         {filtersActive && (
-          <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
+          <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
             <Filter className="h-3.5 w-3.5" />
             {data ? `${data.meta.total} matching entr${data.meta.total === 1 ? 'y' : 'ies'}` : 'Filtering…'}
             <button
               onClick={() => { setEmail(''); update({ companyId: undefined, action: undefined, userEmail: undefined, range: undefined }); }}
-              className="ml-1 flex items-center gap-1 rounded-md px-1.5 py-0.5 text-indigo-600 hover:bg-indigo-500/10 dark:text-indigo-400"
+              className="ml-1 flex items-center gap-1 rounded-md px-1.5 py-0.5 text-primary hover:bg-primary-soft"
             >
               <X className="h-3 w-3" /> Clear filters
             </button>
@@ -195,7 +195,7 @@ function AuditLogsView() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 dark:bg-slate-900 text-left text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3 font-semibold">When</th>
                   <th className="px-4 py-3 font-semibold">Action</th>
@@ -204,35 +204,35 @@ function AuditLogsView() {
                   <th className="px-4 py-3 font-semibold hidden lg:table-cell">IP</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              <tbody className="divide-y divide-border">
                 {data.data.map((entry) => (
                   <tr
                     key={entry.id}
                     onClick={() => setSelected(entry)}
                     onKeyDown={(e) => e.key === 'Enter' && setSelected(entry)}
                     tabIndex={0}
-                    className="cursor-pointer transition-colors hover:bg-indigo-50/60 dark:hover:bg-indigo-500/5 focus:outline-none focus-visible:bg-indigo-50 dark:focus-visible:bg-indigo-500/10"
+                    className="cursor-pointer transition-colors hover:bg-primary-soft/40 focus:outline-none focus-visible:bg-primary-soft/60"
                   >
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className="block">{formatRelative(entry.createdAt)}</span>
-                      <span className="block text-xs text-slate-500">{formatDateTime(entry.createdAt)}</span>
+                      <span className="block text-xs text-muted-foreground">{formatDateTime(entry.createdAt)}</span>
                     </td>
                     <td className="px-4 py-3">
                       <span className="block font-medium">{humanizeAction(entry.action)}</span>
-                      <code className="text-[11px] text-slate-500">{entry.action}</code>
+                      <code className="text-[11px] text-muted-foreground">{entry.action}</code>
                     </td>
                     <td className="px-4 py-3">
                       {entry.user ? (
                         <>
                           <span className="block">{entry.user.firstName} {entry.user.lastName}</span>
-                          <span className="block text-xs text-slate-500">{entry.user.email}</span>
+                          <span className="block text-xs text-muted-foreground">{entry.user.email}</span>
                         </>
                       ) : (
-                        <span className="text-slate-400">System</span>
+                        <span className="text-muted-foreground">System</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 hidden md:table-cell">{entry.company?.name ?? <span className="text-slate-400">Platform</span>}</td>
-                    <td className="px-4 py-3 hidden lg:table-cell font-mono text-xs text-slate-500">{entry.ipAddress ?? '—'}</td>
+                    <td className="px-4 py-3 hidden md:table-cell">{entry.company?.name ?? <span className="text-muted-foreground">Platform</span>}</td>
+                    <td className="px-4 py-3 hidden lg:table-cell font-mono text-xs text-muted-foreground">{entry.ipAddress ?? '—'}</td>
                   </tr>
                 ))}
               </tbody>

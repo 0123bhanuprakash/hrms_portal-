@@ -1,25 +1,29 @@
 import React from 'react';
+import { cn } from '@/lib/cn';
 
 interface PageHeaderProps {
   title: string;
-  subtitle?: string;
+  /** Short explanation under the title (alias: subtitle) */
+  description?: React.ReactNode;
+  subtitle?: React.ReactNode;
+  /** Primary actions, right-aligned */
   action?: React.ReactNode;
+  /** Small label above the title, e.g. a section name */
+  eyebrow?: React.ReactNode;
+  className?: string;
 }
 
-export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
+/** Standard page title block used at the top of every screen. */
+export function PageHeader({ title, description, subtitle, action, eyebrow, className }: PageHeaderProps) {
+  const text = description ?? subtitle;
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-6 border-b border-slate-200 dark:border-slate-800 mb-6 gap-4">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-          {title}
-        </h1>
-        {subtitle && (
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            {subtitle}
-          </p>
-        )}
+    <div className={cn('mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between', className)}>
+      <div className="min-w-0">
+        {eyebrow && <div className="mb-1.5 text-xs font-medium text-primary">{eyebrow}</div>}
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
+        {text && <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{text}</p>}
       </div>
-      {action && <div>{action}</div>}
+      {action && <div className="flex shrink-0 flex-wrap items-center gap-2">{action}</div>}
     </div>
   );
 }

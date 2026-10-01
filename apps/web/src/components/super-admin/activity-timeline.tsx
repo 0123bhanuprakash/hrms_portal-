@@ -18,15 +18,15 @@ import { cn } from '@/lib/cn';
 
 /** Icon + color per action family. */
 function actionStyle(action: string): { icon: React.ReactNode; tone: string } {
-  if (action.includes('status')) return { icon: <Power />, tone: 'bg-amber-500/15 text-amber-600 dark:text-amber-400' };
-  if (action.includes('admin:add')) return { icon: <UserPlus />, tone: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' };
-  if (action.includes('invite')) return { icon: <Mail />, tone: 'bg-sky-500/15 text-sky-600 dark:text-sky-400' };
-  if (action.includes('password') || action.includes('session')) return { icon: <KeyRound />, tone: 'bg-violet-500/15 text-violet-600 dark:text-violet-400' };
-  if (action.includes('branding')) return { icon: <Palette />, tone: 'bg-pink-500/15 text-pink-600 dark:text-pink-400' };
-  if (action.includes('admin')) return { icon: <UserCog />, tone: 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400' };
-  if (action.startsWith('company')) return { icon: <Building2 />, tone: 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400' };
-  if (action.startsWith('auth')) return { icon: <ShieldCheck />, tone: 'bg-violet-500/15 text-violet-600 dark:text-violet-400' };
-  return { icon: <Activity />, tone: 'bg-slate-500/15 text-slate-600 dark:text-slate-400' };
+  if (action.includes('status')) return { icon: <Power />, tone: 'bg-warning-soft text-warning' };
+  if (action.includes('admin:add')) return { icon: <UserPlus />, tone: 'bg-success-soft text-success' };
+  if (action.includes('invite')) return { icon: <Mail />, tone: 'bg-info-soft text-info' };
+  if (action.includes('password') || action.includes('session')) return { icon: <KeyRound />, tone: 'bg-primary-soft text-primary-soft-foreground' };
+  if (action.includes('branding')) return { icon: <Palette />, tone: 'bg-destructive-soft text-destructive' };
+  if (action.includes('admin')) return { icon: <UserCog />, tone: 'bg-primary-soft text-primary' };
+  if (action.startsWith('company')) return { icon: <Building2 />, tone: 'bg-primary-soft text-primary' };
+  if (action.startsWith('auth')) return { icon: <ShieldCheck />, tone: 'bg-primary-soft text-primary-soft-foreground' };
+  return { icon: <Activity />, tone: 'bg-muted text-muted-foreground' };
 }
 
 /** One-line summary of what the entry's result says, when we know the shape. */
@@ -60,25 +60,25 @@ export function ActivityTimeline({
         return (
           <li key={entry.id} className="relative animate-fade-up" style={{ animationDelay: `${Math.min(i, 10) * 30}ms` }}>
             {i < entries.length - 1 && (
-              <span className="absolute left-[17px] top-10 bottom-[-4px] w-px bg-slate-200 dark:bg-slate-800" aria-hidden />
+              <span className="absolute left-[17px] top-10 bottom-[-4px] w-px bg-muted" aria-hidden />
             )}
             <button
               type="button"
               onClick={() => onSelect?.(entry)}
-              className="flex w-full items-start gap-3 rounded-xl p-2 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50"
+              className="flex w-full items-start gap-3 rounded-xl p-2 text-left transition-colors hover:bg-muted/60"
             >
               <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-full [&>svg]:h-4 [&>svg]:w-4', tone)}>
                 {icon}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-sm font-medium text-slate-900 dark:text-white">
+                <span className="block text-sm font-medium text-foreground">
                   {humanizeAction(entry.action)}
                   {showCompany && entry.company && (
-                    <span className="font-normal text-slate-500 dark:text-slate-400"> · {entry.company.name}</span>
+                    <span className="font-normal text-muted-foreground"> · {entry.company.name}</span>
                   )}
                 </span>
-                {extra && <span className="block truncate text-xs text-slate-600 dark:text-slate-300">{extra}</span>}
-                <span className="block text-xs text-slate-500 dark:text-slate-400">
+                {extra && <span className="block truncate text-xs text-muted-foreground">{extra}</span>}
+                <span className="block text-xs text-muted-foreground">
                   {entry.user ? `${entry.user.firstName} ${entry.user.lastName}` : 'System'} · {formatRelative(entry.createdAt)}
                 </span>
               </span>

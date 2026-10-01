@@ -24,7 +24,7 @@ export function CompanyAvatar({
       <img
         src={logoUrl}
         alt={`${name} logo`}
-        className={cn(dims, 'object-contain bg-white border border-slate-200 dark:border-slate-700 p-1', className)}
+        className={cn(dims, 'object-contain bg-white border border-border p-1', className)}
       />
     );
   }

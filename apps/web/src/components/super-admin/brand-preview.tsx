@@ -20,7 +20,7 @@ export function BrandPreview({
   const secondary = valid(secondaryColor) ? secondaryColor : '#EEF2FF';
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white text-slate-800 shadow-lg select-none">
+    <div className="overflow-hidden rounded-xl border border-border bg-white text-slate-800 shadow-lg select-none">
       <div className="flex h-9 items-center justify-between px-3" style={{ backgroundColor: primary }}>
         <div className="flex items-center gap-2">
           <CompanyAvatar name={name || 'Company'} logoUrl={logoUrl} color="rgba(255,255,255,0.25)" size="sm" className="h-6 w-6 rounded-md text-[9px]" />

@@ -2,79 +2,58 @@
 
 import React, { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
-import { Sun, Moon, Laptop } from 'lucide-react';
+import { Check, Laptop, Moon, Sun } from 'lucide-react';
 import { api } from '@/lib/api';
+import { DropdownMenu } from './dropdown-menu';
+import { Tooltip } from './tooltip';
+import { cn } from '@/lib/cn';
 
-export function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
+type Mode = 'light' | 'dark' | 'system';
+
+/** Compact appearance switcher (icon button + menu). Persists the choice to the user's preferences. */
+export function ThemeToggle({ className }: { className?: string }) {
+  const { theme, resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useEffect(() => setMounted(true), []);
 
-  if (!mounted) {
-    return (
-      <div className="h-8 w-24 bg-slate-200 dark:bg-slate-800 animate-pulse rounded-lg" />
-    );
-  }
-
-  const handleThemeChange = async (newTheme: 'light' | 'dark' | 'system') => {
-    setTheme(newTheme);
-
-    // Silently persist theme preference in backend database
+  const change = async (mode: Mode) => {
+    setTheme(mode);
     try {
-      await api.patch('/users/me/preferences', {
-        theme: newTheme.toUpperCase(),
-      });
+      await api.patch('/users/me/preferences', { theme: mode.toUpperCase() });
     } catch {
-      // Preference persistence fail fallback (already saved in localStorage via next-themes)
+      // Already persisted locally by next-themes
     }
   };
 
+  const Icon = !mounted ? Sun : resolvedTheme === 'dark' ? Moon : Sun;
+  const option = (mode: Mode, label: string, icon: React.ReactNode) => ({
+    label,
+    icon: theme === mode ? <Check /> : icon,
+    onSelect: () => change(mode),
+  });
+
   return (
-    <div className="flex items-center bg-slate-200/70 dark:bg-slate-800/80 p-1 rounded-lg border border-slate-300/50 dark:border-slate-700/60 shadow-inner">
-      <button
-        type="button"
-        onClick={() => handleThemeChange('light')}
-        className={`flex items-center space-x-1 px-2 py-1 rounded-md text-xs font-medium transition-all ${
-          theme === 'light'
-            ? 'bg-white text-amber-600 shadow-sm font-semibold'
-            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-        }`}
-        title="Light Mode"
-      >
-        <Sun className="h-3.5 w-3.5" />
-        <span className="hidden sm:inline">Light</span>
-      </button>
-
-      <button
-        type="button"
-        onClick={() => handleThemeChange('dark')}
-        className={`flex items-center space-x-1 px-2 py-1 rounded-md text-xs font-medium transition-all ${
-          theme === 'dark'
-            ? 'bg-slate-900 text-indigo-400 shadow-sm font-semibold'
-            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-        }`}
-        title="Dark Mode"
-      >
-        <Moon className="h-3.5 w-3.5" />
-        <span className="hidden sm:inline">Dark</span>
-      </button>
-
-      <button
-        type="button"
-        onClick={() => handleThemeChange('system')}
-        className={`flex items-center space-x-1 px-2 py-1 rounded-md text-xs font-medium transition-all ${
-          theme === 'system'
-            ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 shadow-sm font-semibold'
-            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-        }`}
-        title="System Preference"
-      >
-        <Laptop className="h-3.5 w-3.5" />
-        <span className="hidden sm:inline">System</span>
-      </button>
-    </div>
+    <DropdownMenu
+      label="Appearance"
+      className="min-w-[10rem]"
+      trigger={() => (
+        <span>
+          <Tooltip content="Appearance">
+            <button
+              type="button"
+              aria-label="Change appearance"
+              className={cn(
+                'flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-subtle hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                className,
+              )}
+            >
+              <Icon className="h-4 w-4" />
+            </button>
+          </Tooltip>
+        </span>
+      )}
+      items={[option('light', 'Light', <Sun />), option('dark', 'Dark', <Moon />), option('system', 'System', <Laptop />)]}
+    />
   );
 }

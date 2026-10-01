@@ -8,9 +8,9 @@ import { describeUserAgent, formatDateTime, formatRelative, humanizeAction } fro
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-[120px_1fr] gap-3 py-2 text-sm border-b border-slate-100 dark:border-slate-800 last:border-0">
-      <dt className="text-slate-500 dark:text-slate-400">{label}</dt>
-      <dd className="text-slate-900 dark:text-slate-100 break-all">{children}</dd>
+    <div className="grid grid-cols-[120px_1fr] gap-3 py-2 text-sm border-b border-border last:border-0">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="text-foreground break-all">{children}</dd>
     </div>
   );
 }
@@ -19,8 +19,8 @@ function JsonBlock({ title, value }: { title: string; value: unknown }) {
   if (value === null || value === undefined) return null;
   return (
     <div className="space-y-1.5">
-      <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</h4>
-      <pre className="max-h-80 overflow-auto rounded-xl bg-slate-950 p-4 text-xs leading-relaxed text-emerald-300">
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h4>
+      <pre className="max-h-80 overflow-auto rounded-lg border border-border bg-muted/60 p-4 font-mono text-xs leading-relaxed text-foreground">
         {JSON.stringify(value, null, 2)}
       </pre>
     </div>
@@ -42,13 +42,13 @@ export function AuditEntryDrawer({ entry, onClose }: { entry: AuditLogEntry | nu
       <div className="space-y-6">
         <dl>
           <Row label="Action">
-            <code className="rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-xs">{entry.action}</code>
+            <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{entry.action}</code>
           </Row>
           <Row label="Actor">
             {entry.user ? (
               <>
                 {entry.user.firstName} {entry.user.lastName}
-                <span className="block text-xs text-slate-500">{entry.user.email}</span>
+                <span className="block text-xs text-muted-foreground">{entry.user.email}</span>
               </>
             ) : (
               'System'
@@ -56,7 +56,7 @@ export function AuditEntryDrawer({ entry, onClose }: { entry: AuditLogEntry | nu
           </Row>
           <Row label="Company">
             {entry.company ? (
-              <Link href={`/super-admin/companies/${entry.company.id}`} className="text-indigo-600 dark:text-indigo-400 hover:underline">
+              <Link href={`/super-admin/companies/${entry.company.id}`} className="text-primary hover:underline">
                 {entry.company.name}
               </Link>
             ) : (
@@ -65,7 +65,7 @@ export function AuditEntryDrawer({ entry, onClose }: { entry: AuditLogEntry | nu
           </Row>
           <Row label="Resource">
             {entry.resourceType}
-            {entry.resourceId && <span className="block font-mono text-xs text-slate-500">{entry.resourceId}</span>}
+            {entry.resourceId && <span className="block font-mono text-xs text-muted-foreground">{entry.resourceId}</span>}
           </Row>
           <Row label="IP address">{entry.ipAddress ?? '—'}</Row>
           <Row label="Device">
