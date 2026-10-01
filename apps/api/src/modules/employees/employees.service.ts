@@ -5,14 +5,15 @@ import {
   Logger,
   BadRequestException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
-import { EmailService } from '../email/email.service';
+import { EmailProducerService } from '../email/email.producer.service';
+import { getSystemRole } from '../prisma/system-roles';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { QueryEmployeesDto } from './dto/query-employee.dto';
 import { UserStatus, EmploymentStatus } from '@prisma/client';
-import * as bcrypt from 'bcryptjs';
-import * as crypto from 'crypto';
+import { generateTemporaryPassword, hashPassword } from '../auth/password.util';
 
 @Injectable()
 export class EmployeesService {
@@ -20,7 +21,8 @@ export class EmployeesService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly emailService: EmailService,
+    private readonly config: ConfigService,
+    private readonly emailProducerService: EmailProducerService,
   ) {}
 
   /**
@@ -45,8 +47,8 @@ export class EmployeesService {
     }
 
     // Generate random temporary password
-    const tempPassword = crypto.randomBytes(8).toString('hex') + 'E1!';
-    const passwordHash = await bcrypt.hash(tempPassword, 12);
+    const tempPassword = generateTemporaryPassword();
+    const passwordHash = await hashPassword(tempPassword);
 
     // Atomic transaction for sequential employee ID & employee creation
     const result = await this.prisma.$transaction(async (tx) => {
@@ -89,24 +91,8 @@ export class EmployeesService {
         },
       });
 
-      // 3. Find default Employee role or create one for company
-      let employeeRole = await tx.role.findFirst({
-        where: {
-          name: 'Employee',
-          OR: [{ isSystemRole: true }, { companyId }],
-        },
-      });
-
-      if (!employeeRole) {
-        employeeRole = await tx.role.create({
-          data: {
-            name: 'Employee',
-            description: 'Standard employee portal access',
-            companyId,
-            isSystemRole: false,
-          },
-        });
-      }
+      // 3. Seeded system role with the default employee permissions
+      const employeeRole = await getSystemRole(tx, 'employee');
 
       await tx.userRole.create({
         data: {
@@ -154,13 +140,13 @@ export class EmployeesService {
     });
 
     try {
-      await this.emailService.sendWelcomeEmployee({
+      await this.emailProducerService.queueWelcomeEmployee({
         to: emailLower,
         email: emailLower,
         firstName: dto.firstName,
         companyName: company?.name || 'HRMS',
         employeeId: result.generatedEmployeeId,
-        loginUrl: `${process.env.APP_URL || 'http://localhost:3000'}/login?company=${company?.slug || ''}`,
+        loginUrl: `${this.config.get<string>('webUrl')}/login?company=${company?.slug || ''}`,
         temporaryPassword: tempPassword,
       });
     } catch (err) {

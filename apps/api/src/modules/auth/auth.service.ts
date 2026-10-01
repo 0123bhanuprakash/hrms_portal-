@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   ForbiddenException,
   BadRequestException,
+  NotFoundException,
   Logger,
   HttpException,
   HttpStatus,
@@ -10,9 +11,10 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
-import { EmailService } from '../email/email.service';
+import { EmailProducerService } from '../email/email.producer.service';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
+import { hashPassword } from './password.util';
 import type { JwtPayload } from '@hrms/types';
 import type {
   LoginResponse,
@@ -33,7 +35,22 @@ import type {
 //   - verifyEmail()     → validate token, mark email verified
 // ============================================================
 
-const BCRYPT_ROUNDS = 12;
+/** Client details stored with a session (refresh token family). */
+export interface SessionDevice {
+  userAgent?: string;
+  ipAddress?: string;
+}
+
+export interface SessionInfo {
+  id: string;
+  userAgent: string | null;
+  ipAddress: string | null;
+  signedInAt: Date;
+  lastActiveAt: Date;
+  expiresAt: Date;
+  current: boolean;
+}
+
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 const ACCESS_TOKEN_TTL_SECONDS = 15 * 60;    // 15 minutes
@@ -47,16 +64,17 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
-    private readonly emailService: EmailService,
+    private readonly emailProducerService: EmailProducerService,
   ) {}
 
   // ─── Login ─────────────────────────────────────────────────
 
-  async login(email: string, password: string, ipAddress?: string): Promise<LoginResponse> {
+  async login(email: string, password: string, device: SessionDevice = {}): Promise<LoginResponse> {
     // 1. Find user by email
     const user = await this.prisma.user.findUnique({
       where: { email: email.toLowerCase().trim() },
       include: {
+        company: { select: { status: true } },
         userRoles: {
           include: {
             role: {
@@ -128,12 +146,13 @@ export class AuthService {
       );
     }
 
-    // 4. Check account status
+    // 4. Check account + company status
     if (user.status !== 'ACTIVE') {
       throw new ForbiddenException(
         `Account is ${user.status.toLowerCase()}. Please contact support.`,
       );
     }
+    this.assertCompanyActive(user.company);
 
     // 5. Reset lockout counters on successful login
     await this.prisma.user.update({
@@ -163,6 +182,7 @@ export class AuthService {
       user.companyId,
       roles,
       permissions,
+      device,
     );
 
     this.logger.log(`Login success: ${email} (id=${user.id})`);
@@ -186,7 +206,7 @@ export class AuthService {
 
   // ─── Refresh token rotation ─────────────────────────────────
 
-  async refresh(rawRefreshToken: string): Promise<RefreshResponse> {
+  async refresh(rawRefreshToken: string, device: SessionDevice = {}): Promise<RefreshResponse> {
     // 1. Hash the incoming token to look it up in DB
     const tokenHash = this.hashToken(rawRefreshToken);
 
@@ -195,6 +215,7 @@ export class AuthService {
       include: {
         user: {
           include: {
+            company: { select: { status: true } },
             userRoles: {
               include: {
                 role: {
@@ -240,6 +261,7 @@ export class AuthService {
     if (stored.user.status !== 'ACTIVE') {
       throw new ForbiddenException('Account is inactive. Please contact support.');
     }
+    this.assertCompanyActive(stored.user.company);
 
     // 5. Revoke the used token (rotation)
     await this.prisma.refreshToken.update({
@@ -265,6 +287,7 @@ export class AuthService {
       stored.user.companyId,
       roles,
       permissions,
+      device,
       stored.familyId, // keep same family for reuse detection chain
     );
 
@@ -357,7 +380,7 @@ export class AuthService {
     const webUrl = this.config.get<string>('webUrl') ?? 'http://localhost:3000';
     const resetLink = `${webUrl}/reset-password?token=${rawToken}`;
 
-    await this.emailService.sendResetPassword({
+    await this.emailProducerService.queueResetPassword({
       to: user.email,
       firstName: user.firstName,
       resetLink,
@@ -390,7 +413,7 @@ export class AuthService {
     }
 
     // Hash new password
-    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    const passwordHash = await hashPassword(newPassword);
 
     // Mark token as used and update password atomically
     await this.prisma.$transaction([
@@ -477,12 +500,91 @@ export class AuthService {
     const webUrl = this.config.get<string>('webUrl') ?? 'http://localhost:3000';
     const verifyLink = `${webUrl}/verify-email?token=${rawToken}`;
 
-    await this.emailService.sendVerifyEmail({
+    await this.emailProducerService.queueVerifyEmail({
       to: user.email,
       firstName: user.firstName,
       verifyLink,
       expiresInHours: 24,
     });
+  }
+
+  // ─── Sessions ──────────────────────────────────────────────
+  // A session = one refresh-token family. Each refresh rotates the token
+  // within the family, so an active session has exactly one live token.
+
+  async listSessions(userId: string, currentSid?: string): Promise<SessionInfo[]> {
+    const live = await this.prisma.refreshToken.findMany({
+      where: { userId, isRevoked: false, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (live.length === 0) return [];
+
+    const firstSeen = await this.prisma.refreshToken.groupBy({
+      by: ['familyId'],
+      where: { userId, familyId: { in: live.map((t) => t.familyId) } },
+      _min: { createdAt: true },
+    });
+    const signedInAt = new Map(firstSeen.map((f) => [f.familyId, f._min.createdAt]));
+
+    return live.map((t) => ({
+      id: t.familyId,
+      userAgent: t.userAgent,
+      ipAddress: t.ipAddress,
+      signedInAt: signedInAt.get(t.familyId) ?? t.createdAt,
+      lastActiveAt: t.createdAt,
+      expiresAt: t.expiresAt,
+      current: t.familyId === currentSid,
+    }));
+  }
+
+  async revokeSession(userId: string, sessionId: string): Promise<void> {
+    const { count } = await this.prisma.refreshToken.updateMany({
+      where: { userId, familyId: sessionId, isRevoked: false },
+      data: { isRevoked: true },
+    });
+    if (count === 0) {
+      throw new NotFoundException('Session not found or already signed out');
+    }
+  }
+
+  /** Signs out every session except the current one. Returns how many were revoked. */
+  async revokeOtherSessions(userId: string, currentSid?: string): Promise<number> {
+    const { count } = await this.prisma.refreshToken.updateMany({
+      where: {
+        userId,
+        isRevoked: false,
+        ...(currentSid && { familyId: { not: currentSid } }),
+      },
+      data: { isRevoked: true },
+    });
+    return count;
+  }
+
+  /** Change own password; other sessions are signed out, the current one stays. */
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+    currentSid?: string,
+  ): Promise<{ revokedSessions: number }> {
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+
+    if (!(await bcrypt.compare(currentPassword, user.passwordHash))) {
+      throw new BadRequestException('Current password is incorrect');
+    }
+    if (await bcrypt.compare(newPassword, user.passwordHash)) {
+      throw new BadRequestException('New password must be different from the current password');
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: await hashPassword(newPassword), loginAttempts: 0, lockedUntil: null },
+    });
+
+    const revokedSessions = await this.revokeOtherSessions(userId, currentSid);
+    this.logger.log(`Password changed for user ${user.email} (${revokedSessions} other session(s) signed out)`);
+
+    return { revokedSessions };
   }
 
   // ─── Helpers ───────────────────────────────────────────────
@@ -494,8 +596,13 @@ export class AuthService {
     companyId: string | null,
     roles: string[],
     permissions: string[],
+    device: SessionDevice,
     existingFamilyId?: string,
   ): Promise<{ accessToken: string; refreshToken: string }> {
+    // The refresh token family is the "session"; its id travels in the
+    // access token as `sid` so the API can tell which session is current.
+    const familyId = existingFamilyId ?? crypto.randomUUID();
+
     const payload: JwtPayload = {
       sub: userId,
       email,
@@ -503,6 +610,7 @@ export class AuthService {
       company_id: companyId,
       roles,
       permissions,
+      sid: familyId,
     };
 
     // Sign access token
@@ -513,7 +621,6 @@ export class AuthService {
     // Generate opaque refresh token (32 random bytes → 64 hex chars)
     const rawRefreshToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = this.hashToken(rawRefreshToken);
-    const familyId = existingFamilyId ?? crypto.randomUUID();
     const expiresAt = new Date(
       Date.now() + REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000,
     );
@@ -525,10 +632,21 @@ export class AuthService {
         tokenHash,
         expiresAt,
         isRevoked: false,
+        userAgent: device.userAgent?.slice(0, 255) ?? null,
+        ipAddress: device.ipAddress?.slice(0, 64) ?? null,
       },
     });
 
     return { accessToken, refreshToken: rawRefreshToken };
+  }
+
+  /** Users of an INACTIVE / SUSPENDED company cannot log in or refresh. */
+  private assertCompanyActive(company: { status: string } | null): void {
+    if (company && company.status !== 'ACTIVE') {
+      throw new ForbiddenException(
+        'Your company account is not active. Please contact your administrator.',
+      );
+    }
   }
 
   /** SHA-256 hash of a raw token — what we store in DB */

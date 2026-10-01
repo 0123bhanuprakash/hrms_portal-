@@ -2,10 +2,13 @@ import {
   Controller,
   Post,
   Get,
+  Delete,
   Body,
+  Param,
   Query,
   HttpCode,
   HttpStatus,
+  ParseUUIDPipe,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -16,8 +19,10 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import type { Request } from 'express';
-import { AuthService } from './auth.service';
+import { AuthService, type SessionDevice, type SessionInfo } from './auth.service';
+import { Audit } from '../../common';
 import {
+  ChangePasswordDto,
   LoginDto,
   RefreshTokenDto,
   ForgotPasswordDto,
@@ -63,8 +68,7 @@ export class AuthController {
     @Body() dto: LoginDto,
     @Req() req: Request,
   ): Promise<LoginResponse> {
-    const ip = (req.headers['x-forwarded-for'] as string) ?? req.ip;
-    return this.authService.login(dto.email, dto.password, ip);
+    return this.authService.login(dto.email, dto.password, deviceOf(req));
   }
 
   // ── POST /auth/refresh ──────────────────────────────────────
@@ -81,8 +85,8 @@ export class AuthController {
   })
   @ApiResponse({ status: 200, type: RefreshResponse })
   @ApiResponse({ status: 401, description: 'Invalid or expired refresh token' })
-  async refresh(@Body() dto: RefreshTokenDto): Promise<RefreshResponse> {
-    return this.authService.refresh(dto.refresh_token);
+  async refresh(@Body() dto: RefreshTokenDto, @Req() req: Request): Promise<RefreshResponse> {
+    return this.authService.refresh(dto.refresh_token, deviceOf(req));
   }
 
   // ── POST /auth/logout ───────────────────────────────────────
@@ -172,4 +176,67 @@ export class AuthController {
     await this.authService.verifyEmail(token);
     return { message: 'Email verified successfully. You can now log in.' };
   }
+
+  // ── Own account: password + sessions (any authenticated user) ──
+
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @Audit('auth:password:change', 'user')
+  @ApiOperation({
+    summary: 'Change own password',
+    description: 'Requires the current password. All other sessions are signed out; this one stays.',
+  })
+  async changePassword(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: ChangePasswordDto,
+  ): Promise<{ id: string; message: string; revokedSessions: number }> {
+    const { revokedSessions } = await this.authService.changePassword(
+      user.sub,
+      dto.current_password,
+      dto.new_password,
+      user.sid,
+    );
+    return { id: user.sub, message: 'Password changed successfully', revokedSessions };
+  }
+
+  @Get('sessions')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List own active sessions (devices); `current` marks this one' })
+  async listSessions(@CurrentUser() user: JwtPayload): Promise<SessionInfo[]> {
+    return this.authService.listSessions(user.sub, user.sid);
+  }
+
+  @Post('sessions/revoke-others')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @Audit('auth:sessions:revoke_others', 'user')
+  @ApiOperation({ summary: 'Sign out all other devices' })
+  async revokeOtherSessions(
+    @CurrentUser() user: JwtPayload,
+  ): Promise<{ id: string; revokedSessions: number }> {
+    const revokedSessions = await this.authService.revokeOtherSessions(user.sub, user.sid);
+    return { id: user.sub, revokedSessions };
+  }
+
+  @Delete('sessions/:sessionId')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @Audit('auth:session:revoke', 'user')
+  @ApiOperation({ summary: 'Sign out one session (device)' })
+  async revokeSession(
+    @CurrentUser() user: JwtPayload,
+    @Param('sessionId', new ParseUUIDPipe()) sessionId: string,
+  ): Promise<{ id: string; message: string }> {
+    await this.authService.revokeSession(user.sub, sessionId);
+    return { id: user.sub, message: 'Session signed out' };
+  }
+}
+
+/** User agent + client IP for the session list. */
+function deviceOf(req: Request): SessionDevice {
+  return {
+    userAgent: req.headers['user-agent'],
+    ipAddress: req.ip,
+  };
 }

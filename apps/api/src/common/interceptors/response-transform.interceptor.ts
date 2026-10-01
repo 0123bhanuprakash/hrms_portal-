@@ -36,7 +36,13 @@ export class ResponseTransformInterceptor<T>
     context: ExecutionContext,
     next: CallHandler<T>,
   ): Observable<WrappedResponse<T>> {
-    const req = context.switchToHttp().getRequest<RequestWithId>();
+    const req = context.switchToHttp().getRequest();
+    const url = req?.url || req?.originalUrl || '';
+
+    // Bypass transformation for raw HTML / Bull Board UI stream routes
+    if (url.includes('/admin/queues')) {
+      return next.handle() as any;
+    }
 
     return next.handle().pipe(
       map((data) => {

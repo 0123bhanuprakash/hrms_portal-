@@ -5,16 +5,17 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
-import { EmailService } from '../email/email.service';
-import { MinioService } from '../storage/minio.service';
+import { EmailProducerService } from '../email/email.producer.service';
+import { StorageService } from '../storage/storage.service';
+import { getSystemRole } from '../prisma/system-roles';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { UpdateBrandingDto } from './dto/update-branding.dto';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { CompanyStatus, UserStatus } from '@prisma/client';
-import * as bcrypt from 'bcryptjs';
-import * as crypto from 'crypto';
+import { generateTemporaryPassword, hashPassword } from '../auth/password.util';
 
 @Injectable()
 export class CompaniesService {
@@ -22,8 +23,9 @@ export class CompaniesService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly emailService: EmailService,
-    private readonly minioService: MinioService,
+    private readonly config: ConfigService,
+    private readonly emailProducerService: EmailProducerService,
+    private readonly storage: StorageService,
   ) {}
 
   /**
@@ -55,8 +57,8 @@ export class CompaniesService {
     }
 
     // 2. Generate initial random password for Company Admin
-    const tempPassword = crypto.randomBytes(8).toString('hex') + 'A1!';
-    const passwordHash = await bcrypt.hash(tempPassword, 12);
+    const tempPassword = generateTemporaryPassword();
+    const passwordHash = await hashPassword(tempPassword);
 
     // 3. Perform atomic transaction
     const result = await this.prisma.$transaction(async (tx) => {
@@ -86,29 +88,13 @@ export class CompaniesService {
         data: {
           companyId: company.id,
           displayName: dto.name,
-          primaryColor: '#1E40AF',
-          secondaryColor: '#EFF6FF',
+          primaryColor: dto.primaryColor || '#1E40AF',
+          secondaryColor: dto.secondaryColor || '#EFF6FF',
         },
       });
 
-      // Find system "Company Admin" role or create company-level Company Admin role
-      let companyAdminRole = await tx.role.findFirst({
-        where: {
-          name: 'Company Admin',
-          isSystemRole: true,
-        },
-      });
-
-      if (!companyAdminRole) {
-        companyAdminRole = await tx.role.create({
-          data: {
-            name: 'Company Admin',
-            description: 'Full administrative access within the company',
-            companyId: company.id,
-            isSystemRole: false,
-          },
-        });
-      }
+      // Seeded system role with the default company admin permissions
+      const companyAdminRole = await getSystemRole(tx, 'company_admin');
 
       // Create initial Company Admin user
       const adminUser = await tx.user.create({
@@ -134,13 +120,14 @@ export class CompaniesService {
       return { company, settings, branding, adminUser };
     });
 
-    // 4. Send welcome email to Company Admin (asynchronous, non-blocking)
+    // 4. Send welcome email to Company Admin (asynchronous, non-blocking queue)
     try {
-      await this.emailService.sendWelcomeCompanyAdmin({
+      await this.emailProducerService.queueWelcomeCompanyAdmin({
         to: dto.adminEmail,
         firstName: dto.adminFirstName,
         email: dto.adminEmail,
-        loginUrl: `${process.env.APP_URL || 'http://localhost:3000'}/login?company=${dto.slug}`,
+        companyName: dto.name,
+        loginUrl: `${this.config.get<string>('webUrl')}/login?company=${dto.slug}`,
         temporaryPassword: tempPassword,
       });
     } catch (err) {
@@ -386,72 +373,70 @@ export class CompaniesService {
   }
 
   /**
-   * Upload logo file to MinIO and update CompanyBranding.logoUrl
+   * Upload logo file and update CompanyBranding.logoUrl
    */
   async uploadLogo(companyId: string, file: Express.Multer.File) {
-    if (!file) {
-      throw new BadRequestException('No logo file provided');
-    }
-
-    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/svg+xml', 'image/webp'];
-    if (!allowedMimeTypes.includes(file.mimetype)) {
-      throw new BadRequestException(
-        `Invalid file type '${file.mimetype}'. Allowed types: JPEG, PNG, SVG, WebP.`,
-      );
-    }
-
-    if (file.size > 2 * 1024 * 1024) {
-      throw new BadRequestException('File size exceeds maximum 2MB limit');
-    }
-
-    const ext = file.originalname.split('.').pop() || 'png';
-    const objectKey = `${companyId}/branding/logo.${ext}`;
-
-    const logoUrl = await this.minioService.uploadFile(
-      this.minioService.brandingBucket,
-      objectKey,
-      file.buffer,
-      file.mimetype,
-    );
+    const logoUrl = await this.storeBrandingAsset(companyId, file, {
+      name: 'logo',
+      maxBytes: 2 * 1024 * 1024,
+      extensions: {
+        'image/jpeg': 'jpg',
+        'image/png': 'png',
+        'image/svg+xml': 'svg',
+        'image/webp': 'webp',
+      },
+    });
 
     return this.updateBranding(companyId, { logoUrl });
   }
 
   /**
-   * Upload favicon file to MinIO and update CompanyBranding.faviconUrl
+   * Upload favicon file and update CompanyBranding.faviconUrl
    */
   async uploadFavicon(companyId: string, file: Express.Multer.File) {
+    const faviconUrl = await this.storeBrandingAsset(companyId, file, {
+      name: 'favicon',
+      maxBytes: 500 * 1024,
+      extensions: {
+        'image/x-icon': 'ico',
+        'image/vnd.microsoft.icon': 'ico',
+        'image/png': 'png',
+        'image/svg+xml': 'svg',
+        'image/jpeg': 'jpg',
+      },
+    });
+
+    return this.updateBranding(companyId, { faviconUrl });
+  }
+
+  /**
+   * Validates a branding upload and stores it at `<companyId>/branding/<name>.<ext>`.
+   * The extension is derived from the validated MIME type, never from the client filename.
+   */
+  private async storeBrandingAsset(
+    companyId: string,
+    file: Express.Multer.File | undefined,
+    opts: { name: string; maxBytes: number; extensions: Record<string, string> },
+  ): Promise<string> {
     if (!file) {
-      throw new BadRequestException('No favicon file provided');
+      throw new BadRequestException(`No ${opts.name} file provided`);
     }
 
-    const allowedMimeTypes = [
-      'image/x-icon',
-      'image/vnd.microsoft.icon',
-      'image/png',
-      'image/svg+xml',
-      'image/jpeg',
-    ];
-    if (!allowedMimeTypes.includes(file.mimetype)) {
+    const ext = opts.extensions[file.mimetype];
+    if (!ext) {
+      const allowed = [...new Set(Object.values(opts.extensions))].join(', ').toUpperCase();
+      throw new BadRequestException(`Invalid file type '${file.mimetype}'. Allowed types: ${allowed}.`);
+    }
+
+    if (file.size > opts.maxBytes) {
       throw new BadRequestException(
-        `Invalid file type '${file.mimetype}'. Allowed types: ICO, PNG, SVG, JPEG.`,
+        `File size exceeds maximum ${Math.round(opts.maxBytes / 1024)}KB limit`,
       );
     }
 
-    if (file.size > 500 * 1024) {
-      throw new BadRequestException('File size exceeds maximum 500KB limit');
-    }
+    // 404 before touching storage if the company does not exist
+    await this.findOne(companyId);
 
-    const ext = file.originalname.split('.').pop() || 'ico';
-    const objectKey = `${companyId}/branding/favicon.${ext}`;
-
-    const faviconUrl = await this.minioService.uploadFile(
-      this.minioService.brandingBucket,
-      objectKey,
-      file.buffer,
-      file.mimetype,
-    );
-
-    return this.updateBranding(companyId, { faviconUrl });
+    return this.storage.upload(`${companyId}/branding/${opts.name}.${ext}`, file.buffer, file.mimetype);
   }
 }

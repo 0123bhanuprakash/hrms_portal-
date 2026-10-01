@@ -80,7 +80,7 @@ export class CompaniesController {
    * Update company details or status (Super Admin only)
    */
   @SuperAdminOnly()
-  @Audit('company:update', 'company')
+  @Audit('company:update', 'company', { companyIdParam: 'id' })
   @Patch(':id')
   async update(
     @Param('id') id: string,
@@ -106,7 +106,7 @@ export class CompaniesController {
    * Update company branding (Company Admin / Super Admin)
    */
   @RequirePermission('branding:manage')
-  @Audit('company:branding:update', 'company_branding')
+  @Audit('company:branding:update', 'company_branding', { companyIdParam: 'id' })
   @Patch(':id/branding')
   async updateBranding(
     @Param('id') id: string,
@@ -122,7 +122,7 @@ export class CompaniesController {
    * POST /companies/:id/branding/logo
    */
   @RequirePermission('branding:manage')
-  @Audit('company:branding:logo:upload', 'company_branding')
+  @Audit('company:branding:logo:upload', 'company_branding', { companyIdParam: 'id' })
   @UseInterceptors(FileInterceptor('file'))
   @Post(':id/branding/logo')
   async uploadLogo(
@@ -139,7 +139,7 @@ export class CompaniesController {
    * POST /companies/:id/branding/favicon
    */
   @RequirePermission('branding:manage')
-  @Audit('company:branding:favicon:upload', 'company_branding')
+  @Audit('company:branding:favicon:upload', 'company_branding', { companyIdParam: 'id' })
   @UseInterceptors(FileInterceptor('file'))
   @Post(':id/branding/favicon')
   async uploadFavicon(
@@ -168,7 +168,7 @@ export class CompaniesController {
    * Update company operational settings (Company Admin / Super Admin)
    */
   @RequirePermission('company:manage')
-  @Audit('company:settings:update', 'company_settings')
+  @Audit('company:settings:update', 'company_settings', { companyIdParam: 'id' })
   @Patch(':id/settings')
   async updateSettings(
     @Param('id') id: string,

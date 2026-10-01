@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
 
 // ============================================================
 // Auth DTOs — request/response shapes for auth endpoints
@@ -65,4 +65,16 @@ export class RefreshResponse {
   @ApiProperty() access_token!: string;
   @ApiProperty() refresh_token!: string;
   @ApiProperty() expires_in!: number;
+}
+
+export class ChangePasswordDto {
+  @ApiProperty()
+  @IsString()
+  current_password!: string;
+
+  @ApiProperty({ example: 'NewPassword123!' })
+  @IsString()
+  @MinLength(8, { message: 'Password must be at least 8 characters' })
+  @MaxLength(128)
+  new_password!: string;
 }

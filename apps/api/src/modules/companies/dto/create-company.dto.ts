@@ -5,6 +5,7 @@ import {
   IsOptional,
   Matches,
   Length,
+  IsHexColor,
 } from 'class-validator';
 
 export class CreateCompanyDto {
@@ -40,4 +41,14 @@ export class CreateCompanyDto {
   @IsString()
   @IsNotEmpty()
   adminLastName!: string;
+
+  // Optional initial branding colors
+  @IsOptional()
+  @IsHexColor()
+  primaryColor?: string;
+
+  @IsOptional()
+  @IsHexColor()
+  secondaryColor?: string;
 }
+

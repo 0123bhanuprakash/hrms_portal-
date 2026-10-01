@@ -9,7 +9,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 // JwtStrategy — Passport strategy for Bearer token validation
 //
 // Validates every request hitting a @UseGuards(JwtAuthGuard) route:
-//   1. Extracts Bearer token from Authorization header
+//   1. Extracts the Bearer token from the Authorization header only
+//      (never from URLs — they leak into logs and Referer headers)
 //   2. Validates signature + expiry (passport-jwt does this)
 //   3. Calls validate() with decoded payload
 //   4. Attaches returned value to req.user
@@ -21,32 +22,43 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     configService: ConfigService,
     private readonly prisma: PrismaService,
   ) {
+    const secret = configService.get<string>('jwt.secret');
+    if (!secret) {
+      throw new Error('JWT_SECRET is not configured');
+    }
+
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('jwt.secret') ?? 'fallback-secret',
+      secretOrKey: secret,
     });
   }
 
   /**
    * Called after passport-jwt verifies the token signature + expiry.
    * Returns the value that will be attached to req.user.
-   *
-   * We do a lightweight DB check to ensure the user still exists
-   * and is still active (catches mid-session deactivation).
    */
-  async validate(payload: JwtPayload): Promise<JwtPayload> {
+  async validate(payload: JwtPayload & { aud?: string }): Promise<JwtPayload> {
+    // Tokens issued for a specific audience (e.g. Bull Board sessions)
+    // are not API access tokens.
+    if (payload.aud) {
+      throw new UnauthorizedException('Invalid access token');
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, status: true },
+      select: { id: true, status: true, company: { select: { status: true } } },
     });
 
     if (!user || user.status !== 'ACTIVE') {
       throw new UnauthorizedException('User account is inactive or not found');
     }
 
-    // Return payload as-is — permissions were embedded at login time
-    // (Cache invalidation in Chunk 8 will handle stale permissions)
+    // Company deactivated/suspended → existing access tokens stop working immediately
+    if (user.company && user.company.status !== 'ACTIVE') {
+      throw new UnauthorizedException('Company account is not active');
+    }
+
     return payload;
   }
 }

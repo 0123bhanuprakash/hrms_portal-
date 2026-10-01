@@ -63,11 +63,16 @@ export class AuditInterceptor implements NestInterceptor {
       request.ip ??
       'unknown';
     const userAgent = request.headers['user-agent'] ?? 'unknown';
-    const requestId = request.requestId ?? request.headers['x-request-id'] as string;
 
     return next.handle().pipe(
       tap({
-        next: (responseData: unknown) => {
+        next: (rawResponse: unknown) => {
+          // This interceptor wraps the global RequestId / ResponseTransform
+          // interceptors, so read the request id and unwrap { data, meta }
+          // only once the handler has finished.
+          const responseData = this.unwrapEnvelope(rawResponse);
+          const requestId = request.requestId ?? (request.headers['x-request-id'] as string | undefined);
+
           // Fire-and-forget: don't await, don't block response
           this.writeAuditLog({
             action: auditMeta.action,
@@ -75,7 +80,7 @@ export class AuditInterceptor implements NestInterceptor {
             resourceId: this.extractResourceId(responseData),
             afterState: this.sanitizeState(responseData),
             userId: user?.sub ?? null,
-            companyId: user?.company_id ?? null,
+            companyId: this.resolveCompanyId(user, request.params, auditMeta, responseData),
             ip,
             userAgent,
             requestId,
@@ -119,17 +124,52 @@ export class AuditInterceptor implements NestInterceptor {
     });
   }
 
-  /** Extracts the id from response data (handles nested { data: { id } } shapes) */
+  /** `{ data, meta }` (ResponseTransformInterceptor envelope) → `data` */
+  private unwrapEnvelope(response: unknown): unknown {
+    if (response && typeof response === 'object' && 'data' in response) {
+      const keys = Object.keys(response);
+      if (keys.every((k) => k === 'data' || k === 'meta')) {
+        return (response as { data: unknown }).data;
+      }
+    }
+    return response;
+  }
+
+  /**
+   * Company the action belongs to:
+   *   1. the actor's own company (tenant users)
+   *   2. the route param named by @Audit(..., { companyIdParam }) (Super Admin acting on a company)
+   *   3. a `company` object in the response (e.g. company creation)
+   */
+  private resolveCompanyId(
+    user: JwtPayload | undefined,
+    params: Record<string, string> | undefined,
+    meta: AuditMetadata,
+    responseData: unknown,
+  ): string | null {
+    if (user?.company_id) return user.company_id;
+
+    if (meta.companyIdParam && params?.[meta.companyIdParam]) {
+      return params[meta.companyIdParam]!;
+    }
+
+    const company = (responseData as { company?: { id?: unknown } } | null)?.company;
+    return typeof company?.id === 'string' ? company.id : null;
+  }
+
+  /** Extracts the id from response data (handles { data: { id } } and { company: { id } } shapes) */
   private extractResourceId(data: unknown): string | null {
     if (!data || typeof data !== 'object') return null;
     const d = data as Record<string, unknown>;
 
     if (typeof d['id'] === 'string') return d['id'];
 
-    const nested = d['data'];
-    if (nested && typeof nested === 'object') {
-      const n = nested as Record<string, unknown>;
-      if (typeof n['id'] === 'string') return n['id'];
+    for (const key of ['data', 'company']) {
+      const nested = d[key];
+      if (nested && typeof nested === 'object') {
+        const n = nested as Record<string, unknown>;
+        if (typeof n['id'] === 'string') return n['id'];
+      }
     }
 
     return null;
@@ -158,6 +198,8 @@ export class AuditInterceptor implements NestInterceptor {
       for (const [key, value] of Object.entries(obj)) {
         if (SENSITIVE_KEYS.has(key)) {
           result[key] = '[REDACTED]';
+        } else if (value instanceof Date) {
+          result[key] = value.toISOString();
         } else if (value && typeof value === 'object' && !Array.isArray(value)) {
           result[key] = sanitize(value as Record<string, unknown>);
         } else {
