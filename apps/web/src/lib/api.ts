@@ -1,5 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/store/useAuthStore';
+import { loginPathFor } from '@/lib/auth/workspace';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:4000/api/v1';
 
@@ -84,13 +85,15 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       isRefreshing = true;
 
-      const { refreshToken, setTokens, logout } = useAuthStore.getState();
+      const { refreshToken, setTokens, logout, user } = useAuthStore.getState();
+      // Decided before logout() clears the user
+      const signInPath = loginPathFor(user);
 
       if (!refreshToken) {
         isRefreshing = false;
         logout();
         if (typeof window !== 'undefined') {
-          window.location.href = '/login';
+          window.location.href = signInPath;
         }
         return Promise.reject(error);
       }
@@ -116,7 +119,7 @@ api.interceptors.response.use(
         processQueue(refreshError, null);
         logout();
         if (typeof window !== 'undefined') {
-          window.location.href = '/login';
+          window.location.href = signInPath;
         }
         return Promise.reject(refreshError);
       } finally {

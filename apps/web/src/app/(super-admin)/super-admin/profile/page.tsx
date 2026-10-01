@@ -153,7 +153,7 @@ function SessionsCard() {
   const signOut = async (session: Session) => {
     if (session.current) {
       logout();
-      window.location.href = '/login';
+      window.location.href = '/platform/login';
       return;
     }
     try {

@@ -51,6 +51,12 @@ export interface SessionInfo {
   current: boolean;
 }
 
+/** Which sign-in page a login came from (omitted = no restriction). */
+export interface LoginScope {
+  portal?: 'platform' | 'company';
+  companySlug?: string;
+}
+
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 const ACCESS_TOKEN_TTL_SECONDS = 15 * 60;    // 15 minutes
@@ -69,12 +75,17 @@ export class AuthService {
 
   // ─── Login ─────────────────────────────────────────────────
 
-  async login(email: string, password: string, device: SessionDevice = {}): Promise<LoginResponse> {
+  async login(
+    email: string,
+    password: string,
+    device: SessionDevice = {},
+    scope: LoginScope = {},
+  ): Promise<LoginResponse> {
     // 1. Find user by email
     const user = await this.prisma.user.findUnique({
       where: { email: email.toLowerCase().trim() },
       include: {
-        company: { select: { status: true } },
+        company: { select: { status: true, slug: true } },
         userRoles: {
           include: {
             role: {
@@ -146,7 +157,15 @@ export class AuthService {
       );
     }
 
-    // 4. Check account + company status
+    // 4. Each sign-in page admits only its own audience. Checked after the
+    //    password so nothing leaks about unknown accounts, and answered with
+    //    the generic message so it doesn't confirm the password either.
+    if (!this.matchesScope(user, scope)) {
+      this.logger.warn(`Login refused on ${scope.portal} portal: ${email}`);
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    // Check account + company status
     if (user.status !== 'ACTIVE') {
       throw new ForbiddenException(
         `Account is ${user.status.toLowerCase()}. Please contact support.`,
@@ -354,6 +373,7 @@ export class AuthService {
     // Always return success — never reveal if email exists
     const user = await this.prisma.user.findUnique({
       where: { email: email.toLowerCase().trim() },
+      include: { company: { select: { slug: true } } },
     });
 
     if (!user) {
@@ -378,7 +398,7 @@ export class AuthService {
     });
 
     const webUrl = this.config.get<string>('webUrl') ?? 'http://localhost:3000';
-    const resetLink = `${webUrl}/reset-password?token=${rawToken}`;
+    const resetLink = this.portalLink(webUrl, 'reset-password', rawToken, user);
 
     await this.emailProducerService.queueResetPassword({
       to: user.email,
@@ -476,6 +496,7 @@ export class AuthService {
   async sendEmailVerification(userId: string): Promise<void> {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
+      include: { company: { select: { slug: true } } },
     });
 
     if (user.emailVerifiedAt) {
@@ -498,7 +519,7 @@ export class AuthService {
     });
 
     const webUrl = this.config.get<string>('webUrl') ?? 'http://localhost:3000';
-    const verifyLink = `${webUrl}/verify-email?token=${rawToken}`;
+    const verifyLink = this.portalLink(webUrl, 'verify-email', rawToken, user);
 
     await this.emailProducerService.queueVerifyEmail({
       to: user.email,
@@ -647,6 +668,34 @@ export class AuthService {
         'Your company account is not active. Please contact your administrator.',
       );
     }
+  }
+
+  /**
+   * platform → Super Admins only. company → company users only, and when a
+   * workspace is given, only members of that company.
+   */
+  private matchesScope(
+    user: { isSuperAdmin: boolean; company: { slug: string } | null },
+    scope: LoginScope,
+  ): boolean {
+    if (scope.portal === 'platform') return user.isSuperAdmin;
+    if (scope.portal === 'company') {
+      if (user.isSuperAdmin || !user.company) return false;
+      return !scope.companySlug || user.company.slug === scope.companySlug;
+    }
+    return true;
+  }
+
+  /** Email links open the user's own branded page: /platform/* or /*?company=slug. */
+  private portalLink(
+    webUrl: string,
+    page: 'reset-password' | 'verify-email',
+    token: string,
+    user: { isSuperAdmin: boolean; company: { slug: string } | null },
+  ): string {
+    if (user.isSuperAdmin) return `${webUrl}/platform/${page}?token=${token}`;
+    const company = user.company ? `&company=${encodeURIComponent(user.company.slug)}` : '';
+    return `${webUrl}/${page}?token=${token}${company}`;
   }
 
   /** SHA-256 hash of a raw token — what we store in DB */

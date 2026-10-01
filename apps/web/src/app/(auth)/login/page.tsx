@@ -1,172 +1,190 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { LoginSchema, type LoginInput } from '@hrms/types';
-import { api } from '@/lib/api';
-import { getApiErrorMessage } from '@/lib/errors';
-import { useAuthStore } from '@/store/useAuthStore';
+import React, { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { isAxiosError } from 'axios';
 import { toast } from 'sonner';
-import { Eye, EyeOff, Lock, Mail, Loader2 } from 'lucide-react';
+import { ArrowRight, Building2 } from 'lucide-react';
+import { CompanyAuthShell } from '@/components/auth/auth-shells';
+import { FormHeading, LoginForm } from '@/components/auth/auth-forms';
+import { useWorkspaceSlug, workspaceHref } from '@/components/auth/company-auth-page';
+import { Button } from '@/components/ui/button';
+import { Field, Input } from '@/components/ui/field';
+import { Skeleton } from '@/components/ui/feedback';
+import {
+  normalizeSlug,
+  rememberedWorkspace,
+  rememberWorkspace,
+  safeNext,
+  useAuthHydrated,
+  useWorkspace,
+  withNext,
+  workspaceName,
+} from '@/lib/auth/portal';
+import { useAuthStore } from '@/store/useAuthStore';
 
-export default function LoginPage() {
-  const router = useRouter();
-  const setAuth = useAuthStore((state) => state.setAuth);
-  const [showPassword, setShowPassword] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+// ============================================================
+// Company sign-in: /login?company=<slug>
+// 1. Find your workspace (skipped when the link or this browser knows it)
+// 2. Sign in, in the company's own theme. The API only admits members
+//    of that company — Super Admins use /platform/login.
+// ============================================================
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<LoginInput>({
-    resolver: zodResolver(LoginSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-    },
-  });
+function WorkspaceFinder({
+  initial,
+  error,
+  checking,
+  onSubmit,
+}: {
+  initial: string;
+  error: string | null;
+  checking: boolean;
+  onSubmit: (slug: string) => void;
+}) {
+  const [value, setValue] = useState(initial);
+  const [invalid, setInvalid] = useState<string | null>(null);
 
-  const onSubmit = async (data: LoginInput) => {
-    setErrorMessage(null);
-    try {
-      const res = await api.post('/auth/login', data);
-      const payload = res.data.data;
-      const user = payload.user;
-      const accessToken = payload.access_token || payload.accessToken;
-      const refreshToken = payload.refresh_token || payload.refreshToken;
-      const permissions = user.permissions || payload.permissions || [];
-
-      setAuth({
-        user: {
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          isSuperAdmin: user.isSuperAdmin,
-          companyId: user.companyId,
-          status: user.status || 'ACTIVE',
-        },
-        accessToken,
-        refreshToken,
-        companyId: user.companyId,
-        permissions,
-      });
-
-      toast.success(`Welcome back, ${user.firstName}!`);
-
-      if (user.isSuperAdmin) {
-        router.push('/super-admin');
-      } else {
-        router.push('/app');
-      }
-    } catch (err: any) {
-      const msg =
-        getApiErrorMessage(err, 'Invalid email or password. Please try again.');
-      setErrorMessage(msg);
-      toast.error(msg);
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const slug = normalizeSlug(value);
+    if (!slug) {
+      setInvalid('Use lowercase letters, numbers and hyphens, e.g. acme-corp');
+      return;
     }
+    setInvalid(null);
+    onSubmit(slug);
   };
 
   return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-          Sign in to your account
-        </h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-          Enter your email and password to access the portal
-        </p>
+    <>
+      <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+        <Building2 className="h-5 w-5" />
       </div>
-
-      {errorMessage && (
-        <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-xs font-medium text-red-600 dark:text-red-400">
-          {errorMessage}
-        </div>
-      )}
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleSubmit(onSubmit)(e);
-        }}
-        action="#"
-        method="POST"
-        className="space-y-4"
-      >
-        <div>
-          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-            Email Address
-          </label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-            <input
-              type="email"
-              {...register('email')}
-              placeholder="name@company.com"
-              className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white"
-            />
-          </div>
-          {errors.email && (
-            <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>
-          )}
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
-              Password
-            </label>
-            <Link
-              href="/forgot-password"
-              className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
-            >
-              Forgot password?
-            </Link>
-          </div>
-          <div className="relative">
-            <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-            <input
-              type={showPassword ? 'text' : 'password'}
-              {...register('password')}
-              placeholder="••••••••"
-              className="w-full pl-9 pr-10 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-            >
-              {showPassword ? (
-                <EyeOff className="h-4 w-4" />
-              ) : (
-                <Eye className="h-4 w-4" />
-              )}
-            </button>
-          </div>
-          {errors.password && (
-            <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>
-          )}
-        </div>
-
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-sm font-semibold rounded-lg shadow-md transition-colors flex items-center justify-center space-x-2"
-        >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Signing in...</span>
-            </>
-          ) : (
-            <span>Sign In</span>
-          )}
-        </button>
+      <FormHeading
+        title="Find your workspace"
+        description="Enter your company's workspace name. You'll find it in your welcome email."
+      />
+      <form onSubmit={submit} className="space-y-4" noValidate>
+        <Field label="Workspace" htmlFor="workspace" error={invalid ?? error ?? undefined}>
+          <Input
+            id="workspace"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="acme"
+            autoFocus
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            invalid={Boolean(invalid ?? error)}
+          />
+        </Field>
+        <Button type="submit" size="lg" className="w-full" loading={checking}>
+          Continue <ArrowRight />
+        </Button>
       </form>
-    </div>
+      <p className="mt-6 text-center text-xs text-muted-foreground">
+        Don&apos;t know your workspace? Ask your HR or company administrator.
+      </p>
+    </>
+  );
+}
+
+function CompanyLogin() {
+  const router = useRouter();
+  const next = useSearchParams().get('next');
+  const hydrated = useAuthHydrated();
+  const { isAuthenticated, user } = useAuthStore();
+  const { slug: initialSlug, ready } = useWorkspaceSlug();
+
+  /** undefined = use the link / remembered workspace; null = pick a new one */
+  const [chosen, setChosen] = useState<string | null | undefined>(undefined);
+  const slug = chosen === undefined ? initialSlug : chosen;
+  const workspace = useWorkspace(slug);
+
+  // Already signed in → into the right portal
+  useEffect(() => {
+    if (!hydrated || !isAuthenticated || !user) return;
+    router.replace(user.isSuperAdmin ? '/super-admin' : '/app');
+  }, [hydrated, isAuthenticated, user, router]);
+
+  // A remembered workspace that no longer exists is forgotten
+  useEffect(() => {
+    if (workspace.isError && slug && slug === rememberedWorkspace()) rememberWorkspace(null);
+  }, [workspace.isError, slug]);
+
+  const go = (target: string | null) => {
+    setChosen(target);
+    const path = target ? `/login?company=${target}` : '/login';
+    router.replace(next ? withNext(path, next) : path);
+  };
+
+  const lookupError = workspace.isError
+    ? isAxiosError(workspace.error) && workspace.error.response?.status === 404
+      ? `We couldn't find an active workspace called “${slug}”.`
+      : "Couldn't check that workspace. Please try again."
+    : null;
+
+  let body: React.ReactNode;
+  if (!ready || (slug && workspace.isLoading)) {
+    body = (
+      <div className="space-y-4">
+        <Skeleton className="h-7 w-48" />
+        <Skeleton className="h-4 w-64" />
+        <Skeleton className="mt-6 h-9 w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-10 w-full" />
+      </div>
+    );
+  } else if (!slug || !workspace.data) {
+    body = (
+      <WorkspaceFinder
+        key={slug ?? ''}
+        initial={slug ?? ''}
+        error={lookupError}
+        checking={workspace.isFetching}
+        onSubmit={go}
+      />
+    );
+  } else {
+    const name = workspaceName(workspace.data);
+    const href = workspaceHref(slug);
+    body = (
+      <>
+        <FormHeading title="Sign in" description={<>to <span className="font-medium text-foreground">{name}</span></>} />
+        <LoginForm
+          portal="company"
+          companySlug={slug}
+          forgotHref={href('/forgot-password')}
+          onSuccess={(u) => {
+            toast.success(`Welcome back, ${u.firstName}`);
+            const target = safeNext(next, '/app');
+            router.replace(target.startsWith('/app') ? target : '/app');
+          }}
+        />
+        <p className="mt-6 text-center text-[13px] text-muted-foreground">
+          Not part of {name}?{' '}
+          <button
+            type="button"
+            className="font-medium text-primary hover:underline"
+            onClick={() => {
+              rememberWorkspace(null);
+              go(null);
+            }}
+          >
+            Switch workspace
+          </button>
+        </p>
+      </>
+    );
+  }
+
+  return <CompanyAuthShell workspace={workspace.data}>{body}</CompanyAuthShell>;
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <CompanyLogin />
+    </Suspense>
   );
 }

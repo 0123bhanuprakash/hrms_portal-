@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import type { ThemeTokens } from '@hrms/types';
 import { useAuthStore } from '@/store/useAuthStore';
+import { loginPathFor, useAuthHydrated, withNext } from '@/lib/auth/portal';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { DropdownMenu } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
@@ -68,19 +69,6 @@ const SEGMENT_LABELS: Record<string, string> = {
   preferences: 'Preferences',
 };
 
-/** Wait for zustand to restore the session from localStorage (persist is undefined on the server). */
-function useAuthHydrated(): boolean {
-  const [hydrated, setHydrated] = useState(false);
-  useEffect(() => {
-    const persist = useAuthStore.persist;
-    if (!persist || persist.hasHydrated()) {
-      setHydrated(true);
-      return;
-    }
-    return persist.onFinishHydration(() => setHydrated(true));
-  }, []);
-  return hydrated;
-}
 
 /** Applies the company theme; the last one is cached per company for an instant first paint. */
 function CompanyTheme({ companyId }: { companyId: string | null }) {
@@ -125,8 +113,8 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
   // ── Route guard ────────────────────────────────────────────
   useEffect(() => {
     if (!hydrated) return;
-    if (!isAuthenticated || !user) router.replace(`/login?next=${encodeURIComponent(pathname)}`);
-    else if (!companyId) router.replace(user.isSuperAdmin ? '/super-admin' : '/login');
+    if (!isAuthenticated || !user) router.replace(withNext(loginPathFor(null), pathname));
+    else if (!companyId) router.replace(user.isSuperAdmin ? '/super-admin' : loginPathFor(null));
   }, [hydrated, isAuthenticated, user, companyId, pathname, router]);
 
   useEffect(() => setMobileOpen(false), [pathname]);
@@ -145,7 +133,7 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
 
   const handleLogout = () => {
     logout();
-    router.replace('/login');
+    router.replace(loginPathFor(null));
   };
 
   return (

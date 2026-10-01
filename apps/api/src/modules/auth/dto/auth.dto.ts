@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsEmail, IsIn, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 
 // ============================================================
 // Auth DTOs — request/response shapes for auth endpoints
@@ -14,6 +14,22 @@ export class LoginDto {
   @IsString()
   @MinLength(1, { message: 'Password is required' })
   password!: string;
+
+  @ApiProperty({
+    required: false,
+    enum: ['platform', 'company'],
+    description: 'Sign-in page used. platform = Super Admins only; company = company users only.',
+  })
+  @IsOptional()
+  @IsIn(['platform', 'company'])
+  portal?: 'platform' | 'company';
+
+  @ApiProperty({ required: false, example: 'acme', description: 'Company workspace (company portal only)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  @Matches(/^[a-z0-9-]+$/, { message: 'Invalid workspace' })
+  companySlug?: string;
 }
 
 export class RefreshTokenDto {

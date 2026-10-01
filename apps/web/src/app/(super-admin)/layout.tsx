@@ -27,6 +27,7 @@ import {
   X,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useAuthHydrated, withNext } from '@/lib/auth/portal';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { DropdownMenu } from '@/components/ui/dropdown-menu';
 import { Tooltip } from '@/components/ui/tooltip';
@@ -106,23 +107,6 @@ const SEGMENT_LABELS: Record<string, string> = {
   profile: 'Profile & security',
 };
 
-/**
- * Wait for zustand to restore the session from localStorage before guarding.
- * `persist` is undefined during server rendering (no localStorage), so it is
- * only touched inside the effect.
- */
-function useAuthHydrated(): boolean {
-  const [hydrated, setHydrated] = useState(false);
-  useEffect(() => {
-    const persist = useAuthStore.persist;
-    if (!persist || persist.hasHydrated()) {
-      setHydrated(true);
-      return;
-    }
-    return persist.onFinishHydration(() => setHydrated(true));
-  }, []);
-  return hydrated;
-}
 
 /** Ctrl/⌘+K, "/", "?" and "g" + key navigation. Ignored while typing in a field. */
 function useShortcuts(handlers: { onCommand: () => void; onHelp: () => void; onGo: (href: string) => void }) {
@@ -179,7 +163,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
   useEffect(() => {
     if (!hydrated) return;
     if (!isAuthenticated || !user) {
-      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+      router.replace(withNext('/platform/login', pathname));
     } else if (!user.isSuperAdmin) {
       toast.error('The platform portal is only available to Super Admins.');
       router.replace('/app');
@@ -208,7 +192,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
 
   const handleLogout = useCallback(() => {
     logout();
-    router.replace('/login');
+    router.replace('/platform/login');
   }, [logout, router]);
 
   const shortcutHandlers = useRef({

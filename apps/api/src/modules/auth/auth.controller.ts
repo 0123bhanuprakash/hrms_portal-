@@ -68,7 +68,10 @@ export class AuthController {
     @Body() dto: LoginDto,
     @Req() req: Request,
   ): Promise<LoginResponse> {
-    return this.authService.login(dto.email, dto.password, deviceOf(req));
+    return this.authService.login(dto.email, dto.password, deviceOf(req), {
+      portal: dto.portal,
+      companySlug: dto.companySlug,
+    });
   }
 
   // ── POST /auth/refresh ──────────────────────────────────────
