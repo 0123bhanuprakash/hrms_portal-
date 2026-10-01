@@ -9,4 +9,6 @@ export interface PreviewMessage {
   tokens: ThemeTokens;
   mode: 'light' | 'dark';
   page: PreviewPage;
+  /** Shown in the mock portal header (defaults to "Acme Corp") */
+  companyName?: string;
 }

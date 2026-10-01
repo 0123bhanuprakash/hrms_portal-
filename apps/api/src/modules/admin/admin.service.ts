@@ -14,6 +14,7 @@ import { HealthService } from '../../health/health.service';
 import { generateTemporaryPassword, hashPassword } from '../auth/password.util';
 import { getSystemRole, type SystemRoleName } from '../prisma/system-roles';
 import { isQueueEnabled } from '../queue/queue.config';
+import { companyThemeFields } from '../themes/company-theme';
 import { CreateCompanyAdminDto } from './dto/create-company-admin.dto';
 import { QueryAuditLogsDto } from './dto/query-audit-logs.dto';
 import { QueryCompaniesDto } from './dto/query-companies.dto';
@@ -206,6 +207,8 @@ export class AdminService {
     const brandingChanges = {
       ...(dto.primaryColor && { primaryColor: dto.primaryColor }),
       ...(dto.secondaryColor && { secondaryColor: dto.secondaryColor }),
+      // A theme snapshot (validated strictly) also syncs the legacy colors
+      ...companyThemeFields(dto),
     };
 
     await this.prisma.$transaction(async (tx) => {

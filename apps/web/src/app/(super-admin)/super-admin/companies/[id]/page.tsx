@@ -19,8 +19,9 @@ import {
   Palette,
   Pencil,
   Power,
-  RotateCcw,
+  Moon,
   ShieldCheck,
+  Sun,
   UserCheck,
   UserPlus,
   Users,
@@ -34,7 +35,6 @@ import { Modal } from '@/components/ui/modal';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { CompanyAvatar } from '@/components/super-admin/company-avatar';
 import { StatusChangeDialog } from '@/components/super-admin/status-change-dialog';
-import { BrandPreview } from '@/components/super-admin/brand-preview';
 import { ActivityTimeline } from '@/components/super-admin/activity-timeline';
 import { AuditEntryDrawer } from '@/components/super-admin/audit-entry-drawer';
 import {
@@ -45,13 +45,25 @@ import {
   useSendAdminPasswordReset,
   useUpdateAdminStatus,
   useUpdateCompany,
+  useThemeSettings,
 } from '@/lib/admin/queries';
 import type { AuditLogEntry, CompanyAdmin, CompanyDetail } from '@/lib/admin/types';
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatDate, formatDateTime, formatRelative, initials } from '@/lib/format';
 import { cn } from '@/lib/cn';
+import type { ThemeRef } from '@hrms/types';
+import { Badge } from '@/components/ui/badge';
+import { ThemeArt } from '@/components/theme/theme-art';
+import { ThemeSwatches, ThemeThumbnail } from '@/components/theme/theme-card';
+import { ThemePicker } from '@/components/theme/theme-picker';
+import { ThemePreviewFrame } from '@/components/theme/theme-preview-frame';
+import { useThemeLibrary } from '@/lib/theme/library';
+import { DEFAULT_PRESET, resolveTheme } from '@/lib/theme/presets';
+import { rebrandTheme } from '@/lib/theme/generate';
+import { FONTS, SHADOW_OPTIONS } from '@/lib/theme/engine';
+import type { PreviewPage } from '@/lib/theme/preview';
 
-type TabId = 'overview' | 'branding' | 'admins' | 'activity';
+type TabId = 'overview' | 'theme' | 'admins' | 'activity';
 const WEB_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
 export default function CompanyDetailPage() {
@@ -145,7 +157,7 @@ function CompanyDetailView() {
         onChange={setTab}
         tabs={[
           { id: 'overview', label: 'Overview', icon: <LayoutDashboard /> },
-          { id: 'branding', label: 'Branding', icon: <Palette /> },
+          { id: 'theme', label: 'Theme', icon: <Palette /> },
           { id: 'admins', label: 'Admins', icon: <ShieldCheck />, count: admins.length },
           { id: 'activity', label: 'Activity', icon: <Activity /> },
         ]}
@@ -153,7 +165,7 @@ function CompanyDetailView() {
 
       <div key={tab} className="animate-fade-up">
         {tab === 'overview' && <OverviewTab data={data} />}
-        {tab === 'branding' && <BrandingTab data={data} />}
+        {tab === 'theme' && <ThemeTab data={data} />}
         {tab === 'admins' && <AdminsTab companyId={company.id} admins={admins} />}
         {tab === 'activity' && <ActivityTab companyId={company.id} />}
       </div>
@@ -256,79 +268,184 @@ function CopyField({ value }: { value: string }) {
   );
 }
 
-// ─── Branding ─────────────────────────────────────────────
+// ─── Theme ────────────────────────────────────────────────
 
-function BrandingTab({ data }: { data: CompanyDetail }) {
+function ThemeTab({ data }: { data: CompanyDetail }) {
   const { company } = data;
+  const settings = useThemeSettings();
+  const library = useThemeLibrary();
+  const [mode, setMode] = useState<'light' | 'dark'>('light');
+  const [page, setPage] = useState<PreviewPage>('dashboard');
+  const [changeOpen, setChangeOpen] = useState(false);
+
+  const own = company.branding?.themeTokens ?? null;
+  const source = company.branding?.themeSource ?? null;
+  const platformDefault = settings.data
+    ? resolveTheme(settings.data.defaultCompanyTheme, settings.data.customTokens)
+    : DEFAULT_PRESET.tokens;
+  const tokens = own ?? platformDefault;
+  const sourceItem = library.find(source ?? (own ? null : settings.data?.defaultCompanyTheme));
+  const rebranded = Boolean(own && sourceItem && sourceItem.tokens.light.primary !== own.light.primary);
+
+  return (
+    <div className="grid gap-5 lg:grid-cols-[minmax(280px,340px)_1fr]">
+      <div className="space-y-4">
+        <Card className="overflow-hidden">
+          <ThemeArt tokens={tokens} seed={sourceItem?.id ?? company.id} className="px-4 pt-4">
+            <div className="mt-6 overflow-hidden rounded-t-lg border border-b-0 border-white/40 shadow-[0_-6px_24px_-6px_rgb(0_0_0/0.35)]">
+              <ThemeThumbnail tokens={tokens} className="h-24" />
+            </div>
+          </ThemeArt>
+          <div className="space-y-3 border-t border-border p-4">
+            <div>
+              <p className="text-xs text-muted-foreground">Current theme</p>
+              <p className="mt-0.5 flex items-center gap-2 text-sm font-semibold">
+                <ThemeSwatches tokens={tokens} />
+                {own ? (sourceItem?.name ?? 'Custom theme') : (sourceItem?.name ?? 'Platform default')}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {!own && <Badge tone="info">Platform default</Badge>}
+              {rebranded && <Badge tone="primary">Brand color</Badge>}
+              {sourceItem?.mood && <Badge>{sourceItem.mood}</Badge>}
+            </div>
+            <dl className="grid grid-cols-3 gap-2 text-xs">
+              <div className="rounded-md bg-muted p-2">
+                <dt className="text-muted-foreground">Font</dt>
+                <dd className="mt-0.5 truncate font-medium">{FONTS[tokens.typography.font].label}</dd>
+              </div>
+              <div className="rounded-md bg-muted p-2">
+                <dt className="text-muted-foreground">Radius</dt>
+                <dd className="mt-0.5 font-medium">{tokens.shape.radius}px</dd>
+              </div>
+              <div className="rounded-md bg-muted p-2">
+                <dt className="text-muted-foreground">Shadows</dt>
+                <dd className="mt-0.5 font-medium">{SHADOW_OPTIONS[tokens.shape.shadow].label}</dd>
+              </div>
+            </dl>
+            <Button className="w-full" icon={<Palette />} onClick={() => setChangeOpen(true)}>
+              Change theme
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              The Company Admin will be able to fine-tune this theme from their own portal.
+            </p>
+          </div>
+        </Card>
+      </div>
+
+      <Card className="overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2">
+          <div className="inline-flex rounded-md border border-border bg-muted p-0.5 text-xs">
+            {(['dashboard', 'people', 'form'] as const).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPage(p)}
+                className={cn('h-7 rounded-[calc(var(--radius)-4px)] px-2.5 font-medium capitalize text-muted-foreground', page === p && 'bg-surface text-foreground shadow-card')}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+          <div className="inline-flex rounded-md border border-border bg-muted p-0.5">
+            {(['light', 'dark'] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                aria-label={`${m} preview`}
+                onClick={() => setMode(m)}
+                className={cn('flex h-7 w-8 items-center justify-center rounded-[calc(var(--radius)-4px)] text-muted-foreground', mode === m && 'bg-surface text-foreground shadow-card')}
+              >
+                {m === 'light' ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+              </button>
+            ))}
+          </div>
+        </div>
+        <ThemePreviewFrame tokens={tokens} mode={mode} page={page} companyName={company.branding?.displayName ?? company.name} height={560} />
+      </Card>
+
+      <ChangeThemeModal
+        open={changeOpen}
+        onClose={() => setChangeOpen(false)}
+        company={company}
+        initialRef={source ?? settings.data?.defaultCompanyTheme ?? null}
+      />
+    </div>
+  );
+}
+
+function ChangeThemeModal({
+  open,
+  onClose,
+  company,
+  initialRef,
+}: {
+  open: boolean;
+  onClose: () => void;
+  company: CompanyDetail['company'];
+  initialRef: ThemeRef | null;
+}) {
+  const library = useThemeLibrary();
   const update = useUpdateCompany(company.id);
-  const initial = {
-    primary: company.branding?.primaryColor ?? '#4F46E5',
-    secondary: company.branding?.secondaryColor ?? '#EEF2FF',
-  };
-  const [primary, setPrimary] = useState(initial.primary);
-  const [secondary, setSecondary] = useState(initial.secondary);
+  const [ref, setRef] = useState<ThemeRef | null>(initialRef);
+  const [useBrand, setUseBrand] = useState(false);
+  const [brandColor, setBrandColor] = useState(company.branding?.primaryColor ?? '#4F46E5');
 
   useEffect(() => {
-    setPrimary(initial.primary);
-    setSecondary(initial.secondary);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [company.branding?.primaryColor, company.branding?.secondaryColor]);
+    if (open) {
+      setRef(initialRef);
+      setUseBrand(false);
+      setBrandColor(company.branding?.primaryColor ?? '#4F46E5');
+    }
+  }, [open, initialRef, company.branding?.primaryColor]);
 
-  const valid = /^#[0-9A-F]{6}$/i.test(primary) && /^#[0-9A-F]{6}$/i.test(secondary);
-  const dirty = primary !== initial.primary || secondary !== initial.secondary;
+  const item = library.find(ref);
+  const validBrand = /^#[0-9A-F]{6}$/i.test(brandColor);
+  const tokens = item ? (useBrand && validBrand ? rebrandTheme(item.tokens, brandColor) : item.tokens) : null;
 
   const save = async () => {
+    if (!tokens || !ref) return;
     try {
-      await update.mutateAsync({ primaryColor: primary, secondaryColor: secondary });
-      toast.success('Brand colors updated');
+      await update.mutateAsync({ themeTokens: tokens, themeSource: ref });
+      toast.success(`${company.name} now uses ${item?.name}${useBrand ? ' in their brand color' : ''}`);
+      onClose();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, 'Failed to update branding'));
+      toast.error(getApiErrorMessage(err, 'Could not change theme'));
     }
   };
 
-  const PRESETS = ['#4F46E5', '#0EA5E9', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#7C3AED', '#0F172A'];
-
   return (
-    <div className="grid gap-6 lg:grid-cols-5">
-      <Card className="space-y-5 p-5 lg:col-span-2">
-        <div>
-          <h2 className="text-sm font-semibold">Brand colors</h2>
-          <p className="text-xs text-muted-foreground">The company portal and emails use these colors. Changes preview live.</p>
-        </div>
-        <Field label="Primary color" htmlFor="primary">
-          <ColorInput id="primary" value={primary} onChange={setPrimary} />
-        </Field>
-        <div className="flex flex-wrap gap-2">
-          {PRESETS.map((c) => (
-            <button
-              key={c}
-              onClick={() => setPrimary(c)}
-              aria-label={`Use ${c}`}
-              className={cn('h-7 w-7 rounded-full ring-offset-2 ring-offset-background transition-transform hover:scale-110', primary === c && 'ring-2 ring-foreground')}
-              style={{ backgroundColor: c }}
-            />
-          ))}
-        </div>
-        <Field label="Secondary color" htmlFor="secondary">
-          <ColorInput id="secondary" value={secondary} onChange={setSecondary} />
-        </Field>
-        <p className="text-xs text-muted-foreground">
-          Logo and favicon are uploaded by the Company Admin from their own branding settings.
-        </p>
-        <div className="flex justify-end gap-2 border-t border-border pt-4">
-          <Button variant="ghost" size="sm" icon={<RotateCcw className="h-3.5 w-3.5" />} disabled={!dirty || update.isPending} onClick={() => { setPrimary(initial.primary); setSecondary(initial.secondary); }}>
-            Reset
+    <Modal
+      open={open}
+      onClose={onClose}
+      busy={update.isPending}
+      title={`Change theme · ${company.name}`}
+      description="Replaces the company's current theme, including any customizations their admin made."
+      className="max-w-2xl"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={update.isPending}>Cancel</Button>
+          <Button onClick={save} loading={update.isPending} disabled={!tokens || (useBrand && !validBrand)}>
+            Apply theme
           </Button>
-          <Button size="sm" onClick={save} loading={update.isPending} disabled={!dirty || !valid}>
-            Save colors
-          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <div className="max-h-[48vh] overflow-y-auto pr-1">
+          <ThemePicker items={library.items} value={ref} onChange={(i) => setRef(i.ref)} />
         </div>
-      </Card>
-      <div className="space-y-3 lg:col-span-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Live preview</p>
-        <BrandPreview name={company.branding?.displayName ?? company.name} logoUrl={company.branding?.logoUrl} primaryColor={primary} secondaryColor={secondary} />
+        <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border p-3">
+          <input type="checkbox" checked={useBrand} onChange={(e) => setUseBrand(e.target.checked)} className="h-4 w-4 accent-[hsl(var(--primary))]" />
+          <span className="flex-1 text-[13px] font-medium">Recolor with the company&apos;s brand color</span>
+          {useBrand && (
+            <span className="w-40">
+              <ColorInput value={brandColor} onChange={setBrandColor} />
+            </span>
+          )}
+        </label>
       </div>
-    </div>
+    </Modal>
   );
 }
 

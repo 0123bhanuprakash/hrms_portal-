@@ -319,6 +319,10 @@ model CompanyBranding {
   secondaryColor String  @default("#EFF6FF") @map("secondary_color")
   /// Name displayed in the portal header (may differ from legal company name)
   displayName    String  @map("display_name")
+  /// Company theme (ThemeTokens snapshot). Null → platform default theme.
+  themeTokens    Json?   @map("theme_tokens")
+  /// Library theme it was created from (ThemeRef), for display only
+  themeSource    Json?   @map("theme_source")
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -11,46 +11,62 @@ import {
   Check,
   ClipboardCheck,
   Mail,
+  Moon,
   Palette,
   PartyPopper,
   Plus,
+  Sun,
   UserCog,
 } from 'lucide-react';
+import type { ThemeRef } from '@hrms/types';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/feedback';
 import { ColorInput, Field, Input } from '@/components/ui/field';
-import { BrandPreview } from '@/components/super-admin/brand-preview';
+import { PageHeader } from '@/components/ui/page-header';
 import { CompanyAvatar } from '@/components/super-admin/company-avatar';
-import { useCreateCompany } from '@/lib/admin/queries';
+import { ThemePicker } from '@/components/theme/theme-picker';
+import { ThemePreviewFrame } from '@/components/theme/theme-preview-frame';
+import { ThemeSwatches } from '@/components/theme/theme-card';
+import { useCreateCompany, useThemeSettings } from '@/lib/admin/queries';
 import type { Company, CreateCompanyInput } from '@/lib/admin/types';
+import { useThemeLibrary } from '@/lib/theme/library';
+import { DEFAULT_PRESET } from '@/lib/theme/presets';
+import { rebrandTheme } from '@/lib/theme/generate';
 import { getApiErrorMessage } from '@/lib/errors';
 import { slugify } from '@/lib/format';
 import { cn } from '@/lib/cn';
 
 const STEPS = [
   { id: 'company', label: 'Company', icon: Building2 },
-  { id: 'branding', label: 'Branding', icon: Palette },
+  { id: 'theme', label: 'Theme', icon: Palette },
   { id: 'admin', label: 'First admin', icon: UserCog },
   { id: 'review', label: 'Review', icon: ClipboardCheck },
 ] as const;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const HEX_RE = /^#[0-9A-F]{6}$/i;
-const PRESETS = ['#4F46E5', '#0EA5E9', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#7C3AED', '#0F172A'];
 
-type Form = Required<CreateCompanyInput>;
+type Form = Pick<
+  Required<CreateCompanyInput>,
+  'name' | 'slug' | 'email' | 'employeeIdPrefix' | 'adminEmail' | 'adminFirstName' | 'adminLastName'
+>;
 
 const EMPTY: Form = {
   name: '',
   slug: '',
   email: '',
   employeeIdPrefix: '',
-  primaryColor: '#4F46E5',
-  secondaryColor: '#EEF2FF',
   adminFirstName: '',
   adminLastName: '',
   adminEmail: '',
 };
+
+interface ThemeChoice {
+  ref: ThemeRef | null;
+  /** Restyle the chosen theme with the company's own brand color */
+  useBrand: boolean;
+  brandColor: string;
+}
 
 /** "Acme Test Co" → "ATC", "Globex" → "GLO" */
 function suggestPrefix(name: string): string {
@@ -60,8 +76,8 @@ function suggestPrefix(name: string): string {
   return value.length >= 2 ? value : value.padEnd(2, 'X');
 }
 
-function validate(step: number, f: Form): Partial<Record<keyof Form, string>> {
-  const e: Partial<Record<keyof Form, string>> = {};
+function validate(step: number, f: Form, theme: ThemeChoice): Record<string, string> {
+  const e: Record<string, string> = {};
   if (step === 0) {
     if (!f.name.trim()) e.name = 'Company name is required';
     if (!/^[a-z0-9-]{2,50}$/.test(f.slug)) e.slug = '2–50 lowercase letters, numbers or hyphens';
@@ -69,8 +85,8 @@ function validate(step: number, f: Form): Partial<Record<keyof Form, string>> {
     if (!/^[A-Z0-9]{2,10}$/.test(f.employeeIdPrefix)) e.employeeIdPrefix = '2–10 uppercase letters or digits';
   }
   if (step === 1) {
-    if (!HEX_RE.test(f.primaryColor)) e.primaryColor = 'Use a hex color like #4F46E5';
-    if (!HEX_RE.test(f.secondaryColor)) e.secondaryColor = 'Use a hex color like #EEF2FF';
+    if (!theme.ref) e.theme = 'Choose a theme';
+    if (theme.useBrand && !HEX_RE.test(theme.brandColor)) e.brandColor = 'Use a hex color like #4F46E5';
   }
   if (step === 2) {
     if (!f.adminFirstName.trim()) e.adminFirstName = 'First name is required';
@@ -83,14 +99,31 @@ function validate(step: number, f: Form): Partial<Record<keyof Form, string>> {
 export default function OnboardCompanyPage() {
   const router = useRouter();
   const create = useCreateCompany();
+  const settings = useThemeSettings();
+  const library = useThemeLibrary();
+
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<Form>(EMPTY);
+  const [theme, setTheme] = useState<ThemeChoice>({ ref: null, useBrand: false, brandColor: '#4F46E5' });
+  const [previewMode, setPreviewMode] = useState<'light' | 'dark'>('light');
   const [touched, setTouched] = useState<Set<number>>(new Set());
   const [slugEdited, setSlugEdited] = useState(false);
   const [prefixEdited, setPrefixEdited] = useState(false);
   const [created, setCreated] = useState<Company | null>(null);
 
-  const errors = touched.has(step) ? validate(step, form) : {};
+  // Preselect the platform's default theme for new companies
+  useEffect(() => {
+    if (!theme.ref && settings.data) setTheme((t) => ({ ...t, ref: settings.data.defaultCompanyTheme }));
+  }, [settings.data, theme.ref]);
+
+  const selected = library.find(theme.ref);
+  const baseTokens = selected?.tokens ?? DEFAULT_PRESET.tokens;
+  const tokens = useMemo(
+    () => (theme.useBrand && HEX_RE.test(theme.brandColor) ? rebrandTheme(baseTokens, theme.brandColor) : baseTokens),
+    [baseTokens, theme.useBrand, theme.brandColor],
+  );
+
+  const errors = touched.has(step) ? validate(step, form, theme) : {};
   const set = <K extends keyof Form>(key: K, value: Form[K]) => setForm((f) => ({ ...f, [key]: value }));
 
   const onNameChange = (name: string) =>
@@ -103,7 +136,17 @@ export default function OnboardCompanyPage() {
 
   const next = () => {
     setTouched((t) => new Set(t).add(step));
-    if (Object.keys(validate(step, form)).length === 0) setStep((s) => s + 1);
+    if (Object.keys(validate(step, form, theme)).length === 0) setStep((s) => s + 1);
+  };
+
+  const reset = () => {
+    setCreated(null);
+    setForm(EMPTY);
+    setTheme({ ref: settings.data?.defaultCompanyTheme ?? null, useBrand: false, brandColor: '#4F46E5' });
+    setStep(0);
+    setTouched(new Set());
+    setSlugEdited(false);
+    setPrefixEdited(false);
   };
 
   const submit = async () => {
@@ -115,6 +158,8 @@ export default function OnboardCompanyPage() {
         adminEmail: form.adminEmail.trim().toLowerCase(),
         adminFirstName: form.adminFirstName.trim(),
         adminLastName: form.adminLastName.trim(),
+        themeTokens: tokens,
+        themeSource: theme.ref ?? undefined,
       });
       setCreated(result.company);
       toast.success(`${result.company.name} is live`);
@@ -123,7 +168,7 @@ export default function OnboardCompanyPage() {
       toast.error(message);
       // Send the user back to the step that owns the conflicting field
       if (/slug|company email/i.test(message)) setStep(0);
-      else if (/user with email/i.test(message)) setStep(2);
+      else if (/user with email|user email/i.test(message)) setStep(2);
     }
   };
 
@@ -133,26 +178,16 @@ export default function OnboardCompanyPage() {
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-success-soft text-success">
           <PartyPopper className="h-8 w-8" />
         </div>
-        <h1 className="text-xl font-bold">{created.name} is ready</h1>
+        <h1 className="text-xl font-semibold tracking-tight">{created.name} is ready</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          A welcome email with a temporary password was sent to <b>{form.adminEmail}</b>.
+          Themed with <b>{selected?.name ?? 'the default theme'}</b>
+          {theme.useBrand && ' in their brand color'}. A welcome email with a temporary password was sent to <b>{form.adminEmail}</b>.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <Button onClick={() => router.push(`/super-admin/companies/${created.id}`)} icon={<Building2 className="h-4 w-4" />}>
+          <Button onClick={() => router.push(`/super-admin/companies/${created.id}`)} icon={<Building2 />}>
             Open company
           </Button>
-          <Button
-            variant="secondary"
-            icon={<Plus className="h-4 w-4" />}
-            onClick={() => {
-              setCreated(null);
-              setForm(EMPTY);
-              setStep(0);
-              setTouched(new Set());
-              setSlugEdited(false);
-              setPrefixEdited(false);
-            }}
-          >
+          <Button variant="secondary" icon={<Plus />} onClick={reset}>
             Onboard another
           </Button>
         </div>
@@ -161,16 +196,16 @@ export default function OnboardCompanyPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
-      <div className="flex items-center gap-3">
-        <Link href="/super-admin/companies" className="rounded-lg p-2 text-muted-foreground hover:bg-subtle" aria-label="Back to companies">
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Onboard a company</h1>
-          <p className="text-sm text-muted-foreground">Create the tenant, its branding and the first Company Admin.</p>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow={
+          <Link href="/super-admin/companies" className="inline-flex items-center gap-1 hover:underline">
+            <ArrowLeft className="h-3 w-3" /> Companies
+          </Link>
+        }
+        title="Onboard a company"
+        description="Create the tenant, give it a ready-made theme, and invite its first Company Admin."
+      />
 
       {/* Stepper */}
       <ol className="grid grid-cols-4 gap-2">
@@ -185,9 +220,9 @@ export default function OnboardCompanyPage() {
                 onClick={() => i < step && setStep(i)}
                 className="group flex w-full flex-col gap-2 text-left disabled:cursor-default"
               >
-                <span className={cn('h-1.5 rounded-full transition-colors duration-300', done || current ? 'bg-primary' : 'bg-muted')} />
+                <span className={cn('h-1 rounded-full transition-colors duration-300', done || current ? 'bg-primary' : 'bg-muted')} />
                 <span className={cn('flex items-center gap-2 text-xs font-medium', current ? 'text-primary' : done ? 'text-foreground group-hover:text-primary' : 'text-muted-foreground')}>
-                  <span className={cn('flex h-6 w-6 items-center justify-center rounded-full', done ? 'bg-primary text-white' : current ? 'bg-primary-soft' : 'bg-muted')}>
+                  <span className={cn('flex h-6 w-6 items-center justify-center rounded-full', done ? 'bg-primary text-primary-foreground' : current ? 'bg-primary-soft' : 'bg-muted')}>
                     {done ? <Check className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
                   </span>
                   <span className="hidden sm:inline">{label}</span>
@@ -198,8 +233,8 @@ export default function OnboardCompanyPage() {
         })}
       </ol>
 
-      <div className="grid gap-6 lg:grid-cols-5">
-        <Card className="p-6 lg:col-span-3">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <Card className="p-6">
           <div key={step} className="animate-fade-up space-y-5">
             {step === 0 && (
               <>
@@ -231,25 +266,35 @@ export default function OnboardCompanyPage() {
 
             {step === 1 && (
               <>
-                <StepTitle title="Brand colors" subtitle="Used across the company portal and emails. The admin can upload a logo later." />
-                <Field label="Primary color" htmlFor="primary" error={errors.primaryColor}>
-                  <ColorInput id="primary" value={form.primaryColor} onChange={(v) => set('primaryColor', v)} />
-                </Field>
-                <div className="flex flex-wrap gap-2">
-                  {PRESETS.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => set('primaryColor', c)}
-                      aria-label={`Use ${c}`}
-                      className={cn('h-8 w-8 rounded-full ring-offset-2 ring-offset-background transition-transform hover:scale-110', form.primaryColor === c && 'ring-2 ring-foreground')}
-                      style={{ backgroundColor: c }}
-                    />
-                  ))}
+                <StepTitle
+                  title="Choose a theme"
+                  subtitle="The company starts with this look. Their Company Admin can customize it later."
+                />
+                {errors.theme && <p className="text-xs font-medium text-destructive">{errors.theme}</p>}
+                <div className="max-h-[440px] overflow-y-auto pr-1">
+                  <ThemePicker items={library.items} value={theme.ref} onChange={(item) => setTheme((t) => ({ ...t, ref: item.ref }))} columns={2} />
                 </div>
-                <Field label="Secondary color" htmlFor="secondary" error={errors.secondaryColor}>
-                  <ColorInput id="secondary" value={form.secondaryColor} onChange={(v) => set('secondaryColor', v)} />
-                </Field>
+                <div className="rounded-lg border border-border p-4">
+                  <label className="flex cursor-pointer items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={theme.useBrand}
+                      onChange={(e) => setTheme((t) => ({ ...t, useBrand: e.target.checked }))}
+                      className="mt-0.5 h-4 w-4 accent-[hsl(var(--primary))]"
+                    />
+                    <span>
+                      <span className="block text-[13px] font-medium">Use the company&apos;s brand color</span>
+                      <span className="block text-xs text-muted-foreground">Keeps the theme&apos;s style (sidebar, font, shapes) and recolors it.</span>
+                    </span>
+                  </label>
+                  {theme.useBrand && (
+                    <div className="mt-3 animate-in fade-in-0">
+                      <Field label="Brand color" htmlFor="brand" error={errors.brandColor}>
+                        <ColorInput id="brand" value={theme.brandColor} onChange={(v) => setTheme((t) => ({ ...t, brandColor: v }))} />
+                      </Field>
+                    </div>
+                  )}
+                </div>
               </>
             )}
 
@@ -273,8 +318,8 @@ export default function OnboardCompanyPage() {
             {step === 3 && (
               <>
                 <StepTitle title="Review & create" subtitle="Check everything before the company goes live." />
-                <div className="flex items-center gap-3 rounded-xl border border-border p-4">
-                  <CompanyAvatar name={form.name} color={form.primaryColor} />
+                <div className="flex items-center gap-3 rounded-lg border border-border p-4">
+                  <CompanyAvatar name={form.name} color={tokens.light.primary} />
                   <div className="min-w-0">
                     <p className="font-semibold">{form.name}</p>
                     <p className="text-xs text-muted-foreground">{form.slug} · {form.email}</p>
@@ -283,12 +328,11 @@ export default function OnboardCompanyPage() {
                 <dl className="grid gap-3 text-sm sm:grid-cols-2">
                   <ReviewItem label="Employee IDs" value={`${form.employeeIdPrefix}001, ${form.employeeIdPrefix}002, …`} onEdit={() => setStep(0)} />
                   <ReviewItem
-                    label="Colors"
+                    label="Theme"
                     value={
                       <span className="flex items-center gap-2">
-                        <span className="h-4 w-4 rounded-full border" style={{ backgroundColor: form.primaryColor }} />
-                        <span className="h-4 w-4 rounded-full border" style={{ backgroundColor: form.secondaryColor }} />
-                        <code className="text-xs">{form.primaryColor}</code>
+                        <ThemeSwatches tokens={tokens} />
+                        <span className="truncate">{selected?.name ?? 'Default'}{theme.useBrand ? ' · brand color' : ''}</span>
                       </span>
                     }
                     onEdit={() => setStep(1)}
@@ -305,26 +349,46 @@ export default function OnboardCompanyPage() {
           </div>
 
           <div className="mt-8 flex justify-between border-t border-border pt-5">
-            <Button variant="ghost" icon={<ArrowLeft className="h-4 w-4" />} disabled={step === 0 || create.isPending} onClick={() => setStep((s) => s - 1)}>
+            <Button variant="ghost" icon={<ArrowLeft />} disabled={step === 0 || create.isPending} onClick={() => setStep((s) => s - 1)}>
               Back
             </Button>
             {step < STEPS.length - 1 ? (
               <Button onClick={next}>
-                Continue <ArrowRight className="h-4 w-4" />
+                Continue <ArrowRight />
               </Button>
             ) : (
-              <Button variant="success" onClick={submit} loading={create.isPending} icon={<Check className="h-4 w-4" />}>
+              <Button variant="success" onClick={submit} loading={create.isPending} icon={<Check />}>
                 Create company
               </Button>
             )}
           </div>
         </Card>
 
-        {/* Live preview, visible on every step */}
-        <div className="space-y-3 lg:col-span-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Live preview</p>
-          <BrandPreview name={form.name} primaryColor={form.primaryColor} secondaryColor={form.secondaryColor} />
-          <p className="text-xs text-muted-foreground">This is roughly how the company portal will look to its employees.</p>
+        {/* Live preview of the company portal, visible on every step */}
+        <div className="space-y-2 lg:sticky lg:top-20 lg:self-start">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Live preview{selected ? ` · ${selected.name}` : ''}
+            </p>
+            <div className="inline-flex rounded-md border border-border bg-muted p-0.5">
+              {(['light', 'dark'] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  aria-label={`${m} preview`}
+                  aria-pressed={previewMode === m}
+                  onClick={() => setPreviewMode(m)}
+                  className={cn('flex h-6 w-7 items-center justify-center rounded-[calc(var(--radius)-4px)] text-muted-foreground', previewMode === m && 'bg-surface text-foreground shadow-card')}
+                >
+                  {m === 'light' ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+                </button>
+              ))}
+            </div>
+          </div>
+          <Card className="overflow-hidden">
+            <ThemePreviewFrame tokens={tokens} mode={previewMode} page="dashboard" companyName={form.name} height={520} className="p-3" />
+          </Card>
+          <p className="text-xs text-muted-foreground">This is how the company portal will look to its employees.</p>
         </div>
       </div>
     </div>
@@ -334,7 +398,7 @@ export default function OnboardCompanyPage() {
 function StepTitle({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div>
-      <h2 className="text-base font-semibold">{title}</h2>
+      <h2 className="text-base font-semibold tracking-tight">{title}</h2>
       <p className="text-sm text-muted-foreground">{subtitle}</p>
     </div>
   );
@@ -345,7 +409,7 @@ function ReviewItem({ label, value, onEdit }: { label: string; value: React.Reac
     <div className="group rounded-lg bg-muted p-3">
       <dt className="flex items-center justify-between text-xs text-muted-foreground">
         {label}
-        <button type="button" onClick={onEdit} className="text-primary opacity-0 transition-opacity group-hover:opacity-100">
+        <button type="button" onClick={onEdit} className="text-primary opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100">
           Edit
         </button>
       </dt>

@@ -3,6 +3,7 @@ import {
   IsEnum,
   IsHexColor,
   IsIn,
+  IsObject,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -38,6 +39,16 @@ export class AdminUpdateCompanyDto {
   @IsOptional()
   @IsHexColor()
   secondaryColor?: string;
+
+  /** Full theme snapshot (ThemeTokens) — validated strictly by the service */
+  @IsOptional()
+  @IsObject()
+  themeTokens?: Record<string, unknown>;
+
+  /** Library theme the snapshot came from (ThemeRef) */
+  @IsOptional()
+  @IsObject()
+  themeSource?: Record<string, unknown>;
 }
 
 /** PATCH /admin/companies/:id/status */

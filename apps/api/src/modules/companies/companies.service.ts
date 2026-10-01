@@ -10,6 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailProducerService } from '../email/email.producer.service';
 import { StorageService } from '../storage/storage.service';
 import { getSystemRole } from '../prisma/system-roles';
+import { companyThemeFields } from '../themes/company-theme';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { UpdateBrandingDto } from './dto/update-branding.dto';
@@ -56,6 +57,9 @@ export class CompaniesService {
       );
     }
 
+    // Validate the optional theme snapshot before writing anything
+    const themeFields = companyThemeFields(dto);
+
     // 2. Generate initial random password for Company Admin
     const tempPassword = generateTemporaryPassword();
     const passwordHash = await hashPassword(tempPassword);
@@ -90,6 +94,8 @@ export class CompaniesService {
           displayName: dto.name,
           primaryColor: dto.primaryColor || '#1E40AF',
           secondaryColor: dto.secondaryColor || '#EFF6FF',
+          // A chosen theme wins over the individual colors
+          ...themeFields,
         },
       });
 

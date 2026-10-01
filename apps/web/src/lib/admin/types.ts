@@ -16,6 +16,8 @@ export interface CompanyBranding {
   primaryColor: string;
   secondaryColor?: string;
   displayName: string;
+  themeTokens?: import('@hrms/types').ThemeTokens | null;
+  themeSource?: import('@hrms/types').ThemeRef | null;
 }
 
 export interface CompanySettings {
@@ -142,6 +144,8 @@ export interface CreateCompanyInput {
   adminEmail: string;
   adminFirstName: string;
   adminLastName: string;
+  themeTokens?: import('@hrms/types').ThemeTokens;
+  themeSource?: import('@hrms/types').ThemeRef;
 }
 
 export interface UpdateCompanyInput {
@@ -150,6 +154,8 @@ export interface UpdateCompanyInput {
   employeeIdPrefix?: string;
   primaryColor?: string;
   secondaryColor?: string;
+  themeTokens?: import('@hrms/types').ThemeTokens;
+  themeSource?: import('@hrms/types').ThemeRef;
 }
 
 export interface Session {

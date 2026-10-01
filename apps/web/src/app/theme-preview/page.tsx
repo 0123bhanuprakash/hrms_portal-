@@ -42,12 +42,14 @@ export default function ThemePreviewPage() {
     mode: 'light',
     page: 'dashboard',
   });
+  const companyName = state.companyName?.trim() || 'Acme Corp';
+  const companyInitials = companyName.split(/\s+/).slice(0, 2).map((w) => w[0]!.toUpperCase()).join('');
 
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
       if (e.origin !== window.location.origin) return;
       const data = e.data as PreviewMessage | undefined;
-      if (data?.type === 'hrms-theme-preview') setState({ tokens: data.tokens, mode: data.mode, page: data.page });
+      if (data?.type === 'hrms-theme-preview') setState({ tokens: data.tokens, mode: data.mode, page: data.page, companyName: data.companyName });
     };
     window.addEventListener('message', onMessage);
     window.parent?.postMessage({ type: 'hrms-theme-preview-ready' }, window.location.origin);
@@ -55,10 +57,22 @@ export default function ThemePreviewPage() {
   }, []);
 
   useEffect(() => {
+    // The app-wide theme provider (next-themes) also runs inside this iframe and
+    // re-applies the viewer's own light/dark preference. Keep the preview's mode
+    // authoritative by re-asserting it whenever <html>'s class changes.
     const root = document.documentElement;
-    root.classList.toggle('dark', state.mode === 'dark');
-    root.classList.toggle('light', state.mode === 'light');
-    root.style.colorScheme = state.mode;
+    const apply = () => {
+      const isDark = root.classList.contains('dark');
+      if (isDark !== (state.mode === 'dark') || root.style.colorScheme !== state.mode) {
+        root.classList.toggle('dark', state.mode === 'dark');
+        root.classList.toggle('light', state.mode === 'light');
+        root.style.colorScheme = state.mode;
+      }
+    };
+    apply();
+    const observer = new MutationObserver(apply);
+    observer.observe(root, { attributes: true, attributeFilter: ['class', 'style'] });
+    return () => observer.disconnect();
   }, [state.mode]);
 
   return (
@@ -68,8 +82,8 @@ export default function ThemePreviewPage() {
       {/* Sidebar */}
       <aside className="hidden w-52 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground sm:flex">
         <div className="flex h-14 items-center gap-2.5 px-4">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-xs font-bold text-primary-foreground">AC</span>
-          <span className="text-sm font-semibold">Acme Corp</span>
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-xs font-bold text-primary-foreground">{companyInitials}</span>
+          <span className="truncate text-sm font-semibold">{companyName}</span>
         </div>
         <nav className="space-y-0.5 px-3 py-2 text-[13px] font-medium">
           {[
@@ -109,7 +123,7 @@ export default function ThemePreviewPage() {
         </header>
 
         <main className="flex-1 space-y-5 p-5">
-          {state.page === 'dashboard' && <DashboardPreview />}
+          {state.page === 'dashboard' && <DashboardPreview companyName={companyName} />}
           {state.page === 'people' && <PeoplePreview />}
           {state.page === 'form' && <FormPreview />}
         </main>
@@ -130,10 +144,10 @@ function PageTitle({ title, subtitle, action }: { title: string; subtitle: strin
   );
 }
 
-function DashboardPreview() {
+function DashboardPreview({ companyName }: { companyName: string }) {
   return (
     <>
-      <PageTitle title="Good morning, Diya" subtitle="Here's what's happening at Acme today." action={<Button size="sm" icon={<Plus />}>Add employee</Button>} />
+      <PageTitle title="Good morning, Diya" subtitle={`Here's what's happening at ${companyName} today.`} action={<Button size="sm" icon={<Plus />}>Add employee</Button>} />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
           { label: 'Headcount', value: '248', tone: 'bg-primary-soft text-primary-soft-foreground', icon: Users },

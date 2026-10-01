@@ -38,12 +38,13 @@ import { DEFAULT_PRESET, findPreset } from '@/lib/theme/presets';
 import { buildTheme, generatePalette, type SidebarStyle } from '@/lib/theme/generate';
 import { FONTS, SHADOW_OPTIONS, TEXT_SCALES } from '@/lib/theme/engine';
 import { contrast, contrastGrade, ensureContrast, isHex, readableOn } from '@/lib/theme/color';
-import type { PreviewMessage, PreviewPage } from '@/lib/theme/preview';
+import type { PreviewPage } from '@/lib/theme/preview';
+import { ThemePreviewFrame, type PreviewDevice } from '@/components/theme/theme-preview-frame';
 import { getApiErrorMessage } from '@/lib/errors';
 import { cn } from '@/lib/cn';
 
 type Mode = 'light' | 'dark';
-type Device = 'desktop' | 'tablet' | 'mobile';
+type Device = PreviewDevice;
 
 const COLOR_GROUPS: Array<{ title: string; fields: Array<{ key: keyof ThemePalette; label: string; hint?: string }> }> = [
   {
@@ -86,8 +87,6 @@ const COLOR_GROUPS: Array<{ title: string; fields: Array<{ key: keyof ThemePalet
     ],
   },
 ];
-
-const DEVICE_WIDTH: Record<Device, string> = { desktop: '100%', tablet: '768px', mobile: '390px' };
 
 export default function ThemeEditorPage() {
   return (
@@ -182,27 +181,6 @@ function ThemeEditor({
   const dirty = JSON.stringify({ name, description, tokens }) !== savedSnapshot;
   const isActiveOnPortal =
     themeId !== null && settings.data?.superAdminTheme.kind === 'custom' && settings.data.superAdminTheme.id === themeId;
-
-  // ── Live preview wiring ─────────────────────────────────
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [previewReady, setPreviewReady] = useState(false);
-
-  const postPreview = useCallback(() => {
-    const message: PreviewMessage = { type: 'hrms-theme-preview', tokens, mode, page };
-    iframeRef.current?.contentWindow?.postMessage(message, window.location.origin);
-  }, [tokens, mode, page]);
-
-  useEffect(() => {
-    const onMessage = (e: MessageEvent) => {
-      if (e.origin === window.location.origin && e.data?.type === 'hrms-theme-preview-ready') setPreviewReady(true);
-    };
-    window.addEventListener('message', onMessage);
-    return () => window.removeEventListener('message', onMessage);
-  }, []);
-
-  useEffect(() => {
-    if (previewReady) postPreview();
-  }, [previewReady, postPreview]);
 
   // ── Guards & shortcuts ──────────────────────────────────
   useEffect(() => {
@@ -482,20 +460,7 @@ function ThemeEditor({
                 />
               </div>
             </div>
-            <div className="flex justify-center bg-[radial-gradient(hsl(var(--border))_1px,transparent_1px)] bg-muted/40 p-4 [background-size:16px_16px]">
-              <div
-                className="overflow-hidden rounded-lg border border-border bg-background shadow-dialog transition-[width] duration-300 ease-out"
-                style={{ width: DEVICE_WIDTH[device], maxWidth: '100%' }}
-              >
-                <iframe
-                  ref={iframeRef}
-                  src="/theme-preview"
-                  title="Theme preview"
-                  className="block h-[640px] w-full"
-                  onLoad={() => postPreview()}
-                />
-              </div>
-            </div>
+            <ThemePreviewFrame tokens={tokens} mode={mode} page={page} device={device} />
           </Card>
           <p className="mt-2 text-center text-xs text-muted-foreground">
             Live preview of a company portal · changes are not visible to anyone until you save &amp; apply

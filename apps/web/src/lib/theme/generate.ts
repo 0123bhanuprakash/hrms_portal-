@@ -70,6 +70,28 @@ export function generatePalette(primary: string, mode: 'light' | 'dark', sidebar
   };
 }
 
+/** Best guess of the sidebar style a theme was built with. */
+export function detectSidebarStyle(t: ThemeTokens): SidebarStyle {
+  const p = t.light;
+  if (p.sidebar.toUpperCase() === p.surface.toUpperCase()) return 'light';
+  return p.sidebar.toUpperCase() === mix(p.primary, '#000000', 0.55).toUpperCase() ? 'brand' : 'dark';
+}
+
+/**
+ * Same theme style (sidebar, font, size, radius, shadows) with a different
+ * brand color — used when onboarding a company with its own brand color.
+ */
+export function rebrandTheme(t: ThemeTokens, primary: string): ThemeTokens {
+  return buildTheme({
+    primary,
+    sidebar: detectSidebarStyle(t),
+    font: t.typography.font,
+    scale: t.typography.scale,
+    radius: t.shape.radius,
+    shadow: t.shape.shadow,
+  });
+}
+
 export interface BuildThemeOptions {
   primary: string;
   sidebar?: SidebarStyle;
