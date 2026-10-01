@@ -102,21 +102,29 @@ async function seedSystemRoles(): Promise<Map<RoleName, string>> {
   const roleMap = new Map<RoleName, string>(); // name → id
 
   for (const roleData of SYSTEM_ROLES) {
-    const role = await prisma.role.upsert({
+    let role = await prisma.role.findFirst({
       where: {
-        companyId_name: {
-          companyId: null as unknown as string,
-          name: roleData.name,
-        },
-      },
-      update: { description: roleData.description },
-      create: {
         companyId: null,
         name: roleData.name,
-        description: roleData.description,
         isSystemRole: true,
       },
     });
+
+    if (!role) {
+      role = await prisma.role.create({
+        data: {
+          companyId: null,
+          name: roleData.name,
+          description: roleData.description,
+          isSystemRole: true,
+        },
+      });
+    } else {
+      role = await prisma.role.update({
+        where: { id: role.id },
+        data: { description: roleData.description },
+      });
+    }
 
     roleMap.set(roleData.name, role.id);
     console.log(`   ✅ Role "${roleData.name}" (${role.id})`);

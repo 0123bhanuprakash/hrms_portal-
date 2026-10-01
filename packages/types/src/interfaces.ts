@@ -78,6 +78,7 @@ export interface JwtPayload {
   is_super_admin: boolean;
   roles: string[];
   permissions: string[];        // e.g. ['employee:create', 'leave:approve']
+  sid?: string;                 // Session id = refresh token family id
   iat?: number;
   exp?: number;
 }
@@ -507,8 +508,10 @@ export interface HealthStatus {
 export interface ReadinessStatus {
   status: 'ok' | 'error';
   services: {
-    database: 'ok' | 'error';
-    redis: 'ok' | 'error';
-    elasticsearch: 'ok' | 'error';
+    database: 'ok' | 'error' | 'disabled';
+    /** 'disabled' when REDIS_URL is not set */
+    redis: 'ok' | 'error' | 'disabled';
+    /** 'disabled' when ELASTICSEARCH_URL is not set */
+    elasticsearch: 'ok' | 'error' | 'disabled';
   };
 }

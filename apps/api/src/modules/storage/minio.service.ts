@@ -9,14 +9,21 @@ import {
   DeleteObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { StorageService, assertSafeStorageKey } from './storage.service';
+
+// ============================================================
+// MinioService — STORAGE_DRIVER=s3
+// Works with MinIO, AWS S3 or any S3-compatible store (MINIO_* vars).
+// ============================================================
 
 @Injectable()
-export class MinioService implements OnModuleInit {
+export class MinioService extends StorageService implements OnModuleInit {
   private readonly logger = new Logger(MinioService.name);
   private readonly s3Client: S3Client;
   public readonly brandingBucket: string;
 
   constructor(private readonly config: ConfigService) {
+    super();
     const endpoint =
       this.config.get<string>('storage.minio.endpoint') || 'localhost';
     const port = this.config.get<number>('storage.minio.port') || 9000;
@@ -53,6 +60,12 @@ export class MinioService implements OnModuleInit {
         `Could not initialize MinIO bucket '${this.brandingBucket}': ${(err as Error).message}. File uploads will retry on invocation.`,
       );
     }
+  }
+
+  /** StorageService contract — uploads into the branding bucket. */
+  async upload(key: string, body: Buffer, contentType: string): Promise<string> {
+    assertSafeStorageKey(key);
+    return this.uploadFile(this.brandingBucket, key, body, contentType);
   }
 
   /**

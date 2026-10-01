@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { Resend } from 'resend';
+import { promises as fs } from 'fs';
+import * as path from 'path';
 import {
   resetPasswordEmail,
   verifyEmailTemplate,
@@ -16,11 +18,14 @@ import {
 // ============================================================
 // EmailService — Unified email sending interface
 //
-// In development  → Nodemailer → Mailpit SMTP (localhost:1025)
-//                   All emails are caught locally, none leave your machine
+// EMAIL_PROVIDER=console (default) → nothing is sent. Subject + links are
+//                   printed to the terminal and the full HTML is saved to
+//                   apps/api/.mail/ so it can be opened in a browser.
 //
-// In production   → Resend API
-//                   Set EMAIL_PROVIDER=resend in .env
+// EMAIL_PROVIDER=smtp → Nodemailer → any SMTP server (e.g. Mailpit)
+//                   ('mailpit' is accepted as an alias)
+//
+// EMAIL_PROVIDER=resend → Resend API (production)
 //
 // Usage:
 //   await this.emailService.sendResetPassword({ to, firstName, resetLink });
@@ -36,19 +41,24 @@ export interface SendEmailOptions {
   from?: string;
 }
 
+type EmailProvider = 'console' | 'smtp' | 'resend';
+
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  private readonly provider: 'mailpit' | 'resend';
+  private readonly provider: EmailProvider;
+  private readonly outputDir: string;
   private nodemailerTransport?: nodemailer.Transporter;
   private resendClient?: Resend;
 
   constructor(private readonly config: ConfigService) {
-    this.provider =
-      (this.config.get<string>('email.provider') as 'mailpit' | 'resend') ??
-      'mailpit';
+    const configured = this.config.get<string>('email.provider') ?? 'console';
+    this.provider = configured === 'mailpit' ? 'smtp' : (configured as EmailProvider);
+    this.outputDir = path.resolve(this.config.get<string>('email.outputDir') ?? '.mail');
 
-    if (this.provider === 'resend') {
+    if (this.provider === 'console') {
+      this.logger.log(`✉️  Email provider: console — emails saved to ${this.outputDir}`);
+    } else if (this.provider === 'resend') {
       const apiKey = this.config.get<string>('email.resend.apiKey');
       if (!apiKey) {
         this.logger.warn('RESEND_API_KEY not set — email sending will fail in production');
@@ -66,7 +76,7 @@ export class EmailService {
         secure: false,    // Mailpit does not use TLS
         ignoreTLS: true,  // No TLS for local Mailpit
       });
-      this.logger.log(`✉️  Email provider: Mailpit (${host}:${port}) — view at http://localhost:8025`);
+      this.logger.log(`✉️  Email provider: SMTP (${host}:${port})`);
     }
   }
 
@@ -80,6 +90,11 @@ export class EmailService {
         : (this.config.get<string>('email.smtp.from') ?? 'HRMS Portal <noreply@hrms.local>'));
 
     try {
+      if (this.provider === 'console') {
+        await this.writeToConsole(from, opts);
+        return;
+      }
+
       if (this.provider === 'resend' && this.resendClient) {
         await this.resendClient.emails.send({
           from,
@@ -100,6 +115,29 @@ export class EmailService {
       this.logger.error(`❌ Failed to send email to ${opts.to}`, error);
       throw error;
     }
+  }
+
+  /** Dev-only: print a summary (incl. links) and save the HTML to disk. */
+  private async writeToConsole(from: string, opts: SendEmailOptions): Promise<void> {
+    await fs.mkdir(this.outputDir, { recursive: true });
+
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const slug = opts.subject.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 50);
+    const file = path.join(this.outputDir, `${stamp}_${slug}.html`);
+    await fs.writeFile(file, opts.html, 'utf8');
+
+    const links = [...opts.html.matchAll(/href="(https?:\/\/[^"]+)"/g)]
+      .map((m) => m[1]!.replace(/&amp;/g, '&'))
+      .filter((href, i, all) => all.indexOf(href) === i);
+
+    this.logger.log(
+      [
+        `📧 [console] ${from} → ${opts.to}`,
+        `   Subject: ${opts.subject}`,
+        ...links.map((href) => `   Link:    ${href}`),
+        `   Saved:   ${file}`,
+      ].join('\n'),
+    );
   }
 
   // ─── Convenience methods ───────────────────────────────────

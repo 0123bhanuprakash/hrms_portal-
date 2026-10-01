@@ -8,6 +8,7 @@ import { validate } from './config/env.validation';
 import { HealthModule } from './health/health.module';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { StorageModule } from './modules/storage/storage.module';
+import { QueueModule } from './modules/queue/queue.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { EmailModule } from './modules/email/email.module';
 import { CompaniesModule } from './modules/companies/companies.module';
@@ -23,15 +24,19 @@ import { SuperAdminGuard } from './common/guards/super-admin.guard';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { TenantContextMiddleware } from './common/middleware/tenant-context.middleware';
 
+import { AppController } from './app.controller';
+
 // ============================================================
 // AppModule — Root NestJS module
 // ============================================================
 
 @Module({
+  controllers: [AppController],
   imports: [
     // ── Global configuration (env vars, typed config) ─────
     ConfigModule.forRoot({
-      envFilePath: ['../../.env', '.env'],
+      // Single source of truth: apps/api/.env (same file the Prisma CLI reads)
+      envFilePath: ['.env'],
       isGlobal: true,
       cache: true,
       load: [configuration],
@@ -57,11 +62,12 @@ import { TenantContextMiddleware } from './common/middleware/tenant-context.midd
     // ── Infrastructure ────────────────────────────────────
     HealthModule,
     PrismaModule,
-    StorageModule,        // Chunk 10 Object Storage (MinIO / S3)
+    StorageModule.register(), // Local disk or MinIO/S3 (STORAGE_DRIVER)
+    QueueModule.register(),   // BullMQ — only when REDIS_URL is set
 
     // ── Feature modules ───────────────────────────────────
     AuthModule,           // Chunk 6
-    EmailModule,          // Chunk 7
+    EmailModule.register(), // Chunk 7
     CompaniesModule,      // Chunk 9
     UsersModule,          // Chunk 9
     AdminModule,          // Chunk 9 Super Admin

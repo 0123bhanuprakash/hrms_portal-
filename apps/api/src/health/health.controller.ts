@@ -1,23 +1,23 @@
-import { Controller, Get, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import type { HealthStatus, ReadinessStatus } from '@hrms/types';
-import { PrismaService } from '../modules/prisma/prisma.service';
 import { Public } from '../modules/auth/decorators/public.decorator';
+import { HealthService } from './health.service';
 
 // ============================================================
 // HealthController
 //
 // GET /health        — Liveness probe. Always 200 if app is running.
-// GET /health/ready  — Readiness probe. Checks DB + Redis.
+// GET /health/ready  — Readiness probe. Checks the DB, plus Redis and
+//                      Elasticsearch when configured ('disabled' otherwise).
 // ============================================================
 
 @ApiTags('Health')
 @Controller('health')
 export class HealthController {
-  private readonly logger = new Logger(HealthController.name);
   private readonly startedAt = Date.now();
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly health: HealthService) {}
 
   @Public()
   @Get()
@@ -35,31 +35,17 @@ export class HealthController {
   @Public()
   @Get('ready')
   @ApiOperation({
-    summary: 'Readiness probe — checks database and Redis connectivity',
+    summary: 'Readiness probe — checks the database plus Redis / Elasticsearch when configured',
   })
   @ApiResponse({ status: 200, description: 'All services ready' })
   @ApiResponse({ status: 503, description: 'One or more services unavailable' })
   async readiness(): Promise<ReadinessStatus> {
-    const dbHealthy = await this.prisma.isHealthy();
+    const { status, services } = await this.health.check();
 
-    const services = {
-      database: dbHealthy ? ('ok' as const) : ('error' as const),
-      redis: 'ok' as const,
-      elasticsearch: 'ok' as const,
-    };
-
-    const isAllOk = dbHealthy;
-
-    if (!isAllOk) {
-      throw new ServiceUnavailableException({
-        status: 'error',
-        services,
-      });
+    if (status !== 'ok') {
+      throw new ServiceUnavailableException({ status, services });
     }
 
-    return {
-      status: 'ok',
-      services,
-    };
+    return { status, services };
   }
 }

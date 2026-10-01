@@ -8,9 +8,14 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// DATABASE_URL — pooled connection used by the running API
+//                (Supabase transaction pooler, port 6543, ?pgbouncer=true)
+// DIRECT_URL   — session/direct connection used by `prisma migrate`
+//                (Supabase session pooler, port 5432)
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -210,6 +215,9 @@ model RefreshToken {
   tokenHash String   @map("token_hash")
   expiresAt DateTime @map("expires_at")
   isRevoked Boolean  @default(false) @map("is_revoked")
+  // Device info shown in "Active sessions" (captured at login / refresh)
+  userAgent String?  @map("user_agent")
+  ipAddress String?  @map("ip_address")
   createdAt DateTime @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -1,0 +1,42 @@
+name: HRMS Portal CI Pipeline
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  validate:
+    name: Build & Test Turborepo Monorepo
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Version comes from "packageManager" in the root package.json
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint codebase
+        run: pnpm lint
+
+      - name: Typecheck TypeScript types
+        run: pnpm typecheck
+
+      - name: Run unit & integration tests
+        run: pnpm test
+
+      # Builds do not read runtime env vars (validated at API startup only)
+      - name: Build packages and applications
+        run: pnpm build

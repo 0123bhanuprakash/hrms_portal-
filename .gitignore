@@ -20,6 +20,7 @@ build
 .env.staging
 .env.production
 .env.*.local
+.env.backup
 
 # Prisma generated files
 apps/api/src/generated
@@ -58,3 +59,13 @@ test-results
 *.pem
 .vercel
 .cache
+
+# Local dev output (STORAGE_DRIVER=local, EMAIL_PROVIDER=console)
+apps/api/uploads/
+apps/api/.mail/
+
+# Stray tsc output emitted next to the shared types sources (package is consumed as .ts)
+packages/types/src/**/*.js
+packages/types/src/**/*.js.map
+packages/types/src/**/*.d.ts
+packages/types/src/**/*.d.ts.map

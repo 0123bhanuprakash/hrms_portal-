@@ -2,6 +2,8 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, VersioningType, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { NestExpressApplication } from '@nestjs/platform-express';
+import * as path from 'path';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -15,7 +17,7 @@ import { ResponseTransformInterceptor } from './common/interceptors/response-tra
 async function bootstrap(): Promise<void> {
   const logger = new Logger('Bootstrap');
 
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     // Use NestJS built-in logger (can swap for Winston/Pino in Phase 10)
     logger: ['error', 'warn', 'log', 'debug', 'verbose'],
     bufferLogs: false,
@@ -36,6 +38,24 @@ async function bootstrap(): Promise<void> {
     }),
   );
   app.use(compression());
+
+  // ── Local file storage (STORAGE_DRIVER=local) ──────────────
+  // Uploaded branding assets are served from /uploads. Headers make
+  // them loadable cross-origin by the web app, while preventing
+  // uploaded SVGs from running scripts if opened directly.
+  if (config.get<string>('storage.driver') === 'local') {
+    const uploadsDir = path.resolve(config.get<string>('storage.uploadsDir') ?? 'uploads');
+    app.useStaticAssets(uploadsDir, {
+      prefix: '/uploads/',
+      index: false,
+      dotfiles: 'deny',
+      setHeaders: (res) => {
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox");
+      },
+    });
+  }
 
   // ── CORS ───────────────────────────────────────────────────
   app.enableCors({
