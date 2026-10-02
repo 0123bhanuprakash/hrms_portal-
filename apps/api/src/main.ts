@@ -68,7 +68,7 @@ async function bootstrap(): Promise<void> {
       'X-Request-ID',
       'X-Tenant-ID',
     ],
-    exposedHeaders: ['X-Request-ID'],
+    exposedHeaders: ['X-Request-ID', 'X-Access-Version', 'Retry-After'],
   });
 
   // ── Global API prefix & versioning ─────────────────────────

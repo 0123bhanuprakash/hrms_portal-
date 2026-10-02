@@ -16,13 +16,16 @@ import {
   MapPin,
   Menu,
   Palette,
+  ShieldCheck,
   SlidersHorizontal,
+  UserCog,
   Users,
   X,
 } from 'lucide-react';
 import type { ThemeTokens } from '@hrms/types';
 import { useAuthStore } from '@/store/useAuthStore';
 import { DisplayPreferences } from '@/components/preferences/display-preferences';
+import { useAccess } from '@/lib/access/use-access';
 import { changePasswordPath, loginPathFor, useAuthHydrated, withNext } from '@/lib/auth/portal';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { DropdownMenu } from '@/components/ui/dropdown-menu';
@@ -53,6 +56,13 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
     ],
   },
   {
+    label: 'Administration',
+    items: [
+      { name: 'Users', href: '/app/users', icon: UserCog, permission: 'user.view' },
+      { name: 'Roles & permissions', href: '/app/roles', icon: ShieldCheck, permission: 'role.view' },
+    ],
+  },
+  {
     label: 'Settings',
     items: [
       { name: 'Branding', href: '/app/settings/branding', icon: ImageIcon, permission: 'branding.manage' },
@@ -68,6 +78,9 @@ const SEGMENT_LABELS: Record<string, string> = {
   branding: 'Branding',
   theme: 'Theme',
   preferences: 'Preferences',
+  users: 'Users',
+  roles: 'Roles & permissions',
+  new: 'New role',
 };
 
 
@@ -105,7 +118,8 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
   const pathname = usePathname();
   const router = useRouter();
   const hydrated = useAuthHydrated();
-  const { user, companyId, isAuthenticated, permissions, logout } = useAuthStore();
+  const { user, companyId, isAuthenticated, logout } = useAuthStore();
+  const { can: canAccess } = useAccess();
   const [mobileOpen, setMobileOpen] = useState(false);
   const branding = useCompanyBranding(hydrated ? companyId : null);
 
@@ -129,7 +143,8 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
     );
   }
 
-  const can = (permission?: string) => !permission || user!.isSuperAdmin || permissions.includes(permission);
+  // Menus follow live access (/access/me) — refreshed when an admin changes roles or features
+  const can = (permission?: string) => !permission || user!.isSuperAdmin || canAccess(permission);
   const companyName = branding.data?.displayName ?? 'Company portal';
   const fullName = `${user!.firstName} ${user!.lastName}`;
 
@@ -271,7 +286,8 @@ function Breadcrumbs({ pathname }: { pathname: string }) {
       {segments.map((seg, i) => {
         const href = '/' + segments.slice(0, i + 1).join('/');
         const last = i === segments.length - 1;
-        const label = SEGMENT_LABELS[seg] ?? seg;
+        // Record ids (UUIDs) read as "Details" rather than a raw id
+        const label = SEGMENT_LABELS[seg] ?? (/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(seg) ? 'Details' : seg);
         return (
           <React.Fragment key={href}>
             {i > 0 && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />}

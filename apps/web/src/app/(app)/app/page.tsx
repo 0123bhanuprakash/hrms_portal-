@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { StatCard } from '@/components/ui/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useAccess } from '@/lib/access/use-access';
 import { useCompanyBranding, useCompanyStats } from '@/lib/company/queries';
 
 function greeting(): string {
@@ -23,11 +24,12 @@ const ROADMAP = [
 ];
 
 export default function CompanyDashboardPage() {
-  const { user, companyId, permissions } = useAuthStore();
+  const { user, companyId } = useAuthStore();
+  const { can } = useAccess();
   const branding = useCompanyBranding(companyId);
   const stats = useCompanyStats(companyId);
   const s = stats.data;
-  const canBrand = user?.isSuperAdmin || permissions.includes('branding.manage');
+  const canBrand = user?.isSuperAdmin || can('branding.manage');
 
   return (
     <div className="space-y-6">

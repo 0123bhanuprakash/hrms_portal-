@@ -54,6 +54,21 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
+/** Fired when the server reports different access (role edit, feature toggle, reporting change). */
+export const ACCESS_CHANGED_EVENT = 'hrms:access-changed';
+let lastAccessVersion: string | null = null;
+
+api.interceptors.response.use((response) => {
+  const version = response.headers?.['x-access-version'];
+  if (typeof version === 'string' && version !== lastAccessVersion) {
+    if (lastAccessVersion !== null && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent(ACCESS_CHANGED_EVENT));
+    }
+    lastAccessVersion = version;
+  }
+  return response;
+});
+
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {

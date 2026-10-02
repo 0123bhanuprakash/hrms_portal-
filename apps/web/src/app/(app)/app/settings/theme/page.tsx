@@ -13,15 +13,17 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { ThemePicker } from '@/components/theme/theme-picker';
 import { ThemeEditorPanels, useThemeHistory, useUndoShortcuts, useUnsavedGuard } from '@/components/theme/theme-editor';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useAccess } from '@/lib/access/use-access';
 import { companyThemeTokens, useCompanyBranding, useCompanyTheme, useUpdateCompanyTheme } from '@/lib/company/queries';
 import { useThemeLibrary } from '@/lib/theme/library';
 import { getApiErrorMessage } from '@/lib/errors';
 import { stableStringify } from '@/lib/theme/color';
 
 export default function CompanyThemePage() {
-  const { user, companyId, permissions } = useAuthStore();
+  const { user, companyId } = useAuthStore();
+  const { can } = useAccess();
   const theme = useCompanyTheme(companyId);
-  const canEdit = Boolean(user?.isSuperAdmin || permissions.includes('branding.manage'));
+  const canEdit = Boolean(user?.isSuperAdmin || can('branding.manage'));
 
   if (!canEdit) {
     return (

@@ -10,6 +10,7 @@ import { Card, CardHeader, EmptyState, Skeleton } from '@/components/ui/feedback
 import { Field, Input } from '@/components/ui/field';
 import { PageHeader } from '@/components/ui/page-header';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useAccess } from '@/lib/access/use-access';
 import { useCompanyBranding, useUpdateCompanyBranding, useUploadBrandingAsset } from '@/lib/company/queries';
 import { getApiErrorMessage } from '@/lib/errors';
 import { initials } from '@/lib/format';
@@ -33,10 +34,11 @@ const ASSETS = {
 } as const;
 
 export default function BrandingPage() {
-  const { user, companyId, permissions } = useAuthStore();
+  const { user, companyId } = useAuthStore();
+  const { can } = useAccess();
   const branding = useCompanyBranding(companyId);
   const update = useUpdateCompanyBranding(companyId ?? '');
-  const canEdit = Boolean(user?.isSuperAdmin || permissions.includes('branding.manage'));
+  const canEdit = Boolean(user?.isSuperAdmin || can('branding.manage'));
   const [displayName, setDisplayName] = useState('');
 
   useEffect(() => {

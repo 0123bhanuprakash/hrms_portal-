@@ -245,7 +245,7 @@ companies + hierarchy_version int
 |---|---|---|
 | **A. Engine** (backend) ✅ done 2 Oct | catalog sync, plans/entitlements tables, roles+grants migration (clone templates per company), closure tables + maintenance, AccessContext, FeatureGuard, PermissionGuard v2, `scopeWhere`, caches | Everything enforced server-side; scripted tests |
 | **B. Super Admin** | Plans page, Company → Plan & features, feature catalog | Super Admin controls each company's modules |
-| **C. Company Admin core** | Users (invite/multi-role/manage), Roles & Permissions editor | Companies run their own RBAC |
+| **C. Company Admin core** ✅ done 2 Oct | Users (invite/multi-role/manage), Roles & Permissions editor | Companies run their own RBAC |
 | **D. Org structure** | org levels, department tree, org chart with drag-to-reassign + access preview | Hierarchy-based access usable end to end |
 | **E. Advanced** | Access Explorer, bulk import, delegation, approval chains | "Super advanced" user manager |
 
