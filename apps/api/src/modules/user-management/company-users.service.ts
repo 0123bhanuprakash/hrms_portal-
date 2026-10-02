@@ -16,6 +16,7 @@ import { CompanyRolesService } from '../access/company-roles.service';
 import type { AccessContext } from '../access/access.types';
 import { generateTemporaryPassword, hashPassword } from '../auth/password.util';
 import { RolesService } from './roles.service';
+import { EmployeesService } from '../employees/employees.service';
 import type { InviteUserDto, QueryCompanyUsersDto, UpdateCompanyUserDto } from './dto';
 
 const USER_SELECT = {
@@ -60,6 +61,7 @@ export class CompanyUsersService {
     private readonly auth: AuthService,
     private readonly companyRoles: CompanyRolesService,
     private readonly roles: RolesService,
+    private readonly employees: EmployeesService,
   ) {}
 
   // ─── Read ─────────────────────────────────────────────────
@@ -127,6 +129,14 @@ export class CompanyUsersService {
     if (!onlyDefault) this.requireAssignRoles(actor);
     await this.assertAssignable(companyId, actor, roleIds);
 
+    // Employee profile requested: check it fully before creating anything
+    if (dto.employee) {
+      if (!actor.isOwner && !actor.isSuperAdmin && !actor.grants.has('employee.create')) {
+        throw new ForbiddenException('You do not have permission to add employees. Required: employee.create');
+      }
+      await this.employees.assertProfileInput(companyId, dto.employee);
+    }
+
     const tempPassword = generateTemporaryPassword();
     const user = await this.prisma.user.create({
       data: {
@@ -143,8 +153,18 @@ export class CompanyUsersService {
       select: USER_SELECT,
     });
 
+    let employeeError: string | null = null;
+    if (dto.employee) {
+      try {
+        await this.employees.createForUser(companyId, user.id, dto.employee);
+      } catch (err) {
+        // Account exists — the profile can be added from Users → "Add employee profile"
+        employeeError = (err as Error).message;
+      }
+    }
+
     const emailSent = await this.sendWelcome(companyId, user, tempPassword);
-    return { ...this.present(user, actor), emailSent };
+    return { ...this.present(await this.find(companyId, user.id), actor), emailSent, employeeError };
   }
 
   async update(companyId: string, id: string, actor: AccessContext, dto: UpdateCompanyUserDto) {

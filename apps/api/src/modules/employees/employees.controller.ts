@@ -13,6 +13,7 @@ import {
 import { EmployeesService } from './employees.service';
 import { EmployeeImportService } from './employee-import.service';
 import { ImportEmployeesDto } from './dto/import-employees.dto';
+import { CreateEmployeeProfileDto } from './dto/create-employee-profile.dto';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { QueryEmployeesDto } from './dto/query-employee.dto';
@@ -29,6 +30,18 @@ export class EmployeesController {
     private readonly employeesService: EmployeesService,
     private readonly importService: EmployeeImportService,
   ) {}
+
+  /** Employee profile for an existing sign-in account (e.g. invited from Users). */
+  @RequirePermission('employee.create')
+  @Audit('employee:create', 'employee')
+  @Post('for-user/:userId')
+  async createForUser(
+    @TenantCtx() ctx: TenantContext,
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @Body() dto: CreateEmployeeProfileDto,
+  ) {
+    return this.employeesService.createForUser(ctx.companyId!, userId, dto);
+  }
 
   /** Bulk import step 1: validate every row, write nothing. */
   @RequirePermission('employee.import')

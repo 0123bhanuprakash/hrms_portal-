@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
+  IdCard,
   KeyRound,
   ScanSearch,
   Mail,
@@ -25,9 +26,11 @@ import { Modal } from '@/components/ui/modal';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { DropdownMenu, type MenuItem } from '@/components/ui/dropdown-menu';
 import { RolePicker } from '@/components/company/role-picker';
+import { EmployeeProfileFields, emptyProfile, profileBody, type ProfileInput } from '@/components/company/employee-profile-fields';
 import { useAccess } from '@/lib/access/use-access';
 import {
   useCompanyUsers,
+  useCreateEmployeeProfile,
   useInviteUser,
   useResendInvite,
   useRoles,
@@ -68,6 +71,7 @@ export default function UsersPage() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [editRoles, setEditRoles] = useState<CompanyUser | null>(null);
   const [confirm, setConfirm] = useState<{ user: CompanyUser; action: 'deactivate' | 'activate' } | null>(null);
+  const [profileFor, setProfileFor] = useState<CompanyUser | null>(null);
 
   const resend = useResendInvite();
   const reset = useSendPasswordReset();
@@ -91,6 +95,9 @@ export default function UsersPage() {
     const items: Array<MenuItem | 'separator'> = [];
     if (can('role.view')) {
       items.push({ label: 'See what they can do', icon: <ScanSearch />, onSelect: () => router.push(`/app/access-explorer?user=${u.id}`) });
+    }
+    if (!u.employee && can('employee.create')) {
+      items.push({ label: 'Add employee profile', icon: <IdCard />, onSelect: () => setProfileFor(u) });
     }
     if (can('user.assign_roles')) {
       items.push({ label: 'Edit roles', icon: <ShieldCheck />, onSelect: () => setEditRoles(u), disabled: u.isSelf, hint: u.isSelf ? "You can't change your own roles" : undefined });
@@ -213,7 +220,14 @@ export default function UsersPage() {
                               {u.firstName} {u.lastName}
                               {u.isSelf && <Badge tone="outline">You</Badge>}
                             </p>
-                            <p className="truncate text-xs text-muted-foreground">{u.email}</p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {u.email}
+                              {u.employee ? (
+                                <span className="ml-1.5 font-mono">· {u.employee.employeeId}</span>
+                              ) : (
+                                <Badge tone="warning" className="ml-1.5" title="Sign-in account only — not in Employees or the org chart">No employee profile</Badge>
+                              )}
+                            </p>
                             {/* Phones: roles under the name instead of their own column */}
                             <div className="mt-1 flex flex-wrap gap-1 sm:hidden">
                               {u.roles.map((r) => (
@@ -269,8 +283,9 @@ export default function UsersPage() {
         )}
       </Card>
 
-      <InviteDialog open={inviteOpen} onClose={() => setInviteOpen(false)} canChooseRoles={can('user.assign_roles')} />
+      <InviteDialog open={inviteOpen} onClose={() => setInviteOpen(false)} canChooseRoles={can('user.assign_roles')} canAddEmployee={can('employee.create')} />
       <EditRolesDialog user={editRoles} onClose={() => setEditRoles(null)} />
+      <ProfileDialog user={profileFor} onClose={() => setProfileFor(null)} />
 
       <ConfirmDialog
         isOpen={Boolean(confirm)}
@@ -305,29 +320,35 @@ export default function UsersPage() {
 
 // ─── Invite ─────────────────────────────────────────────────
 
-function InviteDialog({ open, onClose, canChooseRoles }: { open: boolean; onClose: () => void; canChooseRoles: boolean }) {
+function InviteDialog({ open, onClose, canChooseRoles, canAddEmployee }: { open: boolean; onClose: () => void; canChooseRoles: boolean; canAddEmployee: boolean }) {
   const roles = useRoles();
   const invite = useInviteUser();
   const defaultRole = useMemo(() => roles.data?.find((r) => r.key === 'employee' && r.status === 'ACTIVE'), [roles.data]);
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '' });
   const [roleIds, setRoleIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [asEmployee, setAsEmployee] = useState(true);
+  const [profile, setProfile] = useState<ProfileInput>(emptyProfile());
 
   useEffect(() => {
     if (open) {
+      setAsEmployee(canAddEmployee);
+      setProfile(emptyProfile());
       setForm({ firstName: '', lastName: '', email: '' });
       setRoleIds(defaultRole ? [defaultRole.id] : []);
       setError(null);
     }
-  }, [open, defaultRole]);
+  }, [open, defaultRole, canAddEmployee]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     if (canChooseRoles && !roleIds.length) return setError('Choose at least one role');
     try {
-      const r = await invite.mutateAsync({ ...form, ...(canChooseRoles && { roleIds }) });
-      toast.success(r.emailSent ? `Invite sent to ${r.email}` : `${r.firstName} was added, but the invite email could not be sent`);
+      const r = await invite.mutateAsync({ ...form, ...(canChooseRoles && { roleIds }), ...(asEmployee && { employee: profileBody(profile) }) });
+      const who = r.employee ? `${r.firstName} (${r.employee.employeeId})` : r.firstName;
+      toast.success(r.emailSent ? `Invite sent to ${r.email}${r.employee ? ` — ${who} added to Employees` : ''}` : `${who} was added, but the invite email could not be sent`);
+      if (r.employeeError) toast.error(`The account was created, but not the employee profile: ${r.employeeError}. Use “Add employee profile”.`);
       onClose();
     } catch (err) {
       setError(getApiErrorMessage(err, 'Could not invite the user'));
@@ -373,7 +394,70 @@ function InviteDialog({ open, onClose, canChooseRoles }: { open: boolean; onClos
             <div><Badge tone="primary">{defaultRole?.name ?? 'Employee'}</Badge></div>
           )}
         </Field>
+        {canAddEmployee && (
+          <div className="space-y-3 rounded-lg border border-border p-3">
+            <label className="flex items-start gap-2 text-sm">
+              <input type="checkbox" className="mt-0.5 accent-[hsl(var(--primary))]" checked={asEmployee} onChange={(e) => setAsEmployee(e.target.checked)} />
+              <span>
+                <span className="font-medium">Also add them as an employee</span>
+                <span className="block text-xs text-muted-foreground">
+                  Creates their employee record (ID, department, manager) so they appear in Employees and the org chart. Untick for sign-in-only accounts, e.g. an external accountant.
+                </span>
+              </span>
+            </label>
+            {asEmployee && <EmployeeProfileFields value={profile} onChange={setProfile} idPrefix="inv" />}
+          </div>
+        )}
       </form>
+    </Modal>
+  );
+}
+
+// ─── Employee profile for an existing account ───────────────
+
+function ProfileDialog({ user, onClose }: { user: CompanyUser | null; onClose: () => void }) {
+  const create = useCreateEmployeeProfile();
+  const [profile, setProfile] = useState<ProfileInput>(emptyProfile());
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    if (user) {
+      setProfile(emptyProfile());
+      setError(null);
+    }
+  }, [user]);
+  if (!user) return null;
+
+  const save = async () => {
+    setError(null);
+    try {
+      const e = await create.mutateAsync({ userId: user.id, ...profileBody(profile) });
+      toast.success(`${user.firstName} added to Employees as ${e.employeeId}`);
+      onClose();
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Could not create the employee profile'));
+    }
+  };
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      busy={create.isPending}
+      icon={<IdCard />}
+      title={`Add ${user.firstName} ${user.lastName} as an employee`}
+      description="Links an employee record to their existing sign-in. No new account and no email."
+      className="sm:max-w-lg"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={create.isPending}>Cancel</Button>
+          <Button onClick={save} loading={create.isPending}>Add employee profile</Button>
+        </>
+      }
+    >
+      <div className="space-y-3">
+        {error && <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+        <EmployeeProfileFields value={profile} onChange={setProfile} idPrefix="prof" />
+      </div>
     </Modal>
   );
 }

@@ -17,6 +17,7 @@ import type { AccessContext } from '../access/access.types';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { QueryEmployeesDto } from './dto/query-employee.dto';
+import { CreateEmployeeProfileDto } from './dto/create-employee-profile.dto';
 import { UserStatus, EmploymentStatus, Prisma } from '@prisma/client';
 import { generateTemporaryPassword, hashPassword } from '../auth/password.util';
 
@@ -33,6 +34,60 @@ export class EmployeesService {
     private readonly hierarchy: HierarchyService,
     private readonly entitlements: EntitlementService,
   ) {}
+
+  /** Next sequential employee ID (e.g. AAK014) — call inside the creating transaction. */
+  private async nextEmployeeId(tx: Prisma.TransactionClient, companyId: string): Promise<string> {
+    const settings = await tx.companySettings.upsert({
+      where: { companyId },
+      update: { employeeIdSequence: { increment: 1 } },
+      create: { companyId, employeeIdPrefix: 'EMP', employeeIdSequence: 1 },
+    });
+    return `${settings.employeeIdPrefix || 'EMP'}${String(settings.employeeIdSequence).padStart(3, '0')}`;
+  }
+
+  /** Checks for a new profile before anything is written: linked records + plan limit. */
+  async assertProfileInput(companyId: string, dto: CreateEmployeeProfileDto): Promise<void> {
+    await this.assertLinksInCompany(companyId, dto);
+    await this.assertEmployeeLimit(companyId);
+  }
+
+  /**
+   * Employee profile for an EXISTING sign-in account (e.g. invited from
+   * Users → Invite). Uses the account's name and email; creates no new
+   * account and sends no email.
+   */
+  async createForUser(companyId: string, userId: string, dto: CreateEmployeeProfileDto) {
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, companyId },
+      select: { id: true, firstName: true, lastName: true, email: true, employee: { select: { employeeId: true } } },
+    });
+    if (!user) throw new NotFoundException('User not found in this company');
+    if (user.employee) throw new ConflictException(`This account already has an employee profile (${user.employee.employeeId})`);
+    await this.assertProfileInput(companyId, dto);
+
+    return this.prisma.$transaction(async (tx) => {
+      const employee = await tx.employee.create({
+        data: {
+          companyId,
+          userId: user.id,
+          employeeId: await this.nextEmployeeId(tx, companyId),
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          phone: dto.phone?.trim() || null,
+          employmentType: dto.employmentType ?? 'FULL_TIME',
+          departmentId: dto.departmentId ?? null,
+          designationId: dto.designationId ?? null,
+          locationId: dto.locationId ?? null,
+          reportingManagerId: dto.reportingManagerId ?? null,
+          joiningDate: new Date(dto.joiningDate),
+        },
+        include: { department: true, designation: true, location: true, reportingManager: true },
+      });
+      await this.hierarchy.addEmployee(tx, companyId, employee.id, employee.reportingManagerId);
+      return employee;
+    });
+  }
 
   /** Plan limit: maxEmployees counts everyone not terminated (null / missing = unlimited). */
   private async assertEmployeeLimit(companyId: string): Promise<void> {
@@ -131,31 +186,8 @@ export class EmployeesService {
 
     // Atomic transaction for sequential employee ID & employee creation
     const result = await this.prisma.$transaction(async (tx) => {
-      // 1. Fetch & increment company employee ID sequence
-      let settings = await tx.companySettings.findUnique({
-        where: { companyId },
-      });
-
-      if (!settings) {
-        settings = await tx.companySettings.create({
-          data: {
-            companyId,
-            employeeIdPrefix: 'EMP',
-            employeeIdSequence: 0,
-          },
-        });
-      }
-
-      const updatedSettings = await tx.companySettings.update({
-        where: { companyId },
-        data: {
-          employeeIdSequence: { increment: 1 },
-        },
-      });
-
-      const prefix = updatedSettings.employeeIdPrefix || 'EMP';
-      const seqStr = String(updatedSettings.employeeIdSequence).padStart(3, '0');
-      const generatedEmployeeId = `${prefix}${seqStr}`;
+      // 1. Next sequential employee ID
+      const generatedEmployeeId = await this.nextEmployeeId(tx, companyId);
 
       // 2. Create User account
       const user = await tx.user.create({

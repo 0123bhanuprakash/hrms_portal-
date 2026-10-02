@@ -153,10 +153,31 @@ function useUserMutation<TVars, TResult>(fn: (vars: TVars) => Promise<TResult>) 
   });
 }
 
+export type EmployeeProfileBody = {
+  joiningDate: string;
+  departmentId?: string;
+  designationId?: string;
+  locationId?: string;
+  reportingManagerId?: string;
+};
+
 export const useInviteUser = () =>
-  useUserMutation(async (body: { firstName: string; lastName: string; email: string; roleIds?: string[] }) =>
-    unwrap<CompanyUser & { emailSent: boolean }>(await api.post('/company/users', body)),
+  useUserMutation(async (body: { firstName: string; lastName: string; email: string; roleIds?: string[]; employee?: EmployeeProfileBody }) =>
+    unwrap<CompanyUser & { emailSent: boolean; employeeError: string | null }>(await api.post('/company/users', body)),
   );
+
+/** Employee profile for an existing sign-in account (no new account, no email). */
+export function useCreateEmployeeProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, ...body }: EmployeeProfileBody & { userId: string }) =>
+      unwrap<{ employeeId: string }>(await api.post(`/employees/for-user/${userId}`, body)),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: umKeys.usersAll });
+      void qc.invalidateQueries({ queryKey: ['org'] });
+    },
+  });
+}
 
 export const useUpdateCompanyUser = () =>
   useUserMutation(async ({ id, ...body }: { id: string; firstName?: string; lastName?: string }) => unwrap<CompanyUser>(await api.patch(`/company/users/${id}`, body)));

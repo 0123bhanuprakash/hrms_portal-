@@ -18,6 +18,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { UserStatus } from '@prisma/client';
+import { CreateEmployeeProfileDto } from '../employees/dto/create-employee-profile.dto';
 
 const SCOPES = ['own', 'direct_reports', 'all_reports', 'department', 'department_tree', 'location', 'company'] as const;
 
@@ -131,6 +132,12 @@ export class InviteUserDto {
   @ArrayMaxSize(10)
   @IsUUID('all', { each: true })
   roleIds?: string[];
+
+  @ApiPropertyOptional({ type: CreateEmployeeProfileDto, description: 'Also create their employee profile (recommended for staff)' })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CreateEmployeeProfileDto)
+  employee?: CreateEmployeeProfileDto;
 }
 
 export class UpdateCompanyUserDto {
