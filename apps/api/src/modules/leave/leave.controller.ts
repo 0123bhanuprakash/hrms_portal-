@@ -102,7 +102,7 @@ export class LeaveController {
     return this.requests.getRow(ctx.companyId!, access, id);
   }
 
-  @RequirePermission('leave.approve')
+  // Who may decide is checked per request (project leads, line manager, delegates, HR)
   @Audit('leave:request:approve', 'leave_request')
   @Post('requests/:id/approve')
   @HttpCode(HttpStatus.OK)
@@ -110,7 +110,6 @@ export class LeaveController {
     return this.requests.approve(ctx.companyId!, access, id, dto);
   }
 
-  @RequirePermission('leave.approve')
   @Audit('leave:request:reject', 'leave_request')
   @Post('requests/:id/reject')
   @HttpCode(HttpStatus.OK)

@@ -80,8 +80,8 @@ export class AccessService {
       opts.withDelegations === false
         ? []
         : (await this.delegationsFor(user.id, user.companyId))
-            .map((d) => ({ ...d, grants: new Map([...d.grants].filter(([k]) => features.has(featureOf(k) ?? ''))) }))
-            .filter((d) => d.grants.size > 0);
+            // Kept even without role grants: covering a project team lead / PM is pool-based
+            .map((d) => ({ ...d, grants: new Map([...d.grants].filter(([k]) => features.has(featureOf(k) ?? ''))) }));
 
     const versionSource = [
       user.company.featuresVersion,

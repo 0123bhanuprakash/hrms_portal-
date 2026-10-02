@@ -2,7 +2,7 @@ import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CompanyRolesService } from './company-roles.service';
 import { HierarchyService } from './hierarchy.service';
-import { CATALOG, DEFAULT_PLAN_KEY, DEFAULT_PLANS, PERMISSION_BY_KEY, ROLE_TEMPLATES } from './catalog';
+import { AVAILABLE_FEATURES, CATALOG, DEFAULT_PLAN_KEY, DEFAULT_PLANS, PERMISSION_BY_KEY, ROLE_TEMPLATES } from './catalog';
 
 /**
  * Runs on every API start (idempotent — a no-op when nothing changed):
@@ -130,10 +130,40 @@ export class AccessBootstrapService implements OnApplicationBootstrap {
       });
       this.logger.log(`Created plan "${plan.name}"`);
     }
+    await this.rollOutNewFeatures();
     const fallback = await this.prisma.plan.findUniqueOrThrow({ where: { key: DEFAULT_PLAN_KEY }, select: { id: true } });
     const { count } = await this.prisma.company.updateMany({ where: { planId: null }, data: { planId: fallback.id } });
     if (count) this.logger.log(`${count} compan${count === 1 ? 'y' : 'ies'} put on the ${DEFAULT_PLAN_KEY} plan (all features)`);
     return DEFAULT_PLANS.length;
+  }
+
+  /**
+   * Features new to the catalog are added once to the "everything" plan
+   * (Enterprise). Tracked like permissions, so a Super Admin removing a
+   * feature from that plan later is respected.
+   */
+  private async rollOutNewFeatures(): Promise<void> {
+    const KEY = 'access.knownFeatures';
+    const setting = await this.prisma.platformSetting.findUnique({ where: { key: KEY } });
+    let known: Set<string>;
+    if (setting) known = new Set(setting.value as string[]);
+    else {
+      // First run: features already in some plan are known; the rest are new
+      const inPlans = await this.prisma.planFeature.findMany({ select: { featureKey: true }, distinct: ['featureKey'] });
+      known = new Set(inPlans.map((f) => f.featureKey));
+    }
+    const fresh = AVAILABLE_FEATURES.filter((f) => !known.has(f));
+    if (fresh.length) {
+      const plan = await this.prisma.plan.findUnique({ where: { key: DEFAULT_PLAN_KEY }, select: { id: true } });
+      if (plan) {
+        await this.prisma.planFeature.createMany({ data: fresh.map((featureKey) => ({ planId: plan.id, featureKey })), skipDuplicates: true });
+        const { count } = await this.prisma.company.updateMany({ where: { planId: plan.id }, data: { featuresVersion: { increment: 1 } } });
+        this.logger.log(`New features ${fresh.join(', ')} → ${DEFAULT_PLAN_KEY} plan (${count} compan${count === 1 ? 'y' : 'ies'})`);
+      }
+    }
+    if (fresh.length || !setting) {
+      await this.prisma.platformSetting.upsert({ where: { key: KEY }, update: { value: AVAILABLE_FEATURES }, create: { key: KEY, value: AVAILABLE_FEATURES } });
+    }
   }
 
   // 4 + 5 ─────────────────────────────────────────────────────

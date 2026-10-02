@@ -127,11 +127,30 @@ export class DelegationsService {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: ACCESS_USER_SELECT });
     if (!user) return [];
     const ctx = await this.access.resolve(user, { withDelegations: false });
-    return DELEGABLE_PERMISSIONS.filter((k) => ctx.grants.has(k)).map((key) => ({
+    const fromRoles = DELEGABLE_PERMISSIONS.filter((k) => ctx.grants.has(k)).map((key) => ({
       key,
       label: PERMISSION_BY_KEY.get(key)?.label ?? key,
       scope: ctx.grants.get(key) ?? null,
     }));
+    // Project team leads / managers approve leave and attendance through the project
+    if (ctx.features.has('work.projects') && user.employee) {
+      const today = new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00Z');
+      const leads = await this.prisma.projectMember.count({
+        where: {
+          employeeId: user.employee.id,
+          role: { in: ['TEAM_LEAD', 'MANAGER'] },
+          startDate: { lte: today },
+          OR: [{ endDate: null }, { endDate: { gte: today } }],
+          project: { status: { in: ['ACTIVE', 'ON_HOLD'] } },
+        },
+      });
+      if (leads) {
+        for (const key of ['leave.approve', 'attendance.approve']) {
+          if (!fromRoles.some((p) => p.key === key)) fromRoles.push({ key, label: `${PERMISSION_BY_KEY.get(key)?.label ?? key} (project)`, scope: null });
+        }
+      }
+    }
+    return fromRoles;
   }
 
   private present(r: Row) {

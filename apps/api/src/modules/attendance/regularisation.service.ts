@@ -7,6 +7,7 @@ import { AttendanceService } from './attendance.service';
 import { AttendancePolicyService } from './policy.service';
 import { addDays, dateFromKey, keyFromDate, localDateKey } from './time-zone';
 import { NotificationsService, dateRange } from '../notifications/notifications.service';
+import { ApprovalRouterService } from '../projects/approval-router.service';
 import type { CreateRegularisationDto, RegularisationQueryDto, ReviewRegularisationDto } from './dto';
 
 const APPROVE = 'attendance.approve';
@@ -41,6 +42,7 @@ export class RegularisationService {
     private readonly attendance: AttendanceService,
     private readonly policies: AttendancePolicyService,
     private readonly notifications: NotificationsService,
+    private readonly router: ApprovalRouterService,
   ) {}
 
   async create(companyId: string, access: AccessContext, dto: CreateRegularisationDto) {
@@ -62,30 +64,28 @@ export class RegularisationService {
     });
     if (pending) throw new ConflictException('You already have a pending correction for this day');
 
+    const route = await this.router.route(companyId, employee.id, dto.date, dto.date, 1);
+    const approverIds = route.levels[0]?.approverIds ?? [];
     const created = await this.prisma.attendanceRegularisation.create({
-      data: { companyId, employeeId: employee.id, date: dateFromKey(dto.date), checkIn: times.checkIn, checkOut: times.checkOut, reason: dto.reason },
+      data: { companyId, employeeId: employee.id, date: dateFromKey(dto.date), checkIn: times.checkIn, checkOut: times.checkOut, reason: dto.reason, approverIds },
       select: SELECT,
     });
-    void this.notifyApprovers(companyId, employee.id, created, dto, policy.timeZone);
+    void this.notifyApprovers(companyId, approverIds, created, dto, policy.timeZone);
     return created;
   }
 
-  /** The reporting manager (if they approve attendance) and anyone covering for them; else HR. */
+  /** The approver pool (team lead / PM / line manager) and anyone covering for them; else HR. */
   private async notifyApprovers(
     companyId: string,
-    employeeId: string,
+    pool: string[],
     c: { employee: { firstName: string; lastName: string } },
     dto: CreateRegularisationDto,
     timeZone: string,
   ) {
-    const emp = await this.prisma.employee.findUnique({ where: { id: employeeId }, select: { userId: true, reportingManager: { select: { userId: true } } } });
-    const managerId = emp?.reportingManager?.userId;
-    let to: string[] = [];
-    if (managerId && (await this.notifications.holds(managerId, APPROVE))) to = [managerId, ...(await this.notifications.coveringFor([managerId]))];
-    if (!to.length) to = await this.notifications.companyWideApprovers(companyId, APPROVE);
+    const to = pool.length ? [...pool, ...(await this.notifications.coveringFor(pool))] : await this.notifications.companyWideApprovers(companyId, APPROVE);
     await this.notifications.notify({
       companyId,
-      userIds: to.filter((u) => u !== emp?.userId),
+      userIds: to,
       type: 'attendance.correction_submitted',
       title: `${c.employee.firstName} ${c.employee.lastName} asked to correct attendance`,
       body: `${dateRange(dto.date, dto.date)} · ${dto.checkIn}–${dto.checkOut ?? '…'} (${timeZone})\nReason: ${dto.reason}`,
@@ -118,8 +118,9 @@ export class RegularisationService {
       if (!access.employee) return { data: [], meta: { total: 0, page: 1, limit: query.limit ?? 20, totalPages: 0 } };
       where = { companyId, employeeId: access.employee.id, ...(query.status && { status: query.status }) };
     } else {
-      const scope = this.access.requireEmployeeScope(access, APPROVE);
-      where = { companyId, employee: scope, status: query.status ?? RegularisationStatus.PENDING };
+      const reach = this.reviewReach(access);
+      if (!reach) return { data: [], meta: { total: 0, page: 1, limit: query.limit ?? 20, totalPages: 0, timeZone: (await this.policies.get(companyId)).timeZone } };
+      where = { companyId, status: query.status ?? RegularisationStatus.PENDING, AND: [reach] };
     }
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
@@ -154,14 +155,14 @@ export class RegularisationService {
 
   /** Requests waiting for the caller (nav badge). */
   async pendingCount(companyId: string, access: AccessContext): Promise<number> {
-    const scope = this.access.employeeScope(access, APPROVE);
-    if (!scope) return 0;
-    return this.prisma.attendanceRegularisation.count({ where: { companyId, status: RegularisationStatus.PENDING, employee: scope } });
+    const reach = this.reviewReach(access);
+    if (!reach) return 0;
+    return this.prisma.attendanceRegularisation.count({ where: { companyId, status: RegularisationStatus.PENDING, AND: [reach] } });
   }
 
   async approve(companyId: string, access: AccessContext, id: string, dto: ReviewRegularisationDto) {
     const request = await this.reviewable(companyId, access, id);
-    const onBehalfOf = await this.coveringFor(companyId, access, request.employeeId);
+    const onBehalfOf = await this.coveringFor(companyId, access, request.employeeId, request.approverIds);
     const policy = await this.policies.get(companyId);
     const dateKey = keyFromDate(request.date);
     const toHHmm = (d: Date) =>
@@ -189,7 +190,7 @@ export class RegularisationService {
 
   async reject(companyId: string, access: AccessContext, id: string, dto: ReviewRegularisationDto) {
     const request = await this.reviewable(companyId, access, id);
-    const onBehalfOf = await this.coveringFor(companyId, access, request.employeeId);
+    const onBehalfOf = await this.coveringFor(companyId, access, request.employeeId, request.approverIds);
     const { count } = await this.prisma.attendanceRegularisation.updateMany({
       where: { id, status: RegularisationStatus.PENDING },
       data: { status: RegularisationStatus.REJECTED, reviewedById: access.userId, onBehalfOfId: onBehalfOf, reviewedAt: new Date(), reviewNote: dto.note ?? null },
@@ -211,11 +212,24 @@ export class RegularisationService {
   }
 
   /** Pending request whose employee the caller may approve for (404 otherwise). */
+  /**
+   * Requests the caller may decide: people their attendance.approve scope reaches
+   * (managers, HR, delegations), or requests where they are in the approver pool
+   * (project team lead / PM / line manager) or cover someone who is. Never their own.
+   */
+  private reviewReach(access: AccessContext): Prisma.AttendanceRegularisationWhereInput | null {
+    const scope = this.access.employeeScope(access, APPROVE);
+    const covering = access.delegations.map((d) => d.fromUserId);
+    return {
+      employee: { userId: { not: access.userId } },
+      OR: [...(scope ? [{ employee: scope }] : []), { approverIds: { hasSome: [access.userId, ...covering] } }],
+    };
+  }
+
   private async reviewable(companyId: string, access: AccessContext, id: string) {
-    const scope = this.access.requireEmployeeScope(access, APPROVE);
     const request = await this.prisma.attendanceRegularisation.findFirst({
-      where: { id, companyId, employee: scope },
-      select: { id: true, employeeId: true, date: true, checkIn: true, checkOut: true, reason: true, status: true },
+      where: { id, companyId, AND: [this.reviewReach(access)!] },
+      select: { id: true, employeeId: true, date: true, checkIn: true, checkOut: true, reason: true, status: true, approverIds: true },
     });
     if (!request) throw new NotFoundException('Request not found');
     if (request.status !== RegularisationStatus.PENDING) throw new ConflictException('This request has already been decided');
@@ -226,12 +240,15 @@ export class RegularisationService {
    * null when the caller's own roles reach the employee; otherwise the user
    * they are covering for (recorded as "on behalf of").
    */
-  private async coveringFor(companyId: string, access: AccessContext, employeeId: string): Promise<string | null> {
+  private async coveringFor(companyId: string, access: AccessContext, employeeId: string, pool: string[] = []): Promise<string | null> {
+    if (pool.includes(access.userId)) return null;
     const reaches = async (ctx: AccessContext) => {
       const scope = this.access.employeeScope(ctx, APPROVE);
       return Boolean(scope) && (await this.prisma.employee.count({ where: { AND: [{ id: employeeId, companyId }, scope!] } })) > 0;
     };
     if (access.isSuperAdmin || (await reaches({ ...access, delegations: [] }))) return null;
+    const forPool = access.delegations.find((d) => pool.includes(d.fromUserId));
+    if (forPool) return forPool.fromUserId;
     for (const d of access.delegations as ActiveDelegation[]) {
       if (await reaches({ ...access, grants: new Map(), delegations: [d] })) return d.fromUserId;
     }

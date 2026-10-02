@@ -74,6 +74,9 @@ export interface LeaveRequest {
   approvals: Array<{
     level: number;
     status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'SKIPPED';
+    label: string | null;
+    /** Everyone who may decide this level */
+    approvers: Named[];
     comments: string | null;
     actedAt: string | null;
     approver: Named | null;
@@ -93,6 +96,8 @@ export interface LeavePreview {
   errors: string[];
   warnings: string[];
   leaveType: { id: string; name: string; accrual: LeaveAccrual; approvalLevels: number };
+  /** Who will approve: per level, why and who */
+  route?: { mode: 'project' | 'reporting_line'; levels: Array<{ label: string; approvers: Named[] }> };
 }
 
 export interface Paged<T> {
@@ -168,12 +173,12 @@ export function useLeaveRequests(q: { view: 'mine' | 'review' | 'all'; status?: 
 
 /** Leave requests waiting for me — nav badge (delegated approvals included). */
 export function usePendingLeave() {
-  const { can, access, hasFeature } = useAccess();
-  const approver = can('leave.approve') || Boolean(access?.delegations.some((d) => d.permissions.includes('leave.approve')));
+  const { hasFeature } = useAccess();
+  // Project leads and line managers approve without a role permission — ask the API
   return useQuery({
     queryKey: leaveKeys.pendingCount,
     queryFn: async () => unwrap<{ count: number }>(await api.get('/leave/requests/pending-count')).count,
-    enabled: approver && hasFeature('time.leave'),
+    enabled: hasFeature('time.leave'),
     refetchInterval: 2 * 60_000,
   });
 }

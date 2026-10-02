@@ -10,6 +10,8 @@ import { ProfileTabs } from '@/components/profile/profile-tabs';
 import { InfoGrid } from '@/components/profile/personal-section';
 import { useAccess } from '@/lib/access/use-access';
 import { useMyCard, type MyCard } from '@/lib/company/profile';
+import { useCapacity } from '@/lib/company/projects';
+import { ProjectsPanel } from '@/components/projects/projects-panel';
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatDate } from '@/lib/format';
 
@@ -47,8 +49,13 @@ export default function MyProfilePage() {
 }
 
 function JobOverview({ employee }: { employee: NonNullable<MyCard['employee']> }) {
+  const { can, hasFeature } = useAccess();
+  const projects = useCapacity(employee.id, {}, hasFeature('work.projects') && can('project.view'));
   return (
     <div className="grid gap-4 lg:grid-cols-2">
+      {projects.data && projects.data.assignments.length > 0 && (
+        <div className="lg:col-span-2"><ProjectsPanel capacity={projects.data} /></div>
+      )}
       <Card>
         <CardHeader icon={<Briefcase />} title="Job" />
         <InfoGrid

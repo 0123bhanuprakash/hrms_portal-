@@ -10,6 +10,7 @@ import { Field, Textarea } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { LeaveRequestCard } from '@/components/leave/request-card';
 import { useAccess } from '@/lib/access/use-access';
+import { useIsApprover } from '@/lib/company/projects';
 import { leaveRange, useDecideLeave, useLeaveRequests, type LeaveRequest, type LeaveStatus } from '@/lib/company/leave';
 import { getApiErrorMessage } from '@/lib/errors';
 
@@ -18,7 +19,8 @@ type View = 'review' | 'all';
 export default function LeaveApprovalsPage() {
   const { can, scopeOf, access, hasFeature, isLoading: accessLoading } = useAccess();
   const delegated = access?.delegations.filter((d) => d.permissions.includes('leave.approve')) ?? [];
-  const approver = can('leave.approve') || delegated.length > 0;
+  const isApprover = useIsApprover('leave.approve');
+  const approver = can('leave.approve') || delegated.length > 0 || isApprover;
   const canSeeAll = can('leave.view') && scopeOf('leave.view') !== 'own';
   const allowed = hasFeature('time.leave') && (approver || canSeeAll);
   // Default tab follows access once it has loaded (approvers start on their queue)

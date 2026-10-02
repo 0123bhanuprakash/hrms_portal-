@@ -119,6 +119,19 @@ enum AttendanceStatus {
   WORK_FROM_HOME
 }
 
+enum ProjectStatus {
+  PLANNED
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+}
+
+enum ProjectRole {
+  MEMBER
+  TEAM_LEAD
+  MANAGER
+}
+
 enum RegularisationStatus {
   PENDING
   APPROVED
@@ -347,6 +360,7 @@ model Company {
   designations    Designation[]
   officeLocations OfficeLocation[]
   leaveTypes      LeaveType[]
+  projects        Project[]
   holidays        PublicHoliday[]
   payrollRuns     PayrollRun[]
   payslips        Payslip[]
@@ -599,6 +613,8 @@ model Employee {
   leaveRequests     LeaveRequest[]
   attendanceRecords AttendanceRecord[]
   regularisations   AttendanceRegularisation[]
+  projectMembers    ProjectMember[]            @relation("ProjectMemberEmployee")
+  ledMembers        ProjectMember[]            @relation("ProjectMemberLead")
   payslips          Payslip[]
   /// Closure table: everyone above me (incl. myself at depth 0)
   ancestors         EmployeeHierarchy[]        @relation("HierarchyDescendant")
@@ -919,8 +935,12 @@ model LeaveApproval {
   id             String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   leaveRequestId String              @map("leave_request_id") @db.Uuid
   level          Int
-  /// Designated approver from the reporting chain (null = any company-wide approver, e.g. HR)
+  /// First approver of the pool (display); null = only company-wide approvers (HR)
   approverId     String?             @map("approver_id") @db.Uuid
+  /// Everyone who may decide this level (team leads, PMs, line manager…)
+  approverIds    String[]            @default([]) @map("approver_ids") @db.Uuid
+  /// Why these people, e.g. "Team lead · Apollo"
+  label          String?
   status         LeaveApprovalStatus @default(PENDING)
   /// Who actually decided (approver, their delegate, or a company-wide approver)
   actedById      String?             @map("acted_by_id") @db.Uuid
@@ -1007,6 +1027,8 @@ model AttendanceRegularisation {
   reviewedById String?              @map("reviewed_by_id") @db.Uuid
   /// Set when the reviewer acted while covering for someone (approval delegation)
   onBehalfOfId String?              @map("on_behalf_of_id") @db.Uuid
+  /// Project / line approvers worked out when the request was made
+  approverIds  String[]             @default([]) @map("approver_ids") @db.Uuid
   reviewedAt   DateTime?            @map("reviewed_at")
   reviewNote   String?              @map("review_note")
   createdAt    DateTime             @default(now()) @map("created_at")
@@ -1282,4 +1304,53 @@ model Notification {
   @@index([userId, readAt])
   @@index([userId, createdAt])
   @@map("notifications")
+}
+
+/// A client / internal project. People are assigned through ProjectMember.
+model Project {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId   String        @map("company_id") @db.Uuid
+  code        String
+  name        String
+  description String?
+  clientName  String?       @map("client_name")
+  status      ProjectStatus @default(ACTIVE)
+  startDate   DateTime      @map("start_date") @db.Date
+  endDate     DateTime?     @map("end_date") @db.Date
+  createdById String?       @map("created_by_id") @db.Uuid
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  company Company         @relation(fields: [companyId], references: [id])
+  members ProjectMember[]
+
+  @@unique([companyId, code])
+  @@index([companyId, status])
+  @@map("projects")
+}
+
+/// Someone's assignment to a project: role, their team lead, allocation %.
+/// An employee's overlapping allocations never exceed 100%.
+model ProjectMember {
+  id             String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId      String      @map("company_id") @db.Uuid
+  projectId      String      @map("project_id") @db.Uuid
+  employeeId     String      @map("employee_id") @db.Uuid
+  role           ProjectRole @default(MEMBER)
+  /// Members only: their team lead in this project (a TEAM_LEAD of the same project)
+  leadEmployeeId String?     @map("lead_employee_id") @db.Uuid
+  /// 1–100
+  allocation     Int
+  startDate      DateTime    @map("start_date") @db.Date
+  endDate        DateTime?   @map("end_date") @db.Date
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+
+  project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  employee Employee  @relation("ProjectMemberEmployee", fields: [employeeId], references: [id], onDelete: Cascade)
+  lead     Employee? @relation("ProjectMemberLead", fields: [leadEmployeeId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, employeeId])
+  @@index([projectId])
+  @@map("project_members")
 }

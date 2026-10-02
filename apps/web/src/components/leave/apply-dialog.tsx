@@ -153,6 +153,17 @@ export function ApplyLeaveDialog({ open, onClose, initialTypeCode }: { open: boo
                     : `Needs ${preview.leaveType.approvalLevels} approvals up your reporting line.`}
                 {' '}Weekly offs and holidays aren’t counted{type?.includeNonWorkingDays ? ' — except for this type' : ''}.
               </p>
+              {preview.route && preview.route.levels.length > 0 && (
+                <div className="mt-1 space-y-0.5 border-t border-border pt-1.5 text-xs">
+                  {preview.route.levels.map((l, i) => (
+                    <p key={i}>
+                      <span className="text-muted-foreground">{preview.route!.levels.length > 1 ? `Step ${i + 1}: ` : 'Goes to: '}</span>
+                      <span className="font-medium">{l.approvers.length ? l.approvers.map((a) => `${a.firstName} ${a.lastName}`).join(' or ') : 'HR'}</span>
+                      {l.label && <span className="text-muted-foreground"> — {l.label}</span>}
+                    </p>
+                  ))}
+                </div>
+              )}
               {preview.warnings.map((w) => <p key={w} className="text-xs text-warning">{w}</p>)}
             </div>
           )}

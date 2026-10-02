@@ -10,6 +10,7 @@ import { LeaveTypesService, type LeaveTypeRow } from './leave-types.service';
 import { LeaveBalancesService, eligible } from './leave-balances.service';
 import { countLeaveDays } from './leave-rules';
 import { NotificationsService, dateRange } from '../notifications/notifications.service';
+import { ApprovalRouterService } from '../projects/approval-router.service';
 import type { CancelLeaveDto, CreateLeaveRequestDto, DecideLeaveDto, LeaveCalendarQueryDto, LeaveListQueryDto, LeaveRequestInputDto } from './dto';
 
 const APPROVE = 'leave.approve';
@@ -45,7 +46,7 @@ const SELECT = {
   leaveType: { select: { id: true, name: true, code: true, color: true, countsAsPresent: true, isPaid: true } },
   approvals: {
     orderBy: { level: 'asc' },
-    select: { level: true, status: true, approverId: true, comments: true, actedAt: true, approver: NAME, actedBy: NAME, onBehalfOf: NAME },
+    select: { level: true, status: true, approverId: true, approverIds: true, label: true, actedById: true, comments: true, actedAt: true, approver: NAME, actedBy: NAME, onBehalfOf: NAME },
   },
 } satisfies Prisma.LeaveRequestSelect;
 type RequestRow = Prisma.LeaveRequestGetPayload<{ select: typeof SELECT }>;
@@ -62,6 +63,7 @@ export class LeaveRequestsService {
     private readonly types: LeaveTypesService,
     private readonly balances: LeaveBalancesService,
     private readonly notifications: NotificationsService,
+    private readonly router: ApprovalRouterService,
   ) {}
 
   // ─── Apply ─────────────────────────────────────────────────
@@ -71,7 +73,17 @@ export class LeaveRequestsService {
     const person = await this.me(companyId, access);
     const type = await this.types.get(companyId, dto.leaveTypeId);
     const result = await this.evaluate(companyId, person, type, dto);
-    return { ...result, leaveType: { id: type.id, name: type.name, accrual: type.accrual, approvalLevels: type.approvalLevels } };
+    const ok = dto.endDate >= dto.startDate;
+    const route = ok ? await this.router.route(companyId, person.id, dto.startDate, dto.endDate, type.approvalLevels) : { mode: 'reporting_line' as const, levels: [] };
+    const names = await this.router.names(route.levels.flatMap((l) => l.approverIds));
+    return {
+      ...result,
+      leaveType: { id: type.id, name: type.name, accrual: type.accrual, approvalLevels: type.approvalLevels },
+      route: {
+        mode: route.mode,
+        levels: route.levels.map((l) => ({ label: l.label, approvers: l.approverIds.map((id) => names.get(id)).filter(Boolean) })),
+      },
+    };
   }
 
   async create(companyId: string, access: AccessContext, dto: CreateLeaveRequestDto) {
@@ -80,7 +92,7 @@ export class LeaveRequestsService {
     const check = await this.evaluate(companyId, person, type, dto);
     if (check.errors.length) throw new BadRequestException(check.errors[0]);
 
-    const chain = await this.approverChain(companyId, person.id, type.approvalLevels);
+    const route = await this.router.route(companyId, person.id, dto.startDate, dto.endDate, type.approvalLevels);
     const auto = type.approvalLevels === 0;
     const year = Number(dto.startDate.slice(0, 4));
 
@@ -104,8 +116,10 @@ export class LeaveRequestsService {
           status: auto ? LeaveStatus.APPROVED : LeaveStatus.PENDING,
           decidedAt: auto ? new Date() : null,
           currentLevel: 1,
-          requiredLevels: chain.length,
-          approvals: { create: chain.map((approverId, i) => ({ level: i + 1, approverId })) },
+          requiredLevels: route.levels.length,
+          approvals: {
+            create: route.levels.map((l, i) => ({ level: i + 1, approverId: l.approverIds[0] ?? null, approverIds: l.approverIds, label: l.label })),
+          },
         },
         select: { id: true },
       });
@@ -114,22 +128,6 @@ export class LeaveRequestsService {
     });
     if (!auto) void this.notifyApprovers(companyId, id);
     return this.getRow(companyId, access, id, true);
-  }
-
-  /**
-   * Designated approver per level, walking up the reporting chain.
-   * Levels without anyone above are dropped; if nobody is above at all,
-   * one level is left for company-wide approvers (HR).
-   */
-  private async approverChain(companyId: string, employeeId: string, levels: number): Promise<Array<string | null>> {
-    if (levels === 0) return [];
-    const above = await this.prisma.employeeHierarchy.findMany({
-      where: { companyId, descendantId: employeeId, depth: { gte: 1, lte: levels } },
-      orderBy: { depth: 'asc' },
-      select: { ancestor: { select: { userId: true, employmentStatus: true } } },
-    });
-    const chain = above.filter((a) => a.ancestor.employmentStatus !== 'TERMINATED').map((a) => a.ancestor.userId);
-    return chain.length ? chain : [null];
   }
 
   private async evaluate(companyId: string, person: { id: string; joiningDate: Date; gender: string | null }, type: LeaveTypeRow, dto: LeaveRequestInputDto) {
@@ -257,7 +255,8 @@ export class LeaveRequestsService {
     } else if (!wasApproved) {
       // Withdrawn while pending: let the approver know it no longer needs them (in-app only)
       const level = request.approvals.find((a) => a.level === request.currentLevel);
-      const to = level?.approverId ? [level.approverId, ...(await this.notifications.coveringFor([level.approverId]))] : [];
+      const pool = level ? this.pool(level) : [];
+      const to = [...pool, ...(await this.notifications.coveringFor(pool))];
       void this.notifications.notify({
         companyId,
         userIds: to,
@@ -286,11 +285,24 @@ export class LeaveRequestsService {
     if (request.status !== LeaveStatus.PENDING || request.employee.userId === access.userId) return null;
     const row = request.approvals.find((a) => a.level === request.currentLevel);
     if (!row || row.status !== LeaveApprovalStatus.PENDING) return null;
-    if (row.approverId && row.approverId === access.userId && access.grants.has(APPROVE)) return { mode: 'approver', onBehalfOf: null };
-    const covering = row.approverId ? access.delegations.find((d) => d.fromUserId === row.approverId && d.grants.has(APPROVE)) : undefined;
+    if (this.companyWide(access)) {
+      // HR / Company Admin settles the request — unless they are simply in this level's pool
+      if (!this.pool(row).includes(access.userId)) return { mode: 'override', onBehalfOf: null };
+    }
+    // The same person never approves two levels of one request
+    const decidedBefore = request.approvals.some((a) => a.level < row.level && a.actedById === access.userId);
+    if (decidedBefore) return this.companyWide(access) ? { mode: 'override', onBehalfOf: null } : null;
+    const pool = this.pool(row);
+    if (pool.includes(access.userId)) return { mode: 'approver', onBehalfOf: null };
+    // Covering for someone in the pool (their authority may come from a project, not a role)
+    const covering = access.delegations.find((d) => pool.includes(d.fromUserId));
     if (covering) return { mode: 'delegate', onBehalfOf: covering.fromUserId };
-    if (this.companyWide(access)) return { mode: 'override', onBehalfOf: null };
     return null;
+  }
+
+  /** Everyone who may decide a level (older rows only have approverId). */
+  private pool(row: { approverId: string | null; approverIds: string[] }): string[] {
+    return row.approverIds.length ? row.approverIds : row.approverId ? [row.approverId] : [];
   }
 
   /** HR / Company Admin: leave.approve across the whole company. */
@@ -312,9 +324,8 @@ export class LeaveRequestsService {
     const r = await this.prisma.leaveRequest.findUnique({ where: { id }, select: SELECT });
     if (!r || r.status !== LeaveStatus.PENDING) return;
     const level = r.approvals.find((a) => a.level === r.currentLevel);
-    const to = level?.approverId
-      ? [level.approverId, ...(await this.notifications.coveringFor([level.approverId]))]
-      : await this.notifications.companyWideApprovers(companyId, APPROVE);
+    const pool = level ? this.pool(level) : [];
+    const to = pool.length ? [...pool, ...(await this.notifications.coveringFor(pool))] : await this.notifications.companyWideApprovers(companyId, APPROVE);
     const who = `${r.employee.firstName} ${r.employee.lastName}`;
     const step = r.requiredLevels > 1 ? ` (approval ${r.currentLevel} of ${r.requiredLevels})` : '';
     await this.notifications.notify({
@@ -369,13 +380,13 @@ export class LeaveRequestsService {
       where = { ...filters, employee: this.access.requireEmployeeScope(access, 'leave.view') };
     } else {
       // Waiting for me: current level is mine, someone I cover for, or (company-wide) unassigned / anyone
-      const covering = access.delegations.filter((d) => d.grants.has(APPROVE)).map((d) => d.fromUserId);
+      const covering = access.delegations.map((d) => d.fromUserId);
       const pending = await this.prisma.leaveRequest.findMany({
         where: {
           companyId,
           status: LeaveStatus.PENDING,
           employee: { userId: { not: access.userId } },
-          ...(this.companyWide(access) ? {} : { approvals: { some: { status: LeaveApprovalStatus.PENDING, approverId: { in: [access.userId, ...covering] } } } }),
+          ...(this.companyWide(access) ? {} : { approvals: { some: { status: LeaveApprovalStatus.PENDING, approverIds: { hasSome: [access.userId, ...covering] } } } }),
         },
         select: SELECT,
         orderBy: { startDate: 'asc' },
@@ -383,8 +394,9 @@ export class LeaveRequestsService {
       const mine = pending.filter((r) => {
         const row = r.approvals.find((a) => a.level === r.currentLevel);
         if (!row) return false;
-        if (row.approverId === access.userId || (row.approverId && covering.includes(row.approverId))) return Boolean(this.deciderFor(access, r));
-        return this.companyWide(access) && row.approverId === null;
+        const pool = this.pool(row);
+        if (pool.includes(access.userId) || pool.some((u) => covering.includes(u))) return Boolean(this.deciderFor(access, r));
+        return this.companyWide(access) && pool.length === 0;
       });
       return this.page(companyId, mine.slice((page - 1) * limit, page * limit), mine.length, page, limit, access);
     }
@@ -397,7 +409,6 @@ export class LeaveRequestsService {
   }
 
   async pendingCount(companyId: string, access: AccessContext): Promise<number> {
-    if (!access.grants.has(APPROVE) && !access.delegations.some((d) => d.grants.has(APPROVE)) && !access.isSuperAdmin) return 0;
     return (await this.list(companyId, access, { view: 'review', limit: 100 })).meta.total;
   }
 
@@ -410,11 +421,11 @@ export class LeaveRequestsService {
       r.employee.userId === access.userId ||
       Boolean(this.deciderFor(access, r)) ||
       decided ||
-      r.approvals.some((a) => a.approverId === access.userId || access.delegations.some((d) => d.fromUserId === a.approverId && d.grants.has(APPROVE))) ||
+      r.approvals.some((a) => this.pool(a).includes(access.userId) || access.delegations.some((d) => this.pool(a).includes(d.fromUserId))) ||
       (scope !== null && (await this.prisma.employee.count({ where: { AND: [{ id: r.employee.id }, scope] } })) > 0);
     if (!visible) throw new NotFoundException('Leave request not found');
     const todayKey = localDateKey(new Date(), (await this.policies.get(companyId)).timeZone);
-    return this.present(r, access, todayKey);
+    return this.present(r, access, todayKey, await this.poolNames([r]));
   }
 
   /** Who is off in a month (approved + pending), within the caller's leave.view reach. */
@@ -437,19 +448,25 @@ export class LeaveRequestsService {
       this.holidays.between(companyId, from, to),
     ]);
     const todayKey = localDateKey(new Date(), (await this.policies.get(companyId)).timeZone);
+    const names = await this.poolNames(rows);
     return {
       month: query.month,
       holidays: [...holidays.values()].map((h) => ({ id: h.id, name: h.name, date: keyFromDate(h.date), isOptional: h.isOptional })),
-      leaves: rows.map((r) => this.present(r, access, todayKey)),
+      leaves: rows.map((r) => this.present(r, access, todayKey, names)),
     };
   }
 
   private async page(companyId: string, rows: RequestRow[], total: number, page: number, limit: number, access: AccessContext) {
     const todayKey = localDateKey(new Date(), (await this.policies.get(companyId)).timeZone);
-    return { data: rows.map((r) => this.present(r, access, todayKey)), meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
+    const names = await this.poolNames(rows);
+    return { data: rows.map((r) => this.present(r, access, todayKey, names)), meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
 
-  private present(r: RequestRow, access: AccessContext, todayKey: string) {
+  private poolNames(rows: RequestRow[]) {
+    return this.router.names(rows.flatMap((r) => r.approvals.flatMap((a) => this.pool(a))));
+  }
+
+  private present(r: RequestRow, access: AccessContext, todayKey: string, names: Map<string, { id: string; firstName: string; lastName: string }> = new Map()) {
     const { userId: _u, ...employee } = r.employee;
     const decider = this.deciderFor(access, r);
     return {
@@ -457,7 +474,10 @@ export class LeaveRequestsService {
       employee,
       startDate: keyFromDate(r.startDate),
       endDate: keyFromDate(r.endDate),
-      approvals: r.approvals.map(({ approverId: _a, ...a }) => a),
+      approvals: r.approvals.map(({ approverId: _a, approverIds: _ids, actedById: _by, ...a }) => ({
+        ...a,
+        approvers: this.pool({ approverId: _a, approverIds: _ids }).map((id) => names.get(id)).filter(Boolean),
+      })),
       canDecide: Boolean(decider),
       decideAs: decider?.mode ?? null,
       canCancel: this.canCancel(access, r, todayKey),

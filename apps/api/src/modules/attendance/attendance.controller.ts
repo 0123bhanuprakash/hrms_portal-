@@ -123,7 +123,7 @@ export class AttendanceController {
     return { count: await this.corrections.pendingCount(ctx.companyId!, access) };
   }
 
-  @RequirePermission('attendance.approve')
+  // Who may decide is checked per request (project leads, line manager, delegates, HR)
   @Audit('attendance:correction:approve', 'attendance_regularisation')
   @Post('regularisations/:id/approve')
   @HttpCode(HttpStatus.OK)
@@ -131,7 +131,6 @@ export class AttendanceController {
     return this.corrections.approve(ctx.companyId!, access, id, dto);
   }
 
-  @RequirePermission('attendance.approve')
   @Audit('attendance:correction:reject', 'attendance_regularisation')
   @Post('regularisations/:id/reject')
   @HttpCode(HttpStatus.OK)

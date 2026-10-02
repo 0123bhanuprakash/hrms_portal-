@@ -256,12 +256,12 @@ export function useCorrections(q: { view: 'mine' | 'review'; status?: Correction
 
 /** Corrections waiting for me — for the nav badge. Covers delegated approvals too. */
 export function usePendingCorrections() {
-  const { can, access, hasFeature } = useAccess();
-  const approver = can('attendance.approve') || Boolean(access?.delegations.some((d) => d.permissions.includes('attendance.approve')));
+  const { hasFeature } = useAccess();
+  // Project leads and line managers approve without a role permission — ask the API
   return useQuery({
     queryKey: attendanceKeys.pendingCount,
     queryFn: async () => unwrap<{ count: number }>(await api.get('/attendance/regularisations/pending-count')).count,
-    enabled: approver && hasFeature('time.attendance'),
+    enabled: hasFeature('time.attendance'),
     refetchInterval: 2 * 60_000,
   });
 }

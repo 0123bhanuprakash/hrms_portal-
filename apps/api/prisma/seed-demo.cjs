@@ -8,7 +8,8 @@
 // Adds departments, org levels, job titles, locations, a custom
 // "Payroll Officer" role and ~12 people with reporting lines to an
 // EXISTING company, plus national holidays and the last 30 days of
-// attendance (with a few late days, absences and one pending correction). Every account gets DEMO_PASSWORD and can sign in
+// attendance (with a few late days, absences and one pending correction),
+// and two projects (Apollo, Zeus) with a PMO, PM, team leads and members. Every account gets DEMO_PASSWORD and can sign in
 // straight away (no temporary-password step). No emails are sent.
 // Idempotent: anything that already exists (by email / name) is kept.
 // ============================================================
@@ -82,7 +83,7 @@ async function main() {
   if (!company) throw new Error(`Company '${slug}' not found`);
   const domain = slug.split('-')[0]; // aakash-portal → ravi.aakash@yopmail.com
   const companyId = company.id;
-  const created = { departments: 0, levels: 0, titles: 0, locations: 0, people: 0, holidays: 0, attendanceDays: 0, corrections: 0 };
+  const created = { departments: 0, levels: 0, titles: 0, locations: 0, people: 0, holidays: 0, attendanceDays: 0, corrections: 0, projects: 0, assignments: 0 };
 
   // Roles (the company's own copies; created by the API at start-up)
   const roles = Object.fromEntries((await prisma.role.findMany({ where: { companyId, key: { not: null } } })).map((r) => [r.key, r.id]));
@@ -189,6 +190,7 @@ async function main() {
   await rebuild(companyId);
 
   await seedTime(companyId, company.settings?.timezone || 'Asia/Kolkata', empOf, created);
+  await seedProjects(companyId, empOf, created);
   return created;
 }
 
@@ -263,6 +265,42 @@ async function seedTime(companyId, timeZone, empOf, created) {
         data: { companyId, employeeId: amit, date: missed.date, checkIn: zoned(key, 9 * 60 + 30, timeZone), checkOut: zoned(key, 18 * 60 + 40, timeZone), reason: 'Reached on time — the office Wi-Fi was down so check-in failed' },
       });
       created.corrections++;
+    }
+  }
+}
+
+// ─── Projects demo data ─────────────────────────────────────
+
+// [code, name, client, assignments: [local, role, allocation, lead-local]]
+const PROJECTS = [
+  ['APOLLO', 'Apollo', 'Acme Retail', [
+    ['ravi', 'MANAGER', 60], ['priya', 'TEAM_LEAD', 100], ['karan', 'TEAM_LEAD', 100],
+    ['amit', 'MEMBER', 80, 'priya'], ['neha', 'MEMBER', 100, 'priya'], ['sara', 'MEMBER', 100, 'karan'],
+  ]],
+  ['ZEUS', 'Zeus', 'Northwind Bank', [['ravi', 'MANAGER', 40], ['amit', 'MEMBER', 20]]],
+];
+
+async function seedProjects(companyId, empOf, created) {
+  // Vikram (Head of Operations) is the PMO
+  const pmo = await prisma.role.findFirst({ where: { companyId, key: 'pmo' } });
+  const vikram = await prisma.employee.findUnique({ where: { id: empOf.vikram ?? '00000000-0000-0000-0000-000000000000' }, select: { userId: true } });
+  if (pmo && vikram) await prisma.userRole.upsert({ where: { userId_roleId: { userId: vikram.userId, roleId: pmo.id } }, update: {}, create: { userId: vikram.userId, roleId: pmo.id, companyId } });
+
+  const start = new Date('2026-01-05T00:00:00Z');
+  for (const [code, name, clientName, members] of PROJECTS) {
+    let project = await prisma.project.findUnique({ where: { companyId_code: { companyId, code } } });
+    if (!project) {
+      project = await prisma.project.create({ data: { companyId, code, name, clientName, status: 'ACTIVE', startDate: start } });
+      created.projects++;
+    }
+    for (const [local, role, allocation, lead] of members) {
+      const employeeId = empOf[local];
+      if (!employeeId) continue;
+      if (await prisma.projectMember.count({ where: { projectId: project.id, employeeId } })) continue;
+      await prisma.projectMember.create({
+        data: { companyId, projectId: project.id, employeeId, role, allocation, startDate: start, leadEmployeeId: lead ? empOf[lead] ?? null : null },
+      });
+      created.assignments++;
     }
   }
 }

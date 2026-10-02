@@ -1,0 +1,149 @@
+'use client';
+
+import React, { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
+import { AlertTriangle, CheckCircle2, Loader2, UserPlus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Field, Input, inputClass } from '@/components/ui/field';
+import { Modal } from '@/components/ui/modal';
+import { useOrgChart } from '@/lib/company/org';
+import { ROLE_LABEL, useCapacity, useSaveMember, type Assignment, type ProjectDetail, type ProjectRole } from '@/lib/company/projects';
+import { getApiErrorMessage } from '@/lib/errors';
+
+interface Form {
+  employeeId: string;
+  role: ProjectRole;
+  leadEmployeeId: string;
+  allocation: number;
+  startDate: string;
+  endDate: string;
+}
+
+/** Assign someone (or edit an assignment): role, team lead, allocation % with live free capacity. */
+export function MemberDialog({ project, value, onClose }: { project: ProjectDetail; value: Assignment | 'new' | null; onClose: () => void }) {
+  const save = useSaveMember(project.id);
+  const chart = useOrgChart();
+  const [f, setF] = useState<Form>({ employeeId: '', role: 'MEMBER', leadEmployeeId: '', allocation: 100, startDate: project.startDate, endDate: project.endDate ?? '' });
+  const [error, setError] = useState<string | null>(null);
+  const editing = value && value !== 'new' ? value : null;
+
+  useEffect(() => {
+    if (!value) return;
+    setError(null);
+    const start = project.today > project.startDate ? project.today : project.startDate;
+    setF(
+      editing
+        ? { employeeId: editing.employee.id, role: editing.role, leadEmployeeId: editing.lead?.id ?? '', allocation: editing.allocation, startDate: editing.startDate, endDate: editing.endDate ?? '' }
+        : { employeeId: '', role: 'MEMBER', leadEmployeeId: '', allocation: 100, startDate: start, endDate: project.endDate ?? '' },
+    );
+  }, [value, editing, project]);
+
+  // Free capacity for the chosen dates (this assignment excluded when editing)
+  const capacity = useCapacity(f.employeeId || undefined, { from: f.startDate, to: f.endDate || null, excludeMemberId: editing?.id }, Boolean(value && f.employeeId && f.startDate));
+  const leads = useMemo(
+    () => project.members.filter((m) => m.role === 'TEAM_LEAD' && m.employee.id !== f.employeeId && (m.active || m.upcoming)),
+    [project.members, f.employeeId],
+  );
+  const people = useMemo(
+    () => (chart.data?.employees ?? []).filter((e) => e.employmentStatus !== 'TERMINATED').sort((a, b) => a.firstName.localeCompare(b.firstName)),
+    [chart.data],
+  );
+
+  if (!value) return null;
+  const set = <K extends keyof Form>(k: K, v: Form[K]) => setF((p) => ({ ...p, [k]: v }));
+  const free = capacity.data?.free;
+  const over = free !== undefined && f.allocation > free;
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    try {
+      const r = await save.mutateAsync({
+        ...(editing && { id: editing.id }),
+        employeeId: f.employeeId,
+        role: f.role,
+        leadEmployeeId: f.role === 'MEMBER' ? f.leadEmployeeId || null : null,
+        allocation: Number(f.allocation),
+        startDate: f.startDate,
+        endDate: f.endDate || null,
+      });
+      toast.success(editing ? 'Assignment updated' : `${r.employee.firstName} added as ${ROLE_LABEL[r.role].toLowerCase()}`);
+      if (r.unassignedMembers) toast.info(`${r.unassignedMembers} member${r.unassignedMembers === 1 ? '' : 's'} no longer have a team lead — they now go to the project manager`);
+      onClose();
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Could not save the assignment'));
+    }
+  };
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      busy={save.isPending}
+      icon={<UserPlus />}
+      title={editing ? `Edit ${editing.employee.firstName}’s assignment` : `Assign someone to ${project.name}`}
+      className="sm:max-w-lg"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={save.isPending}>Cancel</Button>
+          <Button type="submit" form="member-form" loading={save.isPending} disabled={!f.employeeId || over}>Save</Button>
+        </>
+      }
+    >
+      <form id="member-form" onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
+        {error && <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive sm:col-span-2">{error}</p>}
+        <Field label="Person" htmlFor="pm-person" required className="sm:col-span-2">
+          <select id="pm-person" className={inputClass} value={f.employeeId} onChange={(e) => set('employeeId', e.target.value)} disabled={Boolean(editing)} required>
+            <option value="">Choose someone…</option>
+            {people.map((p) => (
+              <option key={p.id} value={p.id}>{p.firstName} {p.lastName}{p.designation ? ` — ${p.designation.name}` : ''}</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Role on the project" htmlFor="pm-role">
+          <select id="pm-role" className={inputClass} value={f.role} onChange={(e) => set('role', e.target.value as ProjectRole)}>
+            <option value="MEMBER">Member</option>
+            <option value="TEAM_LEAD">Team lead</option>
+            <option value="MANAGER">Project manager</option>
+          </select>
+        </Field>
+        <Field label="Team lead" htmlFor="pm-lead" hint={f.role === 'MEMBER' ? 'Approves their leave first' : 'Only members have a team lead'}>
+          <select id="pm-lead" className={inputClass} value={f.role === 'MEMBER' ? f.leadEmployeeId : ''} onChange={(e) => set('leadEmployeeId', e.target.value)} disabled={f.role !== 'MEMBER'}>
+            <option value="">None — goes to the PM</option>
+            {leads.map((l) => <option key={l.id} value={l.employee.id}>{l.employee.firstName} {l.employee.lastName}</option>)}
+          </select>
+        </Field>
+        <Field label="From" htmlFor="pm-start" required><Input id="pm-start" type="date" value={f.startDate} min={project.startDate} max={project.endDate ?? undefined} onChange={(e) => set('startDate', e.target.value)} required /></Field>
+        <Field label="Until" htmlFor="pm-end" hint={project.endDate ? undefined : 'Blank = ongoing'}>
+          <Input id="pm-end" type="date" value={f.endDate} min={f.startDate} max={project.endDate ?? undefined} onChange={(e) => set('endDate', e.target.value)} />
+        </Field>
+        <Field label="Allocation" htmlFor="pm-alloc" required className="sm:col-span-2">
+          <div className="flex items-center gap-3">
+            <input id="pm-alloc" type="range" min={5} max={100} step={5} value={f.allocation} onChange={(e) => set('allocation', Number(e.target.value))} className="flex-1 accent-[hsl(var(--primary))]" />
+            <Input type="number" min={1} max={100} value={f.allocation} onChange={(e) => set('allocation', Number(e.target.value))} className="w-20 text-right tabular-nums" aria-label="Allocation percent" />
+            <span className="text-sm text-muted-foreground">%</span>
+          </div>
+        </Field>
+        <div className="rounded-lg border border-border bg-subtle/50 px-3 py-2.5 text-sm sm:col-span-2" aria-live="polite">
+          {!f.employeeId ? (
+            <p className="text-muted-foreground">Choose someone to see how much of their time is free.</p>
+          ) : capacity.isLoading ? (
+            <p className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Checking allocation…</p>
+          ) : capacity.data ? (
+            <div className="space-y-1.5">
+              <p className={over ? 'flex items-center gap-2 font-medium text-destructive' : 'flex items-center gap-2 font-medium'}>
+                {over ? <AlertTriangle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4 text-success" />}
+                {over ? `Only ${free}% is free for these dates — nobody can go over 100%` : `${capacity.data.peak + f.allocation}% allocated at the busiest point (${free}% was free)`}
+              </p>
+              {capacity.data.assignments.filter((a) => a.id !== editing?.id && (a.active || a.upcoming)).map((a) => (
+                <p key={a.id} className="text-xs text-muted-foreground">
+                  {a.allocation}% on {a.project.name} as {a.roleLabel.toLowerCase()} ({a.startDate} → {a.endDate ?? 'ongoing'})
+                </p>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </form>
+    </Modal>
+  );
+}

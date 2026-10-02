@@ -33,7 +33,9 @@ export function LeaveRequestCard({ request: r, showEmployee, actions }: { reques
             {r.approvals.length > 0 && (
               <ol className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs" aria-label="Approvals">
                 {r.approvals.map((a) => {
-                  const who = a.actedBy ?? a.approver;
+                  const pending = a.status === 'PENDING';
+                  const who = a.actedBy ?? (pending ? null : a.approver);
+                  const pool = a.approvers?.length ? a.approvers.map((x) => x.firstName).join(' / ') : 'HR';
                   const icon =
                     a.status === 'APPROVED' ? <Check className="h-3.5 w-3.5 text-success" /> :
                     a.status === 'REJECTED' ? <X className="h-3.5 w-3.5 text-destructive" /> :
@@ -43,7 +45,7 @@ export function LeaveRequestCard({ request: r, showEmployee, actions }: { reques
                     <li key={a.level} className="inline-flex items-center gap-1.5 text-muted-foreground" title={a.comments ?? undefined}>
                       {icon}
                       <span>
-                        {who ? `${who.firstName} ${who.lastName}` : 'HR'}
+                        {who ? `${who.firstName} ${who.lastName}` : pool}
                         {a.onBehalfOf && ` (for ${a.onBehalfOf.firstName})`}
                         {a.status === 'PENDING' && a.level === r.currentLevel && r.status === 'PENDING' && ' · waiting'}
                         {a.comments && ` — “${a.comments}”`}

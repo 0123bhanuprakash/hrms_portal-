@@ -133,6 +133,23 @@ export const CATALOG: CatalogModule[] = [
     ],
   },
   {
+    key: 'work',
+    label: 'Work',
+    icon: 'Briefcase',
+    features: [
+      {
+        key: 'work.projects',
+        label: 'Projects',
+        description: 'Projects, team leads and allocation. Leave and attendance corrections are approved by the project team lead / manager.',
+        stage: 'ga',
+        permissions: [
+          p('project.view', 'View projects & allocation'),
+          p('project.manage', 'Create projects & assign people (PMO)', [], { requires: ['project.view'], description: 'Add people to projects, set their role, team lead and allocation %.' }),
+        ],
+      },
+    ],
+  },
+  {
     key: 'pay',
     label: 'Pay',
     icon: 'Wallet',
@@ -288,7 +305,7 @@ export const DEFAULT_PLANS: Array<{ key: string; name: string; description: stri
     name: 'Growth',
     description: 'Payroll, documents and reports for growing companies.',
     features: [
-      'people.directory', 'people.org', 'people.documents', 'time.attendance', 'time.leave',
+      'people.directory', 'people.org', 'people.documents', 'time.attendance', 'time.leave', 'work.projects',
       'pay.payroll', 'pay.salary', 'insights.reports', 'admin.users', 'admin.settings', 'admin.audit',
     ],
     limits: { maxEmployees: 500 },
@@ -314,7 +331,7 @@ const SELF_SERVICE: Grant[] = [
   ['attendance.view', 'own'], ['attendance.mark', 'own'],
   ['leave.view', 'own'], ['leave.request', 'own'],
   ['shift.view', 'own'], ['payslip.view', 'own'], ['salary.view', 'own'],
-  ['org.view'],
+  ['org.view'], ['project.view'],
 ];
 
 export const ROLE_TEMPLATES: Array<{ key: string; name: string; description: string; isOwner?: boolean; grants: Grant[] }> = [
@@ -370,6 +387,12 @@ export const ROLE_TEMPLATES: Array<{ key: string; name: string; description: str
       ['leave.view', 'direct_reports'], ['leave.approve', 'direct_reports'],
       ['shift.view', 'direct_reports'],
     ],
+  },
+  {
+    key: 'pmo',
+    name: 'PMO',
+    description: 'Project management office: creates projects and allocates people (role, team lead, allocation %).',
+    grants: [...SELF_SERVICE, ['project.manage'], ['employee.view', 'company']],
   },
   {
     key: 'employee',

@@ -11,6 +11,7 @@ import { Field, Textarea } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { PersonAvatar } from '@/components/profile/person-avatar';
 import { useAccess } from '@/lib/access/use-access';
+import { useIsApprover } from '@/lib/company/projects';
 import { CORRECTION_TONE, STATUS_META, clock, dayLabel, useCorrections, useReviewCorrection, type Correction, type CorrectionStatus } from '@/lib/company/attendance';
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatRelative } from '@/lib/format';
@@ -18,7 +19,8 @@ import { formatRelative } from '@/lib/format';
 export default function AttendanceApprovalsPage() {
   const { can, access, hasFeature, isLoading: accessLoading } = useAccess();
   const delegated = access?.delegations.filter((d) => d.permissions.includes('attendance.approve')) ?? [];
-  const allowed = hasFeature('time.attendance') && (can('attendance.approve') || delegated.length > 0);
+  const isApprover = useIsApprover('attendance.approve');
+  const allowed = hasFeature('time.attendance') && (can('attendance.approve') || delegated.length > 0 || isApprover);
   const [status, setStatus] = useState<CorrectionStatus>('PENDING');
   const [page, setPage] = useState(1);
   const [rejecting, setRejecting] = useState<Correction | null>(null);

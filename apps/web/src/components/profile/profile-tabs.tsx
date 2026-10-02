@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { FolderOpen, Landmark, LayoutList, Plane, UserRound } from 'lucide-react';
+import { FolderKanban, FolderOpen, Landmark, LayoutList, Plane, UserRound } from 'lucide-react';
 import { Skeleton, Tabs } from '@/components/ui/feedback';
 import { PersonalSection } from '@/components/profile/personal-section';
 import { BankIdsSection } from '@/components/profile/bank-ids-section';
@@ -10,8 +10,10 @@ import { useAccess } from '@/lib/access/use-access';
 import { useDocuments, usePrivateProfile } from '@/lib/company/profile';
 import { useLeaveBalances } from '@/lib/company/leave';
 import { BalanceCards } from '@/components/leave/balance-cards';
+import { ProjectsPanel } from '@/components/projects/projects-panel';
+import { useCapacity } from '@/lib/company/projects';
 
-type Tab = 'overview' | 'personal' | 'bank' | 'documents' | 'leave';
+type Tab = 'overview' | 'personal' | 'bank' | 'documents' | 'leave' | 'projects';
 
 /**
  * Overview / Personal / Bank & IDs / Documents. A tab only appears when the
@@ -24,6 +26,7 @@ export function ProfileTabs({ employeeId, isSelf, overview }: { employeeId: stri
   const year = new Date().getFullYear();
   // Someone else's leave balances (my own live on My leave)
   const leave = useLeaveBalances(employeeId, year, !isSelf && hasFeature('time.leave') && can('leave.view'));
+  const projects = useCapacity(employeeId, {}, hasFeature('work.projects') && can('project.view'));
 
   const tabs = useMemo(() => {
     const list: Array<{ id: Tab; label: string; icon: React.ReactNode }> = [];
@@ -34,15 +37,16 @@ export function ProfileTabs({ employeeId, isSelf, overview }: { employeeId: stri
     }
     if (docs.isSuccess) list.push({ id: 'documents', label: 'Documents', icon: <FolderOpen /> });
     if (leave.isSuccess) list.push({ id: 'leave', label: 'Leave', icon: <Plane /> });
+    if (projects.isSuccess) list.push({ id: 'projects', label: 'Projects', icon: <FolderKanban /> });
     return list;
-  }, [overview, privateData.isSuccess, docs.isSuccess, leave.isSuccess]);
+  }, [overview, privateData.isSuccess, docs.isSuccess, leave.isSuccess, projects.isSuccess]);
 
   const [tab, setTab] = useState<Tab>(overview ? 'overview' : 'personal');
   useEffect(() => {
     if (tabs.length && !tabs.some((t) => t.id === tab)) setTab(tabs[0]!.id);
   }, [tabs, tab]);
 
-  const loading = privateData.isLoading || docs.isLoading || leave.isLoading;
+  const loading = privateData.isLoading || docs.isLoading || leave.isLoading || projects.isLoading;
   if (!tabs.length) return loading ? <Skeleton className="h-64 w-full" /> : null;
 
   return (
@@ -53,6 +57,7 @@ export function ProfileTabs({ employeeId, isSelf, overview }: { employeeId: stri
       {tab === 'bank' && privateData.data && <BankIdsSection employeeId={employeeId} data={privateData.data} isSelf={isSelf} />}
       {tab === 'documents' && <DocumentsSection employeeId={employeeId} />}
       {tab === 'leave' && <BalanceCards employeeId={employeeId} year={year} canAdjust={can('leave.adjust_balance')} />}
+      {tab === 'projects' && projects.data && <ProjectsPanel capacity={projects.data} />}
     </div>
   );
 }

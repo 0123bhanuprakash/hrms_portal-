@@ -35,6 +35,7 @@ import {
   CalendarClock,
   CalendarRange,
   Tags,
+  FolderKanban,
 } from 'lucide-react';
 import type { ThemeTokens } from '@hrms/types';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -42,6 +43,7 @@ import { DisplayPreferences } from '@/components/preferences/display-preferences
 import { useAccess } from '@/lib/access/use-access';
 import { usePendingCorrections } from '@/lib/company/attendance';
 import { usePendingLeave } from '@/lib/company/leave';
+import { useIsApprover } from '@/lib/company/projects';
 import { changePasswordPath, loginPathFor, useAuthHydrated, withNext } from '@/lib/auth/portal';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { NotificationBell } from '@/components/notifications/notification-bell';
@@ -63,7 +65,7 @@ interface NavItem {
   feature?: string;
   /** Hide when the permission only reaches the user's own record */
   beyondOwn?: boolean;
-  /** Also show while covering this permission for someone (approval delegation) */
+  /** Also show for anyone who approves: covering someone, project lead / PM, line manager */
   orDelegated?: boolean;
   /** Live count shown on the item */
   badge?: 'attendanceApprovals' | 'leaveApprovals';
@@ -84,6 +86,10 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
       { name: 'Employees', href: '/app/employees', icon: Users, permission: 'employee.view', beyondOwn: true },
       { name: 'Organisation', href: '/app/org', icon: Network, permission: 'org.view' },
     ],
+  },
+  {
+    label: 'Work',
+    items: [{ name: 'Projects', href: '/app/projects', icon: FolderKanban, permission: 'project.view', feature: 'work.projects' }],
   },
   {
     label: 'Time',
@@ -132,6 +138,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   approvals: 'Approvals',
   holidays: 'Holidays',
   leave: 'Leave',
+  projects: 'Projects',
   notifications: 'Notifications',
   calendar: 'Who’s off',
   types: 'Leave types',
@@ -183,6 +190,7 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
   const { can: canAccess, access, hasFeature, scopeOf } = useAccess();
   const pendingApprovals = usePendingCorrections();
   const pendingLeave = usePendingLeave();
+  const isApprover = useIsApprover('leave.approve');
   const [mobileOpen, setMobileOpen] = useState(false);
   const branding = useCompanyBranding(hydrated ? companyId : null);
 
@@ -255,7 +263,7 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
           {NAV_GROUPS.map((group) => {
             const items = group.items.filter(
               (i) =>
-                (can(i.permission) || (i.orDelegated && Boolean(access?.delegations.some((d) => d.permissions.includes(i.permission!))))) &&
+                (can(i.permission) || (i.orDelegated && isApprover)) &&
                 (!i.feature || user!.isSuperAdmin || hasFeature(i.feature)) &&
                 (!i.beyondOwn || user!.isSuperAdmin || scopeOf(i.permission!) !== 'own'),
             );
