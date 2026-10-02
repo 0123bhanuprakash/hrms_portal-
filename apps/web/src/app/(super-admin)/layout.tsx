@@ -27,7 +27,7 @@ import {
   X,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useAuthHydrated, withNext } from '@/lib/auth/portal';
+import { changePasswordPath, useAuthHydrated, withNext } from '@/lib/auth/portal';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { DropdownMenu } from '@/components/ui/dropdown-menu';
 import { Tooltip } from '@/components/ui/tooltip';
@@ -158,13 +158,15 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
   const [commandOpen, setCommandOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
 
-  const allowed = hydrated && isAuthenticated && Boolean(user?.isSuperAdmin);
+  const allowed = hydrated && isAuthenticated && Boolean(user?.isSuperAdmin) && !user?.mustChangePassword;
 
   // ── Route guard ────────────────────────────────────────────
   useEffect(() => {
     if (!hydrated) return;
     if (!isAuthenticated || !user) {
       router.replace(withNext('/platform/login', pathname));
+    } else if (user.isSuperAdmin && user.mustChangePassword) {
+      router.replace(changePasswordPath(user, pathname));
     } else if (!user.isSuperAdmin) {
       toast.error('The platform portal is only available to Super Admins.');
       router.replace('/app');

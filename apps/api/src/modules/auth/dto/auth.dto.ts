@@ -1,6 +1,18 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsIn, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 
+/** Same rules as the web forms (@hrms/types strongPassword). */
+function IsStrongPassword(): PropertyDecorator {
+  return (target, key) => {
+    MinLength(8, { message: 'Password must be at least 8 characters' })(target, key);
+    MaxLength(128, { message: 'Password is too long' })(target, key);
+    Matches(/[A-Z]/, { message: 'Password must contain at least one uppercase letter' })(target, key);
+    Matches(/[a-z]/, { message: 'Password must contain at least one lowercase letter' })(target, key);
+    Matches(/[0-9]/, { message: 'Password must contain at least one number' })(target, key);
+    Matches(/[^A-Za-z0-9]/, { message: 'Password must contain at least one special character' })(target, key);
+  };
+}
+
 // ============================================================
 // Auth DTOs — request/response shapes for auth endpoints
 // ============================================================
@@ -51,8 +63,15 @@ export class ResetPasswordDto {
 
   @ApiProperty({ example: 'NewPassword123!' })
   @IsString()
-  @MinLength(8, { message: 'Password must be at least 8 characters' })
+  @IsStrongPassword()
   password!: string;
+}
+
+export class VerifyEmailDto {
+  @ApiProperty({ description: 'Token from the verification email' })
+  @IsString()
+  @MaxLength(200)
+  token!: string;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -66,6 +85,8 @@ export class AuthUserResponse {
   @ApiProperty() lastName!: string;
   @ApiProperty() isSuperAdmin!: boolean;
   @ApiProperty({ nullable: true }) companyId!: string | null;
+  @ApiProperty({ description: 'Signed in with a temporary password: must set a new one first' })
+  mustChangePassword!: boolean;
   @ApiProperty({ type: [String] }) roles!: string[];
   @ApiProperty({ type: [String] }) permissions!: string[];
 }
@@ -90,7 +111,6 @@ export class ChangePasswordDto {
 
   @ApiProperty({ example: 'NewPassword123!' })
   @IsString()
-  @MinLength(8, { message: 'Password must be at least 8 characters' })
-  @MaxLength(128)
+  @IsStrongPassword()
   new_password!: string;
 }

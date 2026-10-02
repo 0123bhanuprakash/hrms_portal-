@@ -1,7 +1,8 @@
 import { Module, MiddlewareConsumer, NestModule, RequestMethod } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { PasswordChangeGuard } from './common';
 
 import { configuration } from './config/configuration';
 import { validate } from './config/env.validation';
@@ -44,20 +45,11 @@ import { AppController } from './app.controller';
       validate,
     }),
 
-    // ── Rate limiting (in-memory; Redis-backed added later) ─
+    // ── Rate limiting (per IP, in-memory; Redis-backed later) ─
+    // Generous default for the SPA; credential endpoints tighten it
+    // with @Throttle (see auth.controller.ts).
     ThrottlerModule.forRoot({
-      throttlers: [
-        {
-          name: 'default',
-          ttl: 60_000,
-          limit: 100,
-        },
-        {
-          name: 'auth',
-          ttl: 60_000,
-          limit: 10,
-        },
-      ],
+      throttlers: [{ name: 'default', ttl: 60_000, limit: 300 }],
     }),
 
     // ── Infrastructure ────────────────────────────────────
@@ -80,10 +72,22 @@ import { AppController } from './app.controller';
   ],
 
   providers: [
+    // ── Rate limiting first, so floods are rejected before any DB work ─
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+
     // ── Global JWT guard — all routes protected by default ──
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+
+    // ── Temporary password → only password-change routes until changed ─
+    {
+      provide: APP_GUARD,
+      useClass: PasswordChangeGuard,
     },
 
     // ── Global Permission guard — enforces @RequirePermission() ─

@@ -83,6 +83,7 @@ export class EmployeesService {
         data: {
           email: emailLower,
           passwordHash,
+          mustChangePassword: true,
           firstName: dto.firstName.trim(),
           lastName: dto.lastName.trim(),
           companyId,

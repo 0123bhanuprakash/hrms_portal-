@@ -12,6 +12,7 @@ import {
   UseInterceptors,
   UploadedFile,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CompaniesService } from './companies.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
@@ -38,6 +39,7 @@ export class CompaniesController {
    * e.g. GET /companies/branding/by-slug/acme
    */
   @Public()
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
   @Get('branding/by-slug/:slug')
   async getBrandingBySlug(@Param('slug') slug: string) {
     return this.companiesService.findBrandingBySlug(slug);

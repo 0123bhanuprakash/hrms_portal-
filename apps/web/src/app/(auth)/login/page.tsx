@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Field, Input } from '@/components/ui/field';
 import { Skeleton } from '@/components/ui/feedback';
 import {
+  changePasswordPath,
   normalizeSlug,
   rememberedWorkspace,
   rememberWorkspace,
@@ -104,7 +105,7 @@ function CompanyLogin() {
   // Already signed in → into the right portal
   useEffect(() => {
     if (!hydrated || !isAuthenticated || !user) return;
-    router.replace(user.isSuperAdmin ? '/super-admin' : '/app');
+    router.replace(user.mustChangePassword ? changePasswordPath(user) : user.isSuperAdmin ? '/super-admin' : '/app');
   }, [hydrated, isAuthenticated, user, router]);
 
   // A remembered workspace that no longer exists is forgotten
@@ -156,6 +157,7 @@ function CompanyLogin() {
           companySlug={slug}
           forgotHref={href('/forgot-password')}
           onSuccess={(u) => {
+            if (u.mustChangePassword) return router.replace(changePasswordPath(u, next));
             toast.success(`Welcome back, ${u.firstName}`);
             const target = safeNext(next, '/app');
             router.replace(target.startsWith('/app') ? target : '/app');

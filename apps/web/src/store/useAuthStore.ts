@@ -9,6 +9,8 @@ export interface AuthUser {
   isSuperAdmin: boolean;
   companyId: string | null;
   status: string;
+  /** Signed in with a temporary password: must choose a new one before using the portal */
+  mustChangePassword?: boolean;
 }
 
 export interface TenantBranding {

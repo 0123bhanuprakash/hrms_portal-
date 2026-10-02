@@ -110,6 +110,7 @@ export class CompaniesService {
         data: {
           email: dto.adminEmail.toLowerCase(),
           passwordHash,
+          mustChangePassword: true,
           firstName: dto.adminFirstName,
           lastName: dto.adminLastName,
           companyId: company.id,

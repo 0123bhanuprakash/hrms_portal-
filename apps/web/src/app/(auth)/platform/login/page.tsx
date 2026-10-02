@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { PlatformAuthShell } from '@/components/auth/auth-shells';
 import { FormHeading, LoginForm } from '@/components/auth/auth-forms';
-import { safeNext, useAuthHydrated } from '@/lib/auth/portal';
+import { changePasswordPath, safeNext, useAuthHydrated } from '@/lib/auth/portal';
 import { useAuthStore } from '@/store/useAuthStore';
 
 function PlatformLogin() {
@@ -16,7 +16,7 @@ function PlatformLogin() {
 
   // Already signed in as a Super Admin → straight to the console
   useEffect(() => {
-    if (hydrated && isAuthenticated && user?.isSuperAdmin) router.replace('/super-admin');
+    if (hydrated && isAuthenticated && user?.isSuperAdmin) router.replace(user.mustChangePassword ? changePasswordPath(user) : '/super-admin');
   }, [hydrated, isAuthenticated, user, router]);
 
   return (
@@ -27,6 +27,7 @@ function PlatformLogin() {
         forgotHref="/platform/forgot-password"
         emailPlaceholder="admin@yourplatform.com"
         onSuccess={(u) => {
+          if (u.mustChangePassword) return router.replace(changePasswordPath(u, next));
           toast.success(`Welcome back, ${u.firstName}`);
           const target = safeNext(next, '/super-admin');
           router.replace(target.startsWith('/super-admin') ? target : '/super-admin');

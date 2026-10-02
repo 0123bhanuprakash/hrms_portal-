@@ -26,6 +26,15 @@ export function getApiErrorMessage(error: unknown, fallback = 'Something went wr
   }
 
   const body = error.response.data;
+
+  // Rate limit (not account lockout, which has its own message)
+  if (error.response.status === 429) {
+    const detail = body && typeof body === 'object' ? body.detail : undefined;
+    if (!detail || /throttler|too many requests/i.test(detail)) {
+      const wait = Number(error.response.headers?.['retry-after']);
+      return `Too many attempts. Please wait ${wait > 0 ? `${wait} seconds` : 'a minute'} and try again.`;
+    }
+  }
   if (!body || typeof body !== 'object') {
     return fallback;
   }

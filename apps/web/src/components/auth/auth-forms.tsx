@@ -5,9 +5,11 @@ import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
+  ChangePasswordSchema,
   ForgotPasswordSchema,
   LoginSchema,
   ResetPasswordSchema,
+  type ChangePasswordInput,
   type ForgotPasswordInput,
   type LoginInput,
   type ResetPasswordInput,
@@ -15,8 +17,8 @@ import {
 import { AlertCircle, ArrowLeft, CheckCircle2, Eye, EyeOff, Loader2, MailCheck, XCircle } from 'lucide-react';
 import { api } from '@/lib/api';
 import { getApiErrorMessage } from '@/lib/errors';
-import { signIn, type Portal } from '@/lib/auth/portal';
-import type { AuthUser } from '@/store/useAuthStore';
+import { clearPendingTemporaryPassword, getPendingTemporaryPassword, signIn, type Portal } from '@/lib/auth/portal';
+import { useAuthStore, type AuthUser } from '@/store/useAuthStore';
 import { Button } from '@/components/ui/button';
 import { Field, Input } from '@/components/ui/field';
 import { cn } from '@/lib/cn';
@@ -282,7 +284,8 @@ export function ResetPasswordForm({ token, loginHref, forgotHref }: { token: str
   const onSubmit = async (data: ResetPasswordInput) => {
     setError(null);
     try {
-      await api.post('/auth/reset-password', { token, password: data.password, confirmPassword: data.confirmPassword });
+      // confirmPassword is checked here only; the API accepts { token, password }
+      await api.post('/auth/reset-password', { token, password: data.password });
       setDone(true);
     } catch (err) {
       setError(getApiErrorMessage(err, 'Could not reset your password. The link may have expired.'));
@@ -359,5 +362,77 @@ export function VerifyEmailStatus({ token, loginHref }: { token: string; loginHr
     <StatusPanel tone="error" title="Verification failed" action={signInButton}>
       {message}
     </StatusPanel>
+  );
+}
+
+// ─── Choose a new password (after signing in with a temporary one) ──
+
+export function ChangeTemporaryPasswordForm({ onDone, onSignOut }: { onDone: () => void; onSignOut: () => void }) {
+  // The temporary password just typed on the sign-in page, if still in memory
+  const [known] = useState(() => getPendingTemporaryPassword());
+  const [error, setError] = useState<string | null>(null);
+  const user = useAuthStore((s) => s.user);
+  const setAuthUser = useAuthStore.setState;
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<ChangePasswordInput>({
+    resolver: zodResolver(ChangePasswordSchema),
+    defaultValues: { currentPassword: known ?? '', newPassword: '', confirmPassword: '' },
+  });
+
+  const onSubmit = async (data: ChangePasswordInput) => {
+    setError(null);
+    try {
+      await api.post('/auth/change-password', { current_password: data.currentPassword, new_password: data.newPassword });
+      clearPendingTemporaryPassword();
+      if (user) setAuthUser({ user: { ...user, mustChangePassword: false } });
+      onDone();
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Could not update your password. Please try again.'));
+    }
+  };
+
+  return (
+    <>
+      <FormHeading
+        title="Choose your own password"
+        description={
+          <>
+            {user ? <>Welcome, <span className="font-medium text-foreground">{user.firstName}</span>. </> : null}
+            You signed in with a temporary password. Set a new one to continue.
+          </>
+        }
+      />
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+        <FormError message={error} />
+        {!known && (
+          <Field label="Temporary password" htmlFor="currentPassword" error={errors.currentPassword?.message} hint="The one from your welcome email.">
+            <PasswordInput id="currentPassword" autoComplete="current-password" autoFocus invalid={Boolean(errors.currentPassword)} {...register('currentPassword')} />
+          </Field>
+        )}
+        <Field
+          label="New password"
+          htmlFor="newPassword"
+          error={errors.newPassword?.message}
+          hint="At least 8 characters, with upper and lower case letters, a number and a symbol."
+        >
+          <PasswordInput id="newPassword" autoComplete="new-password" autoFocus={Boolean(known)} invalid={Boolean(errors.newPassword)} {...register('newPassword')} />
+        </Field>
+        <Field label="Confirm new password" htmlFor="confirmPassword" error={errors.confirmPassword?.message}>
+          <PasswordInput id="confirmPassword" autoComplete="new-password" invalid={Boolean(errors.confirmPassword)} {...register('confirmPassword')} />
+        </Field>
+        <Button type="submit" size="lg" className="w-full" loading={isSubmitting}>
+          Save and continue
+        </Button>
+      </form>
+      <p className="mt-6 text-center text-[13px] text-muted-foreground">
+        Not now?{' '}
+        <button type="button" onClick={onSignOut} className="font-medium text-primary hover:underline">
+          Sign out
+        </button>
+      </p>
+    </>
   );
 }

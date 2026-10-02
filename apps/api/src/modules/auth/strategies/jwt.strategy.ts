@@ -47,7 +47,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, status: true, company: { select: { status: true } } },
+      select: { id: true, status: true, mustChangePassword: true, company: { select: { status: true } } },
     });
 
     if (!user || user.status !== 'ACTIVE') {
@@ -59,6 +59,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       throw new UnauthorizedException('Company account is not active');
     }
 
-    return payload;
+    // Fresh from the DB on every request (PasswordChangeGuard reads it)
+    return { ...payload, must_change_password: user.mustChangePassword };
   }
 }

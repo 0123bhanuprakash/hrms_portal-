@@ -5,7 +5,6 @@ import {
   Delete,
   Body,
   Param,
-  Query,
   HttpCode,
   HttpStatus,
   ParseUUIDPipe,
@@ -20,13 +19,15 @@ import {
 } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { AuthService, type SessionDevice, type SessionInfo } from './auth.service';
-import { Audit } from '../../common';
+import { Throttle } from '@nestjs/throttler';
+import { AllowPendingPasswordChange, Audit } from '../../common';
 import {
   ChangePasswordDto,
   LoginDto,
   RefreshTokenDto,
   ForgotPasswordDto,
   ResetPasswordDto,
+  VerifyEmailDto,
   LoginResponse,
   RefreshResponse,
   AuthUserResponse,
@@ -35,6 +36,9 @@ import { Public } from './decorators/public.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import type { JwtPayload } from '@hrms/types';
+
+/** Strict limit for credential / token endpoints (per IP): slows brute force and email bombing. */
+const AUTH_LIMIT = { default: { limit: 10, ttl: 60_000 } };
 
 // ============================================================
 // AuthController — /auth/* endpoints
@@ -53,6 +57,7 @@ export class AuthController {
   // ── POST /auth/login ────────────────────────────────────────
 
   @Public()
+  @Throttle(AUTH_LIMIT)
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -77,6 +82,7 @@ export class AuthController {
   // ── POST /auth/refresh ──────────────────────────────────────
 
   @Public()
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -95,6 +101,7 @@ export class AuthController {
   // ── POST /auth/logout ───────────────────────────────────────
 
   @UseGuards(JwtAuthGuard)
+  @AllowPendingPasswordChange()
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
@@ -111,6 +118,7 @@ export class AuthController {
   // ── GET /auth/me ────────────────────────────────────────────
 
   @UseGuards(JwtAuthGuard)
+  @AllowPendingPasswordChange()
   @Get('me')
   @ApiBearerAuth()
   @ApiOperation({
@@ -126,6 +134,7 @@ export class AuthController {
   // ── POST /auth/forgot-password ──────────────────────────────
 
   @Public()
+  @Throttle(AUTH_LIMIT)
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -145,6 +154,7 @@ export class AuthController {
   // ── POST /auth/reset-password ───────────────────────────────
 
   @Public()
+  @Throttle(AUTH_LIMIT)
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -162,10 +172,11 @@ export class AuthController {
     return { message: 'Password updated successfully. Please log in with your new password.' };
   }
 
-  // ── GET /auth/verify-email ──────────────────────────────────
+  // ── POST /auth/verify-email ──────────────────────────────────
 
   @Public()
-  @Get('verify-email')
+  @Throttle(AUTH_LIMIT)
+  @Post('verify-email')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Verify email address using token from email link',
@@ -174,14 +185,16 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Email verified successfully' })
   @ApiResponse({ status: 400, description: 'Invalid or expired token' })
   async verifyEmail(
-    @Query('token') token: string,
+    @Body() dto: VerifyEmailDto,
   ): Promise<{ message: string }> {
-    await this.authService.verifyEmail(token);
+    await this.authService.verifyEmail(dto.token);
     return { message: 'Email verified successfully. You can now log in.' };
   }
 
   // ── Own account: password + sessions (any authenticated user) ──
 
+  @AllowPendingPasswordChange()
+  @Throttle(AUTH_LIMIT)
   @Post('change-password')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()

@@ -1,3 +1,4 @@
+import { SkipThrottle } from '@nestjs/throttler';
 import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import type { HealthStatus, ReadinessStatus } from '@hrms/types';
@@ -13,6 +14,7 @@ import { HealthService } from './health.service';
 // ============================================================
 
 @ApiTags('Health')
+@SkipThrottle()
 @Controller('health')
 export class HealthController {
   private readonly startedAt = Date.now();

@@ -23,7 +23,7 @@ import {
 import type { ThemeTokens } from '@hrms/types';
 import { useAuthStore } from '@/store/useAuthStore';
 import { DisplayPreferences } from '@/components/preferences/display-preferences';
-import { loginPathFor, useAuthHydrated, withNext } from '@/lib/auth/portal';
+import { changePasswordPath, loginPathFor, useAuthHydrated, withNext } from '@/lib/auth/portal';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { DropdownMenu } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
@@ -109,13 +109,14 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
   const [mobileOpen, setMobileOpen] = useState(false);
   const branding = useCompanyBranding(hydrated ? companyId : null);
 
-  const allowed = hydrated && isAuthenticated && Boolean(user) && Boolean(companyId);
+  const allowed = hydrated && isAuthenticated && Boolean(user) && Boolean(companyId) && !user?.mustChangePassword;
 
   // ── Route guard ────────────────────────────────────────────
   useEffect(() => {
     if (!hydrated) return;
     if (!isAuthenticated || !user) router.replace(withNext(loginPathFor(null), pathname));
     else if (!companyId) router.replace(user.isSuperAdmin ? '/super-admin' : loginPathFor(null));
+    else if (user.mustChangePassword) router.replace(changePasswordPath(user, pathname));
   }, [hydrated, isAuthenticated, user, companyId, pathname, router]);
 
   useEffect(() => setMobileOpen(false), [pathname]);

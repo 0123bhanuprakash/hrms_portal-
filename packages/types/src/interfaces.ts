@@ -79,6 +79,7 @@ export interface JwtPayload {
   roles: string[];
   permissions: string[];        // e.g. ['employee:create', 'leave:approve']
   sid?: string;                 // Session id = refresh token family id
+  must_change_password?: boolean; // Set per request from the DB (not stored in the token)
   iat?: number;
   exp?: number;
 }

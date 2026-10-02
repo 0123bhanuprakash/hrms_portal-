@@ -152,9 +152,8 @@ export class AuthService {
         );
       }
 
-      throw new UnauthorizedException(
-        `Invalid email or password. ${MAX_LOGIN_ATTEMPTS - newAttempts} attempt(s) remaining.`,
-      );
+      // Same message as an unknown email, so responses don't reveal which accounts exist
+      throw new UnauthorizedException('Invalid email or password');
     }
 
     // 4. Each sign-in page admits only its own audience. Checked after the
@@ -217,6 +216,7 @@ export class AuthService {
         lastName: user.lastName,
         isSuperAdmin: user.isSuperAdmin,
         companyId: user.companyId,
+        mustChangePassword: user.mustChangePassword,
         roles,
         permissions,
       },
@@ -362,6 +362,7 @@ export class AuthService {
       lastName: user.lastName,
       isSuperAdmin: user.isSuperAdmin,
       companyId: user.companyId,
+      mustChangePassword: user.mustChangePassword,
       roles,
       permissions,
     };
@@ -443,7 +444,7 @@ export class AuthService {
       }),
       this.prisma.user.update({
         where: { id: record.userId },
-        data: { passwordHash, loginAttempts: 0, lockedUntil: null },
+        data: { passwordHash, mustChangePassword: false, loginAttempts: 0, lockedUntil: null },
       }),
       // Revoke ALL refresh tokens — forces logout on all devices
       this.prisma.refreshToken.updateMany({
@@ -599,7 +600,7 @@ export class AuthService {
 
     await this.prisma.user.update({
       where: { id: userId },
-      data: { passwordHash: await hashPassword(newPassword), loginAttempts: 0, lockedUntil: null },
+      data: { passwordHash: await hashPassword(newPassword), mustChangePassword: false, loginAttempts: 0, lockedUntil: null },
     });
 
     const revokedSessions = await this.revokeOtherSessions(userId, currentSid);

@@ -163,6 +163,8 @@ model User {
   id                  String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   email               String     @unique
   passwordHash        String     @map("password_hash")
+  /// Set when an admin issues a temporary password; the user must choose their own before using the portal
+  mustChangePassword Boolean @default(false) @map("must_change_password")
   firstName           String     @map("first_name")
   lastName            String     @map("last_name")
   avatarUrl           String?    @map("avatar_url")

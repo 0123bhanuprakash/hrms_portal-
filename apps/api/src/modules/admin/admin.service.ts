@@ -337,6 +337,7 @@ export class AdminService {
         data: {
           email,
           passwordHash,
+          mustChangePassword: true,
           firstName: dto.firstName.trim(),
           lastName: dto.lastName.trim(),
           companyId,
@@ -420,7 +421,7 @@ export class AdminService {
     await this.prisma.$transaction([
       this.prisma.user.update({
         where: { id: userId },
-        data: { passwordHash: await hashPassword(tempPassword), loginAttempts: 0, lockedUntil: null },
+        data: { passwordHash: await hashPassword(tempPassword), mustChangePassword: true, loginAttempts: 0, lockedUntil: null },
       }),
       this.prisma.refreshToken.updateMany({
         where: { userId, isRevoked: false },

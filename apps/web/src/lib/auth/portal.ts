@@ -48,6 +48,23 @@ export function safeNext(next: string | null, fallback: string): string {
   return fallback;
 }
 
+let pendingTemporaryPassword: string | null = null;
+
+/** The temporary password just used to sign in (memory only; lost on reload). */
+export function getPendingTemporaryPassword(): string | null {
+  return pendingTemporaryPassword;
+}
+
+export function clearPendingTemporaryPassword(): void {
+  pendingTemporaryPassword = null;
+}
+
+/** Where a user with a temporary password chooses their own. */
+export function changePasswordPath(user: Pick<AuthUser, 'isSuperAdmin'>, next?: string | null): string {
+  const base = user.isSuperAdmin ? '/platform/change-password' : '/change-password';
+  return next ? withNext(base, next) : base;
+}
+
 /** Signs in through the given portal and stores the session. */
 export async function signIn(input: {
   email: string;
@@ -71,6 +88,7 @@ export async function signIn(input: {
     isSuperAdmin: user.isSuperAdmin,
     companyId: user.companyId,
     status: user.status || 'ACTIVE',
+    mustChangePassword: Boolean(user.mustChangePassword),
   };
   useAuthStore.getState().setAuth({
     user: authUser,
@@ -80,6 +98,8 @@ export async function signIn(input: {
     permissions: user.permissions || payload.permissions || [],
   });
   if (input.portal === 'company' && input.companySlug) rememberWorkspace(input.companySlug);
+  // Kept in memory only (never stored) so the change-password screen needn't ask again
+  pendingTemporaryPassword = authUser.mustChangePassword ? input.password : null;
   return authUser;
 }
 
