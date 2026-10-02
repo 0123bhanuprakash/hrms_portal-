@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 import { Check, Loader2, Rows2, Rows3, Rows4, Sparkles, Type } from 'lucide-react';
 import { Card, CardHeader, Skeleton } from '@/components/ui/feedback';
@@ -26,6 +27,17 @@ import { cn } from '@/lib/cn';
 export function DisplayPreferences() {
   const userId = useAuthStore((s) => s.user?.id ?? null);
   const prefs = usePreferences();
+  const { theme, setTheme } = useTheme();
+  const themeAppliedFor = useRef<string | null>(null);
+
+  // Saved light / dark / system choice follows the user to any browser.
+  // Once per sign-in, so later toggles in this session aren't overridden.
+  useEffect(() => {
+    if (!userId || !prefs.data || themeAppliedFor.current === userId) return;
+    themeAppliedFor.current = userId;
+    const saved = prefs.data.theme;
+    if ((saved === 'light' || saved === 'dark' || saved === 'system') && saved !== theme) setTheme(saved);
+  }, [userId, prefs.data, theme, setTheme]);
 
   useEffect(() => {
     if (!userId) return;
