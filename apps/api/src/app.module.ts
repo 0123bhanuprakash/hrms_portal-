@@ -13,6 +13,7 @@ import { QueueModule } from './modules/queue/queue.module';
 import { AccessModule } from './modules/access/access.module';
 import { UserManagementModule } from './modules/user-management/user-management.module';
 import { PlansModule } from './modules/plans/plans.module';
+import { OrgModule } from './modules/org/org.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { EmailModule } from './modules/email/email.module';
 import { CompaniesModule } from './modules/companies/companies.module';
@@ -75,6 +76,7 @@ import { AppController } from './app.controller';
     ThemesModule,         // Theme Studio
     UserManagementModule, // Company Admin: users, roles & permissions
     PlansModule,          // Super Admin: plans & per-company features
+    OrgModule,            // Org levels, org chart, reporting lines
   ],
 
   providers: [
