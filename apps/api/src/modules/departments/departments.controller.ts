@@ -11,14 +11,16 @@ import {
 import { DepartmentsService } from './departments.service';
 import { CreateDepartmentDto } from './dto/create-department.dto';
 import { UpdateDepartmentDto } from './dto/update-department.dto';
-import { RequirePermission, Audit, TenantCtx } from '../../common';
+import { RequirePermission, RequireFeature, Audit, TenantCtx } from '../../common';
 import type { TenantContext } from '../../common/types/request.types';
 
+// Organisation structure is a core feature; reads need org.view, changes org.manage
+@RequireFeature('people.org')
 @Controller('departments')
 export class DepartmentsController {
   constructor(private readonly departmentsService: DepartmentsService) {}
 
-  @RequirePermission('employee:create')
+  @RequirePermission('org.manage')
   @Audit('department:create', 'department')
   @Post()
   async create(
@@ -28,7 +30,7 @@ export class DepartmentsController {
     return this.departmentsService.create(ctx.companyId!, dto);
   }
 
-  @RequirePermission('employee:read')
+  @RequirePermission('org.view')
   @Get()
   async findAll(
     @TenantCtx() ctx: TenantContext,
@@ -37,13 +39,13 @@ export class DepartmentsController {
     return this.departmentsService.findAll(ctx.companyId!, { search });
   }
 
-  @RequirePermission('employee:read')
+  @RequirePermission('org.view')
   @Get(':id')
   async findOne(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
     return this.departmentsService.findOne(ctx.companyId!, id);
   }
 
-  @RequirePermission('employee:update')
+  @RequirePermission('org.manage')
   @Audit('department:update', 'department')
   @Patch(':id')
   async update(
@@ -54,7 +56,7 @@ export class DepartmentsController {
     return this.departmentsService.update(ctx.companyId!, id, dto);
   }
 
-  @RequirePermission('employee:delete')
+  @RequirePermission('org.manage')
   @Audit('department:delete', 'department')
   @Delete(':id')
   async remove(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {

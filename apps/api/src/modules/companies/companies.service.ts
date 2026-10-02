@@ -9,7 +9,8 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailProducerService } from '../email/email.producer.service';
 import { StorageService } from '../storage/storage.service';
-import { getSystemRole } from '../prisma/system-roles';
+import { CompanyRolesService } from '../access/company-roles.service';
+import { DEFAULT_PLAN_KEY } from '../access/catalog';
 import { companyThemeFields, type CompanyThemeInput } from '../themes/company-theme';
 import { ThemesService } from '../themes/themes.service';
 import type { ThemeRef, ThemeTokens } from '@hrms/types';
@@ -28,6 +29,7 @@ export class CompaniesService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly emailProducerService: EmailProducerService,
+    private readonly companyRoles: CompanyRolesService,
     private readonly storage: StorageService,
     private readonly themes: ThemesService,
   ) {}
@@ -76,8 +78,13 @@ export class CompaniesService {
           slug: dto.slug.toLowerCase(),
           email: dto.email.toLowerCase(),
           status: CompanyStatus.ACTIVE,
+          // Default plan until the Super Admin picks one (Enterprise = every feature)
+          plan: { connect: { key: DEFAULT_PLAN_KEY } },
         },
       });
+
+      // The company's own, editable copies of the role templates
+      const ownerRoleId = await this.companyRoles.roleId(tx, company.id, 'company_admin');
 
       // Create company settings
       const settings = await tx.companySettings.create({
@@ -102,9 +109,6 @@ export class CompaniesService {
         },
       });
 
-      // Seeded system role with the default company admin permissions
-      const companyAdminRole = await getSystemRole(tx, 'company_admin');
-
       // Create initial Company Admin user
       const adminUser = await tx.user.create({
         data: {
@@ -119,12 +123,9 @@ export class CompaniesService {
         },
       });
 
-      // Assign Company Admin role
+      // Company Admin = the company's owner role (all enabled features)
       await tx.userRole.create({
-        data: {
-          userId: adminUser.id,
-          roleId: companyAdminRole.id,
-        },
+        data: { userId: adminUser.id, roleId: ownerRoleId, companyId: company.id },
       });
 
       return { company, settings, branding, adminUser };

@@ -4,15 +4,19 @@ import {
   NotFoundException,
   Logger,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailProducerService } from '../email/email.producer.service';
-import { getSystemRole } from '../prisma/system-roles';
+import { AccessService } from '../access/access.service';
+import { CompanyRolesService } from '../access/company-roles.service';
+import { HierarchyService } from '../access/hierarchy.service';
+import type { AccessContext } from '../access/access.types';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { QueryEmployeesDto } from './dto/query-employee.dto';
-import { UserStatus, EmploymentStatus } from '@prisma/client';
+import { UserStatus, EmploymentStatus, Prisma } from '@prisma/client';
 import { generateTemporaryPassword, hashPassword } from '../auth/password.util';
 
 @Injectable()
@@ -23,7 +27,58 @@ export class EmployeesService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly emailProducerService: EmailProducerService,
+    private readonly accessService: AccessService,
+    private readonly companyRoles: CompanyRolesService,
+    private readonly hierarchy: HierarchyService,
   ) {}
+
+  /** Fields an employee may change on their own profile ("own" scope). */
+  private static readonly SELF_EDITABLE = new Set<keyof UpdateEmployeeDto>([
+    'phone',
+    'gender',
+    'dateOfBirth',
+    'avatarUrl',
+  ]);
+
+  /**
+   * Linked records must belong to the same company — otherwise a crafted
+   * request could attach another tenant's department / manager (404).
+   */
+  private async assertLinksInCompany(
+    companyId: string,
+    links: {
+      departmentId?: string | null;
+      designationId?: string | null;
+      locationId?: string | null;
+      reportingManagerId?: string | null;
+    },
+  ): Promise<void> {
+    const db = this.prisma;
+    const checks: Array<[string, Promise<number>]> = [];
+    if (links.departmentId)
+      checks.push([
+        'Department',
+        db.department.count({ where: { id: links.departmentId, companyId } }),
+      ]);
+    if (links.designationId)
+      checks.push([
+        'Designation',
+        db.designation.count({ where: { id: links.designationId, companyId } }),
+      ]);
+    if (links.locationId)
+      checks.push([
+        'Location',
+        db.officeLocation.count({ where: { id: links.locationId, companyId } }),
+      ]);
+    if (links.reportingManagerId)
+      checks.push([
+        'Reporting manager',
+        db.employee.count({ where: { id: links.reportingManagerId, companyId } }),
+      ]);
+    for (const [label, count] of checks) {
+      if (!(await count)) throw new NotFoundException(`${label} not found in this company`);
+    }
+  }
 
   /**
    * Create employee (Admin flow)
@@ -41,14 +96,14 @@ export class EmployeesService {
     });
 
     if (existingUser) {
-      throw new ConflictException(
-        `User with email '${emailLower}' already exists in system`,
-      );
+      throw new ConflictException(`User with email '${emailLower}' already exists in system`);
     }
 
     // Generate random temporary password
     const tempPassword = generateTemporaryPassword();
     const passwordHash = await hashPassword(tempPassword);
+
+    await this.assertLinksInCompany(companyId, dto);
 
     // Atomic transaction for sequential employee ID & employee creation
     const result = await this.prisma.$transaction(async (tx) => {
@@ -92,13 +147,11 @@ export class EmployeesService {
         },
       });
 
-      // 3. Seeded system role with the default employee permissions
-      const employeeRole = await getSystemRole(tx, 'employee');
-
+      // 3. The company's own "Employee" role (self-service by default)
       await tx.userRole.create({
         data: {
           userId: user.id,
-          roleId: employeeRole.id,
+          roleId: await this.companyRoles.roleId(tx, companyId, 'employee'),
           companyId,
         },
       });
@@ -131,6 +184,9 @@ export class EmployeesService {
         },
       });
 
+      // 5. Place them in the reporting hierarchy (closure table)
+      await this.hierarchy.addEmployee(tx, companyId, employee.id, employee.reportingManagerId);
+
       return { user, employee, generatedEmployeeId };
     });
 
@@ -162,41 +218,50 @@ export class EmployeesService {
   /**
    * List employees with filtering & pagination
    */
-  async findAll(companyId: string, query: QueryEmployeesDto) {
+  async findAll(companyId: string, query: QueryEmployeesDto, access: AccessContext) {
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
     const skip = (page - 1) * limit;
 
-    const where: any = { companyId };
+    const filters: Prisma.EmployeeWhereInput = {};
 
     if (query.status) {
-      where.employmentStatus = query.status;
+      filters.employmentStatus = query.status;
     }
 
     if (query.employmentType) {
-      where.employmentType = query.employmentType;
+      filters.employmentType = query.employmentType;
     }
 
     if (query.departmentId) {
-      where.departmentId = query.departmentId;
+      filters.departmentId = query.departmentId;
     }
 
     if (query.designationId) {
-      where.designationId = query.designationId;
+      filters.designationId = query.designationId;
     }
 
     if (query.locationId) {
-      where.locationId = query.locationId;
+      filters.locationId = query.locationId;
     }
 
     if (query.search) {
-      where.OR = [
+      filters.OR = [
         { firstName: { contains: query.search, mode: 'insensitive' } },
         { lastName: { contains: query.search, mode: 'insensitive' } },
         { email: { contains: query.search, mode: 'insensitive' } },
         { employeeId: { contains: query.search, mode: 'insensitive' } },
       ];
     }
+
+    // Tenant + permission scope (own / reports / department / company) + filters
+    const where: Prisma.EmployeeWhereInput = {
+      AND: [
+        { companyId },
+        this.accessService.requireEmployeeScope(access, 'employee.view'),
+        filters,
+      ],
+    };
 
     const [items, total] = await Promise.all([
       this.prisma.employee.findMany({
@@ -236,9 +301,17 @@ export class EmployeesService {
   /**
    * Find single employee by ID
    */
-  async findOne(companyId: string, id: string) {
+  async findOne(
+    companyId: string,
+    id: string,
+    access: AccessContext,
+    permission = 'employee.view',
+  ) {
+    // Outside the caller's scope → 404, exactly like another company's record
     const employee = await this.prisma.employee.findFirst({
-      where: { id, companyId },
+      where: {
+        AND: [{ id, companyId }, this.accessService.requireEmployeeScope(access, permission)],
+      },
       include: {
         user: {
           select: {
@@ -284,15 +357,29 @@ export class EmployeesService {
   /**
    * Update employee profile & associated user account
    */
-  async update(companyId: string, id: string, dto: UpdateEmployeeDto) {
-    const existing = await this.findOne(companyId, id);
+  async update(companyId: string, id: string, dto: UpdateEmployeeDto, access: AccessContext) {
+    const existing = await this.findOne(companyId, id, access, 'employee.edit');
+
+    // Self-service ("own" scope) may only change personal details
+    if (!access.isSuperAdmin && access.grants.get('employee.edit') === 'own') {
+      const restricted = (Object.keys(dto) as Array<keyof UpdateEmployeeDto>).filter(
+        (k) => dto[k] !== undefined && !EmployeesService.SELF_EDITABLE.has(k),
+      );
+      if (restricted.length) {
+        throw new ForbiddenException(
+          `You can only update your personal details (not: ${restricted.join(', ')})`,
+        );
+      }
+    }
 
     // Prevent self-reporting manager assignment
     if (dto.reportingManagerId === id) {
-      throw new BadRequestException(
-        'An employee cannot be their own reporting manager',
-      );
+      throw new BadRequestException('An employee cannot be their own reporting manager');
     }
+    await this.assertLinksInCompany(companyId, dto);
+    const managerChanged =
+      dto.reportingManagerId !== undefined &&
+      (dto.reportingManagerId ?? null) !== existing.reportingManagerId;
 
     // Update User if name/email changed
     if (dto.firstName || dto.lastName || dto.email) {
@@ -306,42 +393,47 @@ export class EmployeesService {
       });
     }
 
-    return this.prisma.employee.update({
-      where: { id },
-      data: {
-        ...(dto.firstName && { firstName: dto.firstName.trim() }),
-        ...(dto.lastName && { lastName: dto.lastName.trim() }),
-        ...(dto.email && { email: dto.email.toLowerCase().trim() }),
-        ...(dto.phone !== undefined && { phone: dto.phone }),
-        ...(dto.gender !== undefined && { gender: dto.gender }),
-        ...(dto.dateOfBirth && { dateOfBirth: new Date(dto.dateOfBirth) }),
-        ...(dto.avatarUrl !== undefined && { avatarUrl: dto.avatarUrl }),
-        ...(dto.employmentType && { employmentType: dto.employmentType }),
-        ...(dto.employmentStatus && { employmentStatus: dto.employmentStatus }),
-        ...(dto.departmentId !== undefined && {
-          departmentId: dto.departmentId,
-        }),
-        ...(dto.designationId !== undefined && {
-          designationId: dto.designationId,
-        }),
-        ...(dto.locationId !== undefined && { locationId: dto.locationId }),
-        ...(dto.reportingManagerId !== undefined && {
-          reportingManagerId: dto.reportingManagerId,
-        }),
-        ...(dto.joiningDate && { joiningDate: new Date(dto.joiningDate) }),
-        ...(dto.confirmationDate && {
-          confirmationDate: new Date(dto.confirmationDate),
-        }),
-        ...(dto.terminationDate && {
-          terminationDate: new Date(dto.terminationDate),
-        }),
-      },
-      include: {
-        department: true,
-        designation: true,
-        location: true,
-        reportingManager: true,
-      },
+    // Reporting line and closure table change together (loops are rejected)
+    return this.prisma.$transaction(async (tx) => {
+      if (managerChanged)
+        await this.hierarchy.setManager(tx, companyId, id, dto.reportingManagerId ?? null);
+      return tx.employee.update({
+        where: { id },
+        data: {
+          ...(dto.firstName && { firstName: dto.firstName.trim() }),
+          ...(dto.lastName && { lastName: dto.lastName.trim() }),
+          ...(dto.email && { email: dto.email.toLowerCase().trim() }),
+          ...(dto.phone !== undefined && { phone: dto.phone }),
+          ...(dto.gender !== undefined && { gender: dto.gender }),
+          ...(dto.dateOfBirth && { dateOfBirth: new Date(dto.dateOfBirth) }),
+          ...(dto.avatarUrl !== undefined && { avatarUrl: dto.avatarUrl }),
+          ...(dto.employmentType && { employmentType: dto.employmentType }),
+          ...(dto.employmentStatus && { employmentStatus: dto.employmentStatus }),
+          ...(dto.departmentId !== undefined && {
+            departmentId: dto.departmentId,
+          }),
+          ...(dto.designationId !== undefined && {
+            designationId: dto.designationId,
+          }),
+          ...(dto.locationId !== undefined && { locationId: dto.locationId }),
+          ...(dto.reportingManagerId !== undefined && {
+            reportingManagerId: dto.reportingManagerId,
+          }),
+          ...(dto.joiningDate && { joiningDate: new Date(dto.joiningDate) }),
+          ...(dto.confirmationDate && {
+            confirmationDate: new Date(dto.confirmationDate),
+          }),
+          ...(dto.terminationDate && {
+            terminationDate: new Date(dto.terminationDate),
+          }),
+        },
+        include: {
+          department: true,
+          designation: true,
+          location: true,
+          reportingManager: true,
+        },
+      });
     });
   }
 

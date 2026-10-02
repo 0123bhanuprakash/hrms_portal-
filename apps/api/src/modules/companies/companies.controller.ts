@@ -110,7 +110,7 @@ export class CompaniesController {
   /**
    * Update company branding (Company Admin / Super Admin)
    */
-  @RequirePermission('branding:manage')
+  @RequirePermission('branding.manage')
   @Audit('company:branding:update', 'company_branding', { companyIdParam: 'id' })
   @Patch(':id/branding')
   async updateBranding(
@@ -126,7 +126,7 @@ export class CompaniesController {
    * Upload logo file to MinIO (Company Admin / Super Admin)
    * POST /companies/:id/branding/logo
    */
-  @RequirePermission('branding:manage')
+  @RequirePermission('branding.manage')
   @Audit('company:branding:logo:upload', 'company_branding', { companyIdParam: 'id' })
   @UseInterceptors(FileInterceptor('file'))
   @Post(':id/branding/logo')
@@ -143,7 +143,7 @@ export class CompaniesController {
    * Upload favicon file to MinIO (Company Admin / Super Admin)
    * POST /companies/:id/branding/favicon
    */
-  @RequirePermission('branding:manage')
+  @RequirePermission('branding.manage')
   @Audit('company:branding:favicon:upload', 'company_branding', { companyIdParam: 'id' })
   @UseInterceptors(FileInterceptor('file'))
   @Post(':id/branding/favicon')
@@ -172,7 +172,7 @@ export class CompaniesController {
   /**
    * Update company operational settings (Company Admin / Super Admin)
    */
-  @RequirePermission('company:manage')
+  @RequirePermission('settings.manage')
   @Audit('company:settings:update', 'company_settings', { companyIdParam: 'id' })
   @Patch(':id/settings')
   async updateSettings(
@@ -210,7 +210,7 @@ export class CompaniesController {
    * Replace the company theme (Company Admin / Super Admin)
    * PUT /companies/:id/theme
    */
-  @RequirePermission('branding:manage')
+  @RequirePermission('branding.manage')
   @Audit('company:theme:update', 'company_branding', { companyIdParam: 'id' })
   @Put(':id/theme')
   async updateTheme(

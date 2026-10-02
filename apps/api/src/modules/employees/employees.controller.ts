@@ -5,20 +5,25 @@ import {
   Patch,
   Body,
   Param,
+  ParseUUIDPipe,
   Query,
 } from '@nestjs/common';
 import { EmployeesService } from './employees.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { QueryEmployeesDto } from './dto/query-employee.dto';
-import { RequirePermission, Audit, TenantCtx } from '../../common';
+import { RequirePermission, RequireFeature, Audit, TenantCtx, CurrentAccess } from '../../common';
 import type { TenantContext } from '../../common/types/request.types';
+import type { AccessContext } from '../access/access.types';
 
+// Every route needs the Employee directory feature; which employees a caller
+// sees or edits follows their permission scope (own / reports / dept / company).
+@RequireFeature('people.directory')
 @Controller('employees')
 export class EmployeesController {
   constructor(private readonly employeesService: EmployeesService) {}
 
-  @RequirePermission('employee:create')
+  @RequirePermission('employee.create')
   @Audit('employee:create', 'employee')
   @Post()
   async create(
@@ -28,35 +33,41 @@ export class EmployeesController {
     return this.employeesService.create(ctx.companyId!, dto);
   }
 
-  @RequirePermission('employee:read')
+  @RequirePermission('employee.view')
   @Get()
   async findAll(
     @TenantCtx() ctx: TenantContext,
+    @CurrentAccess() access: AccessContext,
     @Query() query: QueryEmployeesDto,
   ) {
-    return this.employeesService.findAll(ctx.companyId!, query);
+    return this.employeesService.findAll(ctx.companyId!, query, access);
   }
 
-  @RequirePermission('employee:read')
+  @RequirePermission('org.view')
   @Get('org-chart')
   async getOrgChart(@TenantCtx() ctx: TenantContext) {
     return this.employeesService.getOrgChart(ctx.companyId!);
   }
 
-  @RequirePermission('employee:read')
+  @RequirePermission('employee.view')
   @Get(':id')
-  async findOne(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
-    return this.employeesService.findOne(ctx.companyId!, id);
+  async findOne(
+    @TenantCtx() ctx: TenantContext,
+    @CurrentAccess() access: AccessContext,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.employeesService.findOne(ctx.companyId!, id, access);
   }
 
-  @RequirePermission('employee:update')
+  @RequirePermission('employee.edit')
   @Audit('employee:update', 'employee')
   @Patch(':id')
   async update(
     @TenantCtx() ctx: TenantContext,
-    @Param('id') id: string,
+    @CurrentAccess() access: AccessContext,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateEmployeeDto,
   ) {
-    return this.employeesService.update(ctx.companyId!, id, dto);
+    return this.employeesService.update(ctx.companyId!, id, dto, access);
   }
 }

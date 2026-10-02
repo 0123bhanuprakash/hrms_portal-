@@ -36,7 +36,7 @@ export default function BrandingPage() {
   const { user, companyId, permissions } = useAuthStore();
   const branding = useCompanyBranding(companyId);
   const update = useUpdateCompanyBranding(companyId ?? '');
-  const canEdit = Boolean(user?.isSuperAdmin || permissions.includes('branding:manage'));
+  const canEdit = Boolean(user?.isSuperAdmin || permissions.includes('branding.manage'));
   const [displayName, setDisplayName] = useState('');
 
   useEffect(() => {

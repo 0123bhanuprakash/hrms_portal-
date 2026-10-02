@@ -11,6 +11,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { AccessService } from '../access/access.service';
 import { EmailProducerService } from '../email/email.producer.service';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
@@ -71,6 +72,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
     private readonly emailProducerService: EmailProducerService,
+    private readonly accessService: AccessService,
   ) {}
 
   // ─── Login ─────────────────────────────────────────────────
@@ -86,17 +88,6 @@ export class AuthService {
       where: { email: email.toLowerCase().trim() },
       include: {
         company: { select: { status: true, slug: true } },
-        userRoles: {
-          include: {
-            role: {
-              include: {
-                rolePermissions: {
-                  include: { permission: true },
-                },
-              },
-            },
-          },
-        },
       },
     });
 
@@ -182,24 +173,16 @@ export class AuthService {
       },
     });
 
-    // 6. Collect roles + permissions from DB join
-    const roles = user.userRoles.map((ur) => ur.role.name);
-    const permissions = [
-      ...new Set(
-        user.userRoles.flatMap((ur) =>
-          ur.role.rolePermissions.map((rp) => rp.permission.key),
-        ),
-      ),
-    ];
+    // 7. Effective access (roles ∪ grants ∩ enabled features) — for the response only;
+    //    tokens carry no permissions, they're resolved fresh on every request
+    const access = await this.accessService.forUser(user.id);
 
-    // 7. Issue tokens
+    // 8. Issue tokens
     const { accessToken, refreshToken } = await this.issueTokens(
       user.id,
       user.email,
       user.isSuperAdmin,
       user.companyId,
-      roles,
-      permissions,
       device,
     );
 
@@ -217,8 +200,8 @@ export class AuthService {
         isSuperAdmin: user.isSuperAdmin,
         companyId: user.companyId,
         mustChangePassword: user.mustChangePassword,
-        roles,
-        permissions,
+        roles: access.roles.map((r) => r.key ?? r.name),
+        permissions: [...access.grants.keys()],
       },
     };
   }
@@ -235,15 +218,6 @@ export class AuthService {
         user: {
           include: {
             company: { select: { status: true } },
-            userRoles: {
-              include: {
-                role: {
-                  include: {
-                    rolePermissions: { include: { permission: true } },
-                  },
-                },
-              },
-            },
           },
         },
       },
@@ -288,24 +262,12 @@ export class AuthService {
       data: { isRevoked: true },
     });
 
-    // 6. Collect permissions
-    const roles = stored.user.userRoles.map((ur) => ur.role.name);
-    const permissions = [
-      ...new Set(
-        stored.user.userRoles.flatMap((ur) =>
-          ur.role.rolePermissions.map((rp) => rp.permission.key),
-        ),
-      ),
-    ];
-
-    // 7. Issue a new access + refresh token pair (same family)
+    // 6. Issue a new access + refresh token pair (same family)
     const { accessToken, refreshToken } = await this.issueTokens(
       stored.userId,
       stored.user.email,
       stored.user.isSuperAdmin,
       stored.user.companyId,
-      roles,
-      permissions,
       device,
       stored.familyId, // keep same family for reuse detection chain
     );
@@ -331,29 +293,8 @@ export class AuthService {
   // ─── Me (current user) ─────────────────────────────────────
 
   async me(userId: string): Promise<AuthUserResponse> {
-    const user = await this.prisma.user.findUniqueOrThrow({
-      where: { id: userId },
-      include: {
-        userRoles: {
-          include: {
-            role: {
-              include: {
-                rolePermissions: { include: { permission: true } },
-              },
-            },
-          },
-        },
-      },
-    });
-
-    const roles = user.userRoles.map((ur) => ur.role.name);
-    const permissions = [
-      ...new Set(
-        user.userRoles.flatMap((ur) =>
-          ur.role.rolePermissions.map((rp) => rp.permission.key),
-        ),
-      ),
-    ];
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    const access = await this.accessService.forUser(userId);
 
     return {
       id: user.id,
@@ -363,8 +304,8 @@ export class AuthService {
       isSuperAdmin: user.isSuperAdmin,
       companyId: user.companyId,
       mustChangePassword: user.mustChangePassword,
-      roles,
-      permissions,
+      roles: access.roles.map((r) => r.key ?? r.name),
+      permissions: [...access.grants.keys()],
     };
   }
 
@@ -616,8 +557,6 @@ export class AuthService {
     email: string,
     isSuperAdmin: boolean,
     companyId: string | null,
-    roles: string[],
-    permissions: string[],
     device: SessionDevice,
     existingFamilyId?: string,
   ): Promise<{ accessToken: string; refreshToken: string }> {
@@ -630,8 +569,6 @@ export class AuthService {
       email,
       is_super_admin: isSuperAdmin,
       company_id: companyId,
-      roles,
-      permissions,
       sid: familyId,
     };
 

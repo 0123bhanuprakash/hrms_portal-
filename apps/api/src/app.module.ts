@@ -10,6 +10,7 @@ import { HealthModule } from './health/health.module';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { QueueModule } from './modules/queue/queue.module';
+import { AccessModule } from './modules/access/access.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { EmailModule } from './modules/email/email.module';
 import { CompaniesModule } from './modules/companies/companies.module';
@@ -59,6 +60,7 @@ import { AppController } from './app.controller';
     QueueModule.register(),   // BullMQ — only when REDIS_URL is set
 
     // ── Feature modules ───────────────────────────────────
+    AccessModule,         // Feature toggles · RBAC · org hierarchy
     AuthModule,           // Chunk 6
     EmailModule.register(), // Chunk 7
     CompaniesModule,      // Chunk 9

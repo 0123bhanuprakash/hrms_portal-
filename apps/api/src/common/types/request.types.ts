@@ -27,8 +27,11 @@ declare global {
   }
 }
 
+/** req.user after JwtStrategy: token claims + per-request access context. */
+export type AuthUser = JwtPayload & { access: import('../../modules/access/access.types').AccessContext };
+
 export type AuthenticatedRequest = import('express').Request & {
-  user: JwtPayload;
+  user: AuthUser;
   tenantContext: TenantContext;
   requestId: string;
 };

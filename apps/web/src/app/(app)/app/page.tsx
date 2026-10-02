@@ -27,7 +27,7 @@ export default function CompanyDashboardPage() {
   const branding = useCompanyBranding(companyId);
   const stats = useCompanyStats(companyId);
   const s = stats.data;
-  const canBrand = user?.isSuperAdmin || permissions.includes('branding:manage');
+  const canBrand = user?.isSuperAdmin || permissions.includes('branding.manage');
 
   return (
     <div className="space-y-6">

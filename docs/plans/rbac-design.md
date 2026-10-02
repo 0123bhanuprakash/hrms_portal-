@@ -148,7 +148,7 @@ acme-test, beta-test) get the same clone in the data migration, and their
 
 ```
 GET    /access/catalog                    modules, actions, scopes (for the matrix UI)
-GET    /auth/me/access                    my role + effective grants (web uses this)
+GET    /access/me                         my roles + effective grants (web uses this)
 
 GET    /companies/:cid/roles              list (+ user counts)
 POST   /companies/:cid/roles              create (blank or from template)

@@ -11,14 +11,16 @@ import {
 import { DesignationsService } from './designations.service';
 import { CreateDesignationDto } from './dto/create-designation.dto';
 import { UpdateDesignationDto } from './dto/update-designation.dto';
-import { RequirePermission, Audit, TenantCtx } from '../../common';
+import { RequirePermission, RequireFeature, Audit, TenantCtx } from '../../common';
 import type { TenantContext } from '../../common/types/request.types';
 
+// Organisation structure is a core feature; reads need org.view, changes org.manage
+@RequireFeature('people.org')
 @Controller('designations')
 export class DesignationsController {
   constructor(private readonly designationsService: DesignationsService) {}
 
-  @RequirePermission('employee:create')
+  @RequirePermission('org.manage')
   @Audit('designation:create', 'designation')
   @Post()
   async create(
@@ -28,7 +30,7 @@ export class DesignationsController {
     return this.designationsService.create(ctx.companyId!, dto);
   }
 
-  @RequirePermission('employee:read')
+  @RequirePermission('org.view')
   @Get()
   async findAll(
     @TenantCtx() ctx: TenantContext,
@@ -37,13 +39,13 @@ export class DesignationsController {
     return this.designationsService.findAll(ctx.companyId!, { search });
   }
 
-  @RequirePermission('employee:read')
+  @RequirePermission('org.view')
   @Get(':id')
   async findOne(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
     return this.designationsService.findOne(ctx.companyId!, id);
   }
 
-  @RequirePermission('employee:update')
+  @RequirePermission('org.manage')
   @Audit('designation:update', 'designation')
   @Patch(':id')
   async update(
@@ -54,7 +56,7 @@ export class DesignationsController {
     return this.designationsService.update(ctx.companyId!, id, dto);
   }
 
-  @RequirePermission('employee:delete')
+  @RequirePermission('org.manage')
   @Audit('designation:delete', 'designation')
   @Delete(':id')
   async remove(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {

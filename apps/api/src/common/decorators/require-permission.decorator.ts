@@ -7,11 +7,11 @@ import { SetMetadata } from '@nestjs/common';
 // The PermissionGuard reads this to enforce access control.
 //
 // Usage:
-//   @RequirePermission('employee:create')
+//   @RequirePermission('employee.create')
 //   @Post('employees')
 //   createEmployee() { ... }
 //
-//   @RequirePermission('leave:approve')
+//   @RequirePermission('leave.approve')
 //   @Patch('leaves/:id/approve')
 //   approveLeave() { ... }
 // ============================================================

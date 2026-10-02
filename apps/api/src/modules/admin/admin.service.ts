@@ -13,7 +13,7 @@ import { EmailService } from '../email/email.service';
 import { AuthService } from '../auth/auth.service';
 import { HealthService } from '../../health/health.service';
 import { generateTemporaryPassword, hashPassword } from '../auth/password.util';
-import { getSystemRole, type SystemRoleName } from '../prisma/system-roles';
+import { CompanyRolesService } from '../access/company-roles.service';
 import { isQueueEnabled } from '../queue/queue.config';
 import { companyThemeFields } from '../themes/company-theme';
 import { CreateCompanyAdminDto } from './dto/create-company-admin.dto';
@@ -32,7 +32,8 @@ import {
 // are platform-level accounts and are the only users listed here.
 // ============================================================
 
-const COMPANY_ADMIN_ROLE: SystemRoleName = 'company_admin';
+/** A Company Admin = a user holding their company's owner role. */
+const HOLDS_OWNER_ROLE = { userRoles: { some: { role: { isOwner: true } } } } satisfies Prisma.UserWhereInput;
 
 /** Fields returned for company admin accounts */
 const ADMIN_USER_SELECT = {
@@ -57,6 +58,7 @@ export class AdminService {
     private readonly authService: AuthService,
     private readonly healthService: HealthService,
     private readonly emailService: EmailService,
+    private readonly companyRoles: CompanyRolesService,
   ) {}
 
   // ─── Platform ──────────────────────────────────────────────
@@ -312,7 +314,7 @@ export class AdminService {
     return this.prisma.user.findMany({
       where: {
         companyId,
-        userRoles: { some: { role: { name: COMPANY_ADMIN_ROLE, isSystemRole: true } } },
+        ...HOLDS_OWNER_ROLE,
       },
       select: ADMIN_USER_SELECT,
       orderBy: { createdAt: 'asc' },
@@ -331,7 +333,7 @@ export class AdminService {
     const passwordHash = await hashPassword(tempPassword);
 
     const adminUser = await this.prisma.$transaction(async (tx) => {
-      const companyAdminRole = await getSystemRole(tx, COMPANY_ADMIN_ROLE);
+      const companyAdminRoleId = await this.companyRoles.roleId(tx, companyId, 'company_admin');
 
       const user = await tx.user.create({
         data: {
@@ -348,7 +350,7 @@ export class AdminService {
       });
 
       await tx.userRole.create({
-        data: { userId: user.id, roleId: companyAdminRole.id, companyId },
+        data: { userId: user.id, roleId: companyAdminRoleId, companyId },
       });
 
       return user;
@@ -368,7 +370,7 @@ export class AdminService {
         where: {
           companyId,
           status: UserStatus.ACTIVE,
-          userRoles: { some: { role: { name: COMPANY_ADMIN_ROLE, isSystemRole: true } } },
+          ...HOLDS_OWNER_ROLE,
         },
       });
       if (activeAdmins <= 1) {
@@ -515,7 +517,7 @@ export class AdminService {
       where: {
         id: userId,
         companyId,
-        userRoles: { some: { role: { name: COMPANY_ADMIN_ROLE, isSystemRole: true } } },
+        ...HOLDS_OWNER_ROLE,
       },
       select: ADMIN_USER_SELECT,
     });

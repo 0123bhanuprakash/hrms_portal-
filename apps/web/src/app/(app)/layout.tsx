@@ -55,8 +55,8 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
   {
     label: 'Settings',
     items: [
-      { name: 'Branding', href: '/app/settings/branding', icon: ImageIcon, permission: 'branding:manage' },
-      { name: 'Theme', href: '/app/settings/theme', icon: Palette, permission: 'branding:manage' },
+      { name: 'Branding', href: '/app/settings/branding', icon: ImageIcon, permission: 'branding.manage' },
+      { name: 'Theme', href: '/app/settings/theme', icon: Palette, permission: 'branding.manage' },
       { name: 'Preferences', href: '/app/settings/preferences', icon: SlidersHorizontal },
     ],
   },

@@ -21,7 +21,7 @@ import { stableStringify } from '@/lib/theme/color';
 export default function CompanyThemePage() {
   const { user, companyId, permissions } = useAuthStore();
   const theme = useCompanyTheme(companyId);
-  const canEdit = Boolean(user?.isSuperAdmin || permissions.includes('branding:manage'));
+  const canEdit = Boolean(user?.isSuperAdmin || permissions.includes('branding.manage'));
 
   if (!canEdit) {
     return (

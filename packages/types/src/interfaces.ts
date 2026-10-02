@@ -76,8 +76,10 @@ export interface JwtPayload {
   email: string;                // User email (embedded for convenience)
   company_id: string | null;    // null for Super Admin
   is_super_admin: boolean;
-  roles: string[];
-  permissions: string[];        // e.g. ['employee:create', 'leave:approve']
+  /** @deprecated no longer in tokens — access is resolved per request (AccessService) */
+  roles?: string[];
+  /** @deprecated no longer in tokens — access is resolved per request (AccessService) */
+  permissions?: string[];
   sid?: string;                 // Session id = refresh token family id
   must_change_password?: boolean; // Set per request from the DB (not stored in the token)
   iat?: number;
