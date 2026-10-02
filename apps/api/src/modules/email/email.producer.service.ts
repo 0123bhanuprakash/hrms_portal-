@@ -12,6 +12,7 @@ import {
   WelcomeEmployeeJobData,
   ResetPasswordJobData,
   VerifyEmailJobData,
+  NotificationJobData,
 } from './email.job.types';
 
 // ============================================================
@@ -69,6 +70,10 @@ export class EmailProducerService {
     await this.dispatch(EMAIL_JOBS.VERIFY_EMAIL, data, 'email verification', () =>
       this.emailService.sendVerifyEmail(data),
     );
+  }
+
+  async queueNotification(data: NotificationJobData): Promise<void> {
+    await this.dispatch(EMAIL_JOBS.NOTIFICATION, data, 'notification email', () => this.emailService.sendNotification(data));
   }
 
   private async dispatch(

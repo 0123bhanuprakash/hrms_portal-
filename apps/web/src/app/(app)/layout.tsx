@@ -44,6 +44,7 @@ import { usePendingCorrections } from '@/lib/company/attendance';
 import { usePendingLeave } from '@/lib/company/leave';
 import { changePasswordPath, loginPathFor, useAuthHydrated, withNext } from '@/lib/auth/portal';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { NotificationBell } from '@/components/notifications/notification-bell';
 import { DropdownMenu } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { ThemeStyle } from '@/components/theme/theme-style';
@@ -131,6 +132,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   approvals: 'Approvals',
   holidays: 'Holidays',
   leave: 'Leave',
+  notifications: 'Notifications',
   calendar: 'Who’s off',
   types: 'Leave types',
   org: 'Organisation',
@@ -338,7 +340,10 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
             </button>
             <Breadcrumbs pathname={pathname} />
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-1">
+            <NotificationBell />
+            <ThemeToggle />
+          </div>
         </header>
 
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">

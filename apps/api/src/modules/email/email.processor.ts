@@ -11,6 +11,7 @@ import {
   WelcomeEmployeeJobData,
   ResetPasswordJobData,
   VerifyEmailJobData,
+  NotificationJobData,
 } from './email.job.types';
 
 @Processor(EMAIL_QUEUE_NAME)
@@ -45,6 +46,10 @@ export class EmailProcessor extends WorkerHost {
 
       case EMAIL_JOBS.VERIFY_EMAIL:
         await this.emailService.sendVerifyEmail(data as VerifyEmailJobData);
+        break;
+
+      case EMAIL_JOBS.NOTIFICATION:
+        await this.emailService.sendNotification(data as NotificationJobData);
         break;
 
       default:

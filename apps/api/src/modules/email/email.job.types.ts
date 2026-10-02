@@ -1,4 +1,5 @@
 import {
+  NotificationEmailOptions,
   ResetPasswordEmailOptions,
   VerifyEmailOptions,
   WelcomeCompanyAdminOptions,
@@ -12,6 +13,7 @@ export const EMAIL_JOBS = {
   WELCOME_EMPLOYEE: 'send-welcome-employee',
   RESET_PASSWORD: 'send-reset-password',
   VERIFY_EMAIL: 'send-verify-email',
+  NOTIFICATION: 'send-notification',
 } as const;
 
 export type EmailJobType = (typeof EMAIL_JOBS)[keyof typeof EMAIL_JOBS];
@@ -29,5 +31,9 @@ export interface ResetPasswordJobData extends ResetPasswordEmailOptions {
 }
 
 export interface VerifyEmailJobData extends VerifyEmailOptions {
+  to: string;
+}
+
+export interface NotificationJobData extends NotificationEmailOptions {
   to: string;
 }

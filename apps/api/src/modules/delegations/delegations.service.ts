@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AccessService } from '../access/access.service';
 import { ACCESS_USER_SELECT, type AccessContext } from '../access/access.types';
 import { DELEGABLE_PERMISSIONS, MAX_DELEGATION_DAYS, PERMISSION_BY_KEY } from '../access/catalog';
+import { NotificationsService } from '../notifications/notifications.service';
 import type { CreateDelegationDto } from './dto';
 
 const SELECT = {
@@ -28,6 +29,7 @@ export class DelegationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly access: AccessService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   /** Mine: what I've handed over and what I'm covering (active, upcoming, ended in the last 30 days). */
@@ -90,6 +92,16 @@ export class DelegationsService {
       select: SELECT,
     });
     this.access.invalidateDelegations(dto.delegateId);
+    const fmt = (d: Date) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
+    void this.notifications.notify({
+      companyId,
+      userIds: [dto.delegateId],
+      type: 'delegation.assigned',
+      title: `You're covering approvals for ${delegator.firstName}`,
+      body: `From ${fmt(startsAt)} to ${fmt(endsAt)}: ${permissions.map((p) => p.label).join(', ')}.${row.reason ? `\nReason: ${row.reason}` : ''}`,
+      link: '/app/delegations',
+      actionLabel: 'See delegation',
+    });
     return { ...this.present(row), permissions };
   }
 

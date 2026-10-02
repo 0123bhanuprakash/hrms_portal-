@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import type { AccessContext } from '../access/access.types';
 import { ProfileService } from './profile.service';
 import type { DirectoryQueryDto } from './dto';
+import { dateFromKey, isValidTimeZone, localDateKey } from '../attendance/time-zone';
 
 /** What any colleague may see about anyone — no personal data. */
 const BASIC = {
@@ -89,7 +90,10 @@ export class PeopleService {
    * work anniversaries, recent joiners and the next holidays.
    */
   async spotlight(companyId: string) {
-    const today = startOfDay(new Date());
+    // "Today" in the company's time zone (UTC midnight of that calendar date)
+    const settings = await this.prisma.companySettings.findUnique({ where: { companyId }, select: { timezone: true } });
+    const timeZone = settings?.timezone && isValidTimeZone(settings.timezone) ? settings.timezone : 'Asia/Kolkata';
+    const today = dateFromKey(localDateKey(new Date(), timeZone));
     const people = await this.prisma.employee.findMany({
       where: { companyId, employmentStatus: { not: EmploymentStatus.TERMINATED } },
       select: { ...BASIC, dateOfBirth: true, showBirthday: true, joiningDate: true },

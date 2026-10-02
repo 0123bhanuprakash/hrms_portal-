@@ -13,6 +13,8 @@ import {
   type VerifyEmailOptions,
   type WelcomeCompanyAdminOptions,
   type WelcomeEmployeeOptions,
+  notificationEmail,
+  type NotificationEmailOptions,
 } from './templates/email.templates';
 
 // ============================================================
@@ -258,5 +260,9 @@ export class EmailService implements OnModuleInit {
       subject: `Welcome to ${opts.companyName ?? 'HRMS Portal'}`,
       html: welcomeEmployeeEmail(opts),
     });
+  }
+
+  async sendNotification(opts: NotificationEmailOptions & { to: string }): Promise<void> {
+    await this.send({ to: opts.to, subject: opts.title, html: notificationEmail(opts) });
   }
 }

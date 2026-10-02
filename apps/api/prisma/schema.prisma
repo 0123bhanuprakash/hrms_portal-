@@ -229,6 +229,7 @@ model User {
   leaveActions        LeaveApproval[]            @relation("LeaveActedBy")
   leaveCovered        LeaveApproval[]            @relation("LeaveOnBehalfOf")
   leaveAdjustments    LeaveBalanceAdjustment[]   @relation("LeaveAdjustedBy")
+  notifications       Notification[]
 
   @@index([companyId])
   @@index([email])
@@ -1256,4 +1257,29 @@ model ApprovalDelegation {
   @@index([delegatorId, endsAt])
   @@index([companyId])
   @@map("approval_delegations")
+}
+
+/// In-app inbox item (also emailed when the user allows it)
+model Notification {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId String?   @map("company_id") @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  /// e.g. leave.submitted, leave.approved, attendance.missing_checkout
+  type      String
+  title     String
+  body      String?
+  /// App path to open, e.g. /app/leave/approvals
+  link      String?
+  /// Prevents duplicates (e.g. one reminder per user per day)
+  dedupeKey String?   @map("dedupe_key")
+  readAt    DateTime? @map("read_at")
+  emailedAt DateTime? @map("emailed_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dedupeKey])
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+  @@map("notifications")
 }

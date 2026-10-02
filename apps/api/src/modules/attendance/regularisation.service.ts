@@ -6,6 +6,7 @@ import type { AccessContext, ActiveDelegation } from '../access/access.types';
 import { AttendanceService } from './attendance.service';
 import { AttendancePolicyService } from './policy.service';
 import { addDays, dateFromKey, keyFromDate, localDateKey } from './time-zone';
+import { NotificationsService, dateRange } from '../notifications/notifications.service';
 import type { CreateRegularisationDto, RegularisationQueryDto, ReviewRegularisationDto } from './dto';
 
 const APPROVE = 'attendance.approve';
@@ -39,6 +40,7 @@ export class RegularisationService {
     private readonly access: AccessService,
     private readonly attendance: AttendanceService,
     private readonly policies: AttendancePolicyService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async create(companyId: string, access: AccessContext, dto: CreateRegularisationDto) {
@@ -60,9 +62,53 @@ export class RegularisationService {
     });
     if (pending) throw new ConflictException('You already have a pending correction for this day');
 
-    return this.prisma.attendanceRegularisation.create({
+    const created = await this.prisma.attendanceRegularisation.create({
       data: { companyId, employeeId: employee.id, date: dateFromKey(dto.date), checkIn: times.checkIn, checkOut: times.checkOut, reason: dto.reason },
       select: SELECT,
+    });
+    void this.notifyApprovers(companyId, employee.id, created, dto, policy.timeZone);
+    return created;
+  }
+
+  /** The reporting manager (if they approve attendance) and anyone covering for them; else HR. */
+  private async notifyApprovers(
+    companyId: string,
+    employeeId: string,
+    c: { employee: { firstName: string; lastName: string } },
+    dto: CreateRegularisationDto,
+    timeZone: string,
+  ) {
+    const emp = await this.prisma.employee.findUnique({ where: { id: employeeId }, select: { userId: true, reportingManager: { select: { userId: true } } } });
+    const managerId = emp?.reportingManager?.userId;
+    let to: string[] = [];
+    if (managerId && (await this.notifications.holds(managerId, APPROVE))) to = [managerId, ...(await this.notifications.coveringFor([managerId]))];
+    if (!to.length) to = await this.notifications.companyWideApprovers(companyId, APPROVE);
+    await this.notifications.notify({
+      companyId,
+      userIds: to.filter((u) => u !== emp?.userId),
+      type: 'attendance.correction_submitted',
+      title: `${c.employee.firstName} ${c.employee.lastName} asked to correct attendance`,
+      body: `${dateRange(dto.date, dto.date)} · ${dto.checkIn}–${dto.checkOut ?? '…'} (${timeZone})\nReason: ${dto.reason}`,
+      link: '/app/attendance/approvals',
+      actionLabel: 'Review correction',
+    });
+  }
+
+  private async notifyEmployee(companyId: string, id: string, approved: boolean) {
+    const r = await this.prisma.attendanceRegularisation.findUnique({
+      where: { id },
+      select: { date: true, reviewNote: true, employee: { select: { userId: true } }, reviewedBy: { select: { firstName: true, lastName: true } } },
+    });
+    if (!r) return;
+    const key = keyFromDate(r.date);
+    await this.notifications.notify({
+      companyId,
+      userIds: [r.employee.userId],
+      type: approved ? 'attendance.correction_approved' : 'attendance.correction_rejected',
+      title: approved ? `Your attendance correction for ${dateRange(key, key)} was approved` : `Your attendance correction for ${dateRange(key, key)} was not approved`,
+      body: [r.reviewedBy && `By ${r.reviewedBy.firstName} ${r.reviewedBy.lastName}`, r.reviewNote && `Note: ${r.reviewNote}`].filter(Boolean).join('\n') || null,
+      link: '/app/attendance',
+      actionLabel: 'View my attendance',
     });
   }
 
@@ -135,6 +181,9 @@ export class RegularisationService {
         create: { ...data, companyId, employeeId: request.employeeId, date: request.date },
       });
       return tx.attendanceRegularisation.findUniqueOrThrow({ where: { id }, select: SELECT });
+    }).then((row) => {
+      void this.notifyEmployee(companyId, id, true);
+      return row;
     });
   }
 
@@ -146,6 +195,7 @@ export class RegularisationService {
       data: { status: RegularisationStatus.REJECTED, reviewedById: access.userId, onBehalfOfId: onBehalfOf, reviewedAt: new Date(), reviewNote: dto.note ?? null },
     });
     if (!count) throw new ConflictException('This request has already been decided');
+    void this.notifyEmployee(companyId, id, false);
     return this.prisma.attendanceRegularisation.findUniqueOrThrow({ where: { id }, select: SELECT });
   }
 

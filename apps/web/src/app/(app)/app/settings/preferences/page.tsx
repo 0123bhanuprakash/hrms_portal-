@@ -9,6 +9,7 @@ import { Card, CardHeader, Skeleton } from '@/components/ui/feedback';
 import { Field, inputClass } from '@/components/ui/field';
 import { PageHeader } from '@/components/ui/page-header';
 import { DisplaySettingsCard } from '@/components/preferences/display-preferences';
+import { NotificationSettingsCard } from '@/components/notifications/notification-settings-card';
 import { usePreferences, useUpdatePreferences, type UserPreferences } from '@/lib/company/queries';
 import { getApiErrorMessage } from '@/lib/errors';
 import { cn } from '@/lib/cn';
@@ -143,6 +144,7 @@ export default function PreferencesPage() {
       </form>
 
       <DisplaySettingsCard />
+      <NotificationSettingsCard />
     </div>
   );
 }

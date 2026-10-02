@@ -9,6 +9,7 @@ import { addDays, dateFromKey, keyFromDate, localDateKey, monthKeys } from '../a
 import { LeaveTypesService, type LeaveTypeRow } from './leave-types.service';
 import { LeaveBalancesService, eligible } from './leave-balances.service';
 import { countLeaveDays } from './leave-rules';
+import { NotificationsService, dateRange } from '../notifications/notifications.service';
 import type { CancelLeaveDto, CreateLeaveRequestDto, DecideLeaveDto, LeaveCalendarQueryDto, LeaveListQueryDto, LeaveRequestInputDto } from './dto';
 
 const APPROVE = 'leave.approve';
@@ -60,6 +61,7 @@ export class LeaveRequestsService {
     private readonly holidays: HolidaysService,
     private readonly types: LeaveTypesService,
     private readonly balances: LeaveBalancesService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   // ─── Apply ─────────────────────────────────────────────────
@@ -110,6 +112,7 @@ export class LeaveRequestsService {
       await this.balances.change(tx, companyId, person.id, type.id, year, auto ? { used: check.days } : { pending: check.days });
       return request.id;
     });
+    if (!auto) void this.notifyApprovers(companyId, id);
     return this.getRow(companyId, access, id, true);
   }
 
@@ -199,7 +202,10 @@ export class LeaveRequestsService {
       await tx.leaveRequest.update({ where: { id }, data: { status: LeaveStatus.APPROVED, decidedAt: new Date() } });
       await this.balances.change(tx, companyId, request.employee.id, request.leaveType.id, year, { pending: -request.totalDays, used: request.totalDays });
     });
-    return this.getRow(companyId, access, id, true);
+    const row = await this.getRow(companyId, access, id, true);
+    if (row.status === LeaveStatus.PENDING) void this.notifyApprovers(companyId, id);
+    else void this.notifyEmployee(companyId, request, 'leave.approved', `Your ${request.leaveType.name.toLowerCase()} was approved`, this.decidedBy(row, dto.note));
+    return row;
   }
 
   async reject(companyId: string, access: AccessContext, id: string, dto: DecideLeaveDto) {
@@ -214,7 +220,9 @@ export class LeaveRequestsService {
       await tx.leaveRequest.update({ where: { id }, data: { status: LeaveStatus.REJECTED, decidedAt: new Date() } });
       await this.balances.change(tx, companyId, request.employee.id, request.leaveType.id, request.startDate.getUTCFullYear(), { pending: -request.totalDays });
     });
-    return this.getRow(companyId, access, id, true);
+    const row = await this.getRow(companyId, access, id, true);
+    void this.notifyEmployee(companyId, request, 'leave.rejected', `Your ${request.leaveType.name.toLowerCase()} was not approved`, this.decidedBy(row, dto.note));
+    return row;
   }
 
   async cancel(companyId: string, access: AccessContext, id: string, dto: CancelLeaveDto) {
@@ -244,6 +252,22 @@ export class LeaveRequestsService {
         wasApproved ? { used: -request.totalDays } : { pending: -request.totalDays },
       );
     });
+    if (request.employee.userId !== access.userId) {
+      void this.notifyEmployee(companyId, request, 'leave.cancelled', `Your ${request.leaveType.name.toLowerCase()} was cancelled`, dto.reason ? `Reason: ${dto.reason}` : null);
+    } else if (!wasApproved) {
+      // Withdrawn while pending: let the approver know it no longer needs them (in-app only)
+      const level = request.approvals.find((a) => a.level === request.currentLevel);
+      const to = level?.approverId ? [level.approverId, ...(await this.notifications.coveringFor([level.approverId]))] : [];
+      void this.notifications.notify({
+        companyId,
+        userIds: to,
+        type: 'leave.withdrawn',
+        title: `${request.employee.firstName} ${request.employee.lastName} withdrew a leave request`,
+        body: `${request.leaveType.name}, ${dateRange(keyFromDate(request.startDate), keyFromDate(request.endDate))}`,
+        link: '/app/leave/approvals',
+        email: false,
+      });
+    }
     return this.getRow(companyId, access, id, true);
   }
 
@@ -279,6 +303,48 @@ export class LeaveRequestsService {
     if (this.companyWide(access)) return true;
     if (r.employee.userId !== access.userId) return false;
     return r.status === LeaveStatus.PENDING || keyFromDate(r.startDate) > todayKey;
+  }
+
+  // ─── Notifications ─────────────────────────────────────────
+
+  /** Tell whoever decides the current level (and anyone covering for them). */
+  private async notifyApprovers(companyId: string, id: string) {
+    const r = await this.prisma.leaveRequest.findUnique({ where: { id }, select: SELECT });
+    if (!r || r.status !== LeaveStatus.PENDING) return;
+    const level = r.approvals.find((a) => a.level === r.currentLevel);
+    const to = level?.approverId
+      ? [level.approverId, ...(await this.notifications.coveringFor([level.approverId]))]
+      : await this.notifications.companyWideApprovers(companyId, APPROVE);
+    const who = `${r.employee.firstName} ${r.employee.lastName}`;
+    const step = r.requiredLevels > 1 ? ` (approval ${r.currentLevel} of ${r.requiredLevels})` : '';
+    await this.notifications.notify({
+      companyId,
+      userIds: to.filter((u) => u !== r.employee.userId),
+      type: 'leave.submitted',
+      title: `${who} requested ${r.leaveType.name.toLowerCase()}${step}`,
+      body: `${dateRange(keyFromDate(r.startDate), keyFromDate(r.endDate))} · ${r.totalDays} day${r.totalDays === 1 ? '' : 's'}\nReason: ${r.reason}`,
+      link: '/app/leave/approvals',
+      actionLabel: 'Review request',
+    });
+  }
+
+  private async notifyEmployee(companyId: string, r: RequestRow, type: string, title: string, body: string | null) {
+    await this.notifications.notify({
+      companyId,
+      userIds: [r.employee.userId],
+      type,
+      title,
+      body: [`${r.leaveType.name}, ${dateRange(keyFromDate(r.startDate), keyFromDate(r.endDate))}`, body].filter(Boolean).join('\n'),
+      link: '/app/leave',
+      actionLabel: 'View my leave',
+    });
+  }
+
+  /** "Decided by Priya Sharma (for Ravi Kumar): note" */
+  private decidedBy(row: { approvals: Array<{ status: string; actedBy: { firstName: string; lastName: string } | null; onBehalfOf: { firstName: string; lastName: string } | null }> }, note?: string | null): string | null {
+    const acted = [...row.approvals].reverse().find((a) => a.actedBy && a.status !== 'PENDING' && a.status !== 'SKIPPED');
+    const by = acted?.actedBy ? `By ${acted.actedBy.firstName} ${acted.actedBy.lastName}${acted.onBehalfOf ? ` (for ${acted.onBehalfOf.firstName} ${acted.onBehalfOf.lastName})` : ''}` : null;
+    return [by, note ? `Note: ${note}` : null].filter(Boolean).join('\n') || null;
   }
 
   // ─── Read ──────────────────────────────────────────────────
