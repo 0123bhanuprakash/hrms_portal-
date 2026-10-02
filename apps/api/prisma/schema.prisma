@@ -192,6 +192,8 @@ model User {
   company             Company?                 @relation(fields: [companyId], references: [id])
   preferences         UserPreferences?
   refreshTokens       RefreshToken[]
+  delegationsGiven    ApprovalDelegation[]     @relation("Delegator")
+  delegationsReceived ApprovalDelegation[]     @relation("Delegate")
   passwordResetTokens PasswordResetToken[]
   emailVerifications  EmailVerificationToken[]
   userRoles           UserRole[]
@@ -303,6 +305,7 @@ model Company {
   orgLevels           OrgLevel[]
   employeeHierarchy   EmployeeHierarchy[]
   departmentHierarchy DepartmentHierarchy[]
+  delegations         ApprovalDelegation[]
 
   users           User[]
   settings        CompanySettings?
@@ -1040,4 +1043,29 @@ model DepartmentHierarchy {
   @@index([descendantId])
   @@index([companyId])
   @@map("department_hierarchy")
+}
+
+/// Temporary hand-over of approval permissions (e.g. while a manager is on leave).
+/// The delegate approves with the DELEGATOR's reach (their team), only between the dates.
+model ApprovalDelegation {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId   String    @map("company_id") @db.Uuid
+  delegatorId String    @map("delegator_id") @db.Uuid
+  delegateId  String    @map("delegate_id") @db.Uuid
+  startsAt    DateTime  @map("starts_at")
+  endsAt      DateTime  @map("ends_at")
+  reason      String?
+  createdById String    @map("created_by") @db.Uuid
+  revokedAt   DateTime? @map("revoked_at")
+  revokedById String?   @map("revoked_by") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  delegator User    @relation("Delegator", fields: [delegatorId], references: [id], onDelete: Cascade)
+  delegate  User    @relation("Delegate", fields: [delegateId], references: [id], onDelete: Cascade)
+
+  @@index([delegateId, endsAt])
+  @@index([delegatorId, endsAt])
+  @@index([companyId])
+  @@map("approval_delegations")
 }

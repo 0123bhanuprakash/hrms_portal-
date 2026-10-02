@@ -247,6 +247,18 @@ export function broader(a: AccessScope | null, b: AccessScope | null): AccessSco
   return SCOPE_ORDER.indexOf(a) >= SCOPE_ORDER.indexOf(b) ? a : b;
 }
 
+// ─── Delegation ─────────────────────────────────────────────
+
+/** Approval permissions a person can hand over temporarily (e.g. while on leave). */
+export const DELEGABLE_PERMISSIONS = ['leave.approve', 'attendance.approve', 'expense.approve'];
+/** Approval actions: the person's own record is never in reach (no self-approval). */
+export function isApproval(permission: string): boolean {
+  return permission.endsWith('.approve');
+}
+
+/** Longest allowed delegation. */
+export const MAX_DELEGATION_DAYS = 90;
+
 // ─── Limits (per plan, overridable per company; null = unlimited) ──
 
 export const LIMITS: Array<{ key: string; label: string; description: string }> = [

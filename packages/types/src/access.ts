@@ -63,4 +63,6 @@ export interface MyAccess {
   roles: Array<{ id: string; key: string | null; name: string }>;
   /** permission key → broadest scope (null = unscoped) */
   grants: Record<string, AccessScope | null>;
+  /** Approvals being covered for someone else right now */
+  delegations: Array<{ id: string; fromUserId: string; fromName: string; until: string; permissions: string[] }>;
 }

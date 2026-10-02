@@ -4,10 +4,10 @@ import type { AccessScope, MyAccess } from '@hrms/types';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { EntitlementService } from './entitlement.service';
-import { broader, CATALOG, featureOf } from './catalog';
-import { ACCESS_USER_SELECT, type AccessContext, type AccessUserRow } from './access.types';
+import { broader, CATALOG, DELEGABLE_PERMISSIONS, featureOf, isApproval } from './catalog';
+import { ACCESS_USER_SELECT, holds, type AccessContext, type AccessUserRow, type ActiveDelegation } from './access.types';
 
-type RoleGrants = Array<[key: string, scope: AccessScope | null]>;
+export type RoleGrants = Array<[key: string, scope: AccessScope | null]>;
 
 /**
  * Layers 2 + 3 — what a user may do (roles) and over whom (scopes).
@@ -22,6 +22,9 @@ type RoleGrants = Array<[key: string, scope: AccessScope | null]>;
 @Injectable()
 export class AccessService {
   private readonly roleCache = new Map<string, RoleGrants>();
+  /** Active delegations per delegate (short-lived; dropped on every create / revoke). */
+  private readonly delegationCache = new Map<string, { expires: number; list: ActiveDelegation[] }>();
+  private static readonly DELEGATION_TTL_MS = 30_000;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -30,7 +33,7 @@ export class AccessService {
 
   // ─── Building the context ─────────────────────────────────
 
-  async resolve(user: AccessUserRow): Promise<AccessContext> {
+  async resolve(user: AccessUserRow, opts: { withDelegations?: boolean } = {}): Promise<AccessContext> {
     const activeRoles = user.userRoles
       .map((ur) => ur.role)
       .filter((r) => r.status === 'ACTIVE' && (r.companyId === null || r.companyId === user.companyId));
@@ -45,6 +48,7 @@ export class AccessService {
         features: new Set(),
         grants: new Map(),
         roles: activeRoles.map(({ id, key, name }) => ({ id, key, name })),
+        delegations: [],
         version: user.isSuperAdmin ? 'super-admin' : 'none',
       };
     }
@@ -71,10 +75,19 @@ export class AccessService {
       for (const [key, scope] of await this.roleGrants(role.id, role.version)) add(key, scope);
     }
 
+    // Covering for someone: their approval grants, only for features this company has
+    const delegations =
+      opts.withDelegations === false
+        ? []
+        : (await this.delegationsFor(user.id, user.companyId))
+            .map((d) => ({ ...d, grants: new Map([...d.grants].filter(([k]) => features.has(featureOf(k) ?? ''))) }))
+            .filter((d) => d.grants.size > 0);
+
     const versionSource = [
       user.company.featuresVersion,
       user.company.hierarchyVersion,
       ...activeRoles.map((r) => `${r.id}:${r.version}`).sort(),
+      ...delegations.map((d) => d.id).sort(),
     ].join('|');
 
     return {
@@ -86,6 +99,7 @@ export class AccessService {
       features,
       grants,
       roles: activeRoles.map(({ id, key, name }) => ({ id, key, name })),
+      delegations,
       version: crypto.createHash('sha1').update(versionSource).digest('hex').slice(0, 12),
     };
   }
@@ -96,6 +110,34 @@ export class AccessService {
     return this.resolve(user);
   }
 
+  /** Delegations this user currently covers (cached ~30 s; invalidated on create / revoke). */
+  async delegationsFor(userId: string, companyId: string): Promise<ActiveDelegation[]> {
+    const hit = this.delegationCache.get(userId);
+    if (hit && hit.expires > Date.now()) return hit.list;
+    const now = new Date();
+    const rows = await this.prisma.approvalDelegation.findMany({
+      where: { delegateId: userId, companyId, revokedAt: null, startsAt: { lte: now }, endsAt: { gt: now }, delegator: { status: 'ACTIVE' } },
+      select: { id: true, endsAt: true, delegatorId: true, delegator: { select: { firstName: true, lastName: true } } },
+    });
+    const list: ActiveDelegation[] = [];
+    for (const r of rows) {
+      // The delegator's OWN grants (no chained delegations)
+      const user = await this.prisma.user.findUnique({ where: { id: r.delegatorId }, select: ACCESS_USER_SELECT });
+      if (!user) continue;
+      const theirs = await this.resolve(user, { withDelegations: false });
+      const grants = new Map(DELEGABLE_PERMISSIONS.filter((k) => theirs.grants.has(k)).map((k) => [k, theirs.grants.get(k)!] as const));
+      list.push({ id: r.id, fromUserId: r.delegatorId, fromName: `${r.delegator.firstName} ${r.delegator.lastName}`, until: r.endsAt, employee: theirs.employee, grants });
+    }
+    // Expire the cache no later than the first delegation ends
+    const soonest = Math.min(...list.map((d) => d.until.getTime()), Date.now() + AccessService.DELEGATION_TTL_MS);
+    this.delegationCache.set(userId, { expires: soonest, list });
+    return list;
+  }
+
+  invalidateDelegations(...userIds: string[]): void {
+    userIds.forEach((id) => this.delegationCache.delete(id));
+  }
+
   toMyAccess(access: AccessContext): MyAccess {
     return {
       version: access.version,
@@ -104,10 +146,12 @@ export class AccessService {
       features: [...access.features].sort(),
       roles: access.roles,
       grants: Object.fromEntries([...access.grants.entries()].sort(([a], [b]) => a.localeCompare(b))),
+      delegations: access.delegations.map((d) => ({ id: d.id, fromUserId: d.fromUserId, fromName: d.fromName, until: d.until.toISOString(), permissions: [...d.grants.keys()] })),
     };
   }
 
-  private async roleGrants(roleId: string, version: number): Promise<RoleGrants> {
+  /** A role's stored grants (cached per role@version). */
+  async roleGrants(roleId: string, version: number): Promise<RoleGrants> {
     const cacheKey = `${roleId}@${version}`;
     const hit = this.roleCache.get(cacheKey);
     if (hit) return hit;
@@ -124,7 +168,7 @@ export class AccessService {
   // ─── Checks ───────────────────────────────────────────────
 
   can(access: AccessContext, permission: string): boolean {
-    return access.isSuperAdmin || access.grants.has(permission);
+    return holds(access, permission);
   }
 
   /**
@@ -134,11 +178,32 @@ export class AccessService {
    */
   employeeScope(access: AccessContext, permission: string): Prisma.EmployeeWhereInput | null {
     if (access.isSuperAdmin) return {};
-    if (!access.grants.has(permission)) return null;
-    const scope = access.grants.get(permission) ?? 'company';
-    const own: Prisma.EmployeeWhereInput = { userId: access.userId };
-    const me = access.employee;
+    const filters: Prisma.EmployeeWhereInput[] = [];
+    if (access.grants.has(permission)) {
+      filters.push(this.scopeFilter(access.grants.get(permission) ?? 'company', access.userId, access.employee));
+    }
+    // Covering for someone: their reach, evaluated from THEIR position
+    for (const d of access.delegations) {
+      if (d.grants.has(permission)) filters.push(this.scopeFilter(d.grants.get(permission) ?? 'company', d.fromUserId, d.employee));
+    }
+    if (!filters.length) return null;
+    const combined: Prisma.EmployeeWhereInput = filters.some((f) => Object.keys(f).length === 0)
+      ? {} // company-wide
+      : filters.length === 1
+        ? filters[0]!
+        : { OR: filters };
+    // Nobody approves their own requests — not via their roles, not while covering for someone
+    if (isApproval(permission)) return { AND: [combined, { NOT: { userId: access.userId } }] };
+    return combined;
+  }
 
+  /** One scope → Prisma filter, relative to a person (userId + employee record). */
+  private scopeFilter(
+    scope: AccessScope,
+    userId: string,
+    me: { id: string; departmentId: string | null; locationId: string | null } | null,
+  ): Prisma.EmployeeWhereInput {
+    const own: Prisma.EmployeeWhereInput = { userId };
     switch (scope) {
       case 'company':
         return {};

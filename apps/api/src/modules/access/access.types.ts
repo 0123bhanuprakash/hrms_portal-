@@ -18,8 +18,26 @@ export interface AccessContext {
   /** permission key → broadest scope across all roles (null = unscoped) */
   grants: Map<string, AccessScope | null>;
   roles: Array<{ id: string; key: string | null; name: string }>;
+  /** Approvals this user is covering for someone else right now (reach = the delegator's) */
+  delegations: ActiveDelegation[];
   /** Changes whenever features, roles or the hierarchy change (X-Access-Version) */
   version: string;
+}
+
+export interface ActiveDelegation {
+  id: string;
+  fromUserId: string;
+  fromName: string;
+  until: Date;
+  /** The delegator's employee record — scopes are evaluated from their position */
+  employee: { id: string; departmentId: string | null; locationId: string | null } | null;
+  /** Delegated permission → the delegator's scope */
+  grants: Map<string, AccessScope | null>;
+}
+
+/** Holds a permission directly or by covering for someone. */
+export function holds(access: AccessContext, permission: string): boolean {
+  return access.isSuperAdmin || access.grants.has(permission) || access.delegations.some((d) => d.grants.has(permission));
 }
 
 /** The user row JwtStrategy loads on every request (one query). */

@@ -5,6 +5,7 @@ import { PERMISSION_KEY } from '../decorators/require-permission.decorator';
 import { FEATURE_KEY } from '../decorators/require-feature.decorator';
 import { IS_PUBLIC_KEY } from '../../modules/auth/decorators/public.decorator';
 import { featureOf } from '../../modules/access/catalog';
+import { holds } from '../../modules/access/access.types';
 import type { AuthUser } from '../types/request.types';
 
 // ============================================================
@@ -57,7 +58,7 @@ export class PermissionGuard implements CanActivate {
       });
     }
 
-    if (permission && !access.grants.has(permission)) {
+    if (permission && !holds(access, permission)) {
       this.logger.warn(`Permission denied: user=${user.sub} required="${permission}"`);
       throw new ForbiddenException(`You do not have permission to perform this action. Required: ${permission}`);
     }
