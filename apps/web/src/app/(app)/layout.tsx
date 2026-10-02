@@ -38,6 +38,8 @@ import {
   FolderKanban,
   Megaphone,
   Heart,
+  Receipt,
+  Wallet,
 } from 'lucide-react';
 import type { ThemeTokens } from '@hrms/types';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -47,6 +49,7 @@ import { usePendingCorrections } from '@/lib/company/attendance';
 import { usePendingLeave } from '@/lib/company/leave';
 import { useIsApprover } from '@/lib/company/projects';
 import { useAnnouncements } from '@/lib/company/engagement';
+import { usePendingExpenses } from '@/lib/company/expenses';
 import { changePasswordPath, loginPathFor, useAuthHydrated, withNext } from '@/lib/auth/portal';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { NotificationBell } from '@/components/notifications/notification-bell';
@@ -71,7 +74,7 @@ interface NavItem {
   /** Also show for anyone who approves: covering someone, project lead / PM, line manager */
   orDelegated?: boolean;
   /** Live count shown on the item */
-  badge?: 'attendanceApprovals' | 'leaveApprovals' | 'announcements';
+  badge?: 'attendanceApprovals' | 'leaveApprovals' | 'announcements' | 'expenseApprovals';
 }
 
 const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
@@ -100,6 +103,15 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
   {
     label: 'Work',
     items: [{ name: 'Projects', href: '/app/projects', icon: FolderKanban, permission: 'project.view', feature: 'work.projects' }],
+  },
+  {
+    label: 'Expenses',
+    items: [
+      { name: 'My expenses', href: '/app/expenses', icon: Receipt, exact: true, permission: 'expense.submit', feature: 'ops.expenses' },
+      { name: 'Expense approvals', href: '/app/expenses/approvals', icon: ClipboardCheck, permission: 'expense.approve', feature: 'ops.expenses', orDelegated: true, badge: 'expenseApprovals' },
+      { name: 'Payments & reports', href: '/app/expenses/payments', icon: Wallet, permission: 'expense.finance', feature: 'ops.expenses' },
+      { name: 'Expense categories', href: '/app/expenses/categories', icon: Tags, permission: 'expense.manage', feature: 'ops.expenses' },
+    ],
   },
   {
     label: 'Time',
@@ -151,6 +163,9 @@ const SEGMENT_LABELS: Record<string, string> = {
   projects: 'Projects',
   announcements: 'Announcements',
   kudos: 'Kudos',
+  expenses: 'Expenses',
+  payments: 'Payments & reports',
+  categories: 'Categories',
   notifications: 'Notifications',
   calendar: 'Who’s off',
   types: 'Leave types',
@@ -204,6 +219,7 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
   const pendingLeave = usePendingLeave();
   const isApprover = useIsApprover('leave.approve');
   const announcements = useAnnouncements({ limit: 1 });
+  const pendingExpenses = usePendingExpenses();
   const [mobileOpen, setMobileOpen] = useState(false);
   const branding = useCompanyBranding(hydrated ? companyId : null);
 
@@ -276,7 +292,7 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
           {NAV_GROUPS.map((group) => {
             const items = group.items.filter(
               (i) =>
-                (can(i.permission) || (i.orDelegated && isApprover)) &&
+                (can(i.permission) || (i.orDelegated && (isApprover || can('expense.finance') || can('expense.hr'))) || (i.href === '/app/expenses/payments' && can('expense.hr'))) &&
                 (!i.feature || user!.isSuperAdmin || hasFeature(i.feature)) &&
                 (!i.beyondOwn || user!.isSuperAdmin || scopeOf(i.permission!) !== 'own'),
             );
@@ -287,7 +303,7 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
                 <ul className="space-y-0.5">
                   {items.map(({ name, href, icon: Icon, exact, soon, badge }) => {
                     const count =
-                      badge === 'attendanceApprovals' ? pendingApprovals.data : badge === 'leaveApprovals' ? pendingLeave.data : badge === 'announcements' ? announcements.data?.meta.unread : undefined;
+                      badge === 'attendanceApprovals' ? pendingApprovals.data : badge === 'leaveApprovals' ? pendingLeave.data : badge === 'announcements' ? announcements.data?.meta.unread : badge === 'expenseApprovals' ? pendingExpenses.data : undefined;
                     const active = exact ? pathname === href : pathname.startsWith(href);
                     const content = (
                       <>

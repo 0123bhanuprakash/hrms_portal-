@@ -183,6 +183,20 @@ export const CATALOG: CatalogModule[] = [
     icon: 'Wallet',
     features: [
       {
+        key: 'ops.expenses',
+        label: 'Expenses',
+        description: 'Claims with receipts: manager → Finance + HR approval → paid.',
+        stage: 'ga',
+        permissions: [
+          p('expense.view', 'View expense claims', EVERYONE),
+          p('expense.submit', 'Submit expense claims', SELF),
+          p('expense.approve', 'Approve claims (manager step)', OTHERS, { requires: ['expense.view'] }),
+          p('expense.finance', 'Finance approval & mark paid', [], { requires: ['expense.view'], sensitive: true, description: 'Approve (or reduce) claims at the Finance step, mark them paid and see payment reports.' }),
+          p('expense.hr', 'HR approval', [], { requires: ['expense.view'], description: 'Approve (or reduce) claims at the HR step.' }),
+          p('expense.manage', 'Manage expense categories & limits'),
+        ],
+      },
+      {
         key: 'pay.payroll',
         label: 'Payroll',
         description: 'Payroll runs, approvals and payslips.',
@@ -273,7 +287,6 @@ export const CATALOG: CatalogModule[] = [
       { key: 'talent.recruitment', label: 'Recruitment', description: 'Jobs, candidates and offers.', stage: 'coming_soon', permissions: [p('recruitment.view', 'View hiring'), p('recruitment.manage', 'Manage hiring', [], { requires: ['recruitment.view'] })] },
       { key: 'talent.performance', label: 'Performance', description: 'Goals and reviews.', stage: 'coming_soon', permissions: [p('performance.view', 'View reviews', EVERYONE), p('performance.manage', 'Run reviews', OTHERS, { requires: ['performance.view'] })] },
       { key: 'ops.assets', label: 'Assets', description: 'Company assets and assignments.', stage: 'coming_soon', permissions: [p('asset.view', 'View assets', EVERYONE), p('asset.manage', 'Manage assets', [], { requires: ['asset.view'] })] },
-      { key: 'ops.expenses', label: 'Expenses', description: 'Claims and reimbursements.', stage: 'coming_soon', permissions: [p('expense.view', 'View expenses', EVERYONE), p('expense.submit', 'Submit expenses', SELF), p('expense.approve', 'Approve expenses', OTHERS, { requires: ['expense.view'] })] },
       { key: 'ops.helpdesk', label: 'Helpdesk', description: 'Employee tickets.', stage: 'coming_soon', permissions: [p('ticket.view', 'View tickets', EVERYONE), p('ticket.create', 'Raise tickets', SELF), p('ticket.resolve', 'Resolve tickets', OTHERS, { requires: ['ticket.view'] })] },
     ],
   },
@@ -335,7 +348,7 @@ export const DEFAULT_PLANS: Array<{ key: string; name: string; description: stri
     features: [
       'people.directory', 'people.org', 'people.documents', 'time.attendance', 'time.leave', 'work.projects',
       'engage.announcements', 'engage.kudos',
-      'pay.payroll', 'pay.salary', 'insights.reports', 'admin.users', 'admin.settings', 'admin.audit',
+      'pay.payroll', 'pay.salary', 'ops.expenses', 'insights.reports', 'admin.users', 'admin.settings', 'admin.audit',
     ],
     limits: { maxEmployees: 500 },
   },
@@ -362,6 +375,7 @@ const SELF_SERVICE: Grant[] = [
   ['shift.view', 'own'], ['payslip.view', 'own'], ['salary.view', 'own'],
   ['org.view'], ['project.view'],
   ['announcement.view'], ['kudos.view'], ['kudos.give'],
+  ['expense.view', 'own'], ['expense.submit', 'own'],
 ];
 
 export const ROLE_TEMPLATES: Array<{ key: string; name: string; description: string; isOwner?: boolean; grants: Grant[] }> = [
@@ -386,6 +400,7 @@ export const ROLE_TEMPLATES: Array<{ key: string; name: string; description: str
       ['attendance.view', 'company'], ['attendance.edit', 'company'], ['attendance.approve', 'company'], ['attendance.export', 'company'],
       ['holiday.manage'], ['attendance.policy'],
       ['announcement.post'], ['kudos.manage'],
+      ['expense.view', 'company'], ['expense.hr'], ['expense.manage'],
       ['leave.view', 'company'], ['leave.approve', 'company'], ['leave.adjust_balance', 'company'], ['leave.manage_types'],
       ['shift.view', 'company'], ['shift.manage', 'company'],
       ['payslip.view', 'company'], ['payroll.view'], ['salary.view', 'company'], ['salary.edit', 'company'],
@@ -405,6 +420,7 @@ export const ROLE_TEMPLATES: Array<{ key: string; name: string; description: str
       ['leave.view', 'all_reports'], ['leave.approve', 'direct_reports'],
       ['shift.view', 'all_reports'], ['shift.manage', 'all_reports'],
       ['report.view', 'all_reports'],
+      ['expense.view', 'all_reports'], ['expense.approve', 'direct_reports'],
     ],
   },
   {
@@ -417,7 +433,14 @@ export const ROLE_TEMPLATES: Array<{ key: string; name: string; description: str
       ['attendance.view', 'direct_reports'], ['attendance.approve', 'direct_reports'],
       ['leave.view', 'direct_reports'], ['leave.approve', 'direct_reports'],
       ['shift.view', 'direct_reports'],
+      ['expense.view', 'direct_reports'], ['expense.approve', 'direct_reports'],
     ],
+  },
+  {
+    key: 'finance',
+    name: 'Finance',
+    description: 'Approves expense claims at the Finance step, marks them paid and sees spend reports.',
+    grants: [...SELF_SERVICE, ['expense.view', 'company'], ['expense.finance'], ['expense.manage']],
   },
   {
     key: 'pmo',

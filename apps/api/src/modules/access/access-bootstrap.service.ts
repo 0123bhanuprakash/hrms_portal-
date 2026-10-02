@@ -142,6 +142,10 @@ export class AccessBootstrapService implements OnApplicationBootstrap {
    * (Enterprise). Tracked like permissions, so a Super Admin removing a
    * feature from that plan later is respected.
    */
+  /** Features made available this boot — their permissions roll out too (see step 6). */
+  private freshFeatures: string[] = [];
+  private featuresSetting = false;
+
   private async rollOutNewFeatures(): Promise<void> {
     const KEY = 'access.knownFeatures';
     const setting = await this.prisma.platformSetting.findUnique({ where: { key: KEY } });
@@ -161,9 +165,9 @@ export class AccessBootstrapService implements OnApplicationBootstrap {
         this.logger.log(`New features ${fresh.join(', ')} → ${DEFAULT_PLAN_KEY} plan (${count} compan${count === 1 ? 'y' : 'ies'})`);
       }
     }
-    if (fresh.length || !setting) {
-      await this.prisma.platformSetting.upsert({ where: { key: KEY }, update: { value: AVAILABLE_FEATURES }, create: { key: KEY, value: AVAILABLE_FEATURES } });
-    }
+    // Saved after the permission rollout (step 6), so a restart in between can't skip it
+    this.freshFeatures = fresh;
+    this.featuresSetting = Boolean(setting);
   }
 
   // 4 + 5 ─────────────────────────────────────────────────────
@@ -230,7 +234,9 @@ export class AccessBootstrapService implements OnApplicationBootstrap {
       known = new Set(allKeys.filter((k) => !templateKeys.has(k) || heldKeys.has(k)));
     }
 
-    const fresh = allKeys.filter((k) => !known.has(k));
+    // New keys, plus the permissions of features that just became available
+    // (e.g. a "coming soon" feature going live: its keys were listed already)
+    const fresh = allKeys.filter((k) => !known.has(k) || this.freshFeatures.includes(PERMISSION_BY_KEY.get(k)?.feature ?? ''));
     for (const template of ROLE_TEMPLATES) {
       const grants = template.grants.filter(([key]) => fresh.includes(key));
       if (!grants.length || template.isOwner) continue;
@@ -247,6 +253,10 @@ export class AccessBootstrapService implements OnApplicationBootstrap {
     }
     if (fresh.length || !setting) {
       await this.prisma.platformSetting.upsert({ where: { key: KEY }, update: { value: allKeys }, create: { key: KEY, value: allKeys } });
+    }
+    if (this.freshFeatures.length || !this.featuresSetting) {
+      const FEATURES_KEY = 'access.knownFeatures';
+      await this.prisma.platformSetting.upsert({ where: { key: FEATURES_KEY }, update: { value: AVAILABLE_FEATURES }, create: { key: FEATURES_KEY, value: AVAILABLE_FEATURES } });
     }
   }
 }

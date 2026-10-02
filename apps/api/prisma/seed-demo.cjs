@@ -283,6 +283,11 @@ const PROJECTS = [
 ];
 
 async function seedProjects(companyId, empOf, created) {
+  // Pooja (Finance Officer) approves expenses at the Finance step and marks them paid
+  const finance = await prisma.role.findFirst({ where: { companyId, key: 'finance' } });
+  const pooja = empOf.pooja ? await prisma.employee.findUnique({ where: { id: empOf.pooja }, select: { userId: true } }) : null;
+  if (finance && pooja) await prisma.userRole.upsert({ where: { userId_roleId: { userId: pooja.userId, roleId: finance.id } }, update: {}, create: { userId: pooja.userId, roleId: finance.id, companyId } });
+
   // Vikram (Head of Operations) is the PMO
   const pmo = await prisma.role.findFirst({ where: { companyId, key: 'pmo' } });
   const vikram = await prisma.employee.findUnique({ where: { id: empOf.vikram ?? '00000000-0000-0000-0000-000000000000' }, select: { userId: true } });

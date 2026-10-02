@@ -119,6 +119,24 @@ enum AttendanceStatus {
   WORK_FROM_HOME
 }
 
+enum ExpenseClaimStatus {
+  DRAFT
+  /// Waiting for the manager step, then Finance + HR (in parallel)
+  PENDING
+  /// Finance and HR both approved — waiting to be paid
+  APPROVED
+  PAID
+  /// Sent back — the employee can edit and resubmit
+  REJECTED
+  CANCELLED
+}
+
+enum ExpenseStage {
+  MANAGER
+  FINANCE
+  HR
+}
+
 enum AnnouncementAudience {
   COMPANY
   DEPARTMENTS
@@ -624,6 +642,7 @@ model Employee {
   attendanceRecords AttendanceRecord[]
   regularisations   AttendanceRegularisation[]
   kudosReceived     KudosRecipient[]
+  expenseClaims     ExpenseClaim[]
   projectMembers    ProjectMember[]            @relation("ProjectMemberEmployee")
   ledMembers        ProjectMember[]            @relation("ProjectMemberLead")
   payslips          Payslip[]
@@ -1472,4 +1491,99 @@ model KudosReaction {
 
   @@id([kudosId, userId, emoji])
   @@map("kudos_reactions")
+}
+
+/// Expense categories with limits (amounts in paise)
+model ExpenseCategory {
+  id                        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId                 String   @map("company_id") @db.Uuid
+  name                      String
+  description               String?
+  /// Most one line item may claim (null = no limit)
+  maxPerItemPaise           Int?     @map("max_per_item_paise")
+  /// Receipt needed when an item is above this (0 = always, null = never)
+  receiptRequiredAbovePaise Int?     @map("receipt_required_above_paise")
+  isActive                  Boolean  @default(true) @map("is_active")
+  sortOrder                 Int      @default(100) @map("sort_order")
+  createdAt                 DateTime @default(now()) @map("created_at")
+
+  items ExpenseItem[]
+
+  @@unique([companyId, name])
+  @@map("expense_categories")
+}
+
+/// One reimbursement claim with line items
+model ExpenseClaim {
+  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId        String             @map("company_id") @db.Uuid
+  employeeId       String             @map("employee_id") @db.Uuid
+  title            String
+  /// Optional: cost belongs to a project
+  projectId        String?            @map("project_id") @db.Uuid
+  status           ExpenseClaimStatus @default(DRAFT)
+  /// Increases on every (re)submission; approvals belong to a round
+  round            Int                @default(0)
+  submittedAt      DateTime?          @map("submitted_at")
+  approvedAt       DateTime?          @map("approved_at")
+  rejectionReason  String?            @map("rejection_reason")
+  paidAt           DateTime?          @map("paid_at")
+  paidById         String?            @map("paid_by_id") @db.Uuid
+  paymentDate      DateTime?          @map("payment_date") @db.Date
+  paymentReference String?            @map("payment_reference")
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+
+  employee  Employee          @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  items     ExpenseItem[]
+  approvals ExpenseApproval[]
+
+  @@index([companyId, status])
+  @@index([companyId, employeeId])
+  @@map("expense_claims")
+}
+
+model ExpenseItem {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  claimId       String   @map("claim_id") @db.Uuid
+  categoryId    String   @map("category_id") @db.Uuid
+  date          DateTime @db.Date
+  description   String
+  amountPaise   Int      @map("amount_paise")
+  /// Lowered by Finance / HR (null = the full amount); the lower decision wins
+  approvedPaise Int?     @map("approved_paise")
+  adjustReason  String?  @map("adjust_reason")
+  adjustedById  String?  @map("adjusted_by_id") @db.Uuid
+  receiptKey    String?  @map("receipt_key")
+  receiptName   String?  @map("receipt_name")
+  receiptMime   String?  @map("receipt_mime")
+  receiptSize   Int?     @map("receipt_size")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  claim    ExpenseClaim    @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  category ExpenseCategory @relation(fields: [categoryId], references: [id])
+
+  @@index([claimId])
+  @@map("expense_items")
+}
+
+/// One approval step of one submission round
+model ExpenseApproval {
+  id           String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  claimId      String              @map("claim_id") @db.Uuid
+  round        Int
+  stage        ExpenseStage
+  /// Manager step: everyone who may decide (team lead / PM / line manager)
+  approverIds  String[]            @default([]) @map("approver_ids") @db.Uuid
+  label        String?
+  status       LeaveApprovalStatus @default(PENDING)
+  actedById    String?             @map("acted_by_id") @db.Uuid
+  onBehalfOfId String?             @map("on_behalf_of_id") @db.Uuid
+  comments     String?
+  actedAt      DateTime?           @map("acted_at")
+
+  claim ExpenseClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@unique([claimId, round, stage])
+  @@map("expense_approvals")
 }
