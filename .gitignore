@@ -20,7 +20,7 @@ build
 .env.staging
 .env.production
 .env.*.local
-.env.backup
+.env.backup*
 
 # Prisma generated files
 apps/api/src/generated
