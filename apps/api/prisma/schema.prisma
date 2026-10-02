@@ -103,6 +103,13 @@ enum AttendanceStatus {
   WORK_FROM_HOME
 }
 
+enum RegularisationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
 enum PayrollRunStatus {
   DRAFT
   LOCKED
@@ -189,17 +196,19 @@ model User {
   createdAt          DateTime   @default(now()) @map("created_at")
   updatedAt          DateTime   @updatedAt @map("updated_at")
 
-  company             Company?                 @relation(fields: [companyId], references: [id])
+  company             Company?                   @relation(fields: [companyId], references: [id])
   preferences         UserPreferences?
   refreshTokens       RefreshToken[]
-  delegationsGiven    ApprovalDelegation[]     @relation("Delegator")
-  delegationsReceived ApprovalDelegation[]     @relation("Delegate")
+  delegationsGiven    ApprovalDelegation[]       @relation("Delegator")
+  delegationsReceived ApprovalDelegation[]       @relation("Delegate")
   passwordResetTokens PasswordResetToken[]
   emailVerifications  EmailVerificationToken[]
   userRoles           UserRole[]
   employee            Employee?
-  auditLogs           AuditLog[]               @relation("AuditLogUser")
-  uploadedDocuments   EmployeeDocument[]       @relation("DocumentUploader")
+  auditLogs           AuditLog[]                 @relation("AuditLogUser")
+  uploadedDocuments   EmployeeDocument[]         @relation("DocumentUploader")
+  reviewedCorrections AttendanceRegularisation[] @relation("CorrectionReviewer")
+  coveredCorrections  AttendanceRegularisation[] @relation("CorrectionOnBehalfOf")
 
   @@index([companyId])
   @@index([email])
@@ -553,13 +562,13 @@ model Employee {
   createdAt          DateTime         @default(now()) @map("created_at")
   updatedAt          DateTime         @updatedAt @map("updated_at")
 
-  company           Company              @relation(fields: [companyId], references: [id])
-  user              User                 @relation(fields: [userId], references: [id])
-  department        Department?          @relation(fields: [departmentId], references: [id])
-  designation       Designation?         @relation(fields: [designationId], references: [id])
-  location          OfficeLocation?      @relation(fields: [locationId], references: [id])
-  reportingManager  Employee?            @relation("ManagerSubordinates", fields: [reportingManagerId], references: [id])
-  subordinates      Employee[]           @relation("ManagerSubordinates")
+  company           Company                    @relation(fields: [companyId], references: [id])
+  user              User                       @relation(fields: [userId], references: [id])
+  department        Department?                @relation(fields: [departmentId], references: [id])
+  designation       Designation?               @relation(fields: [designationId], references: [id])
+  location          OfficeLocation?            @relation(fields: [locationId], references: [id])
+  reportingManager  Employee?                  @relation("ManagerSubordinates", fields: [reportingManagerId], references: [id])
+  subordinates      Employee[]                 @relation("ManagerSubordinates")
   bankDetails       EmployeeBankDetails?
   statutoryInfo     EmployeeStatutory?
   personal          EmployeePersonal?
@@ -568,11 +577,12 @@ model Employee {
   leaveBalances     LeaveBalance[]
   leaveRequests     LeaveRequest[]
   attendanceRecords AttendanceRecord[]
+  regularisations   AttendanceRegularisation[]
   payslips          Payslip[]
   /// Closure table: everyone above me (incl. myself at depth 0)
-  ancestors         EmployeeHierarchy[]  @relation("HierarchyDescendant")
+  ancestors         EmployeeHierarchy[]        @relation("HierarchyDescendant")
   /// Closure table: everyone below me (incl. myself at depth 0)
-  descendants       EmployeeHierarchy[]  @relation("HierarchyAncestor")
+  descendants       EmployeeHierarchy[]        @relation("HierarchyAncestor")
 
   @@unique([companyId, employeeId])
   @@unique([companyId, email])
@@ -868,6 +878,13 @@ model AttendanceRecord {
   workingMinutes Int?             @map("working_minutes")
   status         AttendanceStatus @default(PRESENT)
   isManualEntry  Boolean          @default(false) @map("is_manual_entry")
+  /// Minutes after shift start + grace (null when on time / not checked in)
+  lateMinutes    Int?             @map("late_minutes")
+  /// WEB | REGULARISED | ADMIN
+  checkInSource  String?          @map("check_in_source")
+  checkOutSource String?          @map("check_out_source")
+  checkInIp      String?          @map("check_in_ip")
+  checkOutIp     String?          @map("check_out_ip")
   notes          String?
   createdAt      DateTime         @default(now()) @map("created_at")
   updatedAt      DateTime         @updatedAt @map("updated_at")
@@ -881,6 +898,54 @@ model AttendanceRecord {
 }
 
 /// Company holidays — affects leave deduction and attendance
+/// Company-wide attendance rules (times are wall-clock in CompanySettings.timezone)
+model AttendancePolicy {
+  id                       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId                String   @unique @map("company_id") @db.Uuid
+  /// Working weekdays, 0 = Sunday … 6 = Saturday
+  workDays                 Int[]    @default([1, 2, 3, 4, 5]) @map("work_days")
+  /// "HH:mm"
+  shiftStart               String   @default("09:30") @map("shift_start")
+  shiftEnd                 String   @default("18:30") @map("shift_end")
+  graceMinutes             Int      @default(15) @map("grace_minutes")
+  /// Worked minutes for a half day / a full day
+  halfDayMinutes           Int      @default(240) @map("half_day_minutes")
+  fullDayMinutes           Int      @default(480) @map("full_day_minutes")
+  /// How many days back an employee may request a correction
+  regularisationWindowDays Int      @default(30) @map("regularisation_window_days")
+  webCheckInEnabled        Boolean  @default(true) @map("web_check_in_enabled")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+
+  @@map("attendance_policies")
+}
+
+/// Attendance correction request ("regularisation"), approved by the manager / HR
+model AttendanceRegularisation {
+  id           String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId    String               @map("company_id") @db.Uuid
+  employeeId   String               @map("employee_id") @db.Uuid
+  date         DateTime             @db.Date
+  checkIn      DateTime             @map("check_in")
+  checkOut     DateTime?            @map("check_out")
+  reason       String
+  status       RegularisationStatus @default(PENDING)
+  reviewedById String?              @map("reviewed_by_id") @db.Uuid
+  /// Set when the reviewer acted while covering for someone (approval delegation)
+  onBehalfOfId String?              @map("on_behalf_of_id") @db.Uuid
+  reviewedAt   DateTime?            @map("reviewed_at")
+  reviewNote   String?              @map("review_note")
+  createdAt    DateTime             @default(now()) @map("created_at")
+  updatedAt    DateTime             @updatedAt @map("updated_at")
+
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  reviewedBy User?    @relation("CorrectionReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  onBehalfOf User?    @relation("CorrectionOnBehalfOf", fields: [onBehalfOfId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, status])
+  @@index([companyId, employeeId, date])
+  @@map("attendance_regularisations")
+}
+
 model PublicHoliday {
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   companyId  String   @map("company_id") @db.Uuid

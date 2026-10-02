@@ -103,6 +103,7 @@ export const CATALOG: CatalogModule[] = [
           p('attendance.approve', 'Approve regularisation', OTHERS, { requires: ['attendance.view'] }),
           p('attendance.export', 'Export attendance', OTHERS, { requires: ['attendance.view'] }),
           p('holiday.manage', 'Manage holiday calendar'),
+          p('attendance.policy', 'Manage attendance policy', [], { description: 'Work days, shift timings, grace period and half / full-day rules.' }),
         ],
       },
       {
@@ -336,7 +337,7 @@ export const ROLE_TEMPLATES: Array<{ key: string; name: string; description: str
       ['org.manage'],
       ['document.view', 'company'], ['document.upload', 'company'], ['document.delete', 'company'],
       ['attendance.view', 'company'], ['attendance.edit', 'company'], ['attendance.approve', 'company'], ['attendance.export', 'company'],
-      ['holiday.manage'],
+      ['holiday.manage'], ['attendance.policy'],
       ['leave.view', 'company'], ['leave.approve', 'company'], ['leave.adjust_balance', 'company'], ['leave.manage_types'],
       ['shift.view', 'company'], ['shift.manage', 'company'],
       ['payslip.view', 'company'], ['payroll.view'], ['salary.view', 'company'], ['salary.edit', 'company'],

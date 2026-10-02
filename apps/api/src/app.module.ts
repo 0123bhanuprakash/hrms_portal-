@@ -25,6 +25,7 @@ import { DesignationsModule } from './modules/designations/designations.module';
 import { LocationsModule } from './modules/locations/locations.module';
 import { EmployeesModule } from './modules/employees/employees.module';
 import { EmployeeProfileModule } from './modules/employee-profile/employee-profile.module';
+import { AttendanceModule } from './modules/attendance/attendance.module';
 import { ThemesModule } from './modules/themes/themes.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { PermissionGuard } from './common/guards/permission.guard';
@@ -76,6 +77,7 @@ import { AppController } from './app.controller';
     LocationsModule,     // Chunk 10
     EmployeesModule,     // Chunk 10
     EmployeeProfileModule, // Profile, private data, documents, directory
+    AttendanceModule,      // Phase 3: attendance
     ThemesModule,         // Theme Studio
     UserManagementModule, // Company Admin: users, roles & permissions
     PlansModule,          // Super Admin: plans & per-company features

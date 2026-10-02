@@ -1,4 +1,5 @@
 import {
+  StreamableFile,
   Injectable,
   NestInterceptor,
   ExecutionContext,
@@ -178,6 +179,8 @@ export class AuditInterceptor implements NestInterceptor {
   /** Removes sensitive fields before storing in audit log */
   private sanitizeState(data: unknown): Record<string, unknown> | null {
     if (!data || typeof data !== 'object') return null;
+    // File downloads (CSV exports, documents): log the action, not the bytes
+    if (data instanceof StreamableFile) return null;
 
     const SENSITIVE_KEYS = new Set([
       'password',

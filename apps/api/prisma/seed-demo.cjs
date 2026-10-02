@@ -7,7 +7,8 @@
 //
 // Adds departments, org levels, job titles, locations, a custom
 // "Payroll Officer" role and ~12 people with reporting lines to an
-// EXISTING company. Every account gets DEMO_PASSWORD and can sign in
+// EXISTING company, plus national holidays and the last 30 days of
+// attendance (with a few late days, absences and one pending correction). Every account gets DEMO_PASSWORD and can sign in
 // straight away (no temporary-password step). No emails are sent.
 // Idempotent: anything that already exists (by email / name) is kept.
 // ============================================================
@@ -81,7 +82,7 @@ async function main() {
   if (!company) throw new Error(`Company '${slug}' not found`);
   const domain = slug.split('-')[0]; // aakash-portal → ravi.aakash@yopmail.com
   const companyId = company.id;
-  const created = { departments: 0, levels: 0, titles: 0, locations: 0, people: 0 };
+  const created = { departments: 0, levels: 0, titles: 0, locations: 0, people: 0, holidays: 0, attendanceDays: 0, corrections: 0 };
 
   // Roles (the company's own copies; created by the API at start-up)
   const roles = Object.fromEntries((await prisma.role.findMany({ where: { companyId, key: { not: null } } })).map((r) => [r.key, r.id]));
@@ -186,7 +187,84 @@ async function main() {
 
   // Hierarchy closures (same rules as the API's HierarchyService)
   await rebuild(companyId);
+
+  await seedTime(companyId, company.settings?.timezone || 'Asia/Kolkata', empOf, created);
   return created;
+}
+
+// ─── Attendance demo data ───────────────────────────────────
+
+/** Fixed-date national holidays (movable festivals vary by year — add those in the app). */
+const HOLIDAYS = [['01-26', 'Republic Day'], ['05-01', 'Labour Day'], ['08-15', 'Independence Day'], ['10-02', 'Gandhi Jayanti'], ['12-25', 'Christmas']];
+
+/** Wall-clock "HH:mm" on a date in a time zone → real instant. */
+function zoned(dateKey, minutes, timeZone) {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const guess = Date.UTC(y, m - 1, d, Math.floor(minutes / 60), minutes % 60);
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).formatToParts(new Date(guess)).map((p) => [p.type, p.value]));
+  const offset = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute) - guess;
+  return new Date(guess - offset);
+}
+/** Stable pseudo-random 0..1 per (person, day) so re-runs look the same. */
+function rand(seed) {
+  let h = 2166136261;
+  for (const c of seed) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
+  return ((h >>> 0) % 10000) / 10000;
+}
+
+async function seedTime(companyId, timeZone, empOf, created) {
+  const todayKey = new Intl.DateTimeFormat('en-CA', { timeZone }).format(new Date());
+  const year = Number(todayKey.slice(0, 4));
+  for (const y of [year, year + 1]) {
+    for (const [md, name] of HOLIDAYS) {
+      const date = new Date(`${y}-${md}T00:00:00Z`);
+      const exists = await prisma.publicHoliday.findUnique({ where: { companyId_date: { companyId, date } } });
+      if (!exists) { await prisma.publicHoliday.create({ data: { companyId, name, date, year: y } }); created.holidays++; }
+    }
+  }
+  const holidayKeys = new Set((await prisma.publicHoliday.findMany({ where: { companyId }, select: { date: true } })).map((h) => h.date.toISOString().slice(0, 10)));
+  const policy = await prisma.attendancePolicy.findUnique({ where: { companyId } });
+  const workDays = policy?.workDays ?? [1, 2, 3, 4, 5];
+  const start = (policy ? +policy.shiftStart.slice(0, 2) * 60 + +policy.shiftStart.slice(3) : 570) + (policy?.graceMinutes ?? 15);
+  const full = policy?.fullDayMinutes ?? 480, half = policy?.halfDayMinutes ?? 240;
+
+  const rows = [];
+  for (const [local, employeeId] of Object.entries(empOf)) {
+    for (let i = 30; i >= 1; i--) {
+      const d = new Date(`${todayKey}T00:00:00Z`); d.setUTCDate(d.getUTCDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      if (!workDays.includes(d.getUTCDay()) || holidayKeys.has(key) || key < '2026-01-05') continue;
+      const r = rand(local + key);
+      if (r < 0.05) continue; // absent
+      const inMin = 9 * 60 + Math.round(rand('in' + local + key) * (local === 'amit' ? 75 : 50)); // 09:00–10:15
+      const checkIn = zoned(key, inMin, timeZone);
+      const missing = local === 'neha' && i === 3;
+      const worked = r < 0.1 ? 300 : 450 + Math.round(rand('out' + local + key) * 90); // a few half days
+      const checkOut = missing ? null : new Date(checkIn.getTime() + worked * 60000);
+      rows.push({
+        companyId, employeeId, date: new Date(`${key}T00:00:00Z`), checkIn, checkOut,
+        workingMinutes: checkOut ? worked : null,
+        lateMinutes: Math.max(0, inMin - start) || null,
+        status: !checkOut ? 'PRESENT' : worked >= full ? 'PRESENT' : worked >= half ? 'HALF_DAY' : 'ABSENT',
+        checkInSource: 'WEB', checkOutSource: checkOut ? 'WEB' : null,
+      });
+    }
+  }
+  const { count } = await prisma.attendanceRecord.createMany({ data: rows, skipDuplicates: true });
+  created.attendanceDays = count;
+
+  // One pending correction for Amit (his team lead Priya approves it)
+  const amit = empOf.amit;
+  if (amit && !(await prisma.attendanceRegularisation.count({ where: { companyId, employeeId: amit } }))) {
+    const missed = rows.filter((r) => r.employeeId === amit && r.lateMinutes).pop();
+    if (missed) {
+      const key = missed.date.toISOString().slice(0, 10);
+      await prisma.attendanceRegularisation.create({
+        data: { companyId, employeeId: amit, date: missed.date, checkIn: zoned(key, 9 * 60 + 30, timeZone), checkOut: zoned(key, 18 * 60 + 40, timeZone), reason: 'Reached on time — the office Wi-Fi was down so check-in failed' },
+      });
+      created.corrections++;
+    }
+  }
 }
 
 async function rebuild(companyId) {

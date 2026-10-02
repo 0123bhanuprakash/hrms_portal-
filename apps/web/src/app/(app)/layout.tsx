@@ -26,11 +26,17 @@ import {
   ScanSearch,
   IdCard,
   Contact,
+  CalendarCheck,
+  CalendarDays,
+  ClipboardCheck,
+  Clock,
+  UsersRound,
 } from 'lucide-react';
 import type { ThemeTokens } from '@hrms/types';
 import { useAuthStore } from '@/store/useAuthStore';
 import { DisplayPreferences } from '@/components/preferences/display-preferences';
 import { useAccess } from '@/lib/access/use-access';
+import { usePendingCorrections } from '@/lib/company/attendance';
 import { changePasswordPath, loginPathFor, useAuthHydrated, withNext } from '@/lib/auth/portal';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { DropdownMenu } from '@/components/ui/dropdown-menu';
@@ -51,6 +57,10 @@ interface NavItem {
   feature?: string;
   /** Hide when the permission only reaches the user's own record */
   beyondOwn?: boolean;
+  /** Also show while covering this permission for someone (approval delegation) */
+  orDelegated?: boolean;
+  /** Live count shown on the item */
+  badge?: 'attendanceApprovals';
 }
 
 const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
@@ -67,6 +77,16 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
     items: [
       { name: 'Employees', href: '/app/employees', icon: Users, permission: 'employee.view', beyondOwn: true },
       { name: 'Organisation', href: '/app/org', icon: Network, permission: 'org.view' },
+    ],
+  },
+  {
+    label: 'Time',
+    items: [
+      { name: 'My attendance', href: '/app/attendance', icon: CalendarCheck, exact: true, permission: 'attendance.view', feature: 'time.attendance' },
+      { name: 'Team attendance', href: '/app/attendance/team', icon: UsersRound, permission: 'attendance.view', feature: 'time.attendance', beyondOwn: true },
+      { name: 'Approvals', href: '/app/attendance/approvals', icon: ClipboardCheck, permission: 'attendance.approve', feature: 'time.attendance', orDelegated: true, badge: 'attendanceApprovals' },
+      { name: 'Holidays', href: '/app/attendance/holidays', icon: CalendarDays, permission: 'attendance.view', feature: 'time.attendance' },
+      { name: 'Attendance settings', href: '/app/attendance/settings', icon: Clock, permission: 'attendance.policy', feature: 'time.attendance' },
     ],
   },
   {
@@ -97,6 +117,10 @@ const SEGMENT_LABELS: Record<string, string> = {
   employees: 'Employees',
   profile: 'My profile',
   people: 'People',
+  attendance: 'Attendance',
+  team: 'Team',
+  approvals: 'Approvals',
+  holidays: 'Holidays',
   org: 'Organisation',
   'access-explorer': 'Access explorer',
   delegations: 'Delegation',
@@ -143,6 +167,7 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
   const hydrated = useAuthHydrated();
   const { user, companyId, isAuthenticated, logout } = useAuthStore();
   const { can: canAccess, access, hasFeature, scopeOf } = useAccess();
+  const pendingApprovals = usePendingCorrections();
   const [mobileOpen, setMobileOpen] = useState(false);
   const branding = useCompanyBranding(hydrated ? companyId : null);
 
@@ -215,7 +240,7 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
           {NAV_GROUPS.map((group) => {
             const items = group.items.filter(
               (i) =>
-                can(i.permission) &&
+                (can(i.permission) || (i.orDelegated && Boolean(access?.delegations.some((d) => d.permissions.includes(i.permission!))))) &&
                 (!i.feature || user!.isSuperAdmin || hasFeature(i.feature)) &&
                 (!i.beyondOwn || user!.isSuperAdmin || scopeOf(i.permission!) !== 'own'),
             );
@@ -224,7 +249,8 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
               <div key={group.label} className="mb-4">
                 <p className="mb-1 px-2 text-2xs font-medium uppercase tracking-wider text-sidebar-muted">{group.label}</p>
                 <ul className="space-y-0.5">
-                  {items.map(({ name, href, icon: Icon, exact, soon }) => {
+                  {items.map(({ name, href, icon: Icon, exact, soon, badge }) => {
+                    const count = badge === 'attendanceApprovals' ? pendingApprovals.data : undefined;
                     const active = exact ? pathname === href : pathname.startsWith(href);
                     const content = (
                       <>
@@ -232,6 +258,11 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
                         <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-primary' : 'text-sidebar-muted')} />
                         <span className="flex-1 truncate">{name}</span>
                         {soon && <Badge className="px-1.5 py-0 text-2xs">Soon</Badge>}
+                        {Boolean(count) && (
+                          <span className="rounded-full bg-primary px-1.5 text-2xs font-semibold leading-4 text-primary-foreground tabular-nums" aria-label={`${count} waiting`}>
+                            {count}
+                          </span>
+                        )}
                       </>
                     );
                     const classes = cn(
