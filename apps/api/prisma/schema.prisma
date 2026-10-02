@@ -293,6 +293,8 @@ model Company {
   featuresVersion  Int           @default(1) @map("features_version")
   /// Bumped on any reporting-line / department-tree change
   hierarchyVersion Int           @default(1) @map("hierarchy_version")
+  /// Per-company limit overrides on top of the plan, e.g. { "maxEmployees": 800 } (null value = unlimited)
+  limits           Json?
   createdAt        DateTime      @default(now()) @map("created_at")
   updatedAt        DateTime      @updatedAt @map("updated_at")
 
@@ -943,6 +945,8 @@ model Plan {
   description String   @default("")
   isActive    Boolean  @default(true) @map("is_active")
   sortOrder   Int      @default(0) @map("sort_order")
+  /// Plan limits, e.g. { "maxEmployees": 50 } — null value = unlimited
+  limits      Json?
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 

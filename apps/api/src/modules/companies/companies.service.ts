@@ -38,6 +38,12 @@ export class CompaniesService {
    * Create a new company along with default settings, branding, and initial Company Admin user
    */
   async create(dto: CreateCompanyDto) {
+    if (dto.planId) {
+      const plan = await this.prisma.plan.findUnique({ where: { id: dto.planId }, select: { isActive: true } });
+      if (!plan) throw new NotFoundException('Plan not found');
+      if (!plan.isActive) throw new BadRequestException('That plan is archived — choose another');
+    }
+
     // 1. Check slug & email uniqueness
     const existingCompany = await this.prisma.company.findFirst({
       where: {
@@ -79,7 +85,7 @@ export class CompaniesService {
           email: dto.email.toLowerCase(),
           status: CompanyStatus.ACTIVE,
           // Default plan until the Super Admin picks one (Enterprise = every feature)
-          plan: { connect: { key: DEFAULT_PLAN_KEY } },
+          plan: { connect: dto.planId ? { id: dto.planId } : { key: DEFAULT_PLAN_KEY } },
         },
       });
 

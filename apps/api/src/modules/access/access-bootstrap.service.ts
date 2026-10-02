@@ -121,7 +121,8 @@ export class AccessBootstrapService implements OnApplicationBootstrap {
           name: plan.name,
           description: plan.description,
           sortOrder: i,
-          features: { create: plan.features.map((featureKey) => ({ featureKey, limits: plan.limits })) },
+          limits: plan.limits,
+          features: { create: plan.features.map((featureKey) => ({ featureKey })) },
         },
       });
       this.logger.log(`Created plan "${plan.name}"`);

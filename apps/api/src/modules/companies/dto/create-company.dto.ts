@@ -1,4 +1,5 @@
 import {
+  IsUUID,
   IsString,
   IsEmail,
   IsNotEmpty,
@@ -61,5 +62,10 @@ export class CreateCompanyDto {
   @IsOptional()
   @IsObject()
   themeSource?: Record<string, unknown>;
+
+  /** Subscription plan (defaults to the platform default plan) */
+  @IsOptional()
+  @IsUUID()
+  planId?: string;
 }
 

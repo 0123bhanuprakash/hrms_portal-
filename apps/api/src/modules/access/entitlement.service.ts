@@ -29,7 +29,8 @@ export class EntitlementService {
     const company = await this.prisma.company.findUnique({
       where: { id: companyId },
       select: {
-        plan: { select: { key: true, isActive: true, features: { select: { featureKey: true, limits: true } } } },
+        limits: true,
+        plan: { select: { key: true, isActive: true, limits: true, features: { select: { featureKey: true } } } },
         features: true,
       },
     });
@@ -43,18 +44,17 @@ export class EntitlementService {
     // No plan yet (shouldn't happen after bootstrap) → everything available
     if (!company?.plan) AVAILABLE_FEATURES.forEach((f) => features.add(f));
     else {
-      for (const pf of company.plan.features) {
-        features.add(pf.featureKey);
-        mergeLimits(pf.limits);
-      }
+      for (const pf of company.plan.features) features.add(pf.featureKey);
+      mergeLimits(company.plan.limits);
     }
+    // Company-level limit overrides win over the plan's
+    mergeLimits(company?.limits);
 
     const now = Date.now();
     for (const override of company?.features ?? []) {
       if (override.expiresAt && override.expiresAt.getTime() < now) continue;
       if (override.mode === 'ON') features.add(override.featureKey);
       else features.delete(override.featureKey);
-      mergeLimits(override.limits);
     }
 
     CORE_FEATURES.forEach((f) => features.add(f));
@@ -85,6 +85,14 @@ export class EntitlementService {
   async bump(companyId: string): Promise<void> {
     await this.prisma.company.update({ where: { id: companyId }, data: { featuresVersion: { increment: 1 } } });
     this.evict(companyId);
+  }
+
+  /** Plan edited → every company on it refreshes on its next request. */
+  async bumpPlan(planId: string): Promise<number> {
+    const companies = await this.prisma.company.findMany({ where: { planId }, select: { id: true } });
+    await this.prisma.company.updateMany({ where: { planId }, data: { featuresVersion: { increment: 1 } } });
+    companies.forEach((c) => this.evict(c.id));
+    return companies.length;
   }
 
   private evict(companyId: string) {

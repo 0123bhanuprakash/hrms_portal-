@@ -12,6 +12,7 @@ import { StorageModule } from './modules/storage/storage.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { AccessModule } from './modules/access/access.module';
 import { UserManagementModule } from './modules/user-management/user-management.module';
+import { PlansModule } from './modules/plans/plans.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { EmailModule } from './modules/email/email.module';
 import { CompaniesModule } from './modules/companies/companies.module';
@@ -73,6 +74,7 @@ import { AppController } from './app.controller';
     EmployeesModule,      // Chunk 10
     ThemesModule,         // Theme Studio
     UserManagementModule, // Company Admin: users, roles & permissions
+    PlansModule,          // Super Admin: plans & per-company features
   ],
 
   providers: [

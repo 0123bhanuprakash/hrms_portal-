@@ -247,6 +247,13 @@ export function broader(a: AccessScope | null, b: AccessScope | null): AccessSco
   return SCOPE_ORDER.indexOf(a) >= SCOPE_ORDER.indexOf(b) ? a : b;
 }
 
+// ─── Limits (per plan, overridable per company; null = unlimited) ──
+
+export const LIMITS: Array<{ key: string; label: string; description: string }> = [
+  { key: 'maxEmployees', label: 'Max employees', description: 'Employee records the company can have (terminated ones excluded).' },
+];
+export const LIMIT_KEYS = new Set(LIMITS.map((l) => l.key));
+
 // ─── Plans (defaults; editable later from the Super Admin portal) ──
 
 export const DEFAULT_PLANS: Array<{ key: string; name: string; description: string; features: string[]; limits: Record<string, number | null> }> = [

@@ -12,6 +12,7 @@ import { EmailProducerService } from '../email/email.producer.service';
 import { AccessService } from '../access/access.service';
 import { CompanyRolesService } from '../access/company-roles.service';
 import { HierarchyService } from '../access/hierarchy.service';
+import { EntitlementService } from '../access/entitlement.service';
 import type { AccessContext } from '../access/access.types';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
@@ -30,7 +31,29 @@ export class EmployeesService {
     private readonly accessService: AccessService,
     private readonly companyRoles: CompanyRolesService,
     private readonly hierarchy: HierarchyService,
+    private readonly entitlements: EntitlementService,
   ) {}
+
+  /** Plan limit: maxEmployees counts everyone not terminated (null / missing = unlimited). */
+  private async assertEmployeeLimit(companyId: string): Promise<void> {
+    const company = await this.prisma.company.findUnique({ where: { id: companyId }, select: { featuresVersion: true } });
+    if (!company) throw new NotFoundException('Company not found');
+    const { limits } = await this.entitlements.forCompany(companyId, company.featuresVersion);
+    const max = limits.maxEmployees;
+    if (max === null || max === undefined) return;
+    const current = await this.prisma.employee.count({
+      where: { companyId, employmentStatus: { not: EmploymentStatus.TERMINATED } },
+    });
+    if (current >= max) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        error: 'Plan Limit Reached',
+        code: 'PLAN_LIMIT_REACHED',
+        limit: 'maxEmployees',
+        message: `Your plan allows up to ${max} employee${max === 1 ? "" : "s"}. Contact your platform administrator to raise the limit.`,
+      });
+    }
+  }
 
   /** Fields an employee may change on their own profile ("own" scope). */
   private static readonly SELF_EDITABLE = new Set<keyof UpdateEmployeeDto>([
@@ -104,6 +127,7 @@ export class EmployeesService {
     const passwordHash = await hashPassword(tempPassword);
 
     await this.assertLinksInCompany(companyId, dto);
+    await this.assertEmployeeLimit(companyId);
 
     // Atomic transaction for sequential employee ID & employee creation
     const result = await this.prisma.$transaction(async (tx) => {
