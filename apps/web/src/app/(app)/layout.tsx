@@ -15,6 +15,7 @@ import {
   LogOut,
   MapPin,
   Menu,
+  Network,
   Palette,
   ShieldCheck,
   SlidersHorizontal,
@@ -49,10 +50,8 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
   {
     label: 'Organization',
     items: [
-      { name: 'Employees', href: '/app/employees', icon: Users, soon: true },
-      { name: 'Departments', href: '/app/departments', icon: Building2, soon: true },
-      { name: 'Designations', href: '/app/designations', icon: Briefcase, soon: true },
-      { name: 'Locations', href: '/app/locations', icon: MapPin, soon: true },
+      { name: 'Employees', href: '/app/employees', icon: Users, permission: 'employee.view' },
+      { name: 'Organisation', href: '/app/org', icon: Network, permission: 'org.view' },
     ],
   },
   {
@@ -78,6 +77,8 @@ const SEGMENT_LABELS: Record<string, string> = {
   branding: 'Branding',
   theme: 'Theme',
   preferences: 'Preferences',
+  employees: 'Employees',
+  org: 'Organisation',
   users: 'Users',
   roles: 'Roles & permissions',
   new: 'New role',
