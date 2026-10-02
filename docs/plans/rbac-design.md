@@ -1,5 +1,7 @@
 # Custom Roles & Permissions (RBAC) — design
 
+> **Superseded by [access-control-design.md](access-control-design.md)** (adds feature toggles and hierarchy scopes). Catalog, guardrails and API notes below still apply.
+
 Status: **proposed**, 2 Oct 2026. Replaces "built-in roles only".
 Goal: each company defines its own roles and exactly what each role can do,
 with a permission model that scales as new HRMS modules are added.
