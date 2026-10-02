@@ -21,10 +21,11 @@ import {
 import type { ThemeRef } from '@hrms/types';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/feedback';
-import { ColorInput, Field, Input } from '@/components/ui/field';
+import { ColorInput, Field, Input, inputClass } from '@/components/ui/field';
 import { PageHeader } from '@/components/ui/page-header';
 import { CompanyAvatar } from '@/components/super-admin/company-avatar';
 import { ThemePicker } from '@/components/theme/theme-picker';
+import { formatLimit, usePlans } from '@/lib/admin/plans';
 import { ThemePreviewFrame } from '@/components/theme/theme-preview-frame';
 import { ThemeSwatches } from '@/components/theme/theme-card';
 import { useCreateCompany, useThemeSettings } from '@/lib/admin/queries';
@@ -101,6 +102,14 @@ export default function OnboardCompanyPage() {
   const create = useCreateCompany();
   const settings = useThemeSettings();
   const library = useThemeLibrary();
+  const plans = usePlans();
+  const [planId, setPlanId] = useState('');
+  const activePlans = (plans.data ?? []).filter((p) => p.isActive);
+  const plan = activePlans.find((p) => p.id === planId);
+  // Preselect the default plan (Enterprise) once plans load
+  useEffect(() => {
+    if (!planId && activePlans.length) setPlanId((activePlans.find((p) => p.key === 'enterprise') ?? activePlans[0]!).id);
+  }, [planId, activePlans]);
 
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<Form>(EMPTY);
@@ -160,6 +169,7 @@ export default function OnboardCompanyPage() {
         adminLastName: form.adminLastName.trim(),
         themeTokens: tokens,
         themeSource: theme.ref ?? undefined,
+        ...(planId && { planId }),
       });
       setCreated(result.company);
       toast.success(`${result.company.name} is live`);
@@ -261,6 +271,17 @@ export default function OnboardCompanyPage() {
                 <Field label="Company contact email" htmlFor="email" required error={errors.email}>
                   <Input id="email" type="email" value={form.email} invalid={!!errors.email} onChange={(e) => set('email', e.target.value)} placeholder="hr@acme.com" />
                 </Field>
+                <Field
+                  label="Plan"
+                  htmlFor="plan"
+                  hint={plan ? `${plan.features.length} features · ${formatLimit(plan.limits.maxEmployees)} employees — change anytime on the company's Plan & features tab` : 'Decides which features the company can use'}
+                >
+                  <select id="plan" value={planId} onChange={(e) => setPlanId(e.target.value)} className={inputClass}>
+                    {activePlans.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}{p.description ? ` — ${p.description}` : ''}</option>
+                    ))}
+                  </select>
+                </Field>
               </>
             )}
 
@@ -327,6 +348,7 @@ export default function OnboardCompanyPage() {
                 </div>
                 <dl className="grid gap-3 text-sm sm:grid-cols-2">
                   <ReviewItem label="Employee IDs" value={`${form.employeeIdPrefix}001, ${form.employeeIdPrefix}002, …`} onEdit={() => setStep(0)} />
+                  <ReviewItem label="Plan" value={plan ? `${plan.name} · ${formatLimit(plan.limits.maxEmployees)} employees` : 'Default'} onEdit={() => setStep(0)} />
                   <ReviewItem
                     label="Theme"
                     value={

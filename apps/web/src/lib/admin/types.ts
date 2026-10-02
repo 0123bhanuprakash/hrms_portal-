@@ -141,6 +141,8 @@ export interface AuditLogsQuery {
 }
 
 export interface CreateCompanyInput {
+  /** Subscription plan (server default when omitted) */
+  planId?: string;
   name: string;
   slug: string;
   email: string;

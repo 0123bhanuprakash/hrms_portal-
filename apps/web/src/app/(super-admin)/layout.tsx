@@ -25,6 +25,7 @@ import {
   ShieldCheck,
   UserCircle,
   X,
+  Layers,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { changePasswordPath, useAuthHydrated, withNext } from '@/lib/auth/portal';
@@ -58,6 +59,7 @@ const NAV_GROUPS: Array<{
   {
     label: 'Platform',
     items: [
+      { name: 'Plans', href: '/super-admin/plans', icon: Layers },
       { name: 'Themes', href: '/super-admin/themes', icon: Palette },
       { name: 'System', href: '/super-admin/system', icon: ServerCog },
     ],
@@ -104,6 +106,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   'audit-logs': 'Audit logs',
   themes: 'Themes',
   editor: 'Editor',
+  plans: 'Plans',
   system: 'System',
   profile: 'Profile & security',
 };

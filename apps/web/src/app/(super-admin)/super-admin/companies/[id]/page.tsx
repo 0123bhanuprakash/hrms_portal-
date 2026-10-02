@@ -6,6 +6,7 @@ import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigat
 import { toast } from 'sonner';
 import {
   Activity,
+  Layers,
   ArrowLeft,
   Building2,
   Check,
@@ -27,6 +28,7 @@ import {
   Users,
   UserX,
 } from 'lucide-react';
+import { CompanyPlanTab } from '@/components/super-admin/company-plan-tab';
 import { Button } from '@/components/ui/button';
 import { Card, EmptyState, ErrorState, Skeleton, Tabs } from '@/components/ui/feedback';
 import { ColorInput, Field, Input } from '@/components/ui/field';
@@ -63,7 +65,7 @@ import { rebrandTheme } from '@/lib/theme/generate';
 import { FONTS, SHADOW_OPTIONS } from '@/lib/theme/engine';
 import type { PreviewPage } from '@/lib/theme/preview';
 
-type TabId = 'overview' | 'theme' | 'admins' | 'activity';
+type TabId = 'overview' | 'plan' | 'theme' | 'admins' | 'activity';
 const WEB_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
 export default function CompanyDetailPage() {
@@ -157,6 +159,7 @@ function CompanyDetailView() {
         onChange={setTab}
         tabs={[
           { id: 'overview', label: 'Overview', icon: <LayoutDashboard /> },
+          { id: 'plan', label: 'Plan & features', icon: <Layers /> },
           { id: 'theme', label: 'Theme', icon: <Palette /> },
           { id: 'admins', label: 'Admins', icon: <ShieldCheck />, count: admins.length },
           { id: 'activity', label: 'Activity', icon: <Activity /> },
@@ -165,6 +168,7 @@ function CompanyDetailView() {
 
       <div key={tab} className="animate-fade-up">
         {tab === 'overview' && <OverviewTab data={data} />}
+        {tab === 'plan' && <CompanyPlanTab companyId={company.id} />}
         {tab === 'theme' && <ThemeTab data={data} />}
         {tab === 'admins' && <AdminsTab companyId={company.id} admins={admins} />}
         {tab === 'activity' && <ActivityTab companyId={company.id} />}
