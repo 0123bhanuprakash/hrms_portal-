@@ -34,6 +34,7 @@ leave.approve   [scopable]         scope ∈ own | team | department         who
 payroll.run                                 | company                      extra grants)
 ```
 
+- **Scopes later:** add "team (all levels)" — the whole reporting tree below a manager — as one more scope option (agreed 2 Oct; v1 ships direct reports only).
 - **A user can have one or more roles** (decided 2 Oct). Everyone gets a base role
   (usually Employee); the admin can add more, e.g. Employee + HR, or Employee + Manager + HR.
   **Effective access = the union of all their roles' grants**; when two roles grant the
