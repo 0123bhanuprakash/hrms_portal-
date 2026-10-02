@@ -203,7 +203,8 @@ export interface WelcomeEmployeeOptions extends BaseTemplateOptions {
   firstName: string;
   email: string;
   temporaryPassword: string;
-  employeeId: string;
+  /** Omitted for users invited from User Management (no employee record yet) */
+  employeeId?: string;
   loginUrl: string;
 }
 
@@ -216,10 +217,10 @@ export function welcomeEmployeeEmail(opts: WelcomeEmployeeOptions): string {
     <p>Hi ${firstName},</p>
     <p>You've been added to the <strong>${companyName}</strong> HR Management System. Here are your login details:</p>
     <div class="info-box">
-      <div class="credential">
+      ${employeeId ? `<div class="credential">
         <span class="label">Employee ID</span>
         <span class="value">${employeeId}</span>
-      </div>
+      </div>` : ''}
       <div class="credential">
         <span class="label">Email</span>
         <span class="value">${email}</span>

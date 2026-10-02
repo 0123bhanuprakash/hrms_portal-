@@ -11,6 +11,7 @@ import { PrismaModule } from './modules/prisma/prisma.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { AccessModule } from './modules/access/access.module';
+import { UserManagementModule } from './modules/user-management/user-management.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { EmailModule } from './modules/email/email.module';
 import { CompaniesModule } from './modules/companies/companies.module';
@@ -71,6 +72,7 @@ import { AppController } from './app.controller';
     LocationsModule,     // Chunk 10
     EmployeesModule,      // Chunk 10
     ThemesModule,         // Theme Studio
+    UserManagementModule, // Company Admin: users, roles & permissions
   ],
 
   providers: [
