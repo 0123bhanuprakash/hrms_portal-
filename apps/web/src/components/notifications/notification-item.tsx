@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ArrowRightLeft, Bell, CalendarClock, Clock } from 'lucide-react';
+import { ArrowRightLeft, Bell, CalendarClock, Clock, Heart, Megaphone } from 'lucide-react';
 import { notificationKind, type AppNotification } from '@/lib/notifications';
 import { formatRelative } from '@/lib/format';
 import { cn } from '@/lib/cn';
@@ -10,6 +10,8 @@ const ICONS = {
   leave: { icon: CalendarClock, tone: 'bg-info-soft text-info' },
   attendance: { icon: Clock, tone: 'bg-warning-soft text-warning' },
   delegation: { icon: ArrowRightLeft, tone: 'bg-success-soft text-success' },
+  announcement: { icon: Megaphone, tone: 'bg-primary-soft text-primary-soft-foreground' },
+  kudos: { icon: Heart, tone: 'bg-destructive-soft text-destructive' },
   other: { icon: Bell, tone: 'bg-muted text-muted-foreground' },
 } as const;
 

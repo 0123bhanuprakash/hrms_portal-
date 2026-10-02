@@ -119,6 +119,12 @@ enum AttendanceStatus {
   WORK_FROM_HOME
 }
 
+enum AnnouncementAudience {
+  COMPANY
+  DEPARTMENTS
+  LOCATIONS
+}
+
 enum ProjectStatus {
   PLANNED
   ACTIVE
@@ -243,6 +249,10 @@ model User {
   leaveCovered        LeaveApproval[]            @relation("LeaveOnBehalfOf")
   leaveAdjustments    LeaveBalanceAdjustment[]   @relation("LeaveAdjustedBy")
   notifications       Notification[]
+  announcements       Announcement[]             @relation("AnnouncementAuthor")
+  announcementReads   AnnouncementRead[]
+  kudosGiven          Kudos[]                    @relation("KudosFrom")
+  kudosReactions      KudosReaction[]
 
   @@index([companyId])
   @@index([email])
@@ -613,6 +623,7 @@ model Employee {
   leaveRequests     LeaveRequest[]
   attendanceRecords AttendanceRecord[]
   regularisations   AttendanceRegularisation[]
+  kudosReceived     KudosRecipient[]
   projectMembers    ProjectMember[]            @relation("ProjectMemberEmployee")
   ledMembers        ProjectMember[]            @relation("ProjectMemberLead")
   payslips          Payslip[]
@@ -1353,4 +1364,112 @@ model ProjectMember {
   @@index([companyId, employeeId])
   @@index([projectId])
   @@map("project_members")
+}
+
+/// Company / department / location news
+model Announcement {
+  id             String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId      String               @map("company_id") @db.Uuid
+  authorId       String?              @map("author_id") @db.Uuid
+  title          String
+  body           String
+  audience       AnnouncementAudience @default(COMPANY)
+  /// DEPARTMENTS: these departments and everything under them
+  departmentIds  String[]             @default([]) @map("department_ids") @db.Uuid
+  locationIds    String[]             @default([]) @map("location_ids") @db.Uuid
+  pinned         Boolean              @default(false)
+  /// Readers confirm "I have read this"
+  requiresAck    Boolean              @default(false) @map("requires_ack")
+  /// Chosen by the poster: also email the audience (in-app is always sent)
+  sendEmail      Boolean              @default(false) @map("send_email")
+  expiresAt      DateTime?            @map("expires_at")
+  attachmentName String?              @map("attachment_name")
+  attachmentMime String?              @map("attachment_mime")
+  attachmentSize Int?                 @map("attachment_size")
+  attachmentKey  String?              @map("attachment_key")
+  publishedAt    DateTime             @default(now()) @map("published_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
+  deletedAt      DateTime?            @map("deleted_at")
+
+  author User?              @relation("AnnouncementAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  reads  AnnouncementRead[]
+
+  @@index([companyId, publishedAt])
+  @@map("announcements")
+}
+
+model AnnouncementRead {
+  announcementId String    @map("announcement_id") @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  readAt         DateTime  @default(now()) @map("read_at")
+  acknowledgedAt DateTime? @map("acknowledged_at")
+
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([announcementId, userId])
+  @@map("announcement_reads")
+}
+
+/// Company values kudos can be tagged with (editable by HR)
+model KudosValue {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  name        String
+  emoji       String
+  description String?
+  color       String   @default("#6366F1")
+  isActive    Boolean  @default(true) @map("is_active")
+  sortOrder   Int      @default(100) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  kudos Kudos[]
+
+  @@unique([companyId, name])
+  @@map("kudos_values")
+}
+
+/// A public thank-you
+model Kudos {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId   String    @map("company_id") @db.Uuid
+  fromUserId  String    @map("from_user_id") @db.Uuid
+  valueId     String?   @map("value_id") @db.Uuid
+  message     String
+  createdAt   DateTime  @default(now()) @map("created_at")
+  deletedAt   DateTime? @map("deleted_at")
+  deletedById String?   @map("deleted_by_id") @db.Uuid
+
+  from       User             @relation("KudosFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  value      KudosValue?      @relation(fields: [valueId], references: [id], onDelete: SetNull)
+  recipients KudosRecipient[]
+  reactions  KudosReaction[]
+
+  @@index([companyId, createdAt])
+  @@map("kudos")
+}
+
+model KudosRecipient {
+  kudosId    String @map("kudos_id") @db.Uuid
+  employeeId String @map("employee_id") @db.Uuid
+
+  kudos    Kudos    @relation(fields: [kudosId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@id([kudosId, employeeId])
+  @@index([employeeId])
+  @@map("kudos_recipients")
+}
+
+model KudosReaction {
+  kudosId   String   @map("kudos_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  emoji     String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  kudos Kudos @relation(fields: [kudosId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([kudosId, userId, emoji])
+  @@map("kudos_reactions")
 }

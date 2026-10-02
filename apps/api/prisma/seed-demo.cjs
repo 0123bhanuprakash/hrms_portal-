@@ -9,7 +9,8 @@
 // "Payroll Officer" role and ~12 people with reporting lines to an
 // EXISTING company, plus national holidays and the last 30 days of
 // attendance (with a few late days, absences and one pending correction),
-// and two projects (Apollo, Zeus) with a PMO, PM, team leads and members. Every account gets DEMO_PASSWORD and can sign in
+// two projects (Apollo, Zeus) with a PMO, PM, team leads and members, and a
+// few announcements and kudos (written directly: nobody is notified or emailed). Every account gets DEMO_PASSWORD and can sign in
 // straight away (no temporary-password step). No emails are sent.
 // Idempotent: anything that already exists (by email / name) is kept.
 // ============================================================
@@ -83,7 +84,7 @@ async function main() {
   if (!company) throw new Error(`Company '${slug}' not found`);
   const domain = slug.split('-')[0]; // aakash-portal → ravi.aakash@yopmail.com
   const companyId = company.id;
-  const created = { departments: 0, levels: 0, titles: 0, locations: 0, people: 0, holidays: 0, attendanceDays: 0, corrections: 0, projects: 0, assignments: 0 };
+  const created = { departments: 0, levels: 0, titles: 0, locations: 0, people: 0, holidays: 0, attendanceDays: 0, corrections: 0, projects: 0, assignments: 0, announcements: 0, kudos: 0 };
 
   // Roles (the company's own copies; created by the API at start-up)
   const roles = Object.fromEntries((await prisma.role.findMany({ where: { companyId, key: { not: null } } })).map((r) => [r.key, r.id]));
@@ -191,6 +192,7 @@ async function main() {
 
   await seedTime(companyId, company.settings?.timezone || 'Asia/Kolkata', empOf, created);
   await seedProjects(companyId, empOf, created);
+  await seedEngagement(companyId, empOf, created);
   return created;
 }
 
@@ -301,6 +303,53 @@ async function seedProjects(companyId, empOf, created) {
         data: { companyId, projectId: project.id, employeeId, role, allocation, startDate: start, leadEmployeeId: lead ? empOf[lead] ?? null : null },
       });
       created.assignments++;
+    }
+  }
+}
+
+// ─── Announcements + kudos demo data ────────────────────────
+
+const VALUES = [
+  ['Teamwork', '🤝', '#0EA5E9', 10, 'Made the team better together.'],
+  ['Ownership', '🎯', '#F59E0B', 20, 'Took responsibility and saw it through.'],
+  ['Customer first', '💙', '#6366F1', 30, 'Went out of their way for a customer.'],
+  ['Innovation', '💡', '#10B981', 40, 'Found a smarter way to do it.'],
+  ['Extra mile', '🚀', '#EC4899', 50, 'Did more than anyone asked.'],
+];
+
+async function seedEngagement(companyId, empOf, created) {
+  const userOf = async (local) => (empOf[local] ? (await prisma.employee.findUnique({ where: { id: empOf[local] }, select: { userId: true } }))?.userId : null);
+  if (!(await prisma.announcement.count({ where: { companyId } }))) {
+    const hema = await userOf('hema');
+    const posts = [
+      { title: 'Welcome to our new HR portal', body: 'From today, leave, attendance and your profile all live here.\n\nPlease complete your profile (photo, emergency contact, bank details) by the end of the month.', pinned: true, requiresAck: true },
+      { title: 'Diwali celebrations on 6 November', body: 'Join us in the cafeteria at 4 pm for sweets, rangoli and the lamp-lighting. Ethnic wear encouraged!', pinned: false, requiresAck: false },
+    ];
+    for (const [i, p] of posts.entries()) {
+      await prisma.announcement.create({ data: { companyId, authorId: hema, ...p, publishedAt: new Date(Date.now() - (posts.length - i) * 3600_000) } });
+      created.announcements++;
+    }
+  }
+  if (!(await prisma.kudosValue.count({ where: { companyId } }))) {
+    await prisma.kudosValue.createMany({ data: VALUES.map(([name, emoji, color, sortOrder, description]) => ({ companyId, name, emoji, color, sortOrder, description })) });
+  }
+  if (!(await prisma.kudos.count({ where: { companyId } }))) {
+    const value = Object.fromEntries((await prisma.kudosValue.findMany({ where: { companyId } })).map((v) => [v.name, v.id]));
+    const items = [
+      ['ravi', ['priya', 'karan'], 'Ownership', 'Shipping the Apollo release a day early — and with zero rollbacks. Brilliant work, both of you!'],
+      ['priya', ['amit'], 'Teamwork', 'Thanks for pairing with Neha all week on the payments bug. Patient and generous with your time.'],
+      ['meena', ['rahul'], 'Customer first', 'Stayed late to get Northwind their proposal before the deadline. They signed!'],
+    ];
+    for (const [i, [from, to, val, message]] of items.entries()) {
+      const fromUserId = await userOf(from);
+      if (!fromUserId) continue;
+      await prisma.kudos.create({
+        data: {
+          companyId, fromUserId, message, valueId: value[val] ?? null, createdAt: new Date(Date.now() - (items.length - i) * 5400_000),
+          recipients: { create: to.filter((t) => empOf[t]).map((t) => ({ employeeId: empOf[t] })) },
+        },
+      });
+      created.kudos++;
     }
   }
 }

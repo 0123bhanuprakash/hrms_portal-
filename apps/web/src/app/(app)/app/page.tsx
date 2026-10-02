@@ -33,6 +33,7 @@ import { Badge } from '@/components/ui/badge';
 import { PersonAvatar, PersonRow } from '@/components/profile/person-avatar';
 import { CompletionCard } from '@/components/profile/profile-header';
 import { CheckInCard } from '@/components/attendance/check-in-card';
+import { HomeAnnouncements, HomeKudos } from '@/components/engagement/home-cards';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useAccess } from '@/lib/access/use-access';
 import { useCompanyBranding, useCompanyStats } from '@/lib/company/queries';
@@ -97,6 +98,7 @@ export default function HomePage() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
+          <HomeAnnouncements />
           {employee && hasFeature('time.attendance') && can('attendance.mark') && <CheckInCard />}
           {me.data?.completion && me.data.completion.percent < 100 && <CompletionCard completion={me.data.completion} href="/app/profile" compact />}
 
@@ -148,6 +150,7 @@ export default function HomePage() {
             </Card>
           )}
 
+          <HomeKudos />
           {can('org.view') && <HolidaysCard data={spotlight.data} loading={spotlight.isLoading} />}
 
           <Card>

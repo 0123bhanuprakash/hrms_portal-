@@ -39,7 +39,22 @@ export class NotificationsService {
       const userIds = [...new Set(input.userIds.filter((id): id is string => Boolean(id)))];
       if (!userIds.length) return 0;
       const created: string[] = [];
-      for (const userId of userIds) {
+      if (!input.dedupeKey) {
+        // Bulk (e.g. a company-wide announcement)
+        const rows = await this.prisma.notification.createManyAndReturn({
+          data: userIds.map((userId) => ({
+            companyId: input.companyId,
+            userId,
+            type: input.type,
+            title: input.title.slice(0, 200),
+            body: input.body?.slice(0, 1000) ?? null,
+            link: input.link ?? null,
+          })),
+          select: { id: true },
+        });
+        created.push(...rows.map((r) => r.id));
+      }
+      for (const userId of input.dedupeKey ? userIds : []) {
         try {
           const n = await this.prisma.notification.create({
             data: {

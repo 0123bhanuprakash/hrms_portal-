@@ -29,6 +29,7 @@ import { AttendanceModule } from './modules/attendance/attendance.module';
 import { LeaveModule } from './modules/leave/leave.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ProjectsModule } from './modules/projects/projects.module';
+import { EngagementModule } from './modules/engagement/engagement.module';
 import { ThemesModule } from './modules/themes/themes.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { PermissionGuard } from './common/guards/permission.guard';
@@ -84,6 +85,7 @@ import { AppController } from './app.controller';
     LeaveModule,           // Phase 4: leave
     NotificationsModule,   // In-app inbox + notification emails
     ProjectsModule,        // Projects, allocation, approval routing
+    EngagementModule,      // Announcements, kudos
     ThemesModule,         // Theme Studio
     UserManagementModule, // Company Admin: users, roles & permissions
     PlansModule,          // Super Admin: plans & per-company features

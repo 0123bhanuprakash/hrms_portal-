@@ -133,6 +133,34 @@ export const CATALOG: CatalogModule[] = [
     ],
   },
   {
+    key: 'engage',
+    label: 'Engagement',
+    icon: 'Megaphone',
+    features: [
+      {
+        key: 'engage.announcements',
+        label: 'Announcements',
+        description: 'Company / department / location news with optional read acknowledgement.',
+        stage: 'ga',
+        permissions: [
+          p('announcement.view', 'Read announcements'),
+          p('announcement.post', 'Post announcements', [], { requires: ['announcement.view'], description: 'Post, edit and remove announcements; see who has read them.' }),
+        ],
+      },
+      {
+        key: 'engage.kudos',
+        label: 'Kudos',
+        description: 'Public thank-yous between colleagues, tagged with company values.',
+        stage: 'ga',
+        permissions: [
+          p('kudos.view', 'See kudos'),
+          p('kudos.give', 'Give kudos', [], { requires: ['kudos.view'] }),
+          p('kudos.manage', 'Manage values & remove kudos', [], { requires: ['kudos.view'] }),
+        ],
+      },
+    ],
+  },
+  {
     key: 'work',
     label: 'Work',
     icon: 'Briefcase',
@@ -297,7 +325,7 @@ export const DEFAULT_PLANS: Array<{ key: string; name: string; description: stri
     key: 'starter',
     name: 'Starter',
     description: 'Core HR for small teams.',
-    features: ['people.directory', 'people.org', 'time.attendance', 'time.leave', 'admin.users', 'admin.settings'],
+    features: ['people.directory', 'people.org', 'time.attendance', 'time.leave', 'admin.users', 'admin.settings', 'engage.announcements', 'engage.kudos'],
     limits: { maxEmployees: 50 },
   },
   {
@@ -306,6 +334,7 @@ export const DEFAULT_PLANS: Array<{ key: string; name: string; description: stri
     description: 'Payroll, documents and reports for growing companies.',
     features: [
       'people.directory', 'people.org', 'people.documents', 'time.attendance', 'time.leave', 'work.projects',
+      'engage.announcements', 'engage.kudos',
       'pay.payroll', 'pay.salary', 'insights.reports', 'admin.users', 'admin.settings', 'admin.audit',
     ],
     limits: { maxEmployees: 500 },
@@ -332,6 +361,7 @@ const SELF_SERVICE: Grant[] = [
   ['leave.view', 'own'], ['leave.request', 'own'],
   ['shift.view', 'own'], ['payslip.view', 'own'], ['salary.view', 'own'],
   ['org.view'], ['project.view'],
+  ['announcement.view'], ['kudos.view'], ['kudos.give'],
 ];
 
 export const ROLE_TEMPLATES: Array<{ key: string; name: string; description: string; isOwner?: boolean; grants: Grant[] }> = [
@@ -355,6 +385,7 @@ export const ROLE_TEMPLATES: Array<{ key: string; name: string; description: str
       ['document.view', 'company'], ['document.upload', 'company'], ['document.delete', 'company'],
       ['attendance.view', 'company'], ['attendance.edit', 'company'], ['attendance.approve', 'company'], ['attendance.export', 'company'],
       ['holiday.manage'], ['attendance.policy'],
+      ['announcement.post'], ['kudos.manage'],
       ['leave.view', 'company'], ['leave.approve', 'company'], ['leave.adjust_balance', 'company'], ['leave.manage_types'],
       ['shift.view', 'company'], ['shift.manage', 'company'],
       ['payslip.view', 'company'], ['payroll.view'], ['salary.view', 'company'], ['salary.edit', 'company'],

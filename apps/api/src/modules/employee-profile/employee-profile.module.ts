@@ -13,6 +13,6 @@ import { PeopleService } from './people.service';
   imports: [PrismaModule],
   controllers: [EmployeeProfileController, EmployeeDocumentsController, PeopleController],
   providers: [PiiCryptoService, PrivateFilesService, ProfileService, DocumentsService, PeopleService],
-  exports: [PiiCryptoService],
+  exports: [PiiCryptoService, PrivateFilesService],
 })
 export class EmployeeProfileModule {}

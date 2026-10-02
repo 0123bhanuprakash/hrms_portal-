@@ -36,6 +36,8 @@ import {
   CalendarRange,
   Tags,
   FolderKanban,
+  Megaphone,
+  Heart,
 } from 'lucide-react';
 import type { ThemeTokens } from '@hrms/types';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -44,6 +46,7 @@ import { useAccess } from '@/lib/access/use-access';
 import { usePendingCorrections } from '@/lib/company/attendance';
 import { usePendingLeave } from '@/lib/company/leave';
 import { useIsApprover } from '@/lib/company/projects';
+import { useAnnouncements } from '@/lib/company/engagement';
 import { changePasswordPath, loginPathFor, useAuthHydrated, withNext } from '@/lib/auth/portal';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { NotificationBell } from '@/components/notifications/notification-bell';
@@ -68,7 +71,7 @@ interface NavItem {
   /** Also show for anyone who approves: covering someone, project lead / PM, line manager */
   orDelegated?: boolean;
   /** Live count shown on the item */
-  badge?: 'attendanceApprovals' | 'leaveApprovals';
+  badge?: 'attendanceApprovals' | 'leaveApprovals' | 'announcements';
 }
 
 const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
@@ -85,6 +88,13 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
     items: [
       { name: 'Employees', href: '/app/employees', icon: Users, permission: 'employee.view', beyondOwn: true },
       { name: 'Organisation', href: '/app/org', icon: Network, permission: 'org.view' },
+    ],
+  },
+  {
+    label: 'Engagement',
+    items: [
+      { name: 'Announcements', href: '/app/announcements', icon: Megaphone, permission: 'announcement.view', feature: 'engage.announcements', badge: 'announcements' },
+      { name: 'Kudos', href: '/app/kudos', icon: Heart, permission: 'kudos.view', feature: 'engage.kudos' },
     ],
   },
   {
@@ -139,6 +149,8 @@ const SEGMENT_LABELS: Record<string, string> = {
   holidays: 'Holidays',
   leave: 'Leave',
   projects: 'Projects',
+  announcements: 'Announcements',
+  kudos: 'Kudos',
   notifications: 'Notifications',
   calendar: 'Who’s off',
   types: 'Leave types',
@@ -191,6 +203,7 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
   const pendingApprovals = usePendingCorrections();
   const pendingLeave = usePendingLeave();
   const isApprover = useIsApprover('leave.approve');
+  const announcements = useAnnouncements({ limit: 1 });
   const [mobileOpen, setMobileOpen] = useState(false);
   const branding = useCompanyBranding(hydrated ? companyId : null);
 
@@ -273,7 +286,8 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
                 <p className="mb-1 px-2 text-2xs font-medium uppercase tracking-wider text-sidebar-muted">{group.label}</p>
                 <ul className="space-y-0.5">
                   {items.map(({ name, href, icon: Icon, exact, soon, badge }) => {
-                    const count = badge === 'attendanceApprovals' ? pendingApprovals.data : badge === 'leaveApprovals' ? pendingLeave.data : undefined;
+                    const count =
+                      badge === 'attendanceApprovals' ? pendingApprovals.data : badge === 'leaveApprovals' ? pendingLeave.data : badge === 'announcements' ? announcements.data?.meta.unread : undefined;
                     const active = exact ? pathname === href : pathname.startsWith(href);
                     const content = (
                       <>
