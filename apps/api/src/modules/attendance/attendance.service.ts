@@ -6,7 +6,7 @@ import type { AccessContext } from '../access/access.types';
 import { AttendancePolicyService, type CompanyPolicy } from './policy.service';
 import { HolidaysService } from './holidays.service';
 import { deriveDay, lateMinutesFor, statusForMinutes, workedMinutes, type DayStatus } from './attendance-rules';
-import { dateFromKey, keyFromDate, localDateKey, monthKeys, zonedInstant } from './time-zone';
+import { addDays, dateFromKey, keyFromDate, localDateKey, monthKeys, weekdayOfKey, zonedInstant } from './time-zone';
 import type { CalendarQueryDto, ExportQueryDto, TeamQueryDto, UpsertRecordDto } from './dto';
 
 const RECORD_SELECT = {
@@ -45,10 +45,21 @@ function summarise(statuses: Array<{ status: DayStatus; lateMinutes?: number | n
     absent: count('ABSENT'),
     missingCheckout: count('MISSING_CHECKOUT'),
     onLeave: count('ON_LEAVE'),
+    workFromHome: count('WORK_FROM_HOME'),
     holidays: count('HOLIDAY'),
     late: statuses.filter((d) => (d.lateMinutes ?? 0) > 0).length,
     averageMinutes: worked.length ? Math.round(worked.reduce((sum, d) => sum + (d.workingMinutes ?? 0), 0) / worked.length) : 0,
   };
+}
+
+/** A leave request touching a day, as attendance shows it. */
+export interface DayLeaveInfo {
+  name: string;
+  code: string;
+  color: string;
+  status: 'APPROVED' | 'PENDING';
+  countsAsPresent: boolean;
+  halfDay: boolean;
 }
 
 @Injectable()
@@ -60,6 +71,61 @@ export class AttendanceService {
     private readonly holidays: HolidaysService,
   ) {}
 
+  /**
+   * Approved + pending leave per "employeeId|date" between two dates.
+   * Only days the leave actually covers (weekly offs / holidays are skipped
+   * unless the leave type counts them).
+   */
+  async leavesBetween(companyId: string, employeeIds: string[], fromKey: string, toKey: string, policy: CompanyPolicy): Promise<Map<string, DayLeaveInfo>> {
+    const map = new Map<string, DayLeaveInfo>();
+    if (!employeeIds.length) return map;
+    const [rows, holidays] = await Promise.all([
+      this.prisma.leaveRequest.findMany({
+        where: {
+          companyId,
+          employeeId: { in: employeeIds },
+          status: { in: ['APPROVED', 'PENDING'] },
+          startDate: { lte: dateFromKey(toKey) },
+          endDate: { gte: dateFromKey(fromKey) },
+        },
+        select: {
+          employeeId: true,
+          startDate: true,
+          endDate: true,
+          halfDay: true,
+          status: true,
+          leaveType: { select: { name: true, code: true, color: true, countsAsPresent: true, includeNonWorkingDays: true } },
+        },
+      }),
+      this.holidays.between(companyId, fromKey, toKey),
+    ]);
+    for (const l of rows) {
+      const start = keyFromDate(l.startDate) < fromKey ? fromKey : keyFromDate(l.startDate);
+      const end = keyFromDate(l.endDate) > toKey ? toKey : keyFromDate(l.endDate);
+      for (let key = start; key <= end; key = addDays(key, 1)) {
+        const holiday = holidays.get(key);
+        const off = !policy.workDays.includes(weekdayOfKey(key)) || Boolean(holiday && !holiday.isOptional);
+        if (off && !l.leaveType.includeNonWorkingDays) continue;
+        const mapKey = l.employeeId + '|' + key;
+        if (map.get(mapKey)?.status === 'APPROVED') continue; // approved wins over pending
+        map.set(mapKey, {
+          name: l.leaveType.name,
+          code: l.leaveType.code,
+          color: l.leaveType.color,
+          status: l.status as 'APPROVED' | 'PENDING',
+          countsAsPresent: l.leaveType.countsAsPresent,
+          halfDay: Boolean(l.halfDay),
+        });
+      }
+    }
+    return map;
+  }
+
+  /** Only approved leave changes a day's status. */
+  private approved(info: DayLeaveInfo | null | undefined) {
+    return info?.status === 'APPROVED' ? { countsAsPresent: info.countsAsPresent, halfDay: info.halfDay } : null;
+  }
+
   // ─── Self-service: today, check in, check out ─────────────
 
   async today(companyId: string, access: AccessContext) {
@@ -69,15 +135,17 @@ export class AttendanceService {
     const employee = access.employee
       ? await this.prisma.employee.findFirst({ where: { id: access.employee.id, companyId }, select: { id: true, joiningDate: true } })
       : null;
-    if (!employee) return { hasProfile: false, date: todayKey, serverTime: now, policy, record: null, status: null, holiday: null };
+    if (!employee) return { hasProfile: false, date: todayKey, serverTime: now, policy, record: null, status: null, holiday: null, leave: null };
 
-    const [record, holidays] = await Promise.all([
+    const [record, holidays, leaves] = await Promise.all([
       this.prisma.attendanceRecord.findUnique({ where: { companyId_employeeId_date: { companyId, employeeId: employee.id, date: dateFromKey(todayKey) } }, select: RECORD_SELECT }),
       this.holidays.between(companyId, todayKey, todayKey),
+      this.leavesBetween(companyId, [employee.id], todayKey, todayKey, policy),
     ]);
     const holiday = holidays.get(todayKey) ?? null;
-    const status = deriveDay({ dateKey: todayKey, todayKey, joiningKey: keyFromDate(employee.joiningDate), record, holiday: Boolean(holiday), policy });
-    return { hasProfile: true, date: todayKey, serverTime: now, policy, record, status, holiday };
+    const leave = leaves.get(employee.id + '|' + todayKey) ?? null;
+    const status = deriveDay({ dateKey: todayKey, todayKey, joiningKey: keyFromDate(employee.joiningDate), record, holiday: Boolean(holiday), policy, leave: this.approved(leave) });
+    return { hasProfile: true, date: todayKey, serverTime: now, policy, record, status, holiday, leave };
   }
 
   async checkIn(companyId: string, access: AccessContext, ip: string | undefined) {
@@ -140,7 +208,7 @@ export class AttendanceService {
     const [from, to] = [keys[0]!, keys[keys.length - 1]!];
     const todayKey = localDateKey(new Date(), policy.timeZone);
 
-    const [employee, records, holidays, corrections] = await Promise.all([
+    const [employee, records, holidays, corrections, leaves] = await Promise.all([
       this.prisma.employee.findUniqueOrThrow({ where: { id: targetId }, select: PERSON }),
       this.prisma.attendanceRecord.findMany({ where: { companyId, employeeId: targetId, date: { gte: dateFromKey(from), lte: dateFromKey(to) } }, select: RECORD_SELECT }),
       this.holidays.between(companyId, from, to),
@@ -149,6 +217,7 @@ export class AttendanceService {
         select: { id: true, date: true, status: true, createdAt: true },
         orderBy: { createdAt: 'asc' },
       }),
+      this.leavesBetween(companyId, [targetId], from, to, policy),
     ]);
     const byDate = new Map(records.map((r) => [keyFromDate(r.date), r]));
     // Latest request per day wins
@@ -158,9 +227,11 @@ export class AttendanceService {
     const days = keys.map((dateKey) => {
       const record = byDate.get(dateKey) ?? null;
       const holiday = holidays.get(dateKey) ?? null;
+      const leave = leaves.get(targetId + '|' + dateKey) ?? null;
       return {
         date: dateKey,
-        status: deriveDay({ dateKey, todayKey, joiningKey, record, holiday: Boolean(holiday), policy }),
+        status: deriveDay({ dateKey, todayKey, joiningKey, record, holiday: Boolean(holiday), policy, leave: this.approved(leave) }),
+        leave,
         checkIn: record?.checkIn ?? null,
         checkOut: record?.checkOut ?? null,
         workingMinutes: record?.workingMinutes ?? null,
@@ -197,18 +268,21 @@ export class AttendanceService {
       select: PERSON,
       orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
     });
-    const [records, holidays] = await Promise.all([
+    const [records, holidays, leaves] = await Promise.all([
       this.prisma.attendanceRecord.findMany({ where: { companyId, date, employeeId: { in: employees.map((e) => e.id) } }, select: { ...RECORD_SELECT, employeeId: true } }),
       this.holidays.between(companyId, dateKey, dateKey),
+      this.leavesBetween(companyId, employees.map((e) => e.id), dateKey, dateKey, policy),
     ]);
     const byEmployee = new Map(records.map((r) => [r.employeeId, r]));
     const holiday = holidays.get(dateKey) ?? null;
 
     const rows = employees.map((e) => {
       const record = byEmployee.get(e.id) ?? null;
+      const leave = leaves.get(e.id + '|' + dateKey) ?? null;
       return {
         employee: e,
-        status: deriveDay({ dateKey, todayKey, joiningKey: keyFromDate(e.joiningDate), record, holiday: Boolean(holiday), policy }),
+        status: deriveDay({ dateKey, todayKey, joiningKey: keyFromDate(e.joiningDate), record, holiday: Boolean(holiday), policy, leave: this.approved(leave) }),
+        leave,
         checkIn: record?.checkIn ?? null,
         checkOut: record?.checkOut ?? null,
         workingMinutes: record?.workingMinutes ?? null,
@@ -292,24 +366,26 @@ export class AttendanceService {
       select: PERSON,
       orderBy: { employeeId: 'asc' },
     });
-    const [records, holidays] = await Promise.all([
+    const [records, holidays, leaves] = await Promise.all([
       this.prisma.attendanceRecord.findMany({
         where: { companyId, employeeId: { in: employees.map((e) => e.id) }, date: { gte: dateFromKey(from), lte: dateFromKey(to) } },
         select: { ...RECORD_SELECT, employeeId: true },
       }),
       this.holidays.between(companyId, from, to),
+      this.leavesBetween(companyId, employees.map((e) => e.id), from, to, policy),
     ]);
     const records2 = new Map(records.map((r) => [`${r.employeeId}|${keyFromDate(r.date)}`, r]));
     const time = (d: Date | null) =>
       d ? new Intl.DateTimeFormat('en-GB', { timeZone: policy.timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(d) : '';
 
-    const lines = [['Employee ID', 'Name', 'Department', 'Date', 'Status', 'Check in', 'Check out', 'Hours', 'Late (min)', 'Manual', 'Holiday'].join(',')];
+    const lines = [['Employee ID', 'Name', 'Department', 'Date', 'Status', 'Check in', 'Check out', 'Hours', 'Late (min)', 'Manual', 'Holiday', 'Leave'].join(',')];
     for (const e of employees) {
       for (const dateKey of keys) {
         if (dateKey > todayKey) break;
         const record: RecordRow | null = records2.get(`${e.id}|${dateKey}`) ?? null;
         const holiday = holidays.get(dateKey);
-        const status = deriveDay({ dateKey, todayKey, joiningKey: keyFromDate(e.joiningDate), record, holiday: Boolean(holiday), policy });
+        const leave = leaves.get(e.id + '|' + dateKey);
+        const status = deriveDay({ dateKey, todayKey, joiningKey: keyFromDate(e.joiningDate), record, holiday: Boolean(holiday), policy, leave: this.approved(leave) });
         if (status === 'NOT_JOINED') continue;
         lines.push(
           [
@@ -324,6 +400,7 @@ export class AttendanceService {
             record?.lateMinutes ?? '',
             record?.isManualEntry ? 'yes' : '',
             holiday?.name ?? '',
+            leave?.status === 'APPROVED' ? leave.code + (leave.halfDay ? ' (half day)' : '') : '',
           ]
             .map(csvCell)
             .join(','),

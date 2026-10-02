@@ -90,7 +90,23 @@ enum LeaveTypeCategory {
   PATERNITY
   UNPAID
   COMPENSATORY
+  WORK_FROM_HOME
   OTHER
+}
+
+/// How a leave type's balance builds up over the year
+enum LeaveAccrual {
+  /// Whole year credited on Jan 1 (prorated from the joining date)
+  UPFRONT
+  /// quota / 12 credited each month
+  MONTHLY
+  /// No balance — unlimited (e.g. Work from home, Unpaid)
+  NONE
+}
+
+enum HalfDaySession {
+  FIRST_HALF
+  SECOND_HALF
 }
 
 enum AttendanceStatus {
@@ -209,6 +225,10 @@ model User {
   uploadedDocuments   EmployeeDocument[]         @relation("DocumentUploader")
   reviewedCorrections AttendanceRegularisation[] @relation("CorrectionReviewer")
   coveredCorrections  AttendanceRegularisation[] @relation("CorrectionOnBehalfOf")
+  leaveApprovals      LeaveApproval[]            @relation("LeaveApprover")
+  leaveActions        LeaveApproval[]            @relation("LeaveActedBy")
+  leaveCovered        LeaveApproval[]            @relation("LeaveOnBehalfOf")
+  leaveAdjustments    LeaveBalanceAdjustment[]   @relation("LeaveAdjustedBy")
 
   @@index([companyId])
   @@index([email])
@@ -781,19 +801,34 @@ model Payslip {
 
 /// Leave policy types — CL, SL, EL etc.
 model LeaveType {
-  id                 String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId          String            @map("company_id") @db.Uuid
-  name               String
-  code               String // e.g. "CL", "SL"
-  category           LeaveTypeCategory
-  daysAllowedPerYear Int               @map("days_allowed_per_year")
-  carryForward       Boolean           @default(false) @map("carry_forward")
-  maxCarryForward    Int               @default(0) @map("max_carry_forward")
-  isPaid             Boolean           @default(true) @map("is_paid")
-  requiresApproval   Boolean           @default(true) @map("requires_approval")
-  maxLevels          Int               @default(1) @map("max_levels")
-  isActive           Boolean           @default(true) @map("is_active")
-  createdAt          DateTime          @default(now()) @map("created_at")
+  id                    String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId             String            @map("company_id") @db.Uuid
+  name                  String
+  code                  String // e.g. "CL", "SL"
+  category              LeaveTypeCategory
+  description           String?
+  color                 String            @default("#6366F1")
+  accrual               LeaveAccrual      @default(UPFRONT)
+  /// Days per calendar year (ignored when accrual = NONE)
+  annualQuota           Float             @default(0) @map("annual_quota")
+  carryForward          Boolean           @default(false) @map("carry_forward")
+  maxCarryForward       Float             @default(0) @map("max_carry_forward")
+  isPaid                Boolean           @default(true) @map("is_paid")
+  allowHalfDay          Boolean           @default(true) @map("allow_half_day")
+  /// Reporting-chain levels that must approve (0 = approved automatically)
+  approvalLevels        Int               @default(1) @map("approval_levels")
+  minNoticeDays         Int               @default(0) @map("min_notice_days")
+  maxConsecutiveDays    Int?              @map("max_consecutive_days")
+  /// Count weekly offs and holidays inside the range (e.g. maternity)
+  includeNonWorkingDays Boolean           @default(false) @map("include_non_working_days")
+  /// Attendance shows these days as worked (Work from home)
+  countsAsPresent       Boolean           @default(false) @map("counts_as_present")
+  /// Only for employees of this gender (e.g. maternity / paternity)
+  gender                Gender?
+  isActive              Boolean           @default(true) @map("is_active")
+  sortOrder             Int               @default(0) @map("sort_order")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
 
   company       Company        @relation(fields: [companyId], references: [id])
   leaveBalances LeaveBalance[]
@@ -806,45 +841,75 @@ model LeaveType {
 
 /// Employee leave balance per leave type per year
 model LeaveBalance {
-  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId      String @map("company_id") @db.Uuid
-  employeeId     String @map("employee_id") @db.Uuid
-  leaveTypeId    String @map("leave_type_id") @db.Uuid
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId      String   @map("company_id") @db.Uuid
+  employeeId     String   @map("employee_id") @db.Uuid
+  leaveTypeId    String   @map("leave_type_id") @db.Uuid
   year           Int
-  totalDays      Float  @map("total_days")
-  usedDays       Float  @default(0) @map("used_days")
-  pendingDays    Float  @default(0) @map("pending_days")
-  carriedForward Float  @default(0) @map("carried_forward")
+  /// Full-year entitlement (prorated from joining); monthly types accrue towards it
+  allocated      Float    @default(0)
+  carriedForward Float    @default(0) @map("carried_forward")
+  /// Sum of manual adjustments (see leave_balance_adjustments)
+  adjusted       Float    @default(0)
+  usedDays       Float    @default(0) @map("used_days")
+  pendingDays    Float    @default(0) @map("pending_days")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
-  employee  Employee  @relation(fields: [employeeId], references: [id])
-  leaveType LeaveType @relation(fields: [leaveTypeId], references: [id])
+  employee    Employee                 @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveType   LeaveType                @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
+  adjustments LeaveBalanceAdjustment[]
 
   @@unique([companyId, employeeId, leaveTypeId, year])
   @@index([companyId, employeeId])
   @@map("leave_balances")
 }
 
+/// Manual balance changes by HR (audit trail)
+model LeaveBalanceAdjustment {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  balanceId    String   @map("balance_id") @db.Uuid
+  days         Float
+  reason       String
+  adjustedById String?  @map("adjusted_by_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  balance    LeaveBalance @relation(fields: [balanceId], references: [id], onDelete: Cascade)
+  adjustedBy User?        @relation("LeaveAdjustedBy", fields: [adjustedById], references: [id], onDelete: SetNull)
+
+  @@index([balanceId])
+  @@map("leave_balance_adjustments")
+}
+
 /// Leave request submitted by an employee
 model LeaveRequest {
-  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId    String      @map("company_id") @db.Uuid
-  employeeId   String      @map("employee_id") @db.Uuid
-  leaveTypeId  String      @map("leave_type_id") @db.Uuid
-  startDate    DateTime    @map("start_date") @db.Date
-  endDate      DateTime    @map("end_date") @db.Date
-  totalDays    Float       @map("total_days")
-  reason       String
-  status       LeaveStatus @default(PENDING)
-  currentLevel Int         @default(1) @map("current_level")
-  createdAt    DateTime    @default(now()) @map("created_at")
-  updatedAt    DateTime    @updatedAt @map("updated_at")
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId      String          @map("company_id") @db.Uuid
+  employeeId     String          @map("employee_id") @db.Uuid
+  leaveTypeId    String          @map("leave_type_id") @db.Uuid
+  startDate      DateTime        @map("start_date") @db.Date
+  endDate        DateTime        @map("end_date") @db.Date
+  /// Single-day requests only
+  halfDay        HalfDaySession? @map("half_day")
+  totalDays      Float           @map("total_days")
+  reason         String
+  status         LeaveStatus     @default(PENDING)
+  /// Level waiting for a decision (1-based)
+  currentLevel   Int             @default(1) @map("current_level")
+  requiredLevels Int             @default(1) @map("required_levels")
+  decidedAt      DateTime?       @map("decided_at")
+  cancelledAt    DateTime?       @map("cancelled_at")
+  cancelledById  String?         @map("cancelled_by_id") @db.Uuid
+  cancelReason   String?         @map("cancel_reason")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
 
-  employee  Employee        @relation(fields: [employeeId], references: [id])
+  employee  Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   leaveType LeaveType       @relation(fields: [leaveTypeId], references: [id])
   approvals LeaveApproval[]
 
   @@index([companyId, status])
   @@index([companyId, employeeId])
+  @@index([companyId, startDate, endDate])
   @@map("leave_requests")
 }
 
@@ -852,15 +917,24 @@ model LeaveRequest {
 model LeaveApproval {
   id             String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   leaveRequestId String              @map("leave_request_id") @db.Uuid
-  approverId     String              @map("approver_id") @db.Uuid
   level          Int
+  /// Designated approver from the reporting chain (null = any company-wide approver, e.g. HR)
+  approverId     String?             @map("approver_id") @db.Uuid
   status         LeaveApprovalStatus @default(PENDING)
+  /// Who actually decided (approver, their delegate, or a company-wide approver)
+  actedById      String?             @map("acted_by_id") @db.Uuid
+  /// Set when the decision was made while covering for the approver
+  onBehalfOfId   String?             @map("on_behalf_of_id") @db.Uuid
   comments       String?
   actedAt        DateTime?           @map("acted_at")
 
   leaveRequest LeaveRequest @relation(fields: [leaveRequestId], references: [id], onDelete: Cascade)
+  approver     User?        @relation("LeaveApprover", fields: [approverId], references: [id], onDelete: SetNull)
+  actedBy      User?        @relation("LeaveActedBy", fields: [actedById], references: [id], onDelete: SetNull)
+  onBehalfOf   User?        @relation("LeaveOnBehalfOf", fields: [onBehalfOfId], references: [id], onDelete: SetNull)
 
-  @@index([leaveRequestId])
+  @@unique([leaveRequestId, level])
+  @@index([approverId, status])
   @@map("leave_approvals")
 }
 

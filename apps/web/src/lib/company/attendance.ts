@@ -55,6 +55,7 @@ export interface TodayAttendance {
   record: AttendanceRecord | null;
   status: DayStatus | null;
   holiday: { name: string } | null;
+  leave: DayLeave | null;
 }
 
 export interface CalendarDay {
@@ -68,6 +69,17 @@ export interface CalendarDay {
   notes: string | null;
   holiday: { name: string; isOptional: boolean } | null;
   correction: { id: string; status: CorrectionStatus } | null;
+  leave: DayLeave | null;
+}
+
+/** Leave touching a day (approved changes the status; pending is shown as a hint). */
+export interface DayLeave {
+  name: string;
+  code: string;
+  color: string;
+  status: 'APPROVED' | 'PENDING';
+  countsAsPresent: boolean;
+  halfDay: boolean;
 }
 
 export interface AttendanceSummary {
@@ -76,6 +88,7 @@ export interface AttendanceSummary {
   absent: number;
   missingCheckout: number;
   onLeave: number;
+  workFromHome: number;
   holidays: number;
   late: number;
   averageMinutes: number;
@@ -113,6 +126,7 @@ export interface TeamDay {
     workingMinutes: number | null;
     lateMinutes: number | null;
     isManualEntry: boolean;
+    leave: DayLeave | null;
   }>;
   meta: { total: number; page: number; limit: number; totalPages: number };
 }

@@ -66,6 +66,13 @@ export interface DayRecord {
   status: AttendanceStatus;
 }
 
+/** Approved leave covering a day (from the leave module). */
+export interface DayLeave {
+  /** Work from home: the day counts as worked */
+  countsAsPresent: boolean;
+  halfDay: boolean;
+}
+
 export function deriveDay(opts: {
   dateKey: string;
   todayKey: string;
@@ -73,18 +80,23 @@ export function deriveDay(opts: {
   record: DayRecord | null;
   holiday: boolean;
   policy: PolicyRules;
+  leave?: DayLeave | null;
 }): DayStatus {
-  const { dateKey, todayKey, joiningKey, record, holiday, policy } = opts;
+  const { dateKey, todayKey, joiningKey, record, holiday, policy, leave } = opts;
   if (dateKey < joiningKey) return 'NOT_JOINED';
   const workday = policy.workDays.includes(weekdayOfKey(dateKey));
 
   if (record?.checkIn) {
     if (!record.checkOut) return dateKey === todayKey ? 'WORKING' : dateKey < todayKey ? 'MISSING_CHECKOUT' : 'UPCOMING';
+    // Working from home with check-in / out: shown as WFH (counts as worked)
+    if (leave?.countsAsPresent) return 'WORK_FROM_HOME';
     return record.status;
   }
   if (record && record.status !== 'PRESENT') return record.status; // e.g. ON_LEAVE / ABSENT set by HR
   if (holiday) return 'HOLIDAY';
   if (!workday) return 'WEEKEND';
+  // Approved leave (past or future) — a half day off still expects a check-in for the other half
+  if (leave && !(leave.halfDay && dateKey === todayKey)) return leave.countsAsPresent ? 'WORK_FROM_HOME' : 'ON_LEAVE';
   if (dateKey > todayKey) return 'UPCOMING';
   if (dateKey === todayKey) return 'NOT_CHECKED_IN';
   return 'ABSENT';

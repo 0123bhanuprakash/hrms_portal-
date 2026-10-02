@@ -31,12 +31,17 @@ import {
   ClipboardCheck,
   Clock,
   UsersRound,
+  Plane,
+  CalendarClock,
+  CalendarRange,
+  Tags,
 } from 'lucide-react';
 import type { ThemeTokens } from '@hrms/types';
 import { useAuthStore } from '@/store/useAuthStore';
 import { DisplayPreferences } from '@/components/preferences/display-preferences';
 import { useAccess } from '@/lib/access/use-access';
 import { usePendingCorrections } from '@/lib/company/attendance';
+import { usePendingLeave } from '@/lib/company/leave';
 import { changePasswordPath, loginPathFor, useAuthHydrated, withNext } from '@/lib/auth/portal';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { DropdownMenu } from '@/components/ui/dropdown-menu';
@@ -60,7 +65,7 @@ interface NavItem {
   /** Also show while covering this permission for someone (approval delegation) */
   orDelegated?: boolean;
   /** Live count shown on the item */
-  badge?: 'attendanceApprovals';
+  badge?: 'attendanceApprovals' | 'leaveApprovals';
 }
 
 const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
@@ -84,9 +89,13 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
     items: [
       { name: 'My attendance', href: '/app/attendance', icon: CalendarCheck, exact: true, permission: 'attendance.view', feature: 'time.attendance' },
       { name: 'Team attendance', href: '/app/attendance/team', icon: UsersRound, permission: 'attendance.view', feature: 'time.attendance', beyondOwn: true },
-      { name: 'Approvals', href: '/app/attendance/approvals', icon: ClipboardCheck, permission: 'attendance.approve', feature: 'time.attendance', orDelegated: true, badge: 'attendanceApprovals' },
+      { name: 'Attendance approvals', href: '/app/attendance/approvals', icon: ClipboardCheck, permission: 'attendance.approve', feature: 'time.attendance', orDelegated: true, badge: 'attendanceApprovals' },
+      { name: 'My leave', href: '/app/leave', icon: Plane, exact: true, permission: 'leave.view', feature: 'time.leave' },
+      { name: 'Leave approvals', href: '/app/leave/approvals', icon: CalendarClock, permission: 'leave.approve', feature: 'time.leave', orDelegated: true, badge: 'leaveApprovals' },
+      { name: 'Who’s off', href: '/app/leave/calendar', icon: CalendarRange, permission: 'leave.view', feature: 'time.leave', beyondOwn: true },
       { name: 'Holidays', href: '/app/attendance/holidays', icon: CalendarDays, permission: 'attendance.view', feature: 'time.attendance' },
       { name: 'Attendance settings', href: '/app/attendance/settings', icon: Clock, permission: 'attendance.policy', feature: 'time.attendance' },
+      { name: 'Leave types', href: '/app/leave/types', icon: Tags, permission: 'leave.manage_types', feature: 'time.leave' },
     ],
   },
   {
@@ -121,6 +130,9 @@ const SEGMENT_LABELS: Record<string, string> = {
   team: 'Team',
   approvals: 'Approvals',
   holidays: 'Holidays',
+  leave: 'Leave',
+  calendar: 'Who’s off',
+  types: 'Leave types',
   org: 'Organisation',
   'access-explorer': 'Access explorer',
   delegations: 'Delegation',
@@ -168,6 +180,7 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
   const { user, companyId, isAuthenticated, logout } = useAuthStore();
   const { can: canAccess, access, hasFeature, scopeOf } = useAccess();
   const pendingApprovals = usePendingCorrections();
+  const pendingLeave = usePendingLeave();
   const [mobileOpen, setMobileOpen] = useState(false);
   const branding = useCompanyBranding(hydrated ? companyId : null);
 
@@ -250,7 +263,7 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
                 <p className="mb-1 px-2 text-2xs font-medium uppercase tracking-wider text-sidebar-muted">{group.label}</p>
                 <ul className="space-y-0.5">
                   {items.map(({ name, href, icon: Icon, exact, soon, badge }) => {
-                    const count = badge === 'attendanceApprovals' ? pendingApprovals.data : undefined;
+                    const count = badge === 'attendanceApprovals' ? pendingApprovals.data : badge === 'leaveApprovals' ? pendingLeave.data : undefined;
                     const active = exact ? pathname === href : pathname.startsWith(href);
                     const content = (
                       <>

@@ -56,6 +56,8 @@ export function CheckInCard({ showCalendarLink = true }: { showCalendarLink?: bo
           <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             {t.holiday ? (
               <Badge tone="primary"><PartyPopper className="h-3 w-3" /> {t.holiday.name}</Badge>
+            ) : t.leave?.status === 'APPROVED' ? (
+              <Badge tone="info">{t.leave.name}{t.leave.halfDay ? ' (half day)' : ''}</Badge>
             ) : (
               status && <Badge tone={status.tone} dot>{status.label}</Badge>
             )}

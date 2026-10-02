@@ -5,7 +5,7 @@ import { cn } from '@/lib/cn';
 import { STATUS_META, clock, type CalendarDay, type DayStatus } from '@/lib/company/attendance';
 
 const HEAD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const LEGEND: DayStatus[] = ['PRESENT', 'HALF_DAY', 'ABSENT', 'MISSING_CHECKOUT', 'ON_LEAVE', 'HOLIDAY', 'WEEKEND'];
+const LEGEND: DayStatus[] = ['PRESENT', 'HALF_DAY', 'ABSENT', 'MISSING_CHECKOUT', 'ON_LEAVE', 'WORK_FROM_HOME', 'HOLIDAY', 'WEEKEND'];
 
 /** Month grid (Monday first). Each day shows its status, in / out and flags. */
 export function MonthCalendar({
@@ -61,6 +61,10 @@ export function MonthCalendar({
               <span className="mt-auto hidden space-y-0.5 text-[10px] leading-tight sm:block">
                 {d.holiday ? (
                   <span className="line-clamp-2 font-medium">{d.holiday.name}</span>
+                ) : d.leave && !d.checkIn ? (
+                  <span className={cn('block truncate font-medium', d.leave.status === 'PENDING' && 'italic opacity-75')}>
+                    {d.leave.code}{d.leave.halfDay ? ' ½' : ''}{d.leave.status === 'PENDING' ? ' · pending' : ''}
+                  </span>
                 ) : d.checkIn ? (
                   <>
                     <span className="block tabular-nums">{clock(d.checkIn, timeZone)}–{d.checkOut ? clock(d.checkOut, timeZone) : '…'}</span>

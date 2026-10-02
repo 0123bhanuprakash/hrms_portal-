@@ -65,6 +65,7 @@ export default function TeamAttendancePage() {
     { id: 'ABSENT', label: 'Absent', count: data?.counts.absent },
     { id: 'MISSING_CHECKOUT', label: 'Missing check-out', count: data?.counts.missingCheckout },
     { id: 'ON_LEAVE', label: 'On leave', count: data?.counts.onLeave },
+    { id: 'WORK_FROM_HOME', label: 'Work from home', count: data?.counts.workFromHome },
   ];
 
   const exportCsv = async () => {
@@ -170,6 +171,12 @@ export default function TeamAttendancePage() {
                             <Badge tone={meta.tone} dot>{meta.label}</Badge>
                             {(r.lateMinutes ?? 0) > 0 && <Badge tone="warning">Late {r.lateMinutes}m</Badge>}
                             {r.isManualEntry && <Badge tone="outline">Corrected</Badge>}
+                            {r.leave && (
+                              <Badge tone="outline" title={r.leave.status === 'PENDING' ? 'Waiting for approval' : undefined}>
+                                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: r.leave.color }} />
+                                {r.leave.name}{r.leave.halfDay ? ' (½)' : ''}{r.leave.status === 'PENDING' ? ' · pending' : ''}
+                              </Badge>
+                            )}
                           </div>
                         </td>
                         <td className="hidden px-4 py-2.5 tabular-nums sm:table-cell">{clock(r.checkIn, tz)}</td>

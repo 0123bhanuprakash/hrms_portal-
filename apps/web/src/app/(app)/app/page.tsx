@@ -8,6 +8,7 @@ import {
   Building2,
   Cake,
   CalendarCheck,
+  CalendarClock,
   ClipboardCheck,
   CalendarDays,
   Home,
@@ -68,12 +69,11 @@ export default function HomePage() {
     { href: '/app/people', icon: Users, title: 'People', text: 'Find a colleague', show: can('org.view') && hasFeature('people.directory') },
     { href: '/app/org', icon: Network, title: 'Org chart', text: 'Teams and reporting lines', show: can('org.view') },
     { href: '/app/attendance', icon: CalendarCheck, title: 'My attendance', text: 'Calendar and corrections', show: Boolean(employee) && hasFeature('time.attendance') && can('attendance.view') },
-    { href: '/app/attendance/approvals', icon: ClipboardCheck, title: 'Approvals', text: 'Attendance corrections waiting', show: hasFeature('time.attendance') && can('attendance.approve') },
+    { href: '/app/leave?apply=', icon: Plane, title: 'Apply leave', text: 'Casual, sick, earned and more', show: Boolean(employee) && hasFeature('time.leave') && can('leave.request') },
+    { href: '/app/leave?apply=WFH', icon: Home, title: 'Work from home', text: 'Request a WFH day', show: Boolean(employee) && hasFeature('time.leave') && can('leave.request') },
+    { href: '/app/leave/approvals', icon: CalendarClock, title: 'Leave approvals', text: 'Requests waiting for you', show: hasFeature('time.leave') && can('leave.approve') },
+    { href: '/app/attendance/approvals', icon: ClipboardCheck, title: 'Attendance approvals', text: 'Corrections waiting for you', show: hasFeature('time.attendance') && can('attendance.approve') },
     { href: '/app/employees', icon: UsersRound, title: 'Employees', text: 'Manage employee records', show: can('employee.view') && scopeOf('employee.view') !== 'own' },
-  ].filter((q) => q.show);
-  const soon = [
-    { icon: Plane, title: 'Apply leave', show: hasFeature('time.leave') },
-    { icon: Home, title: 'Work from home', show: hasFeature('time.leave') },
   ].filter((q) => q.show);
 
   return (
@@ -112,15 +112,6 @@ export default function HomePage() {
                   </span>
                   <ArrowRight className="h-4 w-4 -translate-x-1 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100" />
                 </Link>
-              ))}
-              {soon.map(({ icon: Icon, title }) => (
-                <div key={title} className="flex items-center gap-3 rounded-lg p-2.5 opacity-60" aria-disabled>
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <span className="flex-1 text-sm font-medium">{title}</span>
-                  <Badge>Soon</Badge>
-                </div>
               ))}
             </div>
           </Card>
