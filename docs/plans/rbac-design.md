@@ -28,16 +28,18 @@ moment to reshape the model.** `employees` already has `user_id`,
 ```
 Permission catalog (code)        Company roles (DB, per company)        Users
 ──────────────────────────       ─────────────────────────────────      ─────
-module  × action  (+ scope?)  →  Role = name + set of grants        →   exactly one role
+module  × action  (+ scope?)  →  Role = name + set of grants        →   one or more roles
 employee.view   [scopable]       grant = permission + scope             (HR is an employee
 leave.approve   [scopable]         scope ∈ own | team | department         whose role has
 payroll.run                                 | company                      extra grants)
 ```
 
-- **Every user has exactly one role** (recommended). "HR is still an employee" is
-  expressed by the HR role *containing* the employee self-service grants plus more —
-  not by stacking roles. One role = one place to read someone's access; easy audit.
-  (`user_roles` stays, with a unique `user_id`, so multi-role remains possible later.)
+- **A user can have one or more roles** (decided 2 Oct). Everyone gets a base role
+  (usually Employee); the admin can add more, e.g. Employee + HR, or Employee + Manager + HR.
+  **Effective access = the union of all their roles' grants**; when two roles grant the
+  same permission at different scopes, the **broadest scope wins** (team + company → company).
+  The UI always shows the combined result ("what this person can actually do") so stacked
+  roles stay easy to audit. Every user must keep at least one role.
 - **Company Admin** is a locked **owner role**: implicitly has *every* company
   permission at company scope — including permissions added by future modules — and
   can't be edited, deactivated or deleted. Each company must keep ≥ 1 active admin.
@@ -89,7 +91,7 @@ roles              + key (slug), is_owner bool, is_default bool,
                      status ACTIVE|INACTIVE, version int, created_by, updated_by
                      company_id NOT NULL for company roles (templates keep null + is_template)
 role_permissions   + scope text NULL   (NULL for non-scoped actions)
-user_roles         unique(user_id)     (one role per user)
+user_roles         (user_id, role_id) — many roles per user; ≥ 1 enforced in the API
 users              + must_change_password (from the security fixes)
 ```
 
@@ -113,9 +115,9 @@ acme-test, beta-test) get the same clone in the data migration, and their
 ## 5. How access is checked (API)
 
 1. **JWT gets slimmer:** `sub, company_id, sid, is_super_admin` — no permission list.
-2. **`AccessService.resolve(userId)`** → `{ roleId, roleVersion, grants: Map<key, scope|null>, isOwner }`.
-   - Cached in memory per `roleId@version` (Redis later). The JWT strategy *already*
-     does one DB query per request — it now also selects the user's `role_id` + `version`,
+2. **`AccessService.resolve(userId)`** → `{ roleIds, grants: Map<key, scope|null>, isOwner }` — union of all the user's roles, broadest scope per key.
+   - Each role's grants are cached in memory per `roleId@version` (Redis later); a user's access is the merge of their cached roles. The JWT strategy *already*
+     does one DB query per request — it now also selects the user's role ids + versions,
      so access costs **no extra query** on a cache hit.
    - Any role edit bumps `roles.version` → every member picks up the change on their
      **next request** (no 15-minute wait).
@@ -131,7 +133,7 @@ acme-test, beta-test) get the same clone in the data migration, and their
 5. **Guardrails (enforced server-side):**
    - **No privilege escalation:** a non-owner editing roles can only grant permissions
      *they hold*, at ≤ their own scope.
-   - Can't change your own role; can't deactivate the last active Company Admin.
+   - Can't change your own roles; a user keeps ≥ 1 role; can't deactivate the last active Company Admin.
    - Linked IDs (role IDs on users, etc.) must belong to the same company → reusable
      `assertSameCompany()` helper (also used by Employees/Departments later).
    - Deactivating a role requires moving its users to another role first (UI offers it).
@@ -154,9 +156,9 @@ PATCH  /companies/:cid/roles/:id/status   ACTIVE | INACTIVE (with reassignTo)
 DELETE /companies/:cid/roles/:id          only when no users and not owner/template copy in use
 
 GET    /companies/:cid/users              search, filter (role, status), paginate
-POST   /companies/:cid/users              invite (name, email, role) → temp password email
+POST   /companies/:cid/users              invite (name, email, roleIds[]) → temp password email
 GET    /companies/:cid/users/:id
-PATCH  /companies/:cid/users/:id          name, role
+PATCH  /companies/:cid/users/:id          name, roleIds[]
 PATCH  /companies/:cid/users/:id/status   activate / deactivate (revokes sessions)
 POST   /companies/:cid/users/:id/resend-invite
 POST   /companies/:cid/users/:id/reset-password
@@ -173,8 +175,8 @@ when it changes → menus/buttons update right after an admin edits a role.
   `can('leave.approve')`, `scopeOf('employee.view')`; `<Can perm="…">` component.
   Sidebar items and action buttons hide when not permitted (the API still enforces).
 - **Users** (`/app/users`): table with search, role + status filters, last login;
-  invite dialog (role picker shows a one-line summary of the role); row actions:
-  change role, deactivate, resend invite, reset password; user detail drawer with
+  invite dialog (multi-select role picker + combined access summary); row actions:
+  change roles, deactivate, resend invite, reset password; user detail drawer with
   the role's access summary and recent activity (audit log).
 - **Roles & Permissions** (`/app/roles`):
   - Role list: name, description, users count, status, last edited; menu: edit,

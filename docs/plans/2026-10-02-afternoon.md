@@ -50,13 +50,13 @@ Full design: [rbac-design.md](rbac-design.md).
 Summary:
 - Permission catalog in code (`module.action`, with scopes own / team / department / company).
 - Each company gets its own editable copies of the role templates (Company Admin, HR, Manager, Employee);
-  Company Admin is a locked owner role with all permissions. One role per user.
+  Company Admin is a locked owner role with all permissions. A user can hold several roles (access = union, broadest scope wins).
 - Permissions leave the JWT; resolved per request from a version-keyed cache → role edits apply immediately.
 - Guardrails: no privilege escalation, last-admin protection, same-company checks, audited diffs.
 - UI: Users page + Roles & Permissions with a permission-matrix editor and plain-language summary.
 
 Order: backend steps 1–5 this session (scripted tests), UI steps 6–9 next session.
-Confirm the 3 open questions (one role per user, team = direct reports, HR default access) before step 2.
+Decided: multiple roles per user; team = direct reports; HR template = editable starting point (default: all except payroll run + role management).
 
 ---
 
