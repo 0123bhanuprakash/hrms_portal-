@@ -2,9 +2,11 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
   KeyRound,
+  ScanSearch,
   Mail,
   MoreHorizontal,
   Search,
@@ -51,6 +53,7 @@ function useDebounced<T>(value: T, ms = 300) {
 }
 
 export default function UsersPage() {
+  const router = useRouter();
   const { can, isLoading: accessLoading } = useAccess();
   const [tab, setTab] = useState<StatusTab>('all');
   const [search, setSearch] = useState('');
@@ -86,6 +89,9 @@ export default function UsersPage() {
 
   const actionsFor = (u: CompanyUser): Array<MenuItem | 'separator'> => {
     const items: Array<MenuItem | 'separator'> = [];
+    if (can('role.view')) {
+      items.push({ label: 'See what they can do', icon: <ScanSearch />, onSelect: () => router.push(`/app/access-explorer?user=${u.id}`) });
+    }
     if (can('user.assign_roles')) {
       items.push({ label: 'Edit roles', icon: <ShieldCheck />, onSelect: () => setEditRoles(u), disabled: u.isSelf, hint: u.isSelf ? "You can't change your own roles" : undefined });
     }

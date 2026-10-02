@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Copy, Crown, MoreHorizontal, Pencil, Plus, Power, ShieldCheck, Trash2, Users as UsersIcon } from 'lucide-react';
+import { Copy, Crown, MoreHorizontal, Pencil, Plus, Power, ScanSearch, ShieldCheck, Trash2, Users as UsersIcon } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -91,6 +91,11 @@ export default function RolesPage() {
         description="Roles decide what people can do and over whom. A person can hold several roles — their access is everything those roles allow."
         action={
           <div className="flex gap-2">
+            <Button variant="secondary" asChild>
+              <Link href="/app/access-explorer">
+                <ScanSearch /> Access explorer
+              </Link>
+            </Button>
             <Button variant="secondary" asChild>
               <Link href="/app/users">
                 <UsersIcon /> Users

@@ -22,6 +22,8 @@ import {
   UserCog,
   Users,
   X,
+  ArrowRightLeft,
+  ScanSearch,
 } from 'lucide-react';
 import type { ThemeTokens } from '@hrms/types';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -59,6 +61,7 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
     items: [
       { name: 'Users', href: '/app/users', icon: UserCog, permission: 'user.view' },
       { name: 'Roles & permissions', href: '/app/roles', icon: ShieldCheck, permission: 'role.view' },
+      { name: 'Access explorer', href: '/app/access-explorer', icon: ScanSearch, permission: 'role.view' },
     ],
   },
   {
@@ -66,6 +69,7 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
     items: [
       { name: 'Branding', href: '/app/settings/branding', icon: ImageIcon, permission: 'branding.manage' },
       { name: 'Theme', href: '/app/settings/theme', icon: Palette, permission: 'branding.manage' },
+      { name: 'Delegation', href: '/app/delegations', icon: ArrowRightLeft },
       { name: 'Preferences', href: '/app/settings/preferences', icon: SlidersHorizontal },
     ],
   },
@@ -79,6 +83,9 @@ const SEGMENT_LABELS: Record<string, string> = {
   preferences: 'Preferences',
   employees: 'Employees',
   org: 'Organisation',
+  'access-explorer': 'Access explorer',
+  delegations: 'Delegation',
+  import: 'Import',
   users: 'Users',
   roles: 'Roles & permissions',
   new: 'New role',
@@ -120,7 +127,7 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
   const router = useRouter();
   const hydrated = useAuthHydrated();
   const { user, companyId, isAuthenticated, logout } = useAuthStore();
-  const { can: canAccess } = useAccess();
+  const { can: canAccess, access } = useAccess();
   const [mobileOpen, setMobileOpen] = useState(false);
   const branding = useCompanyBranding(hydrated ? companyId : null);
 
@@ -272,6 +279,24 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
 
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           <div className="mx-auto max-w-6xl animate-fade-up" key={pathname}>
+            {/* Covering someone's approvals right now */}
+            {access?.delegations?.length ? (
+              <Link
+                href="/app/delegations"
+                className="mb-4 flex items-center gap-2 rounded-lg border border-success/30 bg-success-soft/40 px-3 py-2 text-sm text-foreground hover:bg-success-soft/60"
+              >
+                <ArrowRightLeft className="h-4 w-4 shrink-0 text-success" />
+                <span>
+                  You’re covering approvals for{' '}
+                  {access.delegations.map((d, i) => (
+                    <React.Fragment key={d.id}>
+                      {i > 0 && ', '}
+                      <b>{d.fromName}</b> until {new Date(d.until).toLocaleDateString()}
+                    </React.Fragment>
+                  ))}
+                </span>
+              </Link>
+            ) : null}
             {children}
           </div>
         </main>

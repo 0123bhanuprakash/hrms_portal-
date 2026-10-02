@@ -16,6 +16,8 @@ export interface OrgLevel {
 
 export interface ChartEmployee {
   id: string;
+  /** Sign-in account (for pickers such as delegation) */
+  userId: string;
   employeeId: string;
   firstName: string;
   lastName: string;

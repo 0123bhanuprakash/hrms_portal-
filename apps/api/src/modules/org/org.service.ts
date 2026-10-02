@@ -101,6 +101,7 @@ export class OrgService {
         orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
         select: {
           id: true,
+          userId: true,
           employeeId: true,
           firstName: true,
           lastName: true,

@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { Mail, Network, Pencil, Search, ShieldCheck, UserPlus, Users } from 'lucide-react';
+import { Mail, Network, Pencil, Search, ShieldCheck, Upload, UserPlus, Users } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -71,6 +71,11 @@ export default function EmployeesPage() {
             {can('org.view') && (
               <Button variant="secondary" asChild>
                 <Link href="/app/org"><Network /> Org chart</Link>
+              </Button>
+            )}
+            {can('employee.import') && (
+              <Button variant="secondary" asChild>
+                <Link href="/app/employees/import"><Upload /> Import</Link>
               </Button>
             )}
             {can('employee.create') && (

@@ -247,7 +247,7 @@ companies + hierarchy_version int
 | **B. Super Admin** ✅ done 2 Oct | Plans page, Company → Plan & features, feature catalog | Super Admin controls each company's modules |
 | **C. Company Admin core** ✅ done 2 Oct | Users (invite/multi-role/manage), Roles & Permissions editor | Companies run their own RBAC |
 | **D. Org structure** ✅ done 2 Oct | org levels, department tree, org chart with drag-to-reassign + access preview | Hierarchy-based access usable end to end |
-| **E. Advanced** | Access Explorer, bulk import, delegation, approval chains | "Super advanced" user manager |
+| **E. Advanced** ✅ done 2 Oct | Access Explorer, bulk import, delegation, approval chains | "Super advanced" user manager |
 
 A is the foundation and must come first; B and C can then run in either order.
 
