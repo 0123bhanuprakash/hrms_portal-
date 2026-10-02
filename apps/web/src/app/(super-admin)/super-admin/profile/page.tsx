@@ -13,6 +13,7 @@ import { getApiErrorMessage } from '@/lib/errors';
 import { describeUserAgent, formatDateTime, formatRelative, initials } from '@/lib/format';
 import { useAuthStore } from '@/store/useAuthStore';
 import { cn } from '@/lib/cn';
+import { DisplaySettingsCard } from '@/components/preferences/display-preferences';
 
 export default function ProfilePage() {
   const user = useAuthStore((s) => s.user)!;
@@ -21,7 +22,7 @@ export default function ProfilePage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Profile &amp; security</h1>
-        <p className="text-sm text-muted-foreground">Your Super Admin account, password and signed-in devices.</p>
+        <p className="text-sm text-muted-foreground">Your Super Admin account, password, signed-in devices and display settings.</p>
       </div>
 
       <Card className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
@@ -41,6 +42,8 @@ export default function ProfilePage() {
         <ChangePasswordCard />
         <SessionsCard />
       </div>
+
+      <DisplaySettingsCard />
     </div>
   );
 }

@@ -35,6 +35,7 @@ import { Kbd } from '@/components/ui/badge';
 import { CommandMenu, NAV_SHORTCUTS, ShortcutsDialog } from '@/components/super-admin/command-menu';
 import { useOpenQueueDashboard, useSystemStatus, useThemeSettings } from '@/lib/admin/queries';
 import { ThemeStyle } from '@/components/theme/theme-style';
+import { DisplayPreferences } from '@/components/preferences/display-preferences';
 import { resolveTheme } from '@/lib/theme/presets';
 import type { ThemeTokens } from '@hrms/types';
 import { getApiErrorMessage } from '@/lib/errors';
@@ -216,6 +217,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
   return (
     <div className="flex min-h-screen bg-canvas text-foreground">
       <PortalTheme enabled />
+      <DisplayPreferences />
       {mobileOpen && (
         <div className="fixed inset-0 z-30 bg-black/40 backdrop-blur-[2px] lg:hidden animate-in fade-in-0" onClick={() => setMobileOpen(false)} />
       )}

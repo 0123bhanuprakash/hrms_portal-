@@ -1,4 +1,4 @@
-import type { ThemeFont, ThemePalette, ThemeShadow, ThemeTextScale, ThemeTokens } from '@hrms/types';
+import type { ThemeDensity, ThemeFont, ThemePalette, ThemeShadow, ThemeTextScale, ThemeTokens } from '@hrms/types';
 import { hexToHslTriplet as hsl, isDark, mix, readableOn } from './color';
 
 // ============================================================
@@ -30,6 +30,12 @@ export const TEXT_SCALES: Record<ThemeTextScale, { label: string; rootSize: stri
   sm: { label: 'Small', rootSize: '93.75%' },
   md: { label: 'Default', rootSize: '100%' },
   lg: { label: 'Large', rootSize: '106.25%' },
+};
+
+/** Theme density → spacing multiplier (matches globals.css user overrides). */
+export const DENSITY_SPACE: Record<ThemeDensity, string> = {
+  compact: '0.85',
+  comfortable: '1',
 };
 
 const SHADOWS: Record<ThemeShadow, { label: string; card: string; menu: string; dialog: string }> = {
@@ -118,7 +124,13 @@ const block = (selector: string, vars: Record<string, string>) =>
  */
 export function themeToCss(t: ThemeTokens): string {
   return [
-    block('html:root', { ...paletteVars(t.light), ...sharedVars(t), 'font-size': TEXT_SCALES[t.typography.scale].rootSize }),
+    block('html:root', {
+      ...paletteVars(t.light),
+      ...sharedVars(t),
+      'font-size': TEXT_SCALES[t.typography.scale].rootSize,
+      // Density scales every spacing step (tailwind.config.ts); users can override it
+      '--space': DENSITY_SPACE[t.layout?.density ?? 'comfortable'],
+    }),
     block('html.dark', paletteVars(t.dark)),
   ].join('\n');
 }

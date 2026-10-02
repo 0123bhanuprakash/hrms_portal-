@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ThemeRef, ThemeTokens } from '@hrms/types';
 import { api } from '@/lib/api';
 import { resolveTheme } from '@/lib/theme/presets';
+import type { DensityPref, TextSizePref } from '@/lib/preferences/display';
 
 // ============================================================
 // Company portal data hooks (tenant-scoped endpoints).
@@ -37,6 +38,9 @@ export interface UserPreferences {
   dateFormat: string;
   notificationsEnabled?: boolean;
   emailNotifications?: boolean;
+  density?: DensityPref;
+  textSize?: TextSizePref;
+  reduceMotion?: boolean;
 }
 
 export const companyKeys = {

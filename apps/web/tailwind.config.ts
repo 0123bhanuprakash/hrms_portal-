@@ -1,9 +1,21 @@
 import type { Config } from 'tailwindcss';
 import animate from 'tailwindcss-animate';
-import { fontFamily } from 'tailwindcss/defaultTheme';
+import { fontFamily, spacing as defaultSpacing } from 'tailwindcss/defaultTheme';
 
 /** `hsl(var(--token) / <alpha-value>)` so opacity modifiers (bg-primary/10) work. */
 const token = (name: string) => `hsl(var(--${name}) / <alpha-value>)`;
+
+/**
+ * Density: every rem-based spacing step is multiplied by --space
+ * (1 = normal; set per theme and per user, see globals.css), so
+ * p-4 / gap-3 / h-9 all tighten or loosen together. 0 and px stay fixed.
+ */
+const spacing = Object.fromEntries(
+  Object.entries(defaultSpacing).map(([key, value]) => [
+    key,
+    value.endsWith('rem') ? `calc(${value} * var(--space, 1))` : value,
+  ]),
+);
 
 const config: Config = {
   darkMode: ['class'],
@@ -19,6 +31,7 @@ const config: Config = {
       padding: '2rem',
       screens: { '2xl': '1400px' },
     },
+    spacing,
     extend: {
       fontFamily: {
         sans: ['var(--font-sans)', ...fontFamily.sans],

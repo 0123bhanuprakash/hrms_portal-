@@ -159,8 +159,52 @@
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
     }
   }
+}
+
+/* ============================================================
+   Personal display preferences (Phase 6), set as attributes on
+   <html> by <DisplayPreferences>. Selectors are html:root[...] so
+   they outrank the theme's own html:root block.
+
+   --space scales every Tailwind spacing step (padding, gaps, sizes)
+   — see tailwind.config.ts — so one variable sets the density.
+   ============================================================ */
+:root {
+  --space: 1;
+}
+html:root[data-density='compact'] {
+  --space: 0.85;
+}
+html:root[data-density='normal'] {
+  --space: 1;
+}
+html:root[data-density='spacious'] {
+  --space: 1.15;
+}
+
+html:root[data-text-size='sm'] {
+  font-size: 93.75%;
+}
+html:root[data-text-size='md'] {
+  font-size: 100%;
+}
+html:root[data-text-size='lg'] {
+  font-size: 106.25%;
+}
+html:root[data-text-size='xl'] {
+  font-size: 112.5%;
+}
+
+html[data-motion='reduce'] *,
+html[data-motion='reduce'] *::before,
+html[data-motion='reduce'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
 }
 
 @layer components {

@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import type { ThemeTokens } from '@hrms/types';
 import { useAuthStore } from '@/store/useAuthStore';
+import { DisplayPreferences } from '@/components/preferences/display-preferences';
 import { loginPathFor, useAuthHydrated, withNext } from '@/lib/auth/portal';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { DropdownMenu } from '@/components/ui/dropdown-menu';
@@ -139,6 +140,7 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
   return (
     <div className="flex min-h-screen bg-canvas text-foreground">
       <CompanyTheme companyId={companyId} />
+      <DisplayPreferences />
       {mobileOpen && (
         <div className="fixed inset-0 z-30 bg-black/40 backdrop-blur-[2px] lg:hidden animate-in fade-in-0" onClick={() => setMobileOpen(false)} />
       )}

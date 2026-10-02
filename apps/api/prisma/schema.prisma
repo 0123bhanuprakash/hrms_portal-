@@ -200,6 +200,12 @@ model UserPreferences {
   dateFormat           String  @default("DD/MM/YYYY") @map("date_format")
   notificationsEnabled Boolean @default(true) @map("notifications_enabled")
   emailNotifications   Boolean @default(true) @map("email_notifications")
+  /// theme | compact | normal | spacious — "theme" follows the company/platform theme
+  density              String  @default("theme")
+  /// theme | sm | md | lg | xl — "theme" follows the theme's text scale
+  textSize             String  @default("theme") @map("text_size")
+  /// Always reduce animations (the OS setting is honoured regardless)
+  reduceMotion         Boolean @default(false) @map("reduce_motion")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
