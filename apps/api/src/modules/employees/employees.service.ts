@@ -110,7 +110,7 @@ export class EmployeesService {
    * 3. Create Employee profile
    * 4. Send welcome email with login credentials
    */
-  async create(companyId: string, dto: CreateEmployeeDto) {
+  async create(companyId: string, dto: CreateEmployeeDto, opts: { sendWelcome?: boolean } = {}) {
     const emailLower = dto.email.toLowerCase().trim();
 
     // Check user email uniqueness
@@ -214,7 +214,9 @@ export class EmployeesService {
       return { user, employee, generatedEmployeeId };
     });
 
-    // 5. Send Welcome Employee email (async)
+    // 5. Send Welcome Employee email (async). Bulk imports may skip it —
+    //    the invite can be sent later from Users → Resend invite.
+    if (opts.sendWelcome === false) return result.employee;
     const company = await this.prisma.company.findUnique({
       where: { id: companyId },
       select: { name: true, slug: true },

@@ -7,8 +7,12 @@ import {
   Param,
   ParseUUIDPipe,
   Query,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { EmployeesService } from './employees.service';
+import { EmployeeImportService } from './employee-import.service';
+import { ImportEmployeesDto } from './dto/import-employees.dto';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { QueryEmployeesDto } from './dto/query-employee.dto';
@@ -21,7 +25,27 @@ import type { AccessContext } from '../access/access.types';
 @RequireFeature('people.directory')
 @Controller('employees')
 export class EmployeesController {
-  constructor(private readonly employeesService: EmployeesService) {}
+  constructor(
+    private readonly employeesService: EmployeesService,
+    private readonly importService: EmployeeImportService,
+  ) {}
+
+  /** Bulk import step 1: validate every row, write nothing. */
+  @RequirePermission('employee.import')
+  @Post('import/preview')
+  @HttpCode(HttpStatus.OK)
+  async importPreview(@TenantCtx() ctx: TenantContext, @Body() dto: ImportEmployeesDto) {
+    return this.importService.preview(ctx.companyId!, dto.rows);
+  }
+
+  /** Bulk import step 2: create the valid rows (managers first). */
+  @RequirePermission('employee.import')
+  @Audit('employee:import', 'employee')
+  @Post('import')
+  @HttpCode(HttpStatus.OK)
+  async import(@TenantCtx() ctx: TenantContext, @Body() dto: ImportEmployeesDto) {
+    return this.importService.import(ctx.companyId!, dto.rows, dto.sendInvites ?? true);
+  }
 
   @RequirePermission('employee.create')
   @Audit('employee:create', 'employee')
