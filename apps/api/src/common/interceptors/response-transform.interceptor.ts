@@ -1,4 +1,5 @@
 import {
+  StreamableFile,
   Injectable,
   NestInterceptor,
   ExecutionContext,
@@ -46,6 +47,9 @@ export class ResponseTransformInterceptor<T>
 
     return next.handle().pipe(
       map((data) => {
+        // File downloads stream as-is
+        if (data instanceof StreamableFile) return data as unknown as WrappedResponse<T>;
+
         // Already wrapped (e.g., paginated responses from service layer)
         if (this.isAlreadyWrapped(data)) {
           return data as unknown as WrappedResponse<T>;

@@ -197,7 +197,7 @@ export const EmployeePersonalInfoSchema = z.object({
 
 export const EmployeeStatutorySchema = z.object({
   pan: panNumber,
-  aadhar: aadharNumber,
+  aadhaar: aadharNumber,
   uan: z.string().regex(/^[0-9]{12}$/, 'UAN must be 12 digits').optional().nullable(),
   esicNumber: z.string().max(20).optional().nullable(),
   pfAccountNumber: z.string().max(30).optional().nullable(),

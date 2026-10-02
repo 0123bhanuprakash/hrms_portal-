@@ -24,6 +24,8 @@ import {
   X,
   ArrowRightLeft,
   ScanSearch,
+  IdCard,
+  Contact,
 } from 'lucide-react';
 import type { ThemeTokens } from '@hrms/types';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -45,14 +47,25 @@ interface NavItem {
   exact?: boolean;
   soon?: boolean;
   permission?: string;
+  /** Feature that must be enabled for the company */
+  feature?: string;
+  /** Hide when the permission only reaches the user's own record */
+  beyondOwn?: boolean;
 }
 
 const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
-  { label: 'Overview', items: [{ name: 'Dashboard', href: '/app', icon: LayoutDashboard, exact: true }] },
+  {
+    label: 'Overview',
+    items: [
+      { name: 'Home', href: '/app', icon: LayoutDashboard, exact: true },
+      { name: 'My profile', href: '/app/profile', icon: IdCard },
+      { name: 'People', href: '/app/people', icon: Contact, permission: 'org.view', feature: 'people.directory' },
+    ],
+  },
   {
     label: 'Organization',
     items: [
-      { name: 'Employees', href: '/app/employees', icon: Users, permission: 'employee.view' },
+      { name: 'Employees', href: '/app/employees', icon: Users, permission: 'employee.view', beyondOwn: true },
       { name: 'Organisation', href: '/app/org', icon: Network, permission: 'org.view' },
     ],
   },
@@ -82,6 +95,8 @@ const SEGMENT_LABELS: Record<string, string> = {
   theme: 'Theme',
   preferences: 'Preferences',
   employees: 'Employees',
+  profile: 'My profile',
+  people: 'People',
   org: 'Organisation',
   'access-explorer': 'Access explorer',
   delegations: 'Delegation',
@@ -127,7 +142,7 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
   const router = useRouter();
   const hydrated = useAuthHydrated();
   const { user, companyId, isAuthenticated, logout } = useAuthStore();
-  const { can: canAccess, access } = useAccess();
+  const { can: canAccess, access, hasFeature, scopeOf } = useAccess();
   const [mobileOpen, setMobileOpen] = useState(false);
   const branding = useCompanyBranding(hydrated ? companyId : null);
 
@@ -198,7 +213,12 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
 
         <nav className="flex-1 overflow-y-auto px-3 py-2" aria-label="Main">
           {NAV_GROUPS.map((group) => {
-            const items = group.items.filter((i) => can(i.permission));
+            const items = group.items.filter(
+              (i) =>
+                can(i.permission) &&
+                (!i.feature || user!.isSuperAdmin || hasFeature(i.feature)) &&
+                (!i.beyondOwn || user!.isSuperAdmin || scopeOf(i.permission!) !== 'own'),
+            );
             if (!items.length) return null;
             return (
               <div key={group.label} className="mb-4">

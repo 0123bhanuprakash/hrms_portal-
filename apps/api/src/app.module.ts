@@ -24,6 +24,7 @@ import { DepartmentsModule } from './modules/departments/departments.module';
 import { DesignationsModule } from './modules/designations/designations.module';
 import { LocationsModule } from './modules/locations/locations.module';
 import { EmployeesModule } from './modules/employees/employees.module';
+import { EmployeeProfileModule } from './modules/employee-profile/employee-profile.module';
 import { ThemesModule } from './modules/themes/themes.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { PermissionGuard } from './common/guards/permission.guard';
@@ -73,7 +74,8 @@ import { AppController } from './app.controller';
     DepartmentsModule,   // Chunk 10
     DesignationsModule,  // Chunk 10
     LocationsModule,     // Chunk 10
-    EmployeesModule,      // Chunk 10
+    EmployeesModule,     // Chunk 10
+    EmployeeProfileModule, // Profile, private data, documents, directory
     ThemesModule,         // Theme Studio
     UserManagementModule, // Company Admin: users, roles & permissions
     PlansModule,          // Super Admin: plans & per-company features

@@ -53,6 +53,7 @@ const configuration = () => ({
   storage: {
     driver: (process.env['STORAGE_DRIVER'] || 'local') as 'local' | 's3',
     uploadsDir: process.env['UPLOADS_DIR'] || 'uploads',
+    privateDir: process.env['PRIVATE_FILES_DIR'] || 'private-files',
     minio: {
       endpoint: process.env['MINIO_ENDPOINT'] || 'localhost',
       port: parseInt(process.env['MINIO_PORT'] || '9000', 10),

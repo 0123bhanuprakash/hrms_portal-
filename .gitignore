@@ -62,6 +62,7 @@ test-results
 
 # Local dev output (STORAGE_DRIVER=local, EMAIL_PROVIDER=console)
 apps/api/uploads/
+apps/api/private-files/
 apps/api/.mail/
 
 # Stray tsc output emitted next to the shared types sources (package is consumed as .ts)

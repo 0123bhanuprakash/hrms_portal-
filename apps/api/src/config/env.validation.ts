@@ -64,6 +64,15 @@ const envSchema = z.object({
   MINIO_ACCESS_KEY: z.string().optional(),
   MINIO_SECRET_KEY: z.string().optional(),
   MINIO_BUCKET_NAME: z.string().default('hrms-dev'),
+  // Private files (employee documents) — never served statically, only via authorised downloads
+  PRIVATE_FILES_DIR: z.string().default('private-files'),
+
+  // ── Personal data encryption ──────────────────────────────
+  // 32 random bytes, base64 (node -e "console.log(require('crypto').randomBytes(32).toString('base64'))").
+  // Encrypts PAN and bank account numbers. Losing it makes that data unreadable — back it up.
+  PII_ENCRYPTION_KEY: z
+    .string()
+    .refine((k) => Buffer.from(k, 'base64').length === 32, 'PII_ENCRYPTION_KEY must be 32 bytes, base64-encoded'),
 
   // ── Seed / Super Admin ────────────────────────────────────
   SUPER_ADMIN_EMAIL: z.string().email('SUPER_ADMIN_EMAIL must be a valid email'),

@@ -11,6 +11,8 @@ import { CATALOG, DEFAULT_PLAN_KEY, DEFAULT_PLANS, PERMISSION_BY_KEY, ROLE_TEMPL
  *   3. Create default plans; companies without a plan get Enterprise (everything on)
  *   4. Give every company its own template roles and move users onto them
  *   5. Build missing hierarchy closures
+ *   6. Permissions new to the catalog → added to every company's template-derived
+ *      roles that the template grants them to (once — later edits are respected)
  */
 @Injectable()
 export class AccessBootstrapService implements OnApplicationBootstrap {
@@ -28,6 +30,7 @@ export class AccessBootstrapService implements OnApplicationBootstrap {
     const templates = await this.syncTemplates();
     const plans = await this.ensurePlans();
     const companies = await this.ensureCompanies();
+    await this.rollOutNewPermissions();
     this.logger.log(
       `✅ Access catalog ready — ${permissions} permissions, ${templates} templates, ${plans} plans, ${companies} companies checked (${Date.now() - started} ms)`,
     );
@@ -170,5 +173,50 @@ export class AccessBootstrapService implements OnApplicationBootstrap {
       if (departments !== departmentSelfRows) await this.hierarchy.rebuildDepartments(company.id);
     }
     return companies.length;
+  }
+
+  // 6 ─────────────────────────────────────────────────────────
+  /**
+   * Remembers which catalog permissions companies already know about
+   * (platform setting), so a permission is rolled out exactly once — even if
+   * the API restarts half-way — and later removals by Company Admins stick.
+   */
+  private async rollOutNewPermissions(): Promise<void> {
+    const KEY = 'access.knownPermissions';
+    const allKeys = [...PERMISSION_BY_KEY.keys()];
+    const setting = await this.prisma.platformSetting.findUnique({ where: { key: KEY } });
+    let known: Set<string>;
+    if (setting) {
+      known = new Set(setting.value as string[]);
+    } else {
+      // First run: anything a template grants but no company role holds yet is new
+      const held = await this.prisma.rolePermission.findMany({
+        where: { role: { companyId: { not: null }, isOwner: false } },
+        select: { permission: { select: { key: true } } },
+        distinct: ['permissionId'],
+      });
+      const heldKeys = new Set(held.map((h) => h.permission.key));
+      const templateKeys = new Set(ROLE_TEMPLATES.flatMap((t) => t.grants.map(([k]) => k)));
+      known = new Set(allKeys.filter((k) => !templateKeys.has(k) || heldKeys.has(k)));
+    }
+
+    const fresh = allKeys.filter((k) => !known.has(k));
+    for (const template of ROLE_TEMPLATES) {
+      const grants = template.grants.filter(([key]) => fresh.includes(key));
+      if (!grants.length || template.isOwner) continue;
+      const rows = await this.companyRoles.grantRows(this.prisma, grants);
+      const roles = await this.prisma.role.findMany({ where: { key: template.key, companyId: { not: null } }, select: { id: true } });
+      for (const role of roles) {
+        const { count } = await this.prisma.rolePermission.createMany({
+          data: rows.map((r) => ({ ...r, roleId: role.id })),
+          skipDuplicates: true,
+        });
+        if (count) await this.prisma.role.update({ where: { id: role.id }, data: { version: { increment: 1 } } });
+      }
+      this.logger.log(`New permissions ${grants.map(([k]) => k).join(', ')} → ${roles.length} "${template.name}" role(s)`);
+    }
+    if (fresh.length || !setting) {
+      await this.prisma.platformSetting.upsert({ where: { key: KEY }, update: { value: allKeys }, create: { key: KEY, value: allKeys } });
+    }
   }
 }

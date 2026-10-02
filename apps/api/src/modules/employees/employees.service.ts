@@ -115,7 +115,6 @@ export class EmployeesService {
     'phone',
     'gender',
     'dateOfBirth',
-    'avatarUrl',
   ]);
 
   /**

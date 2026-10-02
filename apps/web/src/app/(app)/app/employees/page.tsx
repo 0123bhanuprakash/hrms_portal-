@@ -22,8 +22,9 @@ import {
   type Employee,
 } from '@/lib/company/org';
 import { getApiErrorMessage } from '@/lib/errors';
-import { formatDate, initials } from '@/lib/format';
+import { formatDate } from '@/lib/format';
 import { cn } from '@/lib/cn';
+import { PersonAvatar } from '@/components/profile/person-avatar';
 
 const STATUS_TONE: Record<string, 'success' | 'info' | 'warning' | 'neutral'> = {
   ACTIVE: 'success',
@@ -127,11 +128,11 @@ export default function EmployeesPage() {
                   <tr key={e.id} className="transition-colors hover:bg-muted/50">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-xs font-semibold text-primary-soft-foreground">
-                          {initials(`${e.firstName} ${e.lastName}`)}
-                        </span>
+                        <PersonAvatar person={e} size="sm" className="h-9 w-9" />
                         <div className="min-w-0">
-                          <p className="truncate font-medium">{e.firstName} {e.lastName}</p>
+                          <Link href={`/app/employees/${e.id}`} className="block truncate font-medium hover:text-primary hover:underline">
+                            {e.firstName} {e.lastName}
+                          </Link>
                           <p className="truncate text-xs text-muted-foreground">{e.employeeId} · {e.email}</p>
                         </div>
                       </div>

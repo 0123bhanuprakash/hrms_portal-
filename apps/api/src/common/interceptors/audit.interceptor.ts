@@ -191,6 +191,10 @@ export class AuditInterceptor implements NestInterceptor {
       'secret',
       'apiKey',
       'api_key',
+      // Personal identifiers (PAN, bank account) — revealed values must never land in the audit log
+      'pan',
+      'accountNumber',
+      'aadhaar',
     ]);
 
     const sanitize = (obj: Record<string, unknown>): Record<string, unknown> => {

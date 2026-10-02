@@ -199,6 +199,7 @@ model User {
   userRoles           UserRole[]
   employee            Employee?
   auditLogs           AuditLog[]               @relation("AuditLogUser")
+  uploadedDocuments   EmployeeDocument[]       @relation("DocumentUploader")
 
   @@index([companyId])
   @@index([email])
@@ -547,6 +548,8 @@ model Employee {
   joiningDate        DateTime         @map("joining_date") @db.Date
   confirmationDate   DateTime?        @map("confirmation_date") @db.Date
   terminationDate    DateTime?        @map("termination_date") @db.Date
+  /// Opt-in: show day + month of birth to colleagues (Spotlight)
+  showBirthday       Boolean          @default(false) @map("show_birthday")
   createdAt          DateTime         @default(now()) @map("created_at")
   updatedAt          DateTime         @updatedAt @map("updated_at")
 
@@ -559,6 +562,8 @@ model Employee {
   subordinates      Employee[]           @relation("ManagerSubordinates")
   bankDetails       EmployeeBankDetails?
   statutoryInfo     EmployeeStatutory?
+  personal          EmployeePersonal?
+  documents         EmployeeDocument[]
   salaryComponents  EmployeeSalary[]
   leaveBalances     LeaveBalance[]
   leaveRequests     LeaveRequest[]
@@ -578,13 +583,57 @@ model Employee {
 }
 
 /// Bank account details for salary disbursement
+/// Private personal details — only the employee and roles with employee.view_private see these
+model EmployeePersonal {
+  id                       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId                String   @map("company_id") @db.Uuid
+  employeeId               String   @unique @map("employee_id") @db.Uuid
+  personalEmail            String?  @map("personal_email")
+  bloodGroup               String?  @map("blood_group")
+  maritalStatus            String?  @map("marital_status")
+  /// { line1, line2, city, state, postalCode, country }
+  currentAddress           Json?    @map("current_address")
+  permanentAddress         Json?    @map("permanent_address")
+  emergencyContactName     String?  @map("emergency_contact_name")
+  emergencyContactRelation String?  @map("emergency_contact_relation")
+  emergencyContactPhone    String?  @map("emergency_contact_phone")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@map("employee_personal")
+}
+
+/// Uploaded files (offer letters, ID proofs…) kept on private storage, downloaded through the API only
+model EmployeeDocument {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId    String   @map("company_id") @db.Uuid
+  employeeId   String   @map("employee_id") @db.Uuid
+  category     String
+  name         String
+  fileName     String   @map("file_name")
+  mimeType     String   @map("mime_type")
+  sizeBytes    Int      @map("size_bytes")
+  storageKey   String   @unique @map("storage_key")
+  uploadedById String?  @map("uploaded_by_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  uploadedBy User?    @relation("DocumentUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([companyId, employeeId])
+  @@map("employee_documents")
+}
+
 model EmployeeBankDetails {
   id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   companyId         String   @map("company_id") @db.Uuid
   employeeId        String   @unique @map("employee_id") @db.Uuid
   accountHolderName String   @map("account_holder_name")
-  /// Application-level encrypted before storing
+  /// Application-level encrypted (AES-256-GCM, PII_ENCRYPTION_KEY)
   accountNumber     String   @map("account_number")
+  accountLast4      String   @map("account_last4")
   ifscCode          String   @map("ifsc_code")
   bankName          String   @map("bank_name")
   branchName        String   @map("branch_name")
@@ -604,8 +653,8 @@ model EmployeeStatutory {
   employeeId   String    @unique @map("employee_id") @db.Uuid
   /// Application-level encrypted
   pan          String?
-  /// Application-level encrypted
-  aadhar       String?
+  /// Only the last 4 digits are kept — the full Aadhaar number is never stored
+  aadhaarLast4 String?   @map("aadhaar_last4")
   uan          String?
   esicNumber   String?   @map("esic_number")
   pfAccountNo  String?   @map("pf_account_no")

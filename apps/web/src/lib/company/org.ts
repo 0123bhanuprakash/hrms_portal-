@@ -83,6 +83,7 @@ export interface Employee {
   lastName: string;
   email: string;
   phone: string | null;
+  avatarUrl?: string | null;
   employmentType: string;
   employmentStatus: string;
   joiningDate: string;

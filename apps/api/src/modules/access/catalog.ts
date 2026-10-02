@@ -54,6 +54,12 @@ export const CATALOG: CatalogModule[] = [
           p('employee.terminate', 'Terminate / offboard', OTHERS, { requires: ['employee.view'] }),
           p('employee.import', 'Bulk import employees', [], { requires: ['employee.create'] }),
           p('employee.export', 'Export employees', OTHERS, { requires: ['employee.view'] }),
+          p('employee.view_private', 'View personal, bank & ID details', EVERYONE, {
+            sensitive: true,
+            requires: ['employee.view'],
+            description: 'Address, emergency contact, bank account, PAN / Aadhaar (masked; revealing the full number is audited).',
+          }),
+          p('employee.edit_private', 'Edit personal, bank & ID details', EVERYONE, { sensitive: true, requires: ['employee.view_private'] }),
         ],
       },
       {
@@ -302,6 +308,7 @@ type Grant = [permission: string, scope?: AccessScope];
 
 const SELF_SERVICE: Grant[] = [
   ['employee.view', 'own'], ['employee.edit', 'own'],
+  ['employee.view_private', 'own'], ['employee.edit_private', 'own'],
   ['document.view', 'own'], ['document.upload', 'own'],
   ['attendance.view', 'own'], ['attendance.mark', 'own'],
   ['leave.view', 'own'], ['leave.request', 'own'],
@@ -324,6 +331,7 @@ export const ROLE_TEMPLATES: Array<{ key: string; name: string; description: str
     grants: [
       ...SELF_SERVICE,
       ['employee.view', 'company'], ['employee.create'], ['employee.edit', 'company'], ['employee.terminate', 'company'],
+      ['employee.view_private', 'company'], ['employee.edit_private', 'company'],
       ['employee.import'], ['employee.export', 'company'],
       ['org.manage'],
       ['document.view', 'company'], ['document.upload', 'company'], ['document.delete', 'company'],
