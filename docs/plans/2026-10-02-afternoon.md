@@ -42,44 +42,21 @@ Small, and user management will add more sign-in / invite traffic.
 
 ---
 
-## Part 3 — Company Admin: User management (main work)
+## Part 3 — Company Admin: Users + custom Roles & Permissions (main work)
 
-Data model already exists: `users`, `roles` (system roles: company_admin, hr,
-manager, employee; `company_id` nullable → per-company custom roles possible),
-`permissions`, `role_permissions`, `user_roles`. The users API today only has
-`/users/me*` endpoints.
+**Decision made:** custom, company-specific roles with granular permissions (proper RBAC).
+Full design: [rbac-design.md](rbac-design.md).
 
-### Decision needed at the start
-- **Roles:** built-in roles only (assign company_admin / hr / manager / employee), **or** also custom roles per company with a permission picker?
+Summary:
+- Permission catalog in code (`module.action`, with scopes own / team / department / company).
+- Each company gets its own editable copies of the role templates (Company Admin, HR, Manager, Employee);
+  Company Admin is a locked owner role with all permissions. One role per user.
+- Permissions leave the JWT; resolved per request from a version-keyed cache → role edits apply immediately.
+- Guardrails: no privilege escalation, last-admin protection, same-company checks, audited diffs.
+- UI: Users page + Roles & Permissions with a permission-matrix editor and plain-language summary.
 
-### 3.1 API (`/companies/:companyId/users`, guarded by `user:*` permissions + tenant check)
-- `GET    /users` — list: search (name/email), filter by role & status, sort, paginate.
-- `POST   /users` — invite: name, email, role(s) → temporary password + welcome email (reuse the Company Admin invite email) + `must_change_password`.
-- `GET    /users/:id` — detail: roles, status, last login, sessions count.
-- `PATCH  /users/:id` — edit name / roles.
-- `PATCH  /users/:id/status` — activate / deactivate (deactivate revokes all sessions).
-- `POST   /users/:id/resend-invite` — never-logged-in users only.
-- `POST   /users/:id/reset-password` — email a reset link.
-- Roles: `GET /roles` (+ `POST/PATCH/DELETE` if custom roles chosen; system roles read-only).
-- **Guards / rules:**
-  - Every lookup is scoped by `companyId`; any linked ID (role IDs) must belong to the same company or be a system role. Build this as a reusable helper — Employees/Departments later follow the same pattern.
-  - A Company Admin cannot deactivate themselves or remove the last `company_admin`.
-  - Email unique platform-wide → friendly 409.
-  - Everything audited (`@Audit`).
-- Permissions: keys already exist in `packages/types/src/constants.ts` (`user:create|read|update|delete|deactivate`, `role:create|read|update|delete`) — confirm they are seeded and granted to `company_admin` (and `hr` for users).
-
-### 3.2 Web (`/app/users`, `/app/roles`)
-- Users page: table with search/filters, status + role badges, last login, row actions (edit, change role, deactivate, resend invite, reset password), empty state.
-- Invite dialog: name, email, role picker → success shows "invite sent".
-- User detail drawer/page: profile, roles, activity (from audit log), sessions.
-- Roles page: role list with permission matrix (read-only for system roles; editable if custom roles).
-- Nav: enable "Users" (+ "Roles") in the company sidebar, hidden when the user lacks `user:read`.
-- Same premium design system + company theme; mobile layout checked.
-
-### 3.3 Verify
-- API: typecheck + scripted checks (tenant isolation: company A cannot read/edit company B users — expect 404; last-admin rule; invite → email received at a yopmail address).
-- Browser: invite a test user → sign in with temp password → forced password change → lands in portal with the right permissions.
-- Test account: `bhanu@yopmail.com` on `aakash-portal` (password from chat when needed).
+Order: backend steps 1–5 this session (scripted tests), UI steps 6–9 next session.
+Confirm the 3 open questions (one role per user, team = direct reports, HR default access) before step 2.
 
 ---
 
