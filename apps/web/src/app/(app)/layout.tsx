@@ -47,6 +47,7 @@ import {
   Headset,
   Timer,
   BarChart3,
+  LineChart,
 } from 'lucide-react';
 import type { ThemeTokens } from '@hrms/types';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -97,6 +98,7 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
     items: [
       { name: 'Home', href: '/app', icon: LayoutDashboard, exact: true },
       { name: 'My profile', href: '/app/profile', icon: IdCard },
+      { name: 'Reports & analytics', href: '/app/reports', icon: LineChart, permission: 'report.view', anyOf: ['project.manage'] },
       { name: 'People', href: '/app/people', icon: Contact, permission: 'org.view', feature: 'people.directory' },
     ],
   },
@@ -212,6 +214,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   queue: 'Queue',
   timesheets: 'Timesheets',
   report: 'Hours by project',
+  reports: 'Reports & analytics',
   org: 'Organisation',
   'access-explorer': 'Access explorer',
   delegations: 'Delegation',

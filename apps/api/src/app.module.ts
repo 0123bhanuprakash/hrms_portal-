@@ -34,6 +34,7 @@ import { ExpensesModule } from './modules/expenses/expenses.module';
 import { AssetsModule } from './modules/assets/assets.module';
 import { HelpdeskModule } from './modules/helpdesk/helpdesk.module';
 import { TimesheetsModule } from './modules/timesheets/timesheets.module';
+import { ReportsModule } from './modules/reports/reports.module';
 import { ThemesModule } from './modules/themes/themes.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { PermissionGuard } from './common/guards/permission.guard';
@@ -94,6 +95,7 @@ import { AppController } from './app.controller';
     AssetsModule,          // Assets, assignments, requests
     HelpdeskModule,        // Helpdesk tickets (IT / HR / Finance)
     TimesheetsModule,      // Weekly timesheets
+    ReportsModule,         // Reports & analytics
     ThemesModule,         // Theme Studio
     UserManagementModule, // Company Admin: users, roles & permissions
     PlansModule,          // Super Admin: plans & per-company features
