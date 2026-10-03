@@ -119,6 +119,24 @@ enum AttendanceStatus {
   WORK_FROM_HOME
 }
 
+enum AssetCondition {
+  NEW
+  GOOD
+  FAIR
+  POOR
+  DAMAGED
+}
+
+enum AssetRequestStatus {
+  /// Waiting for the IT head and HR (in parallel)
+  PENDING
+  /// Both approved — IT hands over an asset
+  APPROVED
+  FULFILLED
+  REJECTED
+  CANCELLED
+}
+
 enum ExpenseClaimStatus {
   DRAFT
   /// Waiting for the manager step, then Finance + HR (in parallel)
@@ -643,6 +661,8 @@ model Employee {
   regularisations   AttendanceRegularisation[]
   kudosReceived     KudosRecipient[]
   expenseClaims     ExpenseClaim[]
+  assetAssignments  AssetAssignment[]
+  assetRequests     AssetRequest[]
   projectMembers    ProjectMember[]            @relation("ProjectMemberEmployee")
   ledMembers        ProjectMember[]            @relation("ProjectMemberLead")
   payslips          Payslip[]
@@ -1586,4 +1606,108 @@ model ExpenseApproval {
 
   @@unique([claimId, round, stage])
   @@map("expense_approvals")
+}
+
+/// Kinds of assets (Laptop, Monitor, ID card…), editable by IT
+model AssetType {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  name      String
+  /// Prefix for generated tags, e.g. LAP → LAP-0001
+  prefix    String
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(100) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  assets   Asset[]
+  requests AssetRequest[]
+
+  @@unique([companyId, name])
+  @@map("asset_types")
+}
+
+model Asset {
+  id                String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId         String         @map("company_id") @db.Uuid
+  typeId            String         @map("type_id") @db.Uuid
+  /// Company asset tag, e.g. LAP-0007 (unique per company)
+  tag               String
+  name              String
+  brand             String?
+  model             String?
+  serialNumber      String?        @map("serial_number")
+  purchaseDate      DateTime?      @map("purchase_date") @db.Date
+  purchaseCostPaise Int?           @map("purchase_cost_paise")
+  vendor            String?
+  warrantyUntil     DateTime?      @map("warranty_until") @db.Date
+  condition         AssetCondition @default(GOOD)
+  status            AssetStatus    @default(AVAILABLE)
+  locationId        String?        @map("location_id") @db.Uuid
+  notes             String?
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+
+  type        AssetType         @relation(fields: [typeId], references: [id])
+  assignments AssetAssignment[]
+
+  @@unique([companyId, tag])
+  @@index([companyId, status])
+  @@index([companyId, typeId])
+  @@index([companyId, warrantyUntil])
+  @@map("assets")
+}
+
+/// Who held an asset, when, and in what condition
+model AssetAssignment {
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId      String          @map("company_id") @db.Uuid
+  assetId        String          @map("asset_id") @db.Uuid
+  employeeId     String          @map("employee_id") @db.Uuid
+  requestId      String?         @map("request_id") @db.Uuid
+  assignedById   String?         @map("assigned_by_id") @db.Uuid
+  assignedAt     DateTime        @default(now()) @map("assigned_at")
+  conditionOut   AssetCondition  @map("condition_out")
+  notes          String?
+  /// The employee confirmed they received it
+  acknowledgedAt DateTime?       @map("acknowledged_at")
+  returnedAt     DateTime?       @map("returned_at")
+  returnedToId   String?         @map("returned_to_id") @db.Uuid
+  conditionIn    AssetCondition? @map("condition_in")
+  returnNotes    String?         @map("return_notes")
+
+  asset    Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([assetId, returnedAt])
+  @@index([companyId, employeeId, returnedAt])
+  @@map("asset_assignments")
+}
+
+/// "I need a monitor" — the IT head and HR both approve, then IT hands one over
+model AssetRequest {
+  id         String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId  String              @map("company_id") @db.Uuid
+  employeeId String              @map("employee_id") @db.Uuid
+  typeId     String              @map("type_id") @db.Uuid
+  reason     String
+  status     AssetRequestStatus  @default(PENDING)
+  itStatus   LeaveApprovalStatus @default(PENDING) @map("it_status")
+  itById     String?             @map("it_by_id") @db.Uuid
+  itAt       DateTime?           @map("it_at")
+  itNote     String?             @map("it_note")
+  hrStatus   LeaveApprovalStatus @default(PENDING) @map("hr_status")
+  hrById     String?             @map("hr_by_id") @db.Uuid
+  hrAt       DateTime?           @map("hr_at")
+  hrNote     String?             @map("hr_note")
+  /// The asset handed over (when fulfilled)
+  assetId    String?             @map("asset_id") @db.Uuid
+  createdAt  DateTime            @default(now()) @map("created_at")
+  updatedAt  DateTime            @updatedAt @map("updated_at")
+
+  employee Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  type     AssetType @relation(fields: [typeId], references: [id])
+
+  @@index([companyId, status])
+  @@index([companyId, employeeId])
+  @@map("asset_requests")
 }

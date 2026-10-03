@@ -84,7 +84,7 @@ async function main() {
   if (!company) throw new Error(`Company '${slug}' not found`);
   const domain = slug.split('-')[0]; // aakash-portal → ravi.aakash@yopmail.com
   const companyId = company.id;
-  const created = { departments: 0, levels: 0, titles: 0, locations: 0, people: 0, holidays: 0, attendanceDays: 0, corrections: 0, projects: 0, assignments: 0, announcements: 0, kudos: 0 };
+  const created = { departments: 0, levels: 0, titles: 0, locations: 0, people: 0, holidays: 0, attendanceDays: 0, corrections: 0, projects: 0, assignments: 0, announcements: 0, kudos: 0, assets: 0 };
 
   // Roles (the company's own copies; created by the API at start-up)
   const roles = Object.fromEntries((await prisma.role.findMany({ where: { companyId, key: { not: null } } })).map((r) => [r.key, r.id]));
@@ -193,6 +193,7 @@ async function main() {
   await seedTime(companyId, company.settings?.timezone || 'Asia/Kolkata', empOf, created);
   await seedProjects(companyId, empOf, created);
   await seedEngagement(companyId, empOf, created);
+  await seedAssets(companyId, empOf, created);
   return created;
 }
 
@@ -356,6 +357,49 @@ async function seedEngagement(companyId, empOf, created) {
       });
       created.kudos++;
     }
+  }
+}
+
+// [type, tag, name, brand, serial, warranty (days from today), holder-local, confirmed]
+const ASSETS = [
+  ['Laptop', 'LAP-0001', 'MacBook Pro 14 (M3)', 'Apple', 'C02FX1AAQ6L4', 400, 'ravi', true],
+  ['Laptop', 'LAP-0002', 'MacBook Pro 14 (M3)', 'Apple', 'C02FX1AAQ6L5', 400, 'priya', true],
+  ['Laptop', 'LAP-0003', 'ThinkPad T14 Gen 4', 'Lenovo', 'PF4ABC12', 20, 'amit', true],
+  ['Laptop', 'LAP-0004', 'ThinkPad T14 Gen 4', 'Lenovo', 'PF4ABC13', 20, 'neha', false],
+  ['Laptop', 'LAP-0005', 'ThinkPad T14 Gen 4', 'Lenovo', 'PF4ABC14', 300, null, false],
+  ['Monitor', 'MON-0001', 'Dell U2723QE 27"', 'Dell', 'CN0DX9K1', 700, 'priya', true],
+  ['Monitor', 'MON-0002', 'Dell U2723QE 27"', 'Dell', 'CN0DX9K2', 700, null, false],
+  ['Phone', 'PHN-0001', 'iPhone 15', 'Apple', 'F2LXK8QJ', 200, 'meena', true],
+  ['ID card', 'IDC-0001', 'Access card', null, null, null, 'sara', true],
+];
+const ASSET_TYPES = [['Laptop', 'LAP', 10], ['Monitor', 'MON', 20], ['Phone', 'PHN', 30], ['SIM card', 'SIM', 40], ['ID card', 'IDC', 50], ['Headset', 'HDS', 60], ['Keyboard & mouse', 'KBM', 70], ['Other', 'OTH', 90]];
+
+async function seedAssets(companyId, empOf, created) {
+  // Karan (Engineering Lead) is the IT head: runs the register and approves asset requests
+  const itAdmin = await prisma.role.findFirst({ where: { companyId, key: 'it_admin' } });
+  const karan = empOf.karan ? await prisma.employee.findUnique({ where: { id: empOf.karan }, select: { userId: true } }) : null;
+  if (itAdmin && karan) await prisma.userRole.upsert({ where: { userId_roleId: { userId: karan.userId, roleId: itAdmin.id } }, update: {}, create: { userId: karan.userId, roleId: itAdmin.id, companyId } });
+  if (await prisma.asset.count({ where: { companyId } })) return;
+
+  if (!(await prisma.assetType.count({ where: { companyId } }))) {
+    await prisma.assetType.createMany({ data: ASSET_TYPES.map(([name, prefix, sortOrder]) => ({ companyId, name, prefix, sortOrder })), skipDuplicates: true });
+  }
+  const type = Object.fromEntries((await prisma.assetType.findMany({ where: { companyId } })).map((t) => [t.name, t.id]));
+  const day = (n) => { const d = new Date(); d.setUTCHours(0, 0, 0, 0); d.setUTCDate(d.getUTCDate() + n); return d; };
+  for (const [t, tag, name, brand, serialNumber, warranty, holder, confirmed] of ASSETS) {
+    const held = holder && empOf[holder];
+    const asset = await prisma.asset.create({
+      data: { companyId, typeId: type[t], tag, name, brand, serialNumber, warrantyUntil: warranty === null ? null : day(warranty), purchaseDate: day(-200), condition: 'GOOD', status: held ? 'ASSIGNED' : 'AVAILABLE' },
+    });
+    if (held) await prisma.assetAssignment.create({ data: { companyId, assetId: asset.id, employeeId: held, assignedAt: day(-150), conditionOut: 'GOOD', acknowledgedAt: confirmed ? day(-149) : null } });
+    created.assets++;
+  }
+  // Sara wants a monitor: HR (Hema) already approved; waiting for the IT head
+  if (empOf.sara && type.Monitor) {
+    const hema = empOf.hema ? await prisma.employee.findUnique({ where: { id: empOf.hema }, select: { userId: true } }) : null;
+    await prisma.assetRequest.create({
+      data: { companyId, employeeId: empOf.sara, typeId: type.Monitor, reason: 'Second screen for code reviews and design work', ...(hema && { hrStatus: 'APPROVED', hrById: hema.userId, hrAt: day(-1) }) },
+    });
   }
 }
 

@@ -40,6 +40,9 @@ import {
   Heart,
   Receipt,
   Wallet,
+  HardDrive,
+  PackageCheck,
+  PackageOpen,
 } from 'lucide-react';
 import type { ThemeTokens } from '@hrms/types';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -50,6 +53,7 @@ import { usePendingLeave } from '@/lib/company/leave';
 import { useIsApprover } from '@/lib/company/projects';
 import { useAnnouncements } from '@/lib/company/engagement';
 import { usePendingExpenses } from '@/lib/company/expenses';
+import { usePendingAssetRequests } from '@/lib/company/assets';
 import { changePasswordPath, loginPathFor, useAuthHydrated, withNext } from '@/lib/auth/portal';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { NotificationBell } from '@/components/notifications/notification-bell';
@@ -73,8 +77,12 @@ interface NavItem {
   beyondOwn?: boolean;
   /** Also show for anyone who approves: covering someone, project lead / PM, line manager */
   orDelegated?: boolean;
+  /** Also show when the user holds any of these */
+  anyOf?: string[];
+  /** Only when the permission reaches the whole company */
+  companyWide?: boolean;
   /** Live count shown on the item */
-  badge?: 'attendanceApprovals' | 'leaveApprovals' | 'announcements' | 'expenseApprovals';
+  badge?: 'attendanceApprovals' | 'leaveApprovals' | 'announcements' | 'expenseApprovals' | 'assetRequests';
 }
 
 const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
@@ -111,6 +119,15 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
       { name: 'Expense approvals', href: '/app/expenses/approvals', icon: ClipboardCheck, permission: 'expense.approve', feature: 'ops.expenses', orDelegated: true, badge: 'expenseApprovals' },
       { name: 'Payments & reports', href: '/app/expenses/payments', icon: Wallet, permission: 'expense.finance', feature: 'ops.expenses' },
       { name: 'Expense categories', href: '/app/expenses/categories', icon: Tags, permission: 'expense.manage', feature: 'ops.expenses' },
+    ],
+  },
+  {
+    label: 'Assets',
+    items: [
+      { name: 'My assets', href: '/app/assets/mine', icon: PackageCheck, permission: 'asset.view', feature: 'ops.assets' },
+      { name: 'Asset requests', href: '/app/assets/requests', icon: PackageOpen, permission: 'asset.manage', anyOf: ['asset.approve_it', 'asset.approve_hr'], feature: 'ops.assets', badge: 'assetRequests' },
+      { name: 'Asset register', href: '/app/assets', icon: HardDrive, exact: true, permission: 'asset.view', companyWide: true, feature: 'ops.assets' },
+      { name: 'Asset types', href: '/app/assets/types', icon: Tags, permission: 'asset.manage', feature: 'ops.assets' },
     ],
   },
   {
@@ -168,7 +185,10 @@ const SEGMENT_LABELS: Record<string, string> = {
   categories: 'Categories',
   notifications: 'Notifications',
   calendar: 'Who’s off',
-  types: 'Leave types',
+  types: 'Types',
+  assets: 'Assets',
+  mine: 'My assets',
+  requests: 'Requests',
   org: 'Organisation',
   'access-explorer': 'Access explorer',
   delegations: 'Delegation',
@@ -220,6 +240,7 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
   const isApprover = useIsApprover('leave.approve');
   const announcements = useAnnouncements({ limit: 1 });
   const pendingExpenses = usePendingExpenses();
+  const pendingAssets = usePendingAssetRequests();
   const [mobileOpen, setMobileOpen] = useState(false);
   const branding = useCompanyBranding(hydrated ? companyId : null);
 
@@ -292,7 +313,8 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
           {NAV_GROUPS.map((group) => {
             const items = group.items.filter(
               (i) =>
-                (can(i.permission) || (i.orDelegated && (isApprover || can('expense.finance') || can('expense.hr'))) || (i.href === '/app/expenses/payments' && can('expense.hr'))) &&
+                (can(i.permission) || (i.orDelegated && (isApprover || can('expense.finance') || can('expense.hr'))) || (i.href === '/app/expenses/payments' && can('expense.hr')) || Boolean(i.anyOf?.some((p) => can(p)))) &&
+                (!i.companyWide || user!.isSuperAdmin || scopeOf(i.permission!) === 'company') &&
                 (!i.feature || user!.isSuperAdmin || hasFeature(i.feature)) &&
                 (!i.beyondOwn || user!.isSuperAdmin || scopeOf(i.permission!) !== 'own'),
             );
@@ -303,7 +325,7 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
                 <ul className="space-y-0.5">
                   {items.map(({ name, href, icon: Icon, exact, soon, badge }) => {
                     const count =
-                      badge === 'attendanceApprovals' ? pendingApprovals.data : badge === 'leaveApprovals' ? pendingLeave.data : badge === 'announcements' ? announcements.data?.meta.unread : badge === 'expenseApprovals' ? pendingExpenses.data : undefined;
+                      badge === 'attendanceApprovals' ? pendingApprovals.data : badge === 'leaveApprovals' ? pendingLeave.data : badge === 'announcements' ? announcements.data?.meta.unread : badge === 'expenseApprovals' ? pendingExpenses.data : badge === 'assetRequests' ? pendingAssets.data : undefined;
                     const active = exact ? pathname === href : pathname.startsWith(href);
                     const content = (
                       <>

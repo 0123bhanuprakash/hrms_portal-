@@ -31,6 +31,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { ProjectsModule } from './modules/projects/projects.module';
 import { EngagementModule } from './modules/engagement/engagement.module';
 import { ExpensesModule } from './modules/expenses/expenses.module';
+import { AssetsModule } from './modules/assets/assets.module';
 import { ThemesModule } from './modules/themes/themes.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { PermissionGuard } from './common/guards/permission.guard';
@@ -88,6 +89,7 @@ import { AppController } from './app.controller';
     ProjectsModule,        // Projects, allocation, approval routing
     EngagementModule,      // Announcements, kudos
     ExpensesModule,        // Expense claims
+    AssetsModule,          // Assets, assignments, requests
     ThemesModule,         // Theme Studio
     UserManagementModule, // Company Admin: users, roles & permissions
     PlansModule,          // Super Admin: plans & per-company features
