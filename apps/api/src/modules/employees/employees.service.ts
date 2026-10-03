@@ -13,6 +13,7 @@ import { AccessService } from '../access/access.service';
 import { CompanyRolesService } from '../access/company-roles.service';
 import { HierarchyService } from '../access/hierarchy.service';
 import { EntitlementService } from '../access/entitlement.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import type { AccessContext } from '../access/access.types';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
@@ -33,6 +34,7 @@ export class EmployeesService {
     private readonly companyRoles: CompanyRolesService,
     private readonly hierarchy: HierarchyService,
     private readonly entitlements: EntitlementService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   /** Next sequential employee ID (e.g. AAK014) — call inside the creating transaction. */
@@ -450,6 +452,10 @@ export class EmployeesService {
       });
     }
 
+    // Leaving (notice period / terminated) while holding company assets → tell IT
+    const leaving = dto.employmentStatus && dto.employmentStatus !== existing.employmentStatus && (['NOTICE_PERIOD', 'TERMINATED'] as string[]).includes(dto.employmentStatus);
+    if (leaving) void this.warnAboutAssets(companyId, id, dto.employmentStatus === 'TERMINATED');
+
     // Reporting line and closure table change together (loops are rejected)
     return this.prisma.$transaction(async (tx) => {
       if (managerChanged)
@@ -492,6 +498,29 @@ export class EmployeesService {
         },
       });
     });
+  }
+
+  private async warnAboutAssets(companyId: string, employeeId: string, left: boolean) {
+    try {
+      const open = await this.prisma.assetAssignment.findMany({
+        where: { companyId, employeeId, returnedAt: null },
+        select: { asset: { select: { tag: true, name: true } }, employee: { select: { firstName: true, lastName: true } } },
+      });
+      if (!open.length) return;
+      const who = `${open[0]!.employee.firstName} ${open[0]!.employee.lastName}`;
+      const it = await this.notifications.companyWideApprovers(companyId, 'asset.manage');
+      await this.notifications.notify({
+        companyId,
+        userIds: it,
+        type: 'asset.offboarding',
+        title: `${who} ${left ? 'has left' : 'is leaving'} and still has ${open.length} asset${open.length === 1 ? '' : 's'}`,
+        body: open.map((a) => `${a.asset.name} (${a.asset.tag})`).join(', '),
+        link: `/app/assets?employeeId=${employeeId}`,
+        actionLabel: 'See assets',
+      });
+    } catch (err) {
+      this.logger.error(`Could not warn about assets of ${employeeId}`, err as Error);
+    }
   }
 
   /**

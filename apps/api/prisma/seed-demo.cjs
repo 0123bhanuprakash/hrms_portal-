@@ -84,7 +84,7 @@ async function main() {
   if (!company) throw new Error(`Company '${slug}' not found`);
   const domain = slug.split('-')[0]; // aakash-portal → ravi.aakash@yopmail.com
   const companyId = company.id;
-  const created = { departments: 0, levels: 0, titles: 0, locations: 0, people: 0, holidays: 0, attendanceDays: 0, corrections: 0, projects: 0, assignments: 0, announcements: 0, kudos: 0 };
+  const created = { departments: 0, levels: 0, titles: 0, locations: 0, people: 0, holidays: 0, attendanceDays: 0, corrections: 0, projects: 0, assignments: 0, announcements: 0, kudos: 0, assets: 0, tickets: 0, timesheets: 0 };
 
   // Roles (the company's own copies; created by the API at start-up)
   const roles = Object.fromEntries((await prisma.role.findMany({ where: { companyId, key: { not: null } } })).map((r) => [r.key, r.id]));
@@ -193,6 +193,9 @@ async function main() {
   await seedTime(companyId, company.settings?.timezone || 'Asia/Kolkata', empOf, created);
   await seedProjects(companyId, empOf, created);
   await seedEngagement(companyId, empOf, created);
+  await seedAssets(companyId, empOf, created);
+  await seedHelpdesk(companyId, empOf, created);
+  await seedTimesheets(companyId, empOf, created);
   return created;
 }
 
@@ -356,6 +359,143 @@ async function seedEngagement(companyId, empOf, created) {
       });
       created.kudos++;
     }
+  }
+}
+
+// [type, tag, name, brand, serial, warranty (days from today), holder-local, confirmed]
+const ASSETS = [
+  ['Laptop', 'LAP-0001', 'MacBook Pro 14 (M3)', 'Apple', 'C02FX1AAQ6L4', 400, 'ravi', true],
+  ['Laptop', 'LAP-0002', 'MacBook Pro 14 (M3)', 'Apple', 'C02FX1AAQ6L5', 400, 'priya', true],
+  ['Laptop', 'LAP-0003', 'ThinkPad T14 Gen 4', 'Lenovo', 'PF4ABC12', 20, 'amit', true],
+  ['Laptop', 'LAP-0004', 'ThinkPad T14 Gen 4', 'Lenovo', 'PF4ABC13', 20, 'neha', false],
+  ['Laptop', 'LAP-0005', 'ThinkPad T14 Gen 4', 'Lenovo', 'PF4ABC14', 300, null, false],
+  ['Monitor', 'MON-0001', 'Dell U2723QE 27"', 'Dell', 'CN0DX9K1', 700, 'priya', true],
+  ['Monitor', 'MON-0002', 'Dell U2723QE 27"', 'Dell', 'CN0DX9K2', 700, null, false],
+  ['Phone', 'PHN-0001', 'iPhone 15', 'Apple', 'F2LXK8QJ', 200, 'meena', true],
+  ['ID card', 'IDC-0001', 'Access card', null, null, null, 'sara', true],
+];
+const ASSET_TYPES = [['Laptop', 'LAP', 10], ['Monitor', 'MON', 20], ['Phone', 'PHN', 30], ['SIM card', 'SIM', 40], ['ID card', 'IDC', 50], ['Headset', 'HDS', 60], ['Keyboard & mouse', 'KBM', 70], ['Other', 'OTH', 90]];
+
+async function seedAssets(companyId, empOf, created) {
+  // Karan (Engineering Lead) is the IT head: runs the register and approves asset requests
+  const itAdmin = await prisma.role.findFirst({ where: { companyId, key: 'it_admin' } });
+  const karan = empOf.karan ? await prisma.employee.findUnique({ where: { id: empOf.karan }, select: { userId: true } }) : null;
+  if (itAdmin && karan) await prisma.userRole.upsert({ where: { userId_roleId: { userId: karan.userId, roleId: itAdmin.id } }, update: {}, create: { userId: karan.userId, roleId: itAdmin.id, companyId } });
+  if (await prisma.asset.count({ where: { companyId } })) return;
+
+  if (!(await prisma.assetType.count({ where: { companyId } }))) {
+    await prisma.assetType.createMany({ data: ASSET_TYPES.map(([name, prefix, sortOrder]) => ({ companyId, name, prefix, sortOrder })), skipDuplicates: true });
+  }
+  const type = Object.fromEntries((await prisma.assetType.findMany({ where: { companyId } })).map((t) => [t.name, t.id]));
+  const day = (n) => { const d = new Date(); d.setUTCHours(0, 0, 0, 0); d.setUTCDate(d.getUTCDate() + n); return d; };
+  for (const [t, tag, name, brand, serialNumber, warranty, holder, confirmed] of ASSETS) {
+    const held = holder && empOf[holder];
+    const asset = await prisma.asset.create({
+      data: { companyId, typeId: type[t], tag, name, brand, serialNumber, warrantyUntil: warranty === null ? null : day(warranty), purchaseDate: day(-200), condition: 'GOOD', status: held ? 'ASSIGNED' : 'AVAILABLE' },
+    });
+    if (held) await prisma.assetAssignment.create({ data: { companyId, assetId: asset.id, employeeId: held, assignedAt: day(-150), conditionOut: 'GOOD', acknowledgedAt: confirmed ? day(-149) : null } });
+    created.assets++;
+  }
+  // Sara wants a monitor: HR (Hema) already approved; waiting for the IT head
+  if (empOf.sara && type.Monitor) {
+    const hema = empOf.hema ? await prisma.employee.findUnique({ where: { id: empOf.hema }, select: { userId: true } }) : null;
+    await prisma.assetRequest.create({
+      data: { companyId, employeeId: empOf.sara, typeId: type.Monitor, reason: 'Second screen for code reviews and design work', ...(hema && { hrStatus: 'APPROVED', hrById: hema.userId, hrAt: day(-1) }) },
+    });
+  }
+}
+
+const TICKET_CATEGORIES = [
+  ['IT', 'Laptop / hardware'], ['IT', 'Software & installs'], ['IT', 'Access & passwords'], ['IT', 'Email & accounts'], ['IT', 'Network / VPN'], ['IT', 'Other'],
+  ['HR', 'Leave & attendance'], ['HR', 'Letters & documents'], ['HR', 'Policies'], ['HR', 'Benefits & insurance'], ['HR', 'Profile changes'], ['HR', 'Other'],
+  ['FINANCE', 'Salary & payslip'], ['FINANCE', 'Reimbursements'], ['FINANCE', 'Tax & investment proofs'], ['FINANCE', 'Other'],
+];
+const SLA = { URGENT: [1, 8], HIGH: [4, 24], MEDIUM: [8, 72], LOW: [24, 120] };
+// [requester, queue, category, subject, description, priority, status, hours ago, agent, thread: [who ('emp' | 'agent'), kind, body, hours ago]]
+const TICKETS = [
+  ['neha', 'IT', 'Laptop / hardware', 'Laptop battery drains in two hours', 'Since last week my ThinkPad (LAP-0004) goes from full to empty in about two hours, even with only the browser and IDE open.', 'HIGH', 'OPEN', 5, null, []],
+  ['amit', 'HR', 'Letters & documents', 'Employment verification letter for home loan', 'My bank needs an employment verification letter with my joining date and current CTC. Could HR share one on the letterhead?', 'MEDIUM', 'IN_PROGRESS', 20, 'hema', [['agent', 'REPLY', 'Sure Amit — we’ll prepare it today. Does the bank need the CTC broken down or just the annual figure?', 18], ['emp', 'REPLY', 'Just the annual figure is fine, thanks!', 17]]],
+  ['rahul', 'FINANCE', 'Reimbursements', 'September travel reimbursement not received', 'My Mumbai client-visit claim was approved two weeks ago but I haven’t received the money yet.', 'MEDIUM', 'WAITING', 30, 'pooja', [['agent', 'REPLY', 'Hi Rahul, could you share the claim title or the date you submitted it? I can’t find an approved claim under your name for September.', 26]]],
+  ['sara', 'IT', 'Software & installs', 'Figma licence for design reviews', 'I review UI designs with the product team and need edit access in Figma.', 'LOW', 'RESOLVED', 60, 'karan', [['agent', 'REPLY', 'Added you to the company Figma team with an editor seat. Please log out and back in.', 30]]],
+];
+
+async function seedHelpdesk(companyId, empOf, created) {
+  if (await prisma.ticket.count({ where: { companyId } })) return;
+  if (!(await prisma.ticketCategory.count({ where: { companyId } }))) {
+    await prisma.ticketCategory.createMany({ data: TICKET_CATEGORIES.map(([queue, name], i) => ({ companyId, queue, name, sortOrder: name === 'Other' ? 90 : (i + 1) * 10 })), skipDuplicates: true });
+  }
+  const cat = new Map((await prisma.ticketCategory.findMany({ where: { companyId } })).map((c) => [`${c.queue}:${c.name}`, c.id]));
+  const userOf = async (local) => (empOf[local] ? (await prisma.employee.findUnique({ where: { id: empOf[local] }, select: { userId: true } }))?.userId : null);
+  const ago = (h) => new Date(Date.now() - h * 3600_000);
+  let number = 0;
+  for (const [who, queue, category, subject, description, priority, status, hoursAgo, agentLocal, thread] of TICKETS) {
+    const requester = await userOf(who);
+    if (!requester) continue;
+    const agent = agentLocal ? await userOf(agentLocal) : null;
+    const createdAt = ago(hoursAgo);
+    const firstReply = thread.find((m) => m[0] === 'agent');
+    const resolved = status === 'RESOLVED';
+    const t = await prisma.ticket.create({
+      data: {
+        companyId, number: ++number, queue, categoryId: cat.get(`${queue}:${category}`) ?? null, employeeId: empOf[who], subject, description, priority, status,
+        assigneeId: agent, createdAt, lastActivityAt: thread.length ? ago(thread[thread.length - 1][3]) : createdAt,
+        firstResponseDueAt: new Date(createdAt.getTime() + SLA[priority][0] * 3600_000), resolutionDueAt: new Date(createdAt.getTime() + SLA[priority][1] * 3600_000),
+        firstRespondedAt: firstReply ? ago(firstReply[3]) : null, resolvedAt: resolved ? ago(thread[thread.length - 1][3]) : null,
+      },
+    });
+    const messages = [{ authorId: requester, kind: 'REPLY', body: description, createdAt }];
+    if (agent) messages.push({ authorId: agent, kind: 'EVENT', body: 'Took the ticket', createdAt: new Date(createdAt.getTime() + 60_000) });
+    for (const [side, kind, body, h] of thread) messages.push({ authorId: side === 'agent' ? agent : requester, kind, body, createdAt: ago(h) });
+    if (status === 'WAITING') messages.push({ authorId: agent, kind: 'EVENT', body: 'Asked the employee for more information', createdAt: ago(thread[thread.length - 1][3] - 0.001) });
+    if (resolved) messages.push({ authorId: agent, kind: 'EVENT', body: 'Marked as resolved', createdAt: ago(thread[thread.length - 1][3] - 0.001) });
+    await prisma.ticketMessage.createMany({ data: messages.map((m) => ({ companyId, ticketId: t.id, ...m })) });
+    created.tickets++;
+  }
+}
+
+// [person, weeks ago, status, decided by, lines: [project code | null, task, billable, hours Mon–Fri]]
+const TIMESHEETS = [
+  ['amit', 2, 'APPROVED', 'priya', [['APOLLO', 'Checkout API', true, [6, 6, 6, 6, 6]], ['ZEUS', 'Support rotation', true, [2, 2, 2, 2, 2]]]],
+  ['neha', 2, 'APPROVED', 'priya', [['APOLLO', 'Payments bug fixes', true, [8, 8, 7, 8, 8]]]],
+  ['sara', 2, 'APPROVED', 'karan', [['APOLLO', 'Design system', true, [7, 8, 8, 8, 6]], [null, 'Hiring interviews', false, [1, 0, 0, 0, 2]]]],
+  ['priya', 2, 'APPROVED', 'ravi', [['APOLLO', 'Code reviews & planning', true, [8, 8, 8, 8, 8]]]],
+  ['amit', 1, 'SUBMITTED', null, [['APOLLO', 'Checkout API', true, [6, 7, 6, 6, 6]], ['ZEUS', 'Support rotation', true, [2, 1, 2, 2, 2]]]],
+  ['sara', 1, 'SUBMITTED', null, [['APOLLO', 'Design system', true, [8, 8, 8, 8, 8]]]],
+  ['neha', 1, 'REJECTED', 'priya', [['APOLLO', 'Payments bug fixes', true, [8, 8, 8, 8, 12]]]],
+  ['priya', 1, 'DRAFT', null, [['APOLLO', 'Code reviews & planning', true, [8, 8, 8, 0, 0]]]],
+];
+
+async function seedTimesheets(companyId, empOf, created) {
+  if (await prisma.timesheet.count({ where: { companyId } })) return;
+  const tz = (await prisma.companySettings.findUnique({ where: { companyId }, select: { timezone: true } }))?.timezone || 'Asia/Kolkata';
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date());
+  const add = (k, n) => { const d = new Date(k + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+  const monday = add(today, -((new Date(today + 'T00:00:00Z').getUTCDay() + 6) % 7));
+  const projects = Object.fromEntries((await prisma.project.findMany({ where: { companyId }, select: { id: true, code: true } })).map((p) => [p.code, p.id]));
+  const userOf = async (local) => (empOf[local] ? (await prisma.employee.findUnique({ where: { id: empOf[local] }, select: { userId: true } }))?.userId : null);
+  // Approvers as the app would route them: team lead + project manager + line manager
+  const pool = { amit: ['priya', 'ravi'], neha: ['priya', 'ravi'], sara: ['karan', 'ravi'], priya: ['ravi'] };
+  const label = { amit: 'Team lead · Apollo, Project manager · Apollo, Line manager', neha: 'Team lead · Apollo, Project manager · Apollo, Line manager', sara: 'Team lead · Apollo, Project manager · Apollo, Line manager', priya: 'Project manager · Apollo, Line manager' };
+  for (const [who, weeksAgo, status, decider, lines] of TIMESHEETS) {
+    if (!empOf[who]) continue;
+    const week = add(monday, -7 * weeksAgo);
+    const approverIds = status === 'DRAFT' ? [] : (await Promise.all(pool[who].map(userOf))).filter(Boolean);
+    const entries = [];
+    lines.forEach(([code, task, billable, hours], line) => {
+      hours.forEach((h, i) => { if (h) entries.push({ companyId, employeeId: empOf[who], date: new Date(add(week, i) + 'T00:00:00Z'), projectId: code ? projects[code] ?? null : null, task, billable: Boolean(code) && billable, minutes: h * 60, line }); });
+    });
+    const submittedAt = status === 'DRAFT' ? null : new Date(add(week, 4) + 'T12:30:00Z');
+    const decided = status === 'APPROVED' || status === 'REJECTED';
+    await prisma.timesheet.create({
+      data: {
+        companyId, employeeId: empOf[who], weekStart: new Date(week + 'T00:00:00Z'), status, totalMinutes: entries.reduce((n, e) => n + e.minutes, 0),
+        approverIds, approverLabel: status === 'DRAFT' ? null : label[who], submittedAt,
+        decidedById: decided ? await userOf(decider) : null, decidedAt: decided ? new Date(add(week, 7) + 'T05:00:00Z') : null,
+        decisionNote: status === 'REJECTED' ? 'Friday shows 12 hours — please split the overtime or correct it.' : null,
+        entries: { create: entries.map(({ companyId: _c, ...e }) => ({ companyId, ...e })) },
+      },
+    });
+    created.timesheets++;
   }
 }
 
