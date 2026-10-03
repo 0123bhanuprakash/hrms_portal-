@@ -45,6 +45,8 @@ import {
   PackageOpen,
   LifeBuoy,
   Headset,
+  Timer,
+  BarChart3,
 } from 'lucide-react';
 import type { ThemeTokens } from '@hrms/types';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -57,6 +59,7 @@ import { useAnnouncements } from '@/lib/company/engagement';
 import { usePendingExpenses } from '@/lib/company/expenses';
 import { usePendingAssetRequests } from '@/lib/company/assets';
 import { useHelpdeskCounts } from '@/lib/company/helpdesk';
+import { usePendingTimesheets } from '@/lib/company/timesheets';
 import { changePasswordPath, loginPathFor, useAuthHydrated, withNext } from '@/lib/auth/portal';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { NotificationBell } from '@/components/notifications/notification-bell';
@@ -85,7 +88,7 @@ interface NavItem {
   /** Only when the permission reaches the whole company */
   companyWide?: boolean;
   /** Live count shown on the item */
-  badge?: 'attendanceApprovals' | 'leaveApprovals' | 'announcements' | 'expenseApprovals' | 'assetRequests' | 'myTickets' | 'ticketQueue';
+  badge?: 'attendanceApprovals' | 'leaveApprovals' | 'announcements' | 'expenseApprovals' | 'assetRequests' | 'myTickets' | 'ticketQueue' | 'timesheetApprovals';
 }
 
 const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
@@ -113,7 +116,12 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
   },
   {
     label: 'Work',
-    items: [{ name: 'Projects', href: '/app/projects', icon: FolderKanban, permission: 'project.view', feature: 'work.projects' }],
+    items: [
+      { name: 'Projects', href: '/app/projects', icon: FolderKanban, permission: 'project.view', feature: 'work.projects' },
+      { name: 'My timesheet', href: '/app/timesheets', icon: Timer, exact: true, permission: 'timesheet.submit', feature: 'work.timesheets' },
+      { name: 'Timesheet approvals', href: '/app/timesheets/approvals', icon: ClipboardCheck, permission: 'timesheet.approve', feature: 'work.timesheets', orDelegated: true, badge: 'timesheetApprovals' },
+      { name: 'Hours by project', href: '/app/timesheets/report', icon: BarChart3, permission: 'timesheet.view', feature: 'work.timesheets', beyondOwn: true },
+    ],
   },
   {
     label: 'Expenses',
@@ -202,6 +210,8 @@ const SEGMENT_LABELS: Record<string, string> = {
   requests: 'Requests',
   helpdesk: 'Helpdesk',
   queue: 'Queue',
+  timesheets: 'Timesheets',
+  report: 'Hours by project',
   org: 'Organisation',
   'access-explorer': 'Access explorer',
   delegations: 'Delegation',
@@ -255,6 +265,7 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
   const pendingExpenses = usePendingExpenses();
   const pendingAssets = usePendingAssetRequests();
   const tickets = useHelpdeskCounts();
+  const pendingTimesheets = usePendingTimesheets();
   const [mobileOpen, setMobileOpen] = useState(false);
   const branding = useCompanyBranding(hydrated ? companyId : null);
 
@@ -327,7 +338,7 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
           {NAV_GROUPS.map((group) => {
             const items = group.items.filter(
               (i) =>
-                (can(i.permission) || (i.orDelegated && (isApprover || can('expense.finance') || can('expense.hr'))) || (i.href === '/app/expenses/payments' && can('expense.hr')) || Boolean(i.anyOf?.some((p) => can(p)))) &&
+                (can(i.permission) || (i.orDelegated && (isApprover || (i.href.startsWith('/app/expenses') && (can('expense.finance') || can('expense.hr'))))) || (i.href === '/app/expenses/payments' && can('expense.hr')) || Boolean(i.anyOf?.some((p) => can(p)))) &&
                 (!i.companyWide || user!.isSuperAdmin || scopeOf(i.permission!) === 'company') &&
                 (!i.feature || user!.isSuperAdmin || hasFeature(i.feature)) &&
                 (!i.beyondOwn || user!.isSuperAdmin || scopeOf(i.permission!) !== 'own'),
@@ -339,7 +350,7 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
                 <ul className="space-y-0.5">
                   {items.map(({ name, href, icon: Icon, exact, soon, badge }) => {
                     const count =
-                      badge === 'attendanceApprovals' ? pendingApprovals.data : badge === 'leaveApprovals' ? pendingLeave.data : badge === 'announcements' ? announcements.data?.meta.unread : badge === 'expenseApprovals' ? pendingExpenses.data : badge === 'assetRequests' ? pendingAssets.data : badge === 'myTickets' ? tickets.data?.mine : badge === 'ticketQueue' ? tickets.data?.queue : undefined;
+                      badge === 'attendanceApprovals' ? pendingApprovals.data : badge === 'leaveApprovals' ? pendingLeave.data : badge === 'announcements' ? announcements.data?.meta.unread : badge === 'expenseApprovals' ? pendingExpenses.data : badge === 'assetRequests' ? pendingAssets.data : badge === 'myTickets' ? tickets.data?.mine : badge === 'ticketQueue' ? tickets.data?.queue : badge === 'timesheetApprovals' ? pendingTimesheets.data : undefined;
                     const active = exact ? pathname === href : pathname.startsWith(href);
                     const content = (
                       <>

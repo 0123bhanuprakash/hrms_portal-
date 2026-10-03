@@ -28,6 +28,7 @@ import {
   UsersRound,
   PackageCheck,
   LifeBuoy,
+  Timer,
 } from 'lucide-react';
 import { Card, CardHeader, Skeleton, Tabs } from '@/components/ui/feedback';
 import { PageHeader } from '@/components/ui/page-header';
@@ -80,6 +81,7 @@ export default function HomePage() {
     { href: '/app/expenses', icon: Receipt, title: 'Claim expenses', text: 'Get reimbursed for work spend', show: Boolean(employee) && hasFeature('ops.expenses') && can('expense.submit') },
     { href: '/app/assets/mine', icon: PackageCheck, title: 'My assets', text: 'Your equipment, or request something', show: Boolean(employee) && hasFeature('ops.assets') && can('asset.view') },
     { href: '/app/helpdesk', icon: LifeBuoy, title: 'Get help', text: 'Raise a ticket to IT, HR or Finance', show: Boolean(employee) && hasFeature('ops.helpdesk') && can('ticket.create') },
+    { href: '/app/timesheets', icon: Timer, title: 'Timesheet', text: 'Log this week’s hours', show: Boolean(employee) && hasFeature('work.timesheets') && can('timesheet.submit') },
     { href: '/app/leave/approvals', icon: CalendarClock, title: 'Leave approvals', text: 'Requests waiting for you', show: hasFeature('time.leave') && can('leave.approve') },
     { href: '/app/attendance/approvals', icon: ClipboardCheck, title: 'Attendance approvals', text: 'Corrections waiting for you', show: hasFeature('time.attendance') && can('attendance.approve') },
     { href: '/app/employees', icon: UsersRound, title: 'Employees', text: 'Manage employee records', show: can('employee.view') && scopeOf('employee.view') !== 'own' },

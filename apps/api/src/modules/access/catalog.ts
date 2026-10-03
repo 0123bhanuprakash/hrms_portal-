@@ -201,6 +201,17 @@ export const CATALOG: CatalogModule[] = [
           p('project.manage', 'Create projects & assign people (PMO)', [], { requires: ['project.view'], description: 'Add people to projects, set their role, team lead and allocation %.' }),
         ],
       },
+      {
+        key: 'work.timesheets',
+        label: 'Timesheets',
+        description: 'Weekly hours per project and task, approved by the project team lead / manager (or line manager).',
+        stage: 'ga',
+        permissions: [
+          p('timesheet.view', 'View timesheets & hours', EVERYONE),
+          p('timesheet.submit', 'Fill and submit own timesheet', SELF),
+          p('timesheet.approve', 'Approve timesheets', OTHERS, { requires: ['timesheet.view'], description: 'Project leads / PMs approve their people automatically; with company scope this approves anyone (HR).' }),
+        ],
+      },
     ],
   },
   {
@@ -339,7 +350,7 @@ export function broader(a: AccessScope | null, b: AccessScope | null): AccessSco
 // ─── Delegation ─────────────────────────────────────────────
 
 /** Approval permissions a person can hand over temporarily (e.g. while on leave). */
-export const DELEGABLE_PERMISSIONS = ['leave.approve', 'attendance.approve', 'expense.approve'];
+export const DELEGABLE_PERMISSIONS = ['leave.approve', 'attendance.approve', 'expense.approve', 'timesheet.approve'];
 /** Approval actions: the person's own record is never in reach (no self-approval). */
 export function isApproval(permission: string): boolean {
   return permission.endsWith('.approve');
@@ -370,7 +381,7 @@ export const DEFAULT_PLANS: Array<{ key: string; name: string; description: stri
     name: 'Growth',
     description: 'Payroll, documents and reports for growing companies.',
     features: [
-      'people.directory', 'people.org', 'people.documents', 'time.attendance', 'time.leave', 'work.projects',
+      'people.directory', 'people.org', 'people.documents', 'time.attendance', 'time.leave', 'work.projects', 'work.timesheets',
       'engage.announcements', 'engage.kudos',
       'pay.payroll', 'pay.salary', 'ops.expenses', 'ops.assets', 'ops.helpdesk', 'insights.reports', 'admin.users', 'admin.settings', 'admin.audit',
     ],
@@ -402,6 +413,7 @@ const SELF_SERVICE: Grant[] = [
   ['expense.view', 'own'], ['expense.submit', 'own'],
   ['asset.view', 'own'], ['asset.request', 'own'],
   ['ticket.view', 'own'], ['ticket.create', 'own'],
+  ['timesheet.view', 'own'], ['timesheet.submit', 'own'],
 ];
 
 export const ROLE_TEMPLATES: Array<{ key: string; name: string; description: string; isOwner?: boolean; grants: Grant[] }> = [
@@ -428,6 +440,7 @@ export const ROLE_TEMPLATES: Array<{ key: string; name: string; description: str
       ['announcement.post'], ['kudos.manage'],
       ['expense.view', 'company'], ['expense.hr'], ['expense.manage'],
       ['asset.view', 'company'], ['asset.approve_hr'], ['ticket.handle_hr'],
+      ['timesheet.view', 'company'], ['timesheet.approve', 'company'],
       ['leave.view', 'company'], ['leave.approve', 'company'], ['leave.adjust_balance', 'company'], ['leave.manage_types'],
       ['shift.view', 'company'], ['shift.manage', 'company'],
       ['payslip.view', 'company'], ['payroll.view'], ['salary.view', 'company'], ['salary.edit', 'company'],
@@ -449,6 +462,7 @@ export const ROLE_TEMPLATES: Array<{ key: string; name: string; description: str
       ['report.view', 'all_reports'],
       ['expense.view', 'all_reports'], ['expense.approve', 'direct_reports'],
       ['asset.view', 'all_reports'],
+      ['timesheet.view', 'all_reports'], ['timesheet.approve', 'direct_reports'],
     ],
   },
   {
@@ -462,6 +476,7 @@ export const ROLE_TEMPLATES: Array<{ key: string; name: string; description: str
       ['leave.view', 'direct_reports'], ['leave.approve', 'direct_reports'],
       ['shift.view', 'direct_reports'],
       ['expense.view', 'direct_reports'], ['expense.approve', 'direct_reports'],
+      ['timesheet.view', 'direct_reports'], ['timesheet.approve', 'direct_reports'],
     ],
   },
   {
@@ -479,8 +494,8 @@ export const ROLE_TEMPLATES: Array<{ key: string; name: string; description: str
   {
     key: 'pmo',
     name: 'PMO',
-    description: 'Project management office: creates projects and allocates people (role, team lead, allocation %).',
-    grants: [...SELF_SERVICE, ['project.manage'], ['employee.view', 'company']],
+    description: 'Project management office: creates projects, allocates people (role, team lead, allocation %) and sees logged hours.',
+    grants: [...SELF_SERVICE, ['project.manage'], ['employee.view', 'company'], ['timesheet.view', 'company']],
   },
   {
     key: 'employee',
