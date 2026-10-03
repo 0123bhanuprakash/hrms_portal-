@@ -38,90 +38,95 @@ export class ReportsService {
     const scope = this.access.requireEmployeeScope(access, VIEW);
     const today = await this.todayKey(companyId);
     const now = dateFromKey(today);
-    const current: Prisma.EmployeeWhereInput = { AND: [scope, { companyId, employmentStatus: { not: EmploymentStatus.TERMINATED }, joiningDate: { lte: now } }] };
 
-    const [headcount, byDept, byLocation, byType, byStatus, byGender, byDesignation, tenure, upcomingJoiners, probation, notice] = await Promise.all([
-      this.prisma.employee.count({ where: current }),
-      this.prisma.employee.groupBy({ by: ['departmentId'], where: current, _count: { _all: true } }),
-      this.prisma.employee.groupBy({ by: ['locationId'], where: current, _count: { _all: true } }),
-      this.prisma.employee.groupBy({ by: ['employmentType'], where: current, _count: { _all: true } }),
-      this.prisma.employee.groupBy({ by: ['employmentStatus'], where: current, _count: { _all: true } }),
-      this.prisma.employee.groupBy({ by: ['gender'], where: current, _count: { _all: true } }),
-      this.prisma.employee.groupBy({ by: ['designationId'], where: current, _count: { _all: true } }),
-      Promise.all(
-        [
-          [0, 1],
-          [1, 3],
-          [3, 5],
-          [5, null],
-        ].map(([minY, maxY]) =>
-          this.prisma.employee.count({
-            where: { AND: [current, { joiningDate: { lte: dateFromKey(this.yearsAgo(today, minY!)), ...(maxY !== null && { gt: dateFromKey(this.yearsAgo(today, maxY)) }) } }] },
-          }),
-        ),
-      ),
-      this.prisma.employee.count({ where: { AND: [scope, { companyId, employmentStatus: { not: EmploymentStatus.TERMINATED }, joiningDate: { gt: now } }] } }),
+    // One read of everyone in scope (incl. leavers, for the trend); every number below is computed from it
+    const [rows, depts, locs, desigs] = await Promise.all([
       this.prisma.employee.findMany({
-        where: { AND: [current, { employmentStatus: EmploymentStatus.PROBATION }] },
-        select: { id: true, firstName: true, lastName: true, avatarUrl: true, joiningDate: true, confirmationDate: true },
-        orderBy: [{ confirmationDate: { sort: 'asc', nulls: 'last' } }, { joiningDate: 'asc' }],
-        take: 10,
+        where: { AND: [scope, { companyId }] },
+        select: {
+          id: true, firstName: true, lastName: true, avatarUrl: true, joiningDate: true, confirmationDate: true, terminationDate: true,
+          employmentStatus: true, employmentType: true, gender: true, departmentId: true, locationId: true, designationId: true,
+        },
       }),
-      this.prisma.employee.findMany({
-        where: { AND: [current, { employmentStatus: EmploymentStatus.NOTICE_PERIOD }] },
-        select: { id: true, firstName: true, lastName: true, avatarUrl: true, terminationDate: true },
-        orderBy: { terminationDate: { sort: 'asc', nulls: 'last' } },
-        take: 10,
-      }),
-    ]);
-
-    // Joiners, leavers and month-end headcount for the last 12 months
-    const thisMonth = today.slice(0, 7);
-    const months = Array.from({ length: 12 }, (_, i) => this.addMonths(thisMonth, i - 11));
-    const trend = await Promise.all(
-      months.map(async (m) => {
-        const start = dateFromKey(`${m}-01`);
-        const end = dateFromKey(this.monthEnd(m));
-        const [joiners, leavers, endCount] = await Promise.all([
-          this.prisma.employee.count({ where: { AND: [scope, { companyId, joiningDate: { gte: start, lte: end } }] } }),
-          this.prisma.employee.count({ where: { AND: [scope, { companyId, employmentStatus: EmploymentStatus.TERMINATED, terminationDate: { gte: start, lte: end } }] } }),
-          this.prisma.employee.count({ where: { AND: [scope, this.employedOn(companyId, end > now ? now : end)] } }),
-        ]);
-        return { month: m, joiners, leavers, headcount: endCount };
-      }),
-    );
-    const startCount = await this.prisma.employee.count({ where: { AND: [scope, this.employedOn(companyId, dateFromKey(addDays(`${months[0]}-01`, -1)))] } });
-    const leavers12 = trend.reduce((n, t) => n + t.leavers, 0);
-    const avg = (startCount + headcount) / 2;
-
-    const [depts, locs, desigs] = await Promise.all([
       this.prisma.department.findMany({ where: { companyId }, select: { id: true, name: true } }),
       this.prisma.officeLocation.findMany({ where: { companyId }, select: { id: true, name: true } }),
       this.prisma.designation.findMany({ where: { companyId }, select: { id: true, orgLevel: { select: { id: true, name: true, rank: true } } } }),
     ]);
+    type Row = (typeof rows)[number];
+    const t = (d: Date | null) => (d ? d.getTime() : null);
+    const nowT = now.getTime();
+    const left = (e: Row) => e.employmentStatus === EmploymentStatus.TERMINATED;
+    /** On the payroll on a date: joined by then, and not yet left. */
+    const employedOn = (e: Row, at: number) => e.joiningDate.getTime() <= at && (!left(e) || (t(e.terminationDate) ?? -Infinity) > at);
+    const current = rows.filter((e) => !left(e) && e.joiningDate.getTime() <= nowT);
+    const headcount = current.length;
+
+    const countBy = <K extends string | null>(key: (e: Row) => K) => {
+      const m = new Map<K, number>();
+      for (const e of current) m.set(key(e), (m.get(key(e)) ?? 0) + 1);
+      return [...m];
+    };
     const name = (list: Array<{ id: string; name: string }>, id: string | null) => (id ? list.find((x) => x.id === id)?.name ?? 'Unknown' : 'Not set');
+    const sorted = <T extends { count: number }>(r: T[]) => r.sort((a, b) => b.count - a.count);
+
     const levels = new Map<string, { name: string; rank: number; count: number }>();
-    for (const g of byDesignation) {
-      const lvl = desigs.find((d) => d.id === g.designationId)?.orgLevel;
+    for (const [designationId, count] of countBy((e) => e.designationId)) {
+      const lvl = desigs.find((d) => d.id === designationId)?.orgLevel;
       const key = lvl?.id ?? '-';
       const cur = levels.get(key) ?? { name: lvl?.name ?? 'No level', rank: lvl?.rank ?? -1, count: 0 };
-      cur.count += g._count._all;
+      cur.count += count;
       levels.set(key, cur);
     }
-    const sorted = <T extends { count: number }>(rows: T[]) => rows.sort((a, b) => b.count - a.count);
+
+    // Tenure: joined at least minY and less than maxY years ago
+    const tenure = ([[0, 1], [1, 3], [3, 5], [5, null]] as const).map(([minY, maxY]) => {
+      const upper = dateFromKey(this.yearsAgo(today, minY)).getTime();
+      const lower = maxY === null ? null : dateFromKey(this.yearsAgo(today, maxY)).getTime();
+      return current.filter((e) => e.joiningDate.getTime() <= upper && (lower === null || e.joiningDate.getTime() > lower)).length;
+    });
+
+    // Joiners, leavers and month-end headcount for the last 12 months
+    const thisMonth = today.slice(0, 7);
+    const months = Array.from({ length: 12 }, (_, i) => this.addMonths(thisMonth, i - 11));
+    const trend = months.map((m) => {
+      const start = dateFromKey(`${m}-01`).getTime();
+      const end = dateFromKey(this.monthEnd(m)).getTime();
+      const at = Math.min(end, nowT);
+      return {
+        month: m,
+        joiners: rows.filter((e) => e.joiningDate.getTime() >= start && e.joiningDate.getTime() <= end).length,
+        leavers: rows.filter((e) => left(e) && (t(e.terminationDate) ?? -1) >= start && (t(e.terminationDate) ?? Infinity) <= end).length,
+        headcount: rows.filter((e) => employedOn(e, at)).length,
+      };
+    });
+    const before = dateFromKey(addDays(`${months[0]}-01`, -1)).getTime();
+    const startCount = rows.filter((e) => employedOn(e, before)).length;
+    const leavers12 = trend.reduce((n, x) => n + x.leavers, 0);
+    const avg = (startCount + headcount) / 2;
+
+    const byKey = (a: Date | null, b: Date | null) => (a ? a.getTime() : Infinity) - (b ? b.getTime() : Infinity);
+    const probation = current
+      .filter((e) => e.employmentStatus === EmploymentStatus.PROBATION)
+      .sort((a, b) => byKey(a.confirmationDate, b.confirmationDate) || a.joiningDate.getTime() - b.joiningDate.getTime())
+      .slice(0, 10);
+    const notice = current
+      .filter((e) => e.employmentStatus === EmploymentStatus.NOTICE_PERIOD)
+      .sort((a, b) => byKey(a.terminationDate, b.terminationDate))
+      .slice(0, 10);
+    const person = (e: Row) => ({ id: e.id, firstName: e.firstName, lastName: e.lastName, avatarUrl: e.avatarUrl });
 
     return {
       asOf: today,
       headcount,
-      upcomingJoiners,
+      upcomingJoiners: rows.filter((e) => !left(e) && e.joiningDate.getTime() > nowT).length,
       attritionPct: avg ? Math.round((leavers12 / avg) * 1000) / 10 : 0,
       leavers12,
-      joiners12: trend.reduce((n, t) => n + t.joiners, 0),
-      byDepartment: sorted(byDept.map((g) => ({ label: name(depts, g.departmentId), count: g._count._all }))),
-      byLocation: sorted(byLocation.map((g) => ({ label: name(locs, g.locationId), count: g._count._all }))),
-      byType: sorted(byType.map((g) => ({ label: g.employmentType, count: g._count._all }))),
-      byStatus: sorted(byStatus.map((g) => ({ label: g.employmentStatus, count: g._count._all }))),
-      byGender: sorted(byGender.map((g) => ({ label: g.gender ?? 'NOT_SET', count: g._count._all }))),
+      joiners12: trend.reduce((n, x) => n + x.joiners, 0),
+      byDepartment: sorted(countBy((e) => e.departmentId).map(([id, count]) => ({ label: name(depts, id), count }))),
+      byLocation: sorted(countBy((e) => e.locationId).map(([id, count]) => ({ label: name(locs, id), count }))),
+      byType: sorted(countBy((e) => e.employmentType).map(([label, count]) => ({ label, count }))),
+      byStatus: sorted(countBy((e) => e.employmentStatus).map(([label, count]) => ({ label, count }))),
+      byGender: sorted(countBy((e) => e.gender ?? 'NOT_SET').map(([label, count]) => ({ label, count }))),
       byLevel: [...levels.values()].sort((a, b) => b.rank - a.rank).map(({ name: label, count }) => ({ label, count })),
       tenure: [
         { label: 'Under 1 year', count: tenure[0]! },
@@ -130,8 +135,8 @@ export class ReportsService {
         { label: '5+ years', count: tenure[3]! },
       ],
       trend,
-      probation: probation.map((e) => ({ ...e, joiningDate: keyFromDate(e.joiningDate), confirmationDate: e.confirmationDate ? keyFromDate(e.confirmationDate) : null })),
-      notice: notice.map((e) => ({ ...e, terminationDate: e.terminationDate ? keyFromDate(e.terminationDate) : null })),
+      probation: probation.map((e) => ({ ...person(e), joiningDate: keyFromDate(e.joiningDate), confirmationDate: e.confirmationDate ? keyFromDate(e.confirmationDate) : null })),
+      notice: notice.map((e) => ({ ...person(e), terminationDate: e.terminationDate ? keyFromDate(e.terminationDate) : null })),
     };
   }
 

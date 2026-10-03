@@ -110,13 +110,21 @@ export function minutesOf(time: string): number {
   return h * 60 + m;
 }
 
+const validZones = new Map<string, boolean>();
+
+/** Cached: building an Intl.DateTimeFormat just to validate is costly. */
 export function isValidTimeZone(timeZone: string): boolean {
+  const hit = validZones.get(timeZone);
+  if (hit !== undefined) return hit;
+  let ok = false;
   try {
     new Intl.DateTimeFormat('en-US', { timeZone });
-    return true;
+    ok = true;
   } catch {
-    return false;
+    ok = false;
   }
+  if (validZones.size < 1000) validZones.set(timeZone, ok);
+  return ok;
 }
 
 function pad(n: number): string {

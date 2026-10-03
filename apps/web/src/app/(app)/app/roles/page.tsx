@@ -227,7 +227,7 @@ function DeactivateRoleDialog({ role, roles, onClose }: { role: RoleSummary | nu
             hint="Optional if they also hold other roles. Users left with no active role must be moved."
           >
             <select id="reassign" value={target} onChange={(e) => setTarget(e.target.value)} className={inputClass}>
-              <option value="">Don't move — keep their other roles</option>
+              <option value="">Don’t move — keep their other roles</option>
               {others.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.name}

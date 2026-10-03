@@ -109,6 +109,10 @@ async function dropCompany(slug) {
   const id = c.id;
   const steps = [
     () => prisma.notification.deleteMany({ where: { userId: { in: ids } } }),
+    () => prisma.expenseClaim.deleteMany({ where: { companyId: id } }),
+    () => prisma.expenseCategory.deleteMany({ where: { companyId: id } }),
+    () => prisma.kudos.deleteMany({ where: { companyId: id } }),
+    () => prisma.announcement.deleteMany({ where: { companyId: id } }),
     () => prisma.timesheetEntry.deleteMany({ where: { companyId: id } }),
     () => prisma.timesheet.deleteMany({ where: { companyId: id } }),
     () => prisma.ticketMessage.deleteMany({ where: { companyId: id } }),
@@ -131,6 +135,8 @@ async function dropCompany(slug) {
     () => prisma.employee.deleteMany({ where: { companyId: id } }),
     () => prisma.departmentHierarchy.deleteMany({ where: { companyId: id } }),
     () => prisma.department.deleteMany({ where: { companyId: id } }),
+    () => prisma.officeLocation.deleteMany({ where: { companyId: id } }),
+    () => prisma.designation.deleteMany({ where: { companyId: id } }),
     () => prisma.refreshToken.deleteMany({ where: { userId: { in: ids } } }),
     () => prisma.auditLog.deleteMany({ where: { OR: [{ companyId: id }, { userId: { in: ids } }] } }),
     () => prisma.userRole.deleteMany({ where: { userId: { in: ids } } }),

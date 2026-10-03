@@ -4,6 +4,7 @@ import type { AccessScope, MyAccess } from '@hrms/types';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { EntitlementService } from './entitlement.service';
+import { onAccessDataChanged } from '../../common/access-cache-signal';
 import { broader, CATALOG, DELEGABLE_PERMISSIONS, featureOf, isApproval } from './catalog';
 import { ACCESS_USER_SELECT, holds, type AccessContext, type AccessUserRow, type ActiveDelegation } from './access.types';
 
@@ -26,10 +27,38 @@ export class AccessService {
   private readonly delegationCache = new Map<string, { expires: number; list: ActiveDelegation[] }>();
   private static readonly DELEGATION_TTL_MS = 30_000;
 
+  /**
+   * The signed-in user's row (status, company, employee, roles) for a few
+   * seconds: a page fires ~12 calls at once, and each used to load it. Any
+   * write to those tables clears it (see PrismaService), so changes apply on
+   * the next request; across API instances the TTL bounds staleness.
+   */
+  private readonly userRows = new Map<string, { expires: number; row: Promise<unknown> }>();
+  private static readonly USER_TTL_MS = Number(process.env['AUTH_CACHE_TTL_MS'] ?? 3000);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly entitlements: EntitlementService,
-  ) {}
+  ) {
+    onAccessDataChanged(() => {
+      this.userRows.clear();
+      this.delegationCache.clear();
+    });
+  }
+
+  /** Loads (or reuses) the request user's row; concurrent requests share one query. */
+  cachedUserRow<T>(userId: string, load: () => Promise<T>): Promise<T> {
+    const now = Date.now();
+    const hit = this.userRows.get(userId);
+    if (hit && hit.expires > now) return hit.row as Promise<T>;
+    const row = load();
+    if (AccessService.USER_TTL_MS > 0) {
+      if (this.userRows.size > 10_000) this.userRows.clear();
+      this.userRows.set(userId, { expires: now + AccessService.USER_TTL_MS, row });
+      row.catch(() => this.userRows.delete(userId));
+    }
+    return row;
+  }
 
   // ─── Building the context ─────────────────────────────────
 

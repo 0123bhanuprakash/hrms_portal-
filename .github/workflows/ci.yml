@@ -1,42 +1,109 @@
 name: HRMS Portal CI Pipeline
 
+# Every pull request and every push to main runs:
+#   checks — lint, type-check, unit tests, build
+#   e2e    — the API end-to-end suites against a fresh PostgreSQL
+# Protect `main` (Settings → Branches) so a PR can only merge when both pass.
+
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [main, master, develop]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  validate:
-    name: Build & Test Turborepo Monorepo
+  checks:
+    name: Lint, type-check, unit tests, build
     runs-on: ubuntu-latest
-
+    timeout-minutes: 20
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       # Version comes from "packageManager" in the root package.json
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'pnpm'
+          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Lint codebase
+      - name: Generate Prisma client
+        run: pnpm --filter @hrms/api db:generate
+
+      - name: Lint
         run: pnpm lint
 
-      - name: Typecheck TypeScript types
+      - name: Type-check
         run: pnpm typecheck
 
-      - name: Run unit & integration tests
+      - name: Unit tests
         run: pnpm test
 
       # Builds do not read runtime env vars (validated at API startup only)
-      - name: Build packages and applications
+      - name: Build
         run: pnpm build
+
+  e2e:
+    name: API end-to-end suites
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: hrms
+          POSTGRES_PASSWORD: hrms
+          POSTGRES_DB: hrms_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hrms -d hrms_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://hrms:hrms@localhost:5432/hrms_ci
+      DIRECT_URL: postgresql://hrms:hrms@localhost:5432/hrms_ci
+      EMAIL_PROVIDER: console
+      REMINDERS_ENABLED: 'false'
+      SUPER_ADMIN_EMAIL: superadmin@ci.test
+      SUPER_ADMIN_PASSWORD: CI-only-Password-1!
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Throwaway secrets, new on every run (nothing real is needed in CI)
+      - name: Generate test secrets
+        run: |
+          echo "JWT_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          echo "JWT_REFRESH_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          echo "PII_ENCRYPTION_KEY=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+
+      - name: Prisma client + migrations
+        working-directory: apps/api
+        run: |
+          pnpm db:generate
+          pnpm db:deploy
+
+      - name: Build the API
+        run: pnpm --filter @hrms/api build
+
+      - name: Run end-to-end suites
+        run: pnpm --filter @hrms/api test:e2e

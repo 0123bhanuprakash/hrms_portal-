@@ -1,3 +1,4 @@
+import * as crypto from 'crypto';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
@@ -34,7 +35,9 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: secret,
+      // A KeyObject: jsonwebtoken otherwise tries (and fails) to parse the
+      // string as a public key on every verify before treating it as a secret
+      secretOrKey: crypto.createSecretKey(Buffer.from(secret)) as unknown as string,
     });
   }
 
@@ -49,7 +52,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       throw new UnauthorizedException('Invalid access token');
     }
 
-    const user = await this.prisma.user.findUnique({
+    const user = await this.accessService.cachedUserRow(payload.sub, () => this.prisma.user.findUnique({
       where: { id: payload.sub },
       select: {
         ...ACCESS_USER_SELECT,
@@ -57,7 +60,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         mustChangePassword: true,
         company: { select: { status: true, featuresVersion: true, hierarchyVersion: true } },
       },
-    });
+    }));
 
     if (!user || user.status !== 'ACTIVE') {
       throw new UnauthorizedException('User account is inactive or not found');
