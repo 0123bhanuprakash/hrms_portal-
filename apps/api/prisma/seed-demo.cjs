@@ -84,7 +84,7 @@ async function main() {
   if (!company) throw new Error(`Company '${slug}' not found`);
   const domain = slug.split('-')[0]; // aakash-portal → ravi.aakash@yopmail.com
   const companyId = company.id;
-  const created = { departments: 0, levels: 0, titles: 0, locations: 0, people: 0, holidays: 0, attendanceDays: 0, corrections: 0, projects: 0, assignments: 0, announcements: 0, kudos: 0, assets: 0 };
+  const created = { departments: 0, levels: 0, titles: 0, locations: 0, people: 0, holidays: 0, attendanceDays: 0, corrections: 0, projects: 0, assignments: 0, announcements: 0, kudos: 0, assets: 0, tickets: 0 };
 
   // Roles (the company's own copies; created by the API at start-up)
   const roles = Object.fromEntries((await prisma.role.findMany({ where: { companyId, key: { not: null } } })).map((r) => [r.key, r.id]));
@@ -194,6 +194,7 @@ async function main() {
   await seedProjects(companyId, empOf, created);
   await seedEngagement(companyId, empOf, created);
   await seedAssets(companyId, empOf, created);
+  await seedHelpdesk(companyId, empOf, created);
   return created;
 }
 
@@ -400,6 +401,54 @@ async function seedAssets(companyId, empOf, created) {
     await prisma.assetRequest.create({
       data: { companyId, employeeId: empOf.sara, typeId: type.Monitor, reason: 'Second screen for code reviews and design work', ...(hema && { hrStatus: 'APPROVED', hrById: hema.userId, hrAt: day(-1) }) },
     });
+  }
+}
+
+const TICKET_CATEGORIES = [
+  ['IT', 'Laptop / hardware'], ['IT', 'Software & installs'], ['IT', 'Access & passwords'], ['IT', 'Email & accounts'], ['IT', 'Network / VPN'], ['IT', 'Other'],
+  ['HR', 'Leave & attendance'], ['HR', 'Letters & documents'], ['HR', 'Policies'], ['HR', 'Benefits & insurance'], ['HR', 'Profile changes'], ['HR', 'Other'],
+  ['FINANCE', 'Salary & payslip'], ['FINANCE', 'Reimbursements'], ['FINANCE', 'Tax & investment proofs'], ['FINANCE', 'Other'],
+];
+const SLA = { URGENT: [1, 8], HIGH: [4, 24], MEDIUM: [8, 72], LOW: [24, 120] };
+// [requester, queue, category, subject, description, priority, status, hours ago, agent, thread: [who ('emp' | 'agent'), kind, body, hours ago]]
+const TICKETS = [
+  ['neha', 'IT', 'Laptop / hardware', 'Laptop battery drains in two hours', 'Since last week my ThinkPad (LAP-0004) goes from full to empty in about two hours, even with only the browser and IDE open.', 'HIGH', 'OPEN', 5, null, []],
+  ['amit', 'HR', 'Letters & documents', 'Employment verification letter for home loan', 'My bank needs an employment verification letter with my joining date and current CTC. Could HR share one on the letterhead?', 'MEDIUM', 'IN_PROGRESS', 20, 'hema', [['agent', 'REPLY', 'Sure Amit — we’ll prepare it today. Does the bank need the CTC broken down or just the annual figure?', 18], ['emp', 'REPLY', 'Just the annual figure is fine, thanks!', 17]]],
+  ['rahul', 'FINANCE', 'Reimbursements', 'September travel reimbursement not received', 'My Mumbai client-visit claim was approved two weeks ago but I haven’t received the money yet.', 'MEDIUM', 'WAITING', 30, 'pooja', [['agent', 'REPLY', 'Hi Rahul, could you share the claim title or the date you submitted it? I can’t find an approved claim under your name for September.', 26]]],
+  ['sara', 'IT', 'Software & installs', 'Figma licence for design reviews', 'I review UI designs with the product team and need edit access in Figma.', 'LOW', 'RESOLVED', 60, 'karan', [['agent', 'REPLY', 'Added you to the company Figma team with an editor seat. Please log out and back in.', 30]]],
+];
+
+async function seedHelpdesk(companyId, empOf, created) {
+  if (await prisma.ticket.count({ where: { companyId } })) return;
+  if (!(await prisma.ticketCategory.count({ where: { companyId } }))) {
+    await prisma.ticketCategory.createMany({ data: TICKET_CATEGORIES.map(([queue, name], i) => ({ companyId, queue, name, sortOrder: name === 'Other' ? 90 : (i + 1) * 10 })), skipDuplicates: true });
+  }
+  const cat = new Map((await prisma.ticketCategory.findMany({ where: { companyId } })).map((c) => [`${c.queue}:${c.name}`, c.id]));
+  const userOf = async (local) => (empOf[local] ? (await prisma.employee.findUnique({ where: { id: empOf[local] }, select: { userId: true } }))?.userId : null);
+  const ago = (h) => new Date(Date.now() - h * 3600_000);
+  let number = 0;
+  for (const [who, queue, category, subject, description, priority, status, hoursAgo, agentLocal, thread] of TICKETS) {
+    const requester = await userOf(who);
+    if (!requester) continue;
+    const agent = agentLocal ? await userOf(agentLocal) : null;
+    const createdAt = ago(hoursAgo);
+    const firstReply = thread.find((m) => m[0] === 'agent');
+    const resolved = status === 'RESOLVED';
+    const t = await prisma.ticket.create({
+      data: {
+        companyId, number: ++number, queue, categoryId: cat.get(`${queue}:${category}`) ?? null, employeeId: empOf[who], subject, description, priority, status,
+        assigneeId: agent, createdAt, lastActivityAt: thread.length ? ago(thread[thread.length - 1][3]) : createdAt,
+        firstResponseDueAt: new Date(createdAt.getTime() + SLA[priority][0] * 3600_000), resolutionDueAt: new Date(createdAt.getTime() + SLA[priority][1] * 3600_000),
+        firstRespondedAt: firstReply ? ago(firstReply[3]) : null, resolvedAt: resolved ? ago(thread[thread.length - 1][3]) : null,
+      },
+    });
+    const messages = [{ authorId: requester, kind: 'REPLY', body: description, createdAt }];
+    if (agent) messages.push({ authorId: agent, kind: 'EVENT', body: 'Took the ticket', createdAt: new Date(createdAt.getTime() + 60_000) });
+    for (const [side, kind, body, h] of thread) messages.push({ authorId: side === 'agent' ? agent : requester, kind, body, createdAt: ago(h) });
+    if (status === 'WAITING') messages.push({ authorId: agent, kind: 'EVENT', body: 'Asked the employee for more information', createdAt: ago(thread[thread.length - 1][3] - 0.001) });
+    if (resolved) messages.push({ authorId: agent, kind: 'EVENT', body: 'Marked as resolved', createdAt: ago(thread[thread.length - 1][3] - 0.001) });
+    await prisma.ticketMessage.createMany({ data: messages.map((m) => ({ companyId, ticketId: t.id, ...m })) });
+    created.tickets++;
   }
 }
 

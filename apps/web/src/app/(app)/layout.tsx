@@ -43,6 +43,8 @@ import {
   HardDrive,
   PackageCheck,
   PackageOpen,
+  LifeBuoy,
+  Headset,
 } from 'lucide-react';
 import type { ThemeTokens } from '@hrms/types';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -54,6 +56,7 @@ import { useIsApprover } from '@/lib/company/projects';
 import { useAnnouncements } from '@/lib/company/engagement';
 import { usePendingExpenses } from '@/lib/company/expenses';
 import { usePendingAssetRequests } from '@/lib/company/assets';
+import { useHelpdeskCounts } from '@/lib/company/helpdesk';
 import { changePasswordPath, loginPathFor, useAuthHydrated, withNext } from '@/lib/auth/portal';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { NotificationBell } from '@/components/notifications/notification-bell';
@@ -82,7 +85,7 @@ interface NavItem {
   /** Only when the permission reaches the whole company */
   companyWide?: boolean;
   /** Live count shown on the item */
-  badge?: 'attendanceApprovals' | 'leaveApprovals' | 'announcements' | 'expenseApprovals' | 'assetRequests';
+  badge?: 'attendanceApprovals' | 'leaveApprovals' | 'announcements' | 'expenseApprovals' | 'assetRequests' | 'myTickets' | 'ticketQueue';
 }
 
 const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
@@ -128,6 +131,14 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
       { name: 'Asset requests', href: '/app/assets/requests', icon: PackageOpen, permission: 'asset.manage', anyOf: ['asset.approve_it', 'asset.approve_hr'], feature: 'ops.assets', badge: 'assetRequests' },
       { name: 'Asset register', href: '/app/assets', icon: HardDrive, exact: true, permission: 'asset.view', companyWide: true, feature: 'ops.assets' },
       { name: 'Asset types', href: '/app/assets/types', icon: Tags, permission: 'asset.manage', feature: 'ops.assets' },
+    ],
+  },
+  {
+    label: 'Helpdesk',
+    items: [
+      { name: 'My tickets', href: '/app/helpdesk', icon: LifeBuoy, exact: true, permission: 'ticket.view', feature: 'ops.helpdesk', badge: 'myTickets' },
+      { name: 'Ticket queue', href: '/app/helpdesk/queue', icon: Headset, permission: 'ticket.handle_it', anyOf: ['ticket.handle_hr', 'ticket.handle_finance'], feature: 'ops.helpdesk', badge: 'ticketQueue' },
+      { name: 'Ticket topics', href: '/app/helpdesk/categories', icon: Tags, permission: 'ticket.handle_it', anyOf: ['ticket.handle_hr', 'ticket.handle_finance'], feature: 'ops.helpdesk' },
     ],
   },
   {
@@ -189,6 +200,8 @@ const SEGMENT_LABELS: Record<string, string> = {
   assets: 'Assets',
   mine: 'My assets',
   requests: 'Requests',
+  helpdesk: 'Helpdesk',
+  queue: 'Queue',
   org: 'Organisation',
   'access-explorer': 'Access explorer',
   delegations: 'Delegation',
@@ -241,6 +254,7 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
   const announcements = useAnnouncements({ limit: 1 });
   const pendingExpenses = usePendingExpenses();
   const pendingAssets = usePendingAssetRequests();
+  const tickets = useHelpdeskCounts();
   const [mobileOpen, setMobileOpen] = useState(false);
   const branding = useCompanyBranding(hydrated ? companyId : null);
 
@@ -325,7 +339,7 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
                 <ul className="space-y-0.5">
                   {items.map(({ name, href, icon: Icon, exact, soon, badge }) => {
                     const count =
-                      badge === 'attendanceApprovals' ? pendingApprovals.data : badge === 'leaveApprovals' ? pendingLeave.data : badge === 'announcements' ? announcements.data?.meta.unread : badge === 'expenseApprovals' ? pendingExpenses.data : badge === 'assetRequests' ? pendingAssets.data : undefined;
+                      badge === 'attendanceApprovals' ? pendingApprovals.data : badge === 'leaveApprovals' ? pendingLeave.data : badge === 'announcements' ? announcements.data?.meta.unread : badge === 'expenseApprovals' ? pendingExpenses.data : badge === 'assetRequests' ? pendingAssets.data : badge === 'myTickets' ? tickets.data?.mine : badge === 'ticketQueue' ? tickets.data?.queue : undefined;
                     const active = exact ? pathname === href : pathname.startsWith(href);
                     const content = (
                       <>

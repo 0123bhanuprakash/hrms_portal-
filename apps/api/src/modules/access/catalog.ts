@@ -179,6 +179,19 @@ export const CATALOG: CatalogModule[] = [
         ],
       },
       {
+        key: 'ops.helpdesk',
+        label: 'Helpdesk',
+        description: 'Employees raise tickets to IT, HR or Finance; each team works its own queue with response targets.',
+        stage: 'ga',
+        permissions: [
+          p('ticket.view', 'View own tickets', SELF),
+          p('ticket.create', 'Raise tickets', SELF),
+          p('ticket.handle_it', 'Work the IT queue', [], { requires: ['ticket.view'], description: 'See, assign, answer and resolve IT tickets; manage IT categories.' }),
+          p('ticket.handle_hr', 'Work the HR queue', [], { requires: ['ticket.view'], sensitive: true, description: 'See, assign, answer and resolve HR tickets; manage HR categories.' }),
+          p('ticket.handle_finance', 'Work the Finance queue', [], { requires: ['ticket.view'], description: 'See, assign, answer and resolve Finance tickets; manage Finance categories.' }),
+        ],
+      },
+      {
         key: 'work.projects',
         label: 'Projects',
         description: 'Projects, team leads and allocation. Leave and attendance corrections are approved by the project team lead / manager.',
@@ -299,7 +312,6 @@ export const CATALOG: CatalogModule[] = [
     features: [
       { key: 'talent.recruitment', label: 'Recruitment', description: 'Jobs, candidates and offers.', stage: 'coming_soon', permissions: [p('recruitment.view', 'View hiring'), p('recruitment.manage', 'Manage hiring', [], { requires: ['recruitment.view'] })] },
       { key: 'talent.performance', label: 'Performance', description: 'Goals and reviews.', stage: 'coming_soon', permissions: [p('performance.view', 'View reviews', EVERYONE), p('performance.manage', 'Run reviews', OTHERS, { requires: ['performance.view'] })] },
-      { key: 'ops.helpdesk', label: 'Helpdesk', description: 'Employee tickets.', stage: 'coming_soon', permissions: [p('ticket.view', 'View tickets', EVERYONE), p('ticket.create', 'Raise tickets', SELF), p('ticket.resolve', 'Resolve tickets', OTHERS, { requires: ['ticket.view'] })] },
     ],
   },
 ];
@@ -360,7 +372,7 @@ export const DEFAULT_PLANS: Array<{ key: string; name: string; description: stri
     features: [
       'people.directory', 'people.org', 'people.documents', 'time.attendance', 'time.leave', 'work.projects',
       'engage.announcements', 'engage.kudos',
-      'pay.payroll', 'pay.salary', 'ops.expenses', 'ops.assets', 'insights.reports', 'admin.users', 'admin.settings', 'admin.audit',
+      'pay.payroll', 'pay.salary', 'ops.expenses', 'ops.assets', 'ops.helpdesk', 'insights.reports', 'admin.users', 'admin.settings', 'admin.audit',
     ],
     limits: { maxEmployees: 500 },
   },
@@ -389,6 +401,7 @@ const SELF_SERVICE: Grant[] = [
   ['announcement.view'], ['kudos.view'], ['kudos.give'],
   ['expense.view', 'own'], ['expense.submit', 'own'],
   ['asset.view', 'own'], ['asset.request', 'own'],
+  ['ticket.view', 'own'], ['ticket.create', 'own'],
 ];
 
 export const ROLE_TEMPLATES: Array<{ key: string; name: string; description: string; isOwner?: boolean; grants: Grant[] }> = [
@@ -414,7 +427,7 @@ export const ROLE_TEMPLATES: Array<{ key: string; name: string; description: str
       ['holiday.manage'], ['attendance.policy'],
       ['announcement.post'], ['kudos.manage'],
       ['expense.view', 'company'], ['expense.hr'], ['expense.manage'],
-      ['asset.view', 'company'], ['asset.approve_hr'],
+      ['asset.view', 'company'], ['asset.approve_hr'], ['ticket.handle_hr'],
       ['leave.view', 'company'], ['leave.approve', 'company'], ['leave.adjust_balance', 'company'], ['leave.manage_types'],
       ['shift.view', 'company'], ['shift.manage', 'company'],
       ['payslip.view', 'company'], ['payroll.view'], ['salary.view', 'company'], ['salary.edit', 'company'],
@@ -454,14 +467,14 @@ export const ROLE_TEMPLATES: Array<{ key: string; name: string; description: str
   {
     key: 'it_admin',
     name: 'IT Admin',
-    description: 'Runs the asset register (add, assign, take back) and approves asset requests as IT head.',
-    grants: [...SELF_SERVICE, ['asset.view', 'company'], ['asset.manage'], ['asset.approve_it'], ['employee.view', 'company']],
+    description: 'Runs the asset register, approves asset requests as IT head and works the IT helpdesk queue.',
+    grants: [...SELF_SERVICE, ['asset.view', 'company'], ['asset.manage'], ['asset.approve_it'], ['ticket.handle_it'], ['employee.view', 'company']],
   },
   {
     key: 'finance',
     name: 'Finance',
-    description: 'Approves expense claims at the Finance step, marks them paid and sees spend reports.',
-    grants: [...SELF_SERVICE, ['expense.view', 'company'], ['expense.finance'], ['expense.manage']],
+    description: 'Approves expense claims at the Finance step, marks them paid, sees spend reports and works the Finance helpdesk queue.',
+    grants: [...SELF_SERVICE, ['expense.view', 'company'], ['expense.finance'], ['expense.manage'], ['ticket.handle_finance']],
   },
   {
     key: 'pmo',

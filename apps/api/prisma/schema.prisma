@@ -231,8 +231,26 @@ enum AssetStatus {
 enum TicketStatus {
   OPEN
   IN_PROGRESS
+  /// Waiting for the employee to reply
+  WAITING
   RESOLVED
   CLOSED
+}
+
+/// Helpdesk queues (fixed: only these three teams take tickets)
+enum TicketQueue {
+  IT
+  HR
+  FINANCE
+}
+
+enum TicketMessageKind {
+  /// Visible to the employee
+  REPLY
+  /// Internal note, agents only
+  NOTE
+  /// System line: status change, assignment, queue move
+  EVENT
 }
 
 enum TicketPriority {
@@ -663,6 +681,7 @@ model Employee {
   expenseClaims     ExpenseClaim[]
   assetAssignments  AssetAssignment[]
   assetRequests     AssetRequest[]
+  tickets           Ticket[]
   projectMembers    ProjectMember[]            @relation("ProjectMemberEmployee")
   ledMembers        ProjectMember[]            @relation("ProjectMemberLead")
   payslips          Payslip[]
@@ -1710,4 +1729,84 @@ model AssetRequest {
   @@index([companyId, status])
   @@index([companyId, employeeId])
   @@map("asset_requests")
+}
+
+// ─────────────────────────────────────────────────────────────
+// HELPDESK (Plan B5)
+// ─────────────────────────────────────────────────────────────
+
+model TicketCategory {
+  id        String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId String      @map("company_id") @db.Uuid
+  queue     TicketQueue
+  name      String
+  isActive  Boolean     @default(true) @map("is_active")
+  sortOrder Int         @default(0) @map("sort_order")
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  tickets Ticket[]
+
+  @@unique([companyId, queue, name])
+  @@map("ticket_categories")
+}
+
+/// An employee's ticket to IT, HR or Finance. Never anonymous.
+model Ticket {
+  id                 String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId          String         @map("company_id") @db.Uuid
+  /// Per-company running number (#1, #2, …)
+  number             Int
+  queue              TicketQueue
+  categoryId         String?        @map("category_id") @db.Uuid
+  employeeId         String         @map("employee_id") @db.Uuid
+  subject            String
+  description        String
+  priority           TicketPriority @default(MEDIUM)
+  status             TicketStatus   @default(OPEN)
+  /// Agent (user) working on it
+  assigneeId         String?        @map("assignee_id") @db.Uuid
+  firstResponseDueAt DateTime       @map("first_response_due_at")
+  resolutionDueAt    DateTime       @map("resolution_due_at")
+  firstRespondedAt   DateTime?      @map("first_responded_at")
+  resolvedAt         DateTime?      @map("resolved_at")
+  closedAt           DateTime?      @map("closed_at")
+  reopenCount        Int            @default(0) @map("reopen_count")
+  /// 1–5 from the employee after resolution
+  rating             Int?
+  ratingComment      String?        @map("rating_comment")
+  lastActivityAt     DateTime       @default(now()) @map("last_activity_at")
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
+
+  employee Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  category TicketCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  messages TicketMessage[]
+
+  @@unique([companyId, number])
+  @@index([companyId, queue, status, resolutionDueAt])
+  @@index([companyId, employeeId, createdAt])
+  @@index([companyId, assigneeId, status])
+  @@index([companyId, status, resolvedAt])
+  @@map("tickets")
+}
+
+model TicketMessage {
+  id        String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId String            @map("company_id") @db.Uuid
+  ticketId  String            @map("ticket_id") @db.Uuid
+  /// User who wrote it (null for automatic events)
+  authorId  String?           @map("author_id") @db.Uuid
+  kind      TicketMessageKind @default(REPLY)
+  body      String
+  fileKey   String?           @map("file_key")
+  fileName  String?           @map("file_name")
+  fileMime  String?           @map("file_mime")
+  fileSize  Int?              @map("file_size")
+  createdAt DateTime          @default(now()) @map("created_at")
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId, createdAt])
+  @@map("ticket_messages")
 }
