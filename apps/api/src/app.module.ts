@@ -1,7 +1,8 @@
 import { Module, MiddlewareConsumer, NestModule, RequestMethod } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { UserThrottlerGuard } from './common/guards/user-throttler.guard';
 import { PasswordChangeGuard } from './common';
 
 import { configuration } from './config/configuration';
@@ -61,11 +62,11 @@ import { AppController } from './app.controller';
       validate,
     }),
 
-    // ── Rate limiting (per IP, in-memory; Redis-backed later) ─
-    // Generous default for the SPA; credential endpoints tighten it
-    // with @Throttle (see auth.controller.ts).
+    // ── Rate limiting (per signed-in user, else per IP; in-memory, Redis later) ─
+    // A page fires ~12 calls, so 600/min ≈ 50 page loads a minute per person.
+    // Credential endpoints tighten it with @Throttle (see auth.controller.ts).
     ThrottlerModule.forRoot({
-      throttlers: [{ name: 'default', ttl: 60_000, limit: 300 }],
+      throttlers: [{ name: 'default', ttl: 60_000, limit: Number(process.env['THROTTLE_LIMIT'] ?? 600) }],
     }),
 
     // ── Infrastructure ────────────────────────────────────
@@ -107,7 +108,7 @@ import { AppController } from './app.controller';
     // ── Rate limiting first, so floods are rejected before any DB work ─
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: UserThrottlerGuard,
     },
 
     // ── Global JWT guard — all routes protected by default ──

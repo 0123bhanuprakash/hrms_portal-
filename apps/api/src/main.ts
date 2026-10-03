@@ -9,6 +9,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 
 import { AppModule } from './app.module';
+import { DbTraceInterceptor, dbTraceEnabled, dbTraceMiddleware } from './common/db-trace';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { RequestIdInterceptor } from './common/interceptors/request-id.interceptor';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
@@ -30,6 +31,11 @@ async function bootstrap(): Promise<void> {
     .split(',')
     .map((o) => o.trim());
 
+  // Behind a load balancer / reverse proxy: TRUST_PROXY=1 (number of hops) so
+  // req.ip is the real client (rate limits, audit log) and not the proxy.
+  const trustProxy = process.env['TRUST_PROXY'];
+  if (trustProxy) app.set('trust proxy', /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy);
+
   // ── Security middleware ─────────────────────────────────────
   app.use(
     helmet({
@@ -38,6 +44,8 @@ async function bootstrap(): Promise<void> {
     }),
   );
   app.use(compression());
+  // DB_TRACE=true: per-request query count / time in Server-Timing (speed work only)
+  if (dbTraceEnabled()) app.use(dbTraceMiddleware);
 
   // ── Local file storage (STORAGE_DRIVER=local) ──────────────
   // Uploaded branding assets are served from /uploads. Headers make
@@ -68,7 +76,7 @@ async function bootstrap(): Promise<void> {
       'X-Request-ID',
       'X-Tenant-ID',
     ],
-    exposedHeaders: ['X-Request-ID', 'X-Access-Version', 'Retry-After'],
+    exposedHeaders: ['X-Request-ID', 'X-Access-Version', 'Retry-After', ...(dbTraceEnabled() ? ['Server-Timing', 'X-DB-Queries'] : [])],
   });
 
   // ── Global API prefix & versioning ─────────────────────────
@@ -85,6 +93,7 @@ async function bootstrap(): Promise<void> {
   // 2. Logging    — logs after RequestId so it can include the ID
   // 3. Transform  — wraps the final response in { data, meta }
   app.useGlobalInterceptors(
+    ...(dbTraceEnabled() ? [new DbTraceInterceptor()] : []),
     new RequestIdInterceptor(),
     new LoggingInterceptor(),
     new ResponseTransformInterceptor(),

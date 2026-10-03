@@ -311,9 +311,23 @@ export class ExpenseClaimsService {
       const all = holds(access, FINANCE) || holds(access, HR);
       where = { ...filters, NOT: { status: ExpenseClaimStatus.DRAFT }, ...(all ? {} : { employee: this.access.requireEmployeeScope(access, 'expense.view') }) };
     } else {
-      // Waiting for me — check each pending claim's current step
+      // Waiting for me: the database narrows to claims with a pending step I could act on
+      // (my manager pool / someone I cover, or Finance / HR); the exact rule (current round,
+      // manager before Finance + HR, one person never two steps) is then applied per claim.
+      const me = [access.userId, ...access.delegations.map((d) => d.fromUserId)];
+      const candidates: Prisma.ExpenseClaimWhereInput[] = [{ approvals: { some: { stage: ExpenseStage.MANAGER, status: LeaveApprovalStatus.PENDING, approverIds: { hasSome: me } } } }];
+      // Finance / HR act only once the manager step is done (a pending manager row exists only in the current round)
+      const parallel = [...(holds(access, FINANCE) ? [ExpenseStage.FINANCE] : []), ...(holds(access, HR) ? [ExpenseStage.HR] : [])];
+      if (parallel.length) {
+        candidates.push({
+          AND: [
+            { approvals: { some: { stage: { in: parallel }, status: LeaveApprovalStatus.PENDING } } },
+            { approvals: { none: { stage: ExpenseStage.MANAGER, status: LeaveApprovalStatus.PENDING } } },
+          ],
+        });
+      }
       const pending = await this.prisma.expenseClaim.findMany({
-        where: { companyId, status: ExpenseClaimStatus.PENDING, employee: { userId: { not: access.userId } } },
+        where: { companyId, status: ExpenseClaimStatus.PENDING, employee: { userId: { not: access.userId } }, OR: candidates },
         select: SELECT,
         orderBy: { submittedAt: 'asc' },
       });
