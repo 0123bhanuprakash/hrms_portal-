@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import React, { useEffect, useRef, useState } from 'react';
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { ThemeProvider as NextThemesProvider } from 'next-themes';
 import { Toaster } from 'sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -22,6 +23,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <ClearCacheOnUserChange />
       <NextThemesProvider
         attribute="class"
         defaultTheme="system"
@@ -46,4 +48,23 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
       </NextThemesProvider>
     </QueryClientProvider>
   );
+}
+
+/**
+ * Cached queries use keys like ['leave', 'requests', { view: 'mine' }], where
+ * "mine" means whoever is signed in. When the signed-in user (or company)
+ * changes, drop everything so the next person never sees the previous
+ * person's data.
+ */
+function ClearCacheOnUserChange() {
+  const queryClient = useQueryClient();
+  const who = useAuthStore((s) => `${s.user?.id ?? ''}:${s.companyId ?? ''}`);
+  const last = useRef(who);
+  useEffect(() => {
+    // Signing out, or one person replacing another. (Not the restore of a saved
+    // session on page load: nobody → someone, with nothing to forget.)
+    if (last.current !== who && last.current !== ':') queryClient.clear();
+    last.current = who;
+  }, [who, queryClient]);
+  return null;
 }
