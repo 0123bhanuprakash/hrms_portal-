@@ -14,7 +14,8 @@ module.exports = {
     '@typescript-eslint/explicit-function-return-type': 'off',
     '@typescript-eslint/explicit-module-boundary-types': 'off',
     '@typescript-eslint/no-non-null-assertion': 'warn',
-    '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports' }],
+    // Off: NestJS dependency injection needs real (value) imports of injected classes
+    '@typescript-eslint/consistent-type-imports': 'off',
 
     // General
     'no-console': ['warn', { allow: ['warn', 'error'] }],
@@ -23,14 +24,8 @@ module.exports = {
     'no-var': 'error',
 
     // Imports
-    'import/order': [
-      'error',
-      {
-        groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
-        'newlines-between': 'always',
-        alphabetize: { order: 'asc', caseInsensitive: true },
-      },
-    ],
+    // Ordering is style, not correctness; left to authors / Prettier
+    'import/order': 'off',
     'import/no-duplicates': 'error',
   },
   env: {

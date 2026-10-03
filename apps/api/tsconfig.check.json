@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "//": "Type-check and lint everything, tests included (the build uses tsconfig.build.json)",
+  "extends": "./tsconfig.json",
+  "include": ["src/**/*", "../../packages/types/src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

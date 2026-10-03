@@ -1,0 +1,11 @@
+#!/bin/sh
+# Runs before every `git push`: type-check, lint and unit tests (about a minute,
+# much less when nothing changed — Turborepo caches results).
+# The full end-to-end suites run in CI on every pull request; run them locally
+# with `pnpm verify`. Emergency only: `git push --no-verify`.
+echo "pre-push: type-check, lint and unit tests (pnpm verify:fast)…"
+if ! pnpm -s verify:fast; then
+  echo ""
+  echo "✖ Push blocked: fix the errors above (or run \`pnpm verify:fast\` to see them again)."
+  exit 1
+fi

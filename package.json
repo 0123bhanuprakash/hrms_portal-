@@ -11,13 +11,16 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "test:e2e": "turbo run test:e2e",
+    "verify:fast": "turbo run typecheck lint test",
+    "verify": "turbo run typecheck lint test && pnpm --filter @hrms/api build && pnpm --filter @hrms/api test:e2e",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\" --ignore-path .gitignore",
     "format:check": "prettier --check \"**/*.{ts,tsx,md,json}\" --ignore-path .gitignore",
     "clean": "turbo run clean",
     "db:setup": "pnpm --filter @hrms/api db:setup",
     "db:migrate": "pnpm --filter @hrms/api db:migrate",
     "db:seed": "pnpm --filter @hrms/api db:seed",
-    "db:studio": "pnpm --filter @hrms/api db:studio"
+    "db:studio": "pnpm --filter @hrms/api db:studio",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "devDependencies": {
     "turbo": "^2.5.4",

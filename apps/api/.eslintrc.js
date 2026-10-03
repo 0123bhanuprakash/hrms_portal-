@@ -2,7 +2,7 @@
 module.exports = {
   ...require('@hrms/config/eslint-nest'),
   parserOptions: {
-    project: 'tsconfig.json',
+    project: 'tsconfig.check.json',
     tsconfigRootDir: __dirname,
     sourceType: 'module',
   },

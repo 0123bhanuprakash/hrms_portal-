@@ -19,6 +19,7 @@ export interface TenantContext {
 // Augment Express namespace — only add new fields, not user
 // (Passport already declares req.user as its own type)
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace -- Express request augmentation must be a namespace
   namespace Express {
     interface Request {
       tenantContext?: TenantContext;

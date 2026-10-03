@@ -1,7 +1,6 @@
 import { Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { IsBoolean, IsInt, IsOptional, Max, Min } from 'class-validator';
-import { Transform } from 'class-transformer';
 import { CurrentAccess } from '../../common';
 import type { AccessContext } from '../access/access.types';
 import { NotificationsService } from './notifications.service';
