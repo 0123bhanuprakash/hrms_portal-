@@ -5,12 +5,28 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { HierarchyService } from '../access/hierarchy.service';
 import { CreateDepartmentDto } from './dto/create-department.dto';
 import { UpdateDepartmentDto } from './dto/update-department.dto';
 
 @Injectable()
 export class DepartmentsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly hierarchy: HierarchyService,
+  ) {}
+
+  /** Parent department and head must belong to the same company (404 otherwise). */
+  private async assertLinksInCompany(companyId: string, parentDepartmentId?: string | null, headEmployeeId?: string | null) {
+    if (parentDepartmentId) {
+      const parent = await this.prisma.department.count({ where: { id: parentDepartmentId, companyId } });
+      if (!parent) throw new NotFoundException('Parent department not found');
+    }
+    if (headEmployeeId) {
+      const head = await this.prisma.employee.count({ where: { id: headEmployeeId, companyId } });
+      if (!head) throw new NotFoundException('Department head not found in this company');
+    }
+  }
 
   /**
    * Create a new department within a company
@@ -34,16 +50,9 @@ export class DepartmentsService {
       );
     }
 
-    if (dto.parentDepartmentId) {
-      const parent = await this.prisma.department.findFirst({
-        where: { id: dto.parentDepartmentId, companyId },
-      });
-      if (!parent) {
-        throw new NotFoundException('Parent department not found');
-      }
-    }
+    await this.assertLinksInCompany(companyId, dto.parentDepartmentId, dto.headEmployeeId);
 
-    return this.prisma.department.create({
+    const created = await this.prisma.department.create({
       data: {
         companyId,
         name: dto.name.trim(),
@@ -58,6 +67,8 @@ export class DepartmentsService {
         },
       },
     });
+    await this.hierarchy.rebuildDepartments(companyId);
+    return created;
   }
 
   /**
@@ -127,6 +138,12 @@ export class DepartmentsService {
       );
     }
 
+    await this.assertLinksInCompany(companyId, dto.parentDepartmentId, dto.headEmployeeId);
+    // Moving under one of its own sub-departments would create a loop
+    if (dto.parentDepartmentId !== undefined) {
+      await this.hierarchy.assertNoDepartmentLoop(this.prisma, id, dto.parentDepartmentId);
+    }
+
     if (dto.code) {
       const codeUpper = dto.code.toUpperCase().trim();
       const existing = await this.prisma.department.findFirst({
@@ -143,7 +160,7 @@ export class DepartmentsService {
       }
     }
 
-    return this.prisma.department.update({
+    const updated = await this.prisma.department.update({
       where: { id },
       data: {
         ...(dto.name && { name: dto.name.trim() }),
@@ -160,6 +177,8 @@ export class DepartmentsService {
         subDepartments: true,
       },
     });
+    if (dto.parentDepartmentId !== undefined) await this.hierarchy.rebuildDepartments(companyId);
+    return updated;
   }
 
   /**
@@ -179,6 +198,7 @@ export class DepartmentsService {
     }
 
     await this.prisma.department.delete({ where: { id } });
+    await this.hierarchy.rebuildDepartments(companyId);
 
     return { message: 'Department deleted successfully' };
   }

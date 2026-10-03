@@ -1,0 +1,234 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   Design tokens (HSL triplets, shadcn/ui convention)
+
+   Every color in the UI comes from these variables — never from
+   hard-coded Tailwind palette classes. The theme engine overrides
+   them per platform / company / user.
+
+   Layers:  background → surface (cards) → raised (menus) → overlay
+   ============================================================ */
+
+@layer base {
+  :root {
+    /* Base */
+    --background: 240 14% 98.4%;
+    --foreground: 240 10% 9%;
+
+    /* Surfaces */
+    --surface: 0 0% 100%;
+    --surface-foreground: 240 10% 9%;
+    --raised: 0 0% 100%;
+    --raised-foreground: 240 10% 9%;
+
+    /* Neutral fills & text */
+    --muted: 240 6% 96%;
+    --muted-foreground: 240 4% 46%;
+    --subtle: 240 6% 94%;
+    --border: 240 6% 90%;
+    --input: 240 6% 87%;
+
+    /* Accent (theme primary) */
+    --primary: 243 75% 59%;
+    --primary-foreground: 0 0% 100%;
+    --primary-soft: 243 90% 97%;
+    --primary-soft-foreground: 243 58% 46%;
+    --ring: 243 75% 59%;
+
+    /* Status */
+    --success: 152 62% 34%;
+    --success-soft: 150 60% 95%;
+    --warning: 32 92% 42%;
+    --warning-soft: 40 96% 94%;
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --destructive-soft: 0 86% 97%;
+    --info: 205 85% 42%;
+    --info-soft: 205 90% 95%;
+
+    /* Sidebar */
+    --sidebar: 0 0% 100%;
+    --sidebar-foreground: 240 6% 28%;
+    --sidebar-muted: 240 4% 54%;
+    --sidebar-active: 240 6% 95%;
+    --sidebar-active-foreground: 240 10% 9%;
+    --sidebar-border: 240 6% 91%;
+
+    /* Shape, elevation & type (overridable by the theme engine) */
+    --radius: 0.625rem;
+    --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.04), 0 1px 3px 0 rgb(0 0 0 / 0.04);
+    --shadow-menu: 0 4px 6px -2px rgb(0 0 0 / 0.05), 0 12px 24px -4px rgb(0 0 0 / 0.12);
+    --shadow-dialog: 0 8px 16px -4px rgb(0 0 0 / 0.08), 0 24px 48px -12px rgb(0 0 0 / 0.25);
+    --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+    /* shadcn aliases */
+    --card: var(--surface);
+    --card-foreground: var(--surface-foreground);
+    --popover: var(--raised);
+    --popover-foreground: var(--raised-foreground);
+    --secondary: var(--muted);
+    --secondary-foreground: var(--foreground);
+    --accent: var(--subtle);
+    --accent-foreground: var(--foreground);
+
+    /* Legacy company-portal brand variables (until it moves to tokens) */
+    --brand-primary: #4f46e5;
+    --brand-secondary: #eef2ff;
+  }
+
+  .dark {
+    --background: 240 7% 5.5%;
+    --foreground: 240 5% 94%;
+
+    --surface: 240 6% 8.5%;
+    --surface-foreground: 240 5% 94%;
+    --raised: 240 6% 10.5%;
+    --raised-foreground: 240 5% 94%;
+
+    --muted: 240 5% 12.5%;
+    --muted-foreground: 240 5% 62%;
+    --subtle: 240 5% 14.5%;
+    --border: 240 5% 16%;
+    --input: 240 5% 20%;
+
+    --primary: 243 76% 64%;
+    --primary-foreground: 0 0% 100%;
+    --primary-soft: 243 40% 16%;
+    --primary-soft-foreground: 243 95% 82%;
+    --ring: 243 76% 64%;
+
+    --success: 152 55% 52%;
+    --success-soft: 152 40% 12%;
+    --warning: 38 92% 58%;
+    --warning-soft: 38 50% 12%;
+    --destructive: 0 75% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --destructive-soft: 0 45% 13%;
+    --info: 205 85% 60%;
+    --info-soft: 205 50% 13%;
+
+    --sidebar: 240 7% 7%;
+    --sidebar-foreground: 240 5% 72%;
+    --sidebar-muted: 240 4% 50%;
+    --sidebar-active: 240 5% 13%;
+    --sidebar-active-foreground: 240 5% 96%;
+    --sidebar-border: 240 5% 13%;
+
+    --brand-primary: #6366f1;
+    --brand-secondary: #1e1b4b;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    /* Inter stylistic sets: single-storey a, straighter digits */
+    font-feature-settings: 'cv11', 'ss01', 'ss03';
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.18);
+  }
+
+  :focus-visible {
+    outline: none;
+  }
+
+  /* Thin, unobtrusive scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* ============================================================
+   Personal display preferences (Phase 6), set as attributes on
+   <html> by <DisplayPreferences>. Selectors are html:root[...] so
+   they outrank the theme's own html:root block.
+
+   --space scales every Tailwind spacing step (padding, gaps, sizes)
+   — see tailwind.config.ts — so one variable sets the density.
+   ============================================================ */
+:root {
+  --space: 1;
+}
+html:root[data-density='compact'] {
+  --space: 0.85;
+}
+html:root[data-density='normal'] {
+  --space: 1;
+}
+html:root[data-density='spacious'] {
+  --space: 1.15;
+}
+
+html:root[data-text-size='sm'] {
+  font-size: 93.75%;
+}
+html:root[data-text-size='md'] {
+  font-size: 100%;
+}
+html:root[data-text-size='lg'] {
+  font-size: 106.25%;
+}
+html:root[data-text-size='xl'] {
+  font-size: 112.5%;
+}
+
+html[data-motion='reduce'] *,
+html[data-motion='reduce'] *::before,
+html[data-motion='reduce'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+@layer components {
+  /* cmdk group headings */
+  .cmdk-group [cmdk-group-heading] {
+    @apply px-2.5 pb-1.5 pt-3 font-semibold uppercase tracking-wider;
+    font-size: 0.6875rem;
+    line-height: 1rem;
+    color: hsl(var(--muted-foreground));
+  }
+}
+
+@layer utilities {
+  /* Subtle page backdrop: soft accent glow at the top of the canvas */
+  .bg-canvas {
+    background-color: hsl(var(--background));
+    background-image: radial-gradient(
+      ellipse 80% 50% at 50% -20%,
+      hsl(var(--primary) / 0.06),
+      transparent 70%
+    );
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+}

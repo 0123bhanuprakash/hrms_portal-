@@ -16,3 +16,9 @@ export * from './schemas';
 
 // Permission constants, Redis keys, system constants
 export * from './constants';
+
+// Theme tokens (types only)
+export * from './theme';
+
+// Access control (types only; catalog is served by the API)
+export * from './access';

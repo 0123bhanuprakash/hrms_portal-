@@ -18,15 +18,14 @@ const envSchema = z.object({
 
   // ── Database ──────────────────────────────────────────────
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+  DIRECT_URL: z.string().optional(),
 
-  // ── Redis ─────────────────────────────────────────────────
-  REDIS_URL: z.string().min(1, 'REDIS_URL is required'),
+  // ── Redis (optional) ──────────────────────────────────────
+  // Unset → emails are sent inline and Bull Board is disabled.
+  REDIS_URL: z.string().url().optional(),
 
-  // ── Elasticsearch ─────────────────────────────────────────
-  ELASTICSEARCH_URL: z
-    .string()
-    .url()
-    .default('http://localhost:9200'),
+  // ── Elasticsearch (optional, used from Phase 2+) ──────────
+  ELASTICSEARCH_URL: z.string().url().optional(),
 
   // ── JWT ───────────────────────────────────────────────────
   JWT_SECRET: z
@@ -39,20 +38,41 @@ const envSchema = z.object({
   JWT_REFRESH_EXPIRY: z.string().default('7d'),
 
   // ── Email ─────────────────────────────────────────────────
-  EMAIL_PROVIDER: z.enum(['mailpit', 'resend']).default('mailpit'),
-  SMTP_HOST: z.string().default('localhost'),
-  SMTP_PORT: z.coerce.number().int().default(1025),
+  // console → print to terminal + save .html to apps/api/.mail (no mail server)
+  // smtp    → any SMTP server (Mailpit, Gmail, ...). 'mailpit' kept as an alias.
+  // resend  → Resend API (production)
+  EMAIL_PROVIDER: z.enum(['console', 'smtp', 'gmail', 'mailpit', 'resend']).default('console'),
+  // gmail → defaults to smtp.gmail.com:587 (STARTTLS); needs SMTP_USER + an App Password
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65535).optional(),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
+  // true = implicit TLS (port 465). Default: true only for port 465; STARTTLS is required otherwise (except localhost)
+  SMTP_SECURE: z.enum(['true', 'false']).optional(),
   SMTP_FROM: z.string().default('HRMS Portal <noreply@hrms.local>'),
   RESEND_API_KEY: z.string().optional(),
   RESEND_FROM: z.string().optional(),
 
-  // ── MinIO ─────────────────────────────────────────────────
+  // ── File storage ──────────────────────────────────────────
+  // local → files saved under UPLOADS_DIR and served at /uploads
+  // s3    → MinIO / AWS S3 / Supabase Storage (MINIO_* vars required)
+  STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
+  UPLOADS_DIR: z.string().default('uploads'),
   MINIO_ENDPOINT: z.string().default('localhost'),
   MINIO_PORT: z.coerce.number().int().default(9000),
-  MINIO_USE_SSL: z.coerce.boolean().default(false),
-  MINIO_ACCESS_KEY: z.string().min(1, 'MINIO_ACCESS_KEY is required'),
-  MINIO_SECRET_KEY: z.string().min(1, 'MINIO_SECRET_KEY is required'),
+  MINIO_USE_SSL: z.enum(['true', 'false']).default('false'),
+  MINIO_ACCESS_KEY: z.string().optional(),
+  MINIO_SECRET_KEY: z.string().optional(),
   MINIO_BUCKET_NAME: z.string().default('hrms-dev'),
+  // Private files (employee documents) — never served statically, only via authorised downloads
+  PRIVATE_FILES_DIR: z.string().default('private-files'),
+
+  // ── Personal data encryption ──────────────────────────────
+  // 32 random bytes, base64 (node -e "console.log(require('crypto').randomBytes(32).toString('base64'))").
+  // Encrypts PAN and bank account numbers. Losing it makes that data unreadable — back it up.
+  PII_ENCRYPTION_KEY: z
+    .string()
+    .refine((k) => Buffer.from(k, 'base64').length === 32, 'PII_ENCRYPTION_KEY must be 32 bytes, base64-encoded'),
 
   // ── Seed / Super Admin ────────────────────────────────────
   SUPER_ADMIN_EMAIL: z.string().email('SUPER_ADMIN_EMAIL must be a valid email'),
@@ -61,6 +81,31 @@ const envSchema = z.object({
     .min(8, 'SUPER_ADMIN_PASSWORD must be at least 8 characters'),
   SUPER_ADMIN_FIRST_NAME: z.string().default('Super'),
   SUPER_ADMIN_LAST_NAME: z.string().default('Admin'),
+}).superRefine((env, ctx) => {
+  if (env.STORAGE_DRIVER === 's3' && (!env.MINIO_ACCESS_KEY || !env.MINIO_SECRET_KEY)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['MINIO_ACCESS_KEY'],
+      message: 'MINIO_ACCESS_KEY and MINIO_SECRET_KEY are required when STORAGE_DRIVER=s3',
+    });
+  }
+  if (env.EMAIL_PROVIDER === 'gmail' && (!env.SMTP_USER || !env.SMTP_PASSWORD)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['SMTP_USER'],
+      message: 'SMTP_USER and SMTP_PASSWORD (a Google App Password) are required when EMAIL_PROVIDER=gmail',
+    });
+  }
+  if (env.SMTP_USER && !env.SMTP_PASSWORD) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['SMTP_PASSWORD'], message: 'SMTP_PASSWORD is required when SMTP_USER is set' });
+  }
+  if (env.EMAIL_PROVIDER === 'resend' && !env.RESEND_API_KEY) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['RESEND_API_KEY'],
+      message: 'RESEND_API_KEY is required when EMAIL_PROVIDER=resend',
+    });
+  }
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

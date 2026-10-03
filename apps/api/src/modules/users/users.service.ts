@@ -122,6 +122,9 @@ export class UsersService {
         ...(dto.emailNotifications !== undefined && {
           emailNotifications: dto.emailNotifications,
         }),
+        ...(dto.density && { density: dto.density }),
+        ...(dto.textSize && { textSize: dto.textSize }),
+        ...(dto.reduceMotion !== undefined && { reduceMotion: dto.reduceMotion }),
       },
       create: {
         userId,
@@ -136,6 +139,9 @@ export class UsersService {
           dto.emailNotifications !== undefined
             ? dto.emailNotifications
             : true,
+        density: dto.density || 'theme',
+        textSize: dto.textSize || 'theme',
+        reduceMotion: dto.reduceMotion ?? false,
       },
     });
   }

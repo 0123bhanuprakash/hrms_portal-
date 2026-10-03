@@ -5,16 +5,21 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
-import { EmailService } from '../email/email.service';
-import { MinioService } from '../storage/minio.service';
+import { EmailProducerService } from '../email/email.producer.service';
+import { StorageService } from '../storage/storage.service';
+import { CompanyRolesService } from '../access/company-roles.service';
+import { DEFAULT_PLAN_KEY } from '../access/catalog';
+import { companyThemeFields, type CompanyThemeInput } from '../themes/company-theme';
+import { ThemesService } from '../themes/themes.service';
+import type { ThemeRef, ThemeTokens } from '@hrms/types';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { UpdateBrandingDto } from './dto/update-branding.dto';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
-import { CompanyStatus, UserStatus } from '@prisma/client';
-import * as bcrypt from 'bcryptjs';
-import * as crypto from 'crypto';
+import { CompanyStatus, Prisma, UserStatus } from '@prisma/client';
+import { generateTemporaryPassword, hashPassword } from '../auth/password.util';
 
 @Injectable()
 export class CompaniesService {
@@ -22,14 +27,23 @@ export class CompaniesService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly emailService: EmailService,
-    private readonly minioService: MinioService,
+    private readonly config: ConfigService,
+    private readonly emailProducerService: EmailProducerService,
+    private readonly companyRoles: CompanyRolesService,
+    private readonly storage: StorageService,
+    private readonly themes: ThemesService,
   ) {}
 
   /**
    * Create a new company along with default settings, branding, and initial Company Admin user
    */
   async create(dto: CreateCompanyDto) {
+    if (dto.planId) {
+      const plan = await this.prisma.plan.findUnique({ where: { id: dto.planId }, select: { isActive: true } });
+      if (!plan) throw new NotFoundException('Plan not found');
+      if (!plan.isActive) throw new BadRequestException('That plan is archived — choose another');
+    }
+
     // 1. Check slug & email uniqueness
     const existingCompany = await this.prisma.company.findFirst({
       where: {
@@ -54,9 +68,12 @@ export class CompaniesService {
       );
     }
 
+    // Validate the optional theme snapshot before writing anything
+    const themeFields = companyThemeFields(dto);
+
     // 2. Generate initial random password for Company Admin
-    const tempPassword = crypto.randomBytes(8).toString('hex') + 'A1!';
-    const passwordHash = await bcrypt.hash(tempPassword, 12);
+    const tempPassword = generateTemporaryPassword();
+    const passwordHash = await hashPassword(tempPassword);
 
     // 3. Perform atomic transaction
     const result = await this.prisma.$transaction(async (tx) => {
@@ -67,8 +84,13 @@ export class CompaniesService {
           slug: dto.slug.toLowerCase(),
           email: dto.email.toLowerCase(),
           status: CompanyStatus.ACTIVE,
+          // Default plan until the Super Admin picks one (Enterprise = every feature)
+          plan: { connect: dto.planId ? { id: dto.planId } : { key: DEFAULT_PLAN_KEY } },
         },
       });
+
+      // The company's own, editable copies of the role templates
+      const ownerRoleId = await this.companyRoles.roleId(tx, company.id, 'company_admin');
 
       // Create company settings
       const settings = await tx.companySettings.create({
@@ -86,35 +108,19 @@ export class CompaniesService {
         data: {
           companyId: company.id,
           displayName: dto.name,
-          primaryColor: '#1E40AF',
-          secondaryColor: '#EFF6FF',
+          primaryColor: dto.primaryColor || '#1E40AF',
+          secondaryColor: dto.secondaryColor || '#EFF6FF',
+          // A chosen theme wins over the individual colors
+          ...themeFields,
         },
       });
-
-      // Find system "Company Admin" role or create company-level Company Admin role
-      let companyAdminRole = await tx.role.findFirst({
-        where: {
-          name: 'Company Admin',
-          isSystemRole: true,
-        },
-      });
-
-      if (!companyAdminRole) {
-        companyAdminRole = await tx.role.create({
-          data: {
-            name: 'Company Admin',
-            description: 'Full administrative access within the company',
-            companyId: company.id,
-            isSystemRole: false,
-          },
-        });
-      }
 
       // Create initial Company Admin user
       const adminUser = await tx.user.create({
         data: {
           email: dto.adminEmail.toLowerCase(),
           passwordHash,
+          mustChangePassword: true,
           firstName: dto.adminFirstName,
           lastName: dto.adminLastName,
           companyId: company.id,
@@ -123,24 +129,22 @@ export class CompaniesService {
         },
       });
 
-      // Assign Company Admin role
+      // Company Admin = the company's owner role (all enabled features)
       await tx.userRole.create({
-        data: {
-          userId: adminUser.id,
-          roleId: companyAdminRole.id,
-        },
+        data: { userId: adminUser.id, roleId: ownerRoleId, companyId: company.id },
       });
 
       return { company, settings, branding, adminUser };
     });
 
-    // 4. Send welcome email to Company Admin (asynchronous, non-blocking)
+    // 4. Send welcome email to Company Admin (asynchronous, non-blocking queue)
     try {
-      await this.emailService.sendWelcomeCompanyAdmin({
+      await this.emailProducerService.queueWelcomeCompanyAdmin({
         to: dto.adminEmail,
         firstName: dto.adminFirstName,
         email: dto.adminEmail,
-        loginUrl: `${process.env.APP_URL || 'http://localhost:3000'}/login?company=${dto.slug}`,
+        companyName: dto.name,
+        loginUrl: `${this.config.get<string>('webUrl')}/login?company=${dto.slug}`,
         temporaryPassword: tempPassword,
       });
     } catch (err) {
@@ -250,6 +254,51 @@ export class CompaniesService {
   /**
    * Semi-public branding lookup by company slug (for login UI branding)
    */
+  // ─── Company theme ───────────────────────────────────────
+
+  /**
+   * The company's theme, or — when it has none yet — the platform's default
+   * theme for companies (custom default tokens are included so any client can
+   * render it; presets resolve client-side by key).
+   */
+  async getTheme(companyId: string) {
+    const company = await this.findOne(companyId);
+    return this.describeTheme(company.branding);
+  }
+
+  /** Company Admins replace their own theme (validated strictly). */
+  async updateTheme(companyId: string, input: CompanyThemeInput) {
+    const company = await this.findOne(companyId);
+    const fields = companyThemeFields(input);
+    if (!fields.themeTokens) {
+      throw new BadRequestException('themeTokens is required');
+    }
+
+    const branding = await this.prisma.companyBranding.upsert({
+      where: { companyId },
+      update: { ...fields, themeSource: fields.themeSource ?? Prisma.DbNull },
+      create: { companyId, displayName: company.name, ...fields },
+    });
+    return this.describeTheme(branding);
+  }
+
+  private async describeTheme(branding: { themeTokens: Prisma.JsonValue; themeSource: Prisma.JsonValue } | null) {
+    const themeTokens = (branding?.themeTokens ?? null) as ThemeTokens | null;
+    let platformDefault: { ref: ThemeRef; tokens: ThemeTokens | null } | null = null;
+
+    if (!themeTokens) {
+      const settings = await this.themes.getSettingsResolved();
+      const ref = settings.defaultCompanyTheme;
+      platformDefault = { ref, tokens: ref.kind === 'custom' ? (settings.customTokens[ref.id] ?? null) : null };
+    }
+
+    return {
+      themeTokens,
+      themeSource: (branding?.themeSource ?? null) as ThemeRef | null,
+      platformDefault,
+    };
+  }
+
   async findBrandingBySlug(slug: string) {
     const company = await this.prisma.company.findUnique({
       where: { slug: slug.toLowerCase() },
@@ -265,6 +314,8 @@ export class CompaniesService {
             faviconUrl: true,
             primaryColor: true,
             secondaryColor: true,
+            themeTokens: true,
+            themeSource: true,
           },
         },
       },
@@ -274,10 +325,13 @@ export class CompaniesService {
       throw new NotFoundException(`Active company with slug '${slug}' not found`);
     }
 
+    const { themeTokens: _t, themeSource: _s, ...branding } = company.branding ?? { themeTokens: null, themeSource: null };
     return {
       companyName: company.name,
       slug: company.slug,
-      branding: company.branding,
+      branding: company.branding ? branding : null,
+      // Lets the public login page render the company's theme
+      theme: await this.describeTheme(company.branding),
     };
   }
 
@@ -386,72 +440,70 @@ export class CompaniesService {
   }
 
   /**
-   * Upload logo file to MinIO and update CompanyBranding.logoUrl
+   * Upload logo file and update CompanyBranding.logoUrl
    */
   async uploadLogo(companyId: string, file: Express.Multer.File) {
-    if (!file) {
-      throw new BadRequestException('No logo file provided');
-    }
-
-    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/svg+xml', 'image/webp'];
-    if (!allowedMimeTypes.includes(file.mimetype)) {
-      throw new BadRequestException(
-        `Invalid file type '${file.mimetype}'. Allowed types: JPEG, PNG, SVG, WebP.`,
-      );
-    }
-
-    if (file.size > 2 * 1024 * 1024) {
-      throw new BadRequestException('File size exceeds maximum 2MB limit');
-    }
-
-    const ext = file.originalname.split('.').pop() || 'png';
-    const objectKey = `${companyId}/branding/logo.${ext}`;
-
-    const logoUrl = await this.minioService.uploadFile(
-      this.minioService.brandingBucket,
-      objectKey,
-      file.buffer,
-      file.mimetype,
-    );
+    const logoUrl = await this.storeBrandingAsset(companyId, file, {
+      name: 'logo',
+      maxBytes: 2 * 1024 * 1024,
+      extensions: {
+        'image/jpeg': 'jpg',
+        'image/png': 'png',
+        'image/svg+xml': 'svg',
+        'image/webp': 'webp',
+      },
+    });
 
     return this.updateBranding(companyId, { logoUrl });
   }
 
   /**
-   * Upload favicon file to MinIO and update CompanyBranding.faviconUrl
+   * Upload favicon file and update CompanyBranding.faviconUrl
    */
   async uploadFavicon(companyId: string, file: Express.Multer.File) {
+    const faviconUrl = await this.storeBrandingAsset(companyId, file, {
+      name: 'favicon',
+      maxBytes: 500 * 1024,
+      extensions: {
+        'image/x-icon': 'ico',
+        'image/vnd.microsoft.icon': 'ico',
+        'image/png': 'png',
+        'image/svg+xml': 'svg',
+        'image/jpeg': 'jpg',
+      },
+    });
+
+    return this.updateBranding(companyId, { faviconUrl });
+  }
+
+  /**
+   * Validates a branding upload and stores it at `<companyId>/branding/<name>.<ext>`.
+   * The extension is derived from the validated MIME type, never from the client filename.
+   */
+  private async storeBrandingAsset(
+    companyId: string,
+    file: Express.Multer.File | undefined,
+    opts: { name: string; maxBytes: number; extensions: Record<string, string> },
+  ): Promise<string> {
     if (!file) {
-      throw new BadRequestException('No favicon file provided');
+      throw new BadRequestException(`No ${opts.name} file provided`);
     }
 
-    const allowedMimeTypes = [
-      'image/x-icon',
-      'image/vnd.microsoft.icon',
-      'image/png',
-      'image/svg+xml',
-      'image/jpeg',
-    ];
-    if (!allowedMimeTypes.includes(file.mimetype)) {
+    const ext = opts.extensions[file.mimetype];
+    if (!ext) {
+      const allowed = [...new Set(Object.values(opts.extensions))].join(', ').toUpperCase();
+      throw new BadRequestException(`Invalid file type '${file.mimetype}'. Allowed types: ${allowed}.`);
+    }
+
+    if (file.size > opts.maxBytes) {
       throw new BadRequestException(
-        `Invalid file type '${file.mimetype}'. Allowed types: ICO, PNG, SVG, JPEG.`,
+        `File size exceeds maximum ${Math.round(opts.maxBytes / 1024)}KB limit`,
       );
     }
 
-    if (file.size > 500 * 1024) {
-      throw new BadRequestException('File size exceeds maximum 500KB limit');
-    }
+    // 404 before touching storage if the company does not exist
+    await this.findOne(companyId);
 
-    const ext = file.originalname.split('.').pop() || 'ico';
-    const objectKey = `${companyId}/branding/favicon.${ext}`;
-
-    const faviconUrl = await this.minioService.uploadFile(
-      this.minioService.brandingBucket,
-      objectKey,
-      file.buffer,
-      file.mimetype,
-    );
-
-    return this.updateBranding(companyId, { faviconUrl });
+    return this.storage.upload(`${companyId}/branding/${opts.name}.${ext}`, file.buffer, file.mimetype);
   }
 }

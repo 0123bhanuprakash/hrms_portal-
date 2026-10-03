@@ -1,13 +1,20 @@
 import { Module, MiddlewareConsumer, NestModule, RequestMethod } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { PasswordChangeGuard } from './common';
 
 import { configuration } from './config/configuration';
 import { validate } from './config/env.validation';
 import { HealthModule } from './health/health.module';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { StorageModule } from './modules/storage/storage.module';
+import { QueueModule } from './modules/queue/queue.module';
+import { AccessModule } from './modules/access/access.module';
+import { UserManagementModule } from './modules/user-management/user-management.module';
+import { PlansModule } from './modules/plans/plans.module';
+import { OrgModule } from './modules/org/org.module';
+import { DelegationsModule } from './modules/delegations/delegations.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { EmailModule } from './modules/email/email.module';
 import { CompaniesModule } from './modules/companies/companies.module';
@@ -17,65 +24,94 @@ import { DepartmentsModule } from './modules/departments/departments.module';
 import { DesignationsModule } from './modules/designations/designations.module';
 import { LocationsModule } from './modules/locations/locations.module';
 import { EmployeesModule } from './modules/employees/employees.module';
+import { EmployeeProfileModule } from './modules/employee-profile/employee-profile.module';
+import { AttendanceModule } from './modules/attendance/attendance.module';
+import { LeaveModule } from './modules/leave/leave.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { ProjectsModule } from './modules/projects/projects.module';
+import { EngagementModule } from './modules/engagement/engagement.module';
+import { ExpensesModule } from './modules/expenses/expenses.module';
+import { ThemesModule } from './modules/themes/themes.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { PermissionGuard } from './common/guards/permission.guard';
 import { SuperAdminGuard } from './common/guards/super-admin.guard';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { TenantContextMiddleware } from './common/middleware/tenant-context.middleware';
 
+import { AppController } from './app.controller';
+
 // ============================================================
 // AppModule — Root NestJS module
 // ============================================================
 
 @Module({
+  controllers: [AppController],
   imports: [
     // ── Global configuration (env vars, typed config) ─────
     ConfigModule.forRoot({
-      envFilePath: ['../../.env', '.env'],
+      // Single source of truth: apps/api/.env (same file the Prisma CLI reads)
+      envFilePath: ['.env'],
       isGlobal: true,
       cache: true,
       load: [configuration],
       validate,
     }),
 
-    // ── Rate limiting (in-memory; Redis-backed added later) ─
+    // ── Rate limiting (per IP, in-memory; Redis-backed later) ─
+    // Generous default for the SPA; credential endpoints tighten it
+    // with @Throttle (see auth.controller.ts).
     ThrottlerModule.forRoot({
-      throttlers: [
-        {
-          name: 'default',
-          ttl: 60_000,
-          limit: 100,
-        },
-        {
-          name: 'auth',
-          ttl: 60_000,
-          limit: 10,
-        },
-      ],
+      throttlers: [{ name: 'default', ttl: 60_000, limit: 300 }],
     }),
 
     // ── Infrastructure ────────────────────────────────────
     HealthModule,
     PrismaModule,
-    StorageModule,        // Chunk 10 Object Storage (MinIO / S3)
+    StorageModule.register(), // Local disk or MinIO/S3 (STORAGE_DRIVER)
+    QueueModule.register(),   // BullMQ — only when REDIS_URL is set
 
     // ── Feature modules ───────────────────────────────────
+    AccessModule,         // Feature toggles · RBAC · org hierarchy
     AuthModule,           // Chunk 6
-    EmailModule,          // Chunk 7
+    EmailModule.register(), // Chunk 7
     CompaniesModule,      // Chunk 9
     UsersModule,          // Chunk 9
     AdminModule,          // Chunk 9 Super Admin
     DepartmentsModule,   // Chunk 10
     DesignationsModule,  // Chunk 10
     LocationsModule,     // Chunk 10
-    EmployeesModule,      // Chunk 10
+    EmployeesModule,     // Chunk 10
+    EmployeeProfileModule, // Profile, private data, documents, directory
+    AttendanceModule,      // Phase 3: attendance
+    LeaveModule,           // Phase 4: leave
+    NotificationsModule,   // In-app inbox + notification emails
+    ProjectsModule,        // Projects, allocation, approval routing
+    EngagementModule,      // Announcements, kudos
+    ExpensesModule,        // Expense claims
+    ThemesModule,         // Theme Studio
+    UserManagementModule, // Company Admin: users, roles & permissions
+    PlansModule,          // Super Admin: plans & per-company features
+    OrgModule,            // Org levels, org chart, reporting lines
+    DelegationsModule,    // Approval delegation
   ],
 
   providers: [
+    // ── Rate limiting first, so floods are rejected before any DB work ─
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+
     // ── Global JWT guard — all routes protected by default ──
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+
+    // ── Temporary password → only password-change routes until changed ─
+    {
+      provide: APP_GUARD,
+      useClass: PasswordChangeGuard,
     },
 
     // ── Global Permission guard — enforces @RequirePermission() ─

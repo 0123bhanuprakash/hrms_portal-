@@ -23,4 +23,18 @@ export class UpdatePreferencesDto {
   @IsOptional()
   @IsBoolean()
   emailNotifications?: boolean;
+
+  /** Spacing of the interface; "theme" follows the company/platform theme */
+  @IsOptional()
+  @IsIn(['theme', 'compact', 'normal', 'spacious'])
+  density?: string;
+
+  /** Base text size; "theme" follows the theme's text scale */
+  @IsOptional()
+  @IsIn(['theme', 'sm', 'md', 'lg', 'xl'])
+  textSize?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  reduceMotion?: boolean;
 }

@@ -12,6 +12,13 @@ import { UpdateDesignationDto } from './dto/update-designation.dto';
 export class DesignationsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /** The org level must belong to the same company (404 otherwise). */
+  private async assertLevel(companyId: string, orgLevelId: string | null | undefined) {
+    if (!orgLevelId) return;
+    const found = await this.prisma.orgLevel.count({ where: { id: orgLevelId, companyId } });
+    if (!found) throw new NotFoundException('Org level not found in this company');
+  }
+
   async create(companyId: string, dto: CreateDesignationDto) {
     const trimmedName = dto.name.trim();
 
@@ -30,14 +37,18 @@ export class DesignationsService {
       );
     }
 
+    await this.assertLevel(companyId, dto.orgLevelId);
+
     return this.prisma.designation.create({
       data: {
         companyId,
         name: trimmedName,
         level: dto.level || 1,
+        orgLevelId: dto.orgLevelId ?? null,
       },
       include: {
         _count: { select: { employees: true } },
+        orgLevel: { select: { id: true, name: true, rank: true, color: true } },
       },
     });
   }
@@ -51,9 +62,10 @@ export class DesignationsService {
 
     return this.prisma.designation.findMany({
       where,
-      orderBy: { level: 'asc' },
+      orderBy: [{ orgLevel: { rank: 'desc' } }, { level: 'asc' }, { name: 'asc' }],
       include: {
         _count: { select: { employees: true } },
+        orgLevel: { select: { id: true, name: true, rank: true, color: true } },
       },
     });
   }
@@ -63,6 +75,7 @@ export class DesignationsService {
       where: { id, companyId },
       include: {
         _count: { select: { employees: true } },
+        orgLevel: { select: { id: true, name: true, rank: true, color: true } },
       },
     });
 
@@ -92,11 +105,18 @@ export class DesignationsService {
       }
     }
 
+    await this.assertLevel(companyId, dto.orgLevelId);
+
     return this.prisma.designation.update({
       where: { id },
       data: {
         ...(dto.name && { name: dto.name.trim() }),
         ...(dto.level !== undefined && { level: dto.level }),
+        ...(dto.orgLevelId !== undefined && { orgLevelId: dto.orgLevelId }),
+      },
+      include: {
+        _count: { select: { employees: true } },
+        orgLevel: { select: { id: true, name: true, rank: true, color: true } },
       },
     });
   }

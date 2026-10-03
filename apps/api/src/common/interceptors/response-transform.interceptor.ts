@@ -1,4 +1,5 @@
 import {
+  StreamableFile,
   Injectable,
   NestInterceptor,
   ExecutionContext,
@@ -36,10 +37,19 @@ export class ResponseTransformInterceptor<T>
     context: ExecutionContext,
     next: CallHandler<T>,
   ): Observable<WrappedResponse<T>> {
-    const req = context.switchToHttp().getRequest<RequestWithId>();
+    const req = context.switchToHttp().getRequest();
+    const url = req?.url || req?.originalUrl || '';
+
+    // Bypass transformation for raw HTML / Bull Board UI stream routes
+    if (url.includes('/admin/queues')) {
+      return next.handle() as any;
+    }
 
     return next.handle().pipe(
       map((data) => {
+        // File downloads stream as-is
+        if (data instanceof StreamableFile) return data as unknown as WrappedResponse<T>;
+
         // Already wrapped (e.g., paginated responses from service layer)
         if (this.isAlreadyWrapped(data)) {
           return data as unknown as WrappedResponse<T>;

@@ -25,7 +25,17 @@ export const AUDIT_KEY = 'audit_action';
 export interface AuditMetadata {
   action: string;
   resourceType?: string;
+  /**
+   * Route param holding the affected company's id. Needed when the actor
+   * has no company of their own (Super Admin), so the entry still shows
+   * up in that company's audit trail. e.g. { companyIdParam: 'id' }
+   */
+  companyIdParam?: string;
 }
 
-export const Audit = (action: string, resourceType?: string) =>
-  SetMetadata(AUDIT_KEY, { action, resourceType } satisfies AuditMetadata);
+export interface AuditOptions {
+  companyIdParam?: string;
+}
+
+export const Audit = (action: string, resourceType?: string, options: AuditOptions = {}) =>
+  SetMetadata(AUDIT_KEY, { action, resourceType, ...options } satisfies AuditMetadata);

@@ -203,7 +203,8 @@ export interface WelcomeEmployeeOptions extends BaseTemplateOptions {
   firstName: string;
   email: string;
   temporaryPassword: string;
-  employeeId: string;
+  /** Omitted for users invited from User Management (no employee record yet) */
+  employeeId?: string;
   loginUrl: string;
 }
 
@@ -216,10 +217,10 @@ export function welcomeEmployeeEmail(opts: WelcomeEmployeeOptions): string {
     <p>Hi ${firstName},</p>
     <p>You've been added to the <strong>${companyName}</strong> HR Management System. Here are your login details:</p>
     <div class="info-box">
-      <div class="credential">
+      ${employeeId ? `<div class="credential">
         <span class="label">Employee ID</span>
         <span class="value">${employeeId}</span>
-      </div>
+      </div>` : ''}
       <div class="credential">
         <span class="label">Email</span>
         <span class="value">${email}</span>
@@ -237,5 +238,39 @@ export function welcomeEmployeeEmail(opts: WelcomeEmployeeOptions): string {
     </div>
   `;
 
+  return baseLayout(content, opts);
+}
+
+// ─────────────────────────────────────────────────────────────
+// Notification (leave, attendance, delegation, reminders)
+// ─────────────────────────────────────────────────────────────
+
+/** Names and reasons come from users — never put them into HTML unescaped. */
+export function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
+}
+
+export interface NotificationEmailOptions extends BaseTemplateOptions {
+  firstName: string;
+  title: string;
+  body?: string | null;
+  actionUrl?: string | null;
+  actionLabel?: string;
+  preferencesUrl?: string;
+}
+
+export function notificationEmail(opts: NotificationEmailOptions): string {
+  const { firstName, title, body, actionUrl, actionLabel = 'Open in HRMS', preferencesUrl } = opts;
+  const content = `
+    <h2>${escapeHtml(title)}</h2>
+    <p>Hi ${escapeHtml(firstName)},</p>
+    ${body ? `<p>${escapeHtml(body).replace(/\n/g, '<br />')}</p>` : ''}
+    ${actionUrl ? `<div style="text-align: center; margin: 28px 0;"><a href="${escapeHtml(actionUrl)}" class="btn">${escapeHtml(actionLabel)}</a></div>` : ''}
+    <div class="divider"></div>
+    <p style="font-size:12px; color:#71717a;">
+      You get these emails for things that need your attention in ${escapeHtml(opts.companyName ?? 'HRMS Portal')}.
+      ${preferencesUrl ? `<a href="${escapeHtml(preferencesUrl)}">Turn off notification emails</a>.` : ''}
+    </p>
+  `;
   return baseLayout(content, opts);
 }

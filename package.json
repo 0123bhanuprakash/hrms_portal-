@@ -14,11 +14,10 @@
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\" --ignore-path .gitignore",
     "format:check": "prettier --check \"**/*.{ts,tsx,md,json}\" --ignore-path .gitignore",
     "clean": "turbo run clean",
-    "infra:up": "pwsh -File scripts/infra-up.ps1",
-    "infra:down": "pwsh -File scripts/infra-down.ps1",
-    "infra:status": "pwsh -File scripts/infra-status.ps1",
-    "infra:logs": "pwsh -File scripts/infra-logs.ps1",
-    "infra:reset": "pwsh -File scripts/infra-reset.ps1"
+    "db:setup": "pnpm --filter @hrms/api db:setup",
+    "db:migrate": "pnpm --filter @hrms/api db:migrate",
+    "db:seed": "pnpm --filter @hrms/api db:seed",
+    "db:studio": "pnpm --filter @hrms/api db:studio"
   },
   "devDependencies": {
     "turbo": "^2.5.4",

@@ -2,10 +2,12 @@ import {
   Controller,
   Post,
   Get,
+  Delete,
   Body,
-  Query,
+  Param,
   HttpCode,
   HttpStatus,
+  ParseUUIDPipe,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -16,12 +18,16 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import type { Request } from 'express';
-import { AuthService } from './auth.service';
+import { AuthService, type SessionDevice, type SessionInfo } from './auth.service';
+import { Throttle } from '@nestjs/throttler';
+import { AllowPendingPasswordChange, Audit } from '../../common';
 import {
+  ChangePasswordDto,
   LoginDto,
   RefreshTokenDto,
   ForgotPasswordDto,
   ResetPasswordDto,
+  VerifyEmailDto,
   LoginResponse,
   RefreshResponse,
   AuthUserResponse,
@@ -30,6 +36,9 @@ import { Public } from './decorators/public.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import type { JwtPayload } from '@hrms/types';
+
+/** Strict limit for credential / token endpoints (per IP): slows brute force and email bombing. */
+const AUTH_LIMIT = { default: { limit: 10, ttl: 60_000 } };
 
 // ============================================================
 // AuthController — /auth/* endpoints
@@ -48,6 +57,7 @@ export class AuthController {
   // ── POST /auth/login ────────────────────────────────────────
 
   @Public()
+  @Throttle(AUTH_LIMIT)
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -63,13 +73,16 @@ export class AuthController {
     @Body() dto: LoginDto,
     @Req() req: Request,
   ): Promise<LoginResponse> {
-    const ip = (req.headers['x-forwarded-for'] as string) ?? req.ip;
-    return this.authService.login(dto.email, dto.password, ip);
+    return this.authService.login(dto.email, dto.password, deviceOf(req), {
+      portal: dto.portal,
+      companySlug: dto.companySlug,
+    });
   }
 
   // ── POST /auth/refresh ──────────────────────────────────────
 
   @Public()
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -81,13 +94,14 @@ export class AuthController {
   })
   @ApiResponse({ status: 200, type: RefreshResponse })
   @ApiResponse({ status: 401, description: 'Invalid or expired refresh token' })
-  async refresh(@Body() dto: RefreshTokenDto): Promise<RefreshResponse> {
-    return this.authService.refresh(dto.refresh_token);
+  async refresh(@Body() dto: RefreshTokenDto, @Req() req: Request): Promise<RefreshResponse> {
+    return this.authService.refresh(dto.refresh_token, deviceOf(req));
   }
 
   // ── POST /auth/logout ───────────────────────────────────────
 
   @UseGuards(JwtAuthGuard)
+  @AllowPendingPasswordChange()
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
@@ -104,6 +118,7 @@ export class AuthController {
   // ── GET /auth/me ────────────────────────────────────────────
 
   @UseGuards(JwtAuthGuard)
+  @AllowPendingPasswordChange()
   @Get('me')
   @ApiBearerAuth()
   @ApiOperation({
@@ -119,6 +134,7 @@ export class AuthController {
   // ── POST /auth/forgot-password ──────────────────────────────
 
   @Public()
+  @Throttle(AUTH_LIMIT)
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -138,6 +154,7 @@ export class AuthController {
   // ── POST /auth/reset-password ───────────────────────────────
 
   @Public()
+  @Throttle(AUTH_LIMIT)
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -155,10 +172,11 @@ export class AuthController {
     return { message: 'Password updated successfully. Please log in with your new password.' };
   }
 
-  // ── GET /auth/verify-email ──────────────────────────────────
+  // ── POST /auth/verify-email ──────────────────────────────────
 
   @Public()
-  @Get('verify-email')
+  @Throttle(AUTH_LIMIT)
+  @Post('verify-email')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Verify email address using token from email link',
@@ -167,9 +185,74 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Email verified successfully' })
   @ApiResponse({ status: 400, description: 'Invalid or expired token' })
   async verifyEmail(
-    @Query('token') token: string,
+    @Body() dto: VerifyEmailDto,
   ): Promise<{ message: string }> {
-    await this.authService.verifyEmail(token);
+    await this.authService.verifyEmail(dto.token);
     return { message: 'Email verified successfully. You can now log in.' };
   }
+
+  // ── Own account: password + sessions (any authenticated user) ──
+
+  @AllowPendingPasswordChange()
+  @Throttle(AUTH_LIMIT)
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @Audit('auth:password:change', 'user')
+  @ApiOperation({
+    summary: 'Change own password',
+    description: 'Requires the current password. All other sessions are signed out; this one stays.',
+  })
+  async changePassword(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: ChangePasswordDto,
+  ): Promise<{ id: string; message: string; revokedSessions: number }> {
+    const { revokedSessions } = await this.authService.changePassword(
+      user.sub,
+      dto.current_password,
+      dto.new_password,
+      user.sid,
+    );
+    return { id: user.sub, message: 'Password changed successfully', revokedSessions };
+  }
+
+  @Get('sessions')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List own active sessions (devices); `current` marks this one' })
+  async listSessions(@CurrentUser() user: JwtPayload): Promise<SessionInfo[]> {
+    return this.authService.listSessions(user.sub, user.sid);
+  }
+
+  @Post('sessions/revoke-others')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @Audit('auth:sessions:revoke_others', 'user')
+  @ApiOperation({ summary: 'Sign out all other devices' })
+  async revokeOtherSessions(
+    @CurrentUser() user: JwtPayload,
+  ): Promise<{ id: string; revokedSessions: number }> {
+    const revokedSessions = await this.authService.revokeOtherSessions(user.sub, user.sid);
+    return { id: user.sub, revokedSessions };
+  }
+
+  @Delete('sessions/:sessionId')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @Audit('auth:session:revoke', 'user')
+  @ApiOperation({ summary: 'Sign out one session (device)' })
+  async revokeSession(
+    @CurrentUser() user: JwtPayload,
+    @Param('sessionId', new ParseUUIDPipe()) sessionId: string,
+  ): Promise<{ id: string; message: string }> {
+    await this.authService.revokeSession(user.sub, sessionId);
+    return { id: user.sub, message: 'Session signed out' };
+  }
+}
+
+/** User agent + client IP for the session list. */
+function deviceOf(req: Request): SessionDevice {
+  return {
+    userAgent: req.headers['user-agent'],
+    ipAddress: req.ip,
+  };
 }

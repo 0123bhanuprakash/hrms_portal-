@@ -97,10 +97,19 @@ export const CreateCompanySchema = z.object({
     .min(2, 'Company name must be at least 2 characters')
     .max(100, 'Company name cannot exceed 100 characters')
     .trim(),
+  slug: z
+    .string()
+    .min(2, 'Slug must be at least 2 characters')
+    .regex(/^[a-z0-9-]+$/, 'Slug must contain only lowercase letters, numbers, and hyphens')
+    .toLowerCase()
+    .trim(),
   email: z.string().email('Invalid email address').toLowerCase().trim(),
-  employeeIdPrefix: employeeIdPrefix,
-  primaryColor: hexColor.default('#1E40AF'),
-  secondaryColor: hexColor.default('#EFF6FF').optional(),
+  employeeIdPrefix: employeeIdPrefix.optional().default('CL'),
+  adminFirstName: z.string().min(1, 'Admin first name is required').max(50).trim(),
+  adminLastName: z.string().min(1, 'Admin last name is required').max(50).trim(),
+  adminEmail: z.string().email('Invalid admin email address').toLowerCase().trim(),
+  primaryColor: hexColor.optional().default('#1E40AF'),
+  secondaryColor: hexColor.optional().default('#EFF6FF'),
 });
 
 export const UpdateCompanySchema = z.object({
@@ -188,7 +197,7 @@ export const EmployeePersonalInfoSchema = z.object({
 
 export const EmployeeStatutorySchema = z.object({
   pan: panNumber,
-  aadhar: aadharNumber,
+  aadhaar: aadharNumber,
   uan: z.string().regex(/^[0-9]{12}$/, 'UAN must be 12 digits').optional().nullable(),
   esicNumber: z.string().max(20).optional().nullable(),
   pfAccountNumber: z.string().max(30).optional().nullable(),
