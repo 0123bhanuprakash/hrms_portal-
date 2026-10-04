@@ -52,6 +52,7 @@ import {
 import type { MenuStyle, ThemeTokens } from '@hrms/types';
 import { useAuthStore } from '@/store/useAuthStore';
 import { DisplayPreferences } from '@/components/preferences/display-preferences';
+import { MaintenanceGate } from '@/components/layout/maintenance-gate';
 import { useAccess } from '@/lib/access/use-access';
 import { usePendingCorrections } from '@/lib/company/attendance';
 import { usePendingLeave } from '@/lib/company/leave';
@@ -365,123 +366,125 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
   };
 
   return (
-    <div className="flex min-h-screen bg-canvas text-foreground">
-      <CompanyTheme companyId={companyId} userId={user!.id} />
-      <DisplayPreferences />
-      {mobileOpen && (
-        <div className="fixed inset-0 z-30 bg-black/40 backdrop-blur-[2px] lg:hidden animate-in fade-in-0" onClick={() => setMobileOpen(false)} />
-      )}
-
-      {/* ── Sidebar ─────────────────────────────────────── */}
-      <aside
-        className={cn(
-          'fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-transform duration-200 ease-out',
-          'lg:sticky lg:top-0 lg:h-screen lg:translate-x-0',
-          rail && 'lg:w-[84px]',
-          menuStyle === 'floating' && 'lg:top-3 lg:m-3 lg:mr-0 lg:h-[calc(100vh-1.5rem)] lg:rounded-2xl lg:border lg:shadow-card',
-          mobileOpen ? 'translate-x-0' : '-translate-x-full',
+    <MaintenanceGate>
+      <div className="flex min-h-screen bg-canvas text-foreground">
+        <CompanyTheme companyId={companyId} userId={user!.id} />
+        <DisplayPreferences />
+        {mobileOpen && (
+          <div className="fixed inset-0 z-30 bg-black/40 backdrop-blur-[2px] lg:hidden animate-in fade-in-0" onClick={() => setMobileOpen(false)} />
         )}
-      >
-        <div className={cn('flex h-14 items-center gap-2.5 px-3', rail && 'lg:justify-center lg:px-0')}>
-          <Link href="/app" className="flex min-w-0 items-center gap-2.5" title={companyName}>
-            {branding.data?.logoUrl ? (
-              <img src={branding.data.logoUrl} alt={`${companyName} logo`} className="h-8 w-8 shrink-0 rounded-lg bg-white object-contain p-0.5" />
-            ) : (
-              <span className="m-shine flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/75 text-xs font-bold text-primary-foreground shadow-card">
-                {initials(companyName)}
+
+        {/* ── Sidebar ─────────────────────────────────────── */}
+        <aside
+          className={cn(
+            'fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-transform duration-200 ease-out',
+            'lg:sticky lg:top-0 lg:h-screen lg:translate-x-0',
+            rail && 'lg:w-[84px]',
+            menuStyle === 'floating' && 'lg:top-3 lg:m-3 lg:mr-0 lg:h-[calc(100vh-1.5rem)] lg:rounded-2xl lg:border lg:shadow-card',
+            mobileOpen ? 'translate-x-0' : '-translate-x-full',
+          )}
+        >
+          <div className={cn('flex h-14 items-center gap-2.5 px-3', rail && 'lg:justify-center lg:px-0')}>
+            <Link href="/app" className="flex min-w-0 items-center gap-2.5" title={companyName}>
+              {branding.data?.logoUrl ? (
+                <img src={branding.data.logoUrl} alt={`${companyName} logo`} className="h-8 w-8 shrink-0 rounded-lg bg-white object-contain p-0.5" />
+              ) : (
+                <span className="m-shine flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/75 text-xs font-bold text-primary-foreground shadow-card">
+                  {initials(companyName)}
+                </span>
+              )}
+              <span className={cn('min-w-0 leading-tight', rail && 'lg:hidden')}>
+                <span className="block truncate text-sm font-semibold text-sidebar-active-foreground">{companyName}</span>
+                <span className="block truncate text-2xs text-sidebar-muted">HR workspace</span>
               </span>
-            )}
-            <span className={cn('min-w-0 leading-tight', rail && 'lg:hidden')}>
-              <span className="block truncate text-sm font-semibold text-sidebar-active-foreground">{companyName}</span>
-              <span className="block truncate text-2xs text-sidebar-muted">HR workspace</span>
-            </span>
-          </Link>
-          <button className="ml-auto rounded-md p-1.5 hover:bg-sidebar-active lg:hidden" onClick={() => setMobileOpen(false)} aria-label="Close menu">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        {menuStyle === 'rail' ? (
-          <>
-            <ClassicNav groups={groups} pathname={pathname} className="lg:hidden" />
-            <RailNav groups={groups} pathname={pathname} className="hidden lg:flex" />
-          </>
-        ) : menuStyle === 'floating' ? (
-          <FloatingNav groups={groups} pathname={pathname} />
-        ) : menuStyle === 'collapsible' ? (
-          <CollapsibleNav groups={groups} pathname={pathname} />
-        ) : (
-          <ClassicNav groups={groups} pathname={pathname} />
-        )}
-
-        <div className="border-t border-sidebar-border p-2">
-          <DropdownMenu
-            align="left"
-            label={user!.email}
-            trigger={() => (
-              <button
-                className={cn('flex w-full items-center gap-2.5 rounded-md p-1.5 text-left transition-colors hover:bg-sidebar-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', rail && 'lg:justify-center')}
-                title={rail ? fullName : undefined}
-              >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary-soft text-xs font-semibold text-primary-soft-foreground">
-                  {initials(fullName)}
-                </span>
-                <span className={cn('min-w-0 flex-1 leading-tight', rail && 'lg:hidden')}>
-                  <span className="block truncate text-[13px] font-medium text-sidebar-active-foreground">{fullName}</span>
-                  <span className="block truncate text-2xs text-sidebar-muted">{user!.email}</span>
-                </span>
-                <ChevronsUpDown className={cn('h-3.5 w-3.5 text-sidebar-muted', rail && 'lg:hidden')} />
-              </button>
-            )}
-            items={[
-              { label: 'Preferences', icon: <SlidersHorizontal />, onSelect: () => router.push('/app/settings/preferences') },
-              'separator',
-              { label: 'Sign out', icon: <LogOut />, danger: true, onSelect: handleLogout },
-            ]}
-          />
-        </div>
-      </aside>
-
-      {/* ── Main column ─────────────────────────────────── */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-4 border-b border-border/70 bg-background/75 px-4 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60 sm:px-6">
-          <div className="flex min-w-0 items-center gap-2">
-            <button className="-ml-1.5 rounded-md p-1.5 hover:bg-subtle lg:hidden" onClick={() => setMobileOpen(true)} aria-label="Open menu">
-              <Menu className="h-5 w-5" />
+            </Link>
+            <button className="ml-auto rounded-md p-1.5 hover:bg-sidebar-active lg:hidden" onClick={() => setMobileOpen(false)} aria-label="Close menu">
+              <X className="h-4 w-4" />
             </button>
-            <Breadcrumbs pathname={pathname} />
           </div>
-          <div className="flex items-center gap-1">
-            <NotificationBell />
-            <ThemeToggle />
-          </div>
-        </header>
 
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-          <div className={cn('mx-auto animate-fade-up', pathname === '/app' ? 'max-w-[1500px]' : 'max-w-6xl')} key={pathname}>
-            {/* Covering someone's approvals right now */}
-            {access?.delegations?.length ? (
-              <Link
-                href="/app/delegations"
-                className="mb-4 flex items-center gap-2 rounded-lg border border-success/30 bg-success-soft/40 px-3 py-2 text-sm text-foreground hover:bg-success-soft/60"
-              >
-                <ArrowRightLeft className="h-4 w-4 shrink-0 text-success" />
-                <span>
-                  You’re covering approvals for{' '}
-                  {access.delegations.map((d, i) => (
-                    <React.Fragment key={d.id}>
-                      {i > 0 && ', '}
-                      <b>{d.fromName}</b> until {new Date(d.until).toLocaleDateString()}
-                    </React.Fragment>
-                  ))}
-                </span>
-              </Link>
-            ) : null}
-            {children}
+          {menuStyle === 'rail' ? (
+            <>
+              <ClassicNav groups={groups} pathname={pathname} className="lg:hidden" />
+              <RailNav groups={groups} pathname={pathname} className="hidden lg:flex" />
+            </>
+          ) : menuStyle === 'floating' ? (
+            <FloatingNav groups={groups} pathname={pathname} />
+          ) : menuStyle === 'collapsible' ? (
+            <CollapsibleNav groups={groups} pathname={pathname} />
+          ) : (
+            <ClassicNav groups={groups} pathname={pathname} />
+          )}
+
+          <div className="border-t border-sidebar-border p-2">
+            <DropdownMenu
+              align="left"
+              label={user!.email}
+              trigger={() => (
+                <button
+                  className={cn('flex w-full items-center gap-2.5 rounded-md p-1.5 text-left transition-colors hover:bg-sidebar-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', rail && 'lg:justify-center')}
+                  title={rail ? fullName : undefined}
+                >
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary-soft text-xs font-semibold text-primary-soft-foreground">
+                    {initials(fullName)}
+                  </span>
+                  <span className={cn('min-w-0 flex-1 leading-tight', rail && 'lg:hidden')}>
+                    <span className="block truncate text-[13px] font-medium text-sidebar-active-foreground">{fullName}</span>
+                    <span className="block truncate text-2xs text-sidebar-muted">{user!.email}</span>
+                  </span>
+                  <ChevronsUpDown className={cn('h-3.5 w-3.5 text-sidebar-muted', rail && 'lg:hidden')} />
+                </button>
+              )}
+              items={[
+                { label: 'Preferences', icon: <SlidersHorizontal />, onSelect: () => router.push('/app/settings/preferences') },
+                'separator',
+                { label: 'Sign out', icon: <LogOut />, danger: true, onSelect: handleLogout },
+              ]}
+            />
           </div>
-        </main>
+        </aside>
+
+        {/* ── Main column ─────────────────────────────────── */}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-4 border-b border-border/70 bg-background/75 px-4 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60 sm:px-6">
+            <div className="flex min-w-0 items-center gap-2">
+              <button className="-ml-1.5 rounded-md p-1.5 hover:bg-subtle lg:hidden" onClick={() => setMobileOpen(true)} aria-label="Open menu">
+                <Menu className="h-5 w-5" />
+              </button>
+              <Breadcrumbs pathname={pathname} />
+            </div>
+            <div className="flex items-center gap-1">
+              <NotificationBell />
+              <ThemeToggle />
+            </div>
+          </header>
+
+          <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+            <div className={cn('mx-auto animate-fade-up', pathname === '/app' ? 'max-w-[1500px]' : 'max-w-6xl')} key={pathname}>
+              {/* Covering someone's approvals right now */}
+              {access?.delegations?.length ? (
+                <Link
+                  href="/app/delegations"
+                  className="mb-4 flex items-center gap-2 rounded-lg border border-success/30 bg-success-soft/40 px-3 py-2 text-sm text-foreground hover:bg-success-soft/60"
+                >
+                  <ArrowRightLeft className="h-4 w-4 shrink-0 text-success" />
+                  <span>
+                    You’re covering approvals for{' '}
+                    {access.delegations.map((d, i) => (
+                      <React.Fragment key={d.id}>
+                        {i > 0 && ', '}
+                        <b>{d.fromName}</b> until {new Date(d.until).toLocaleDateString()}
+                      </React.Fragment>
+                    ))}
+                  </span>
+                </Link>
+              ) : null}
+              {children}
+            </div>
+          </main>
+        </div>
       </div>
-    </div>
+    </MaintenanceGate>
   );
 }
 

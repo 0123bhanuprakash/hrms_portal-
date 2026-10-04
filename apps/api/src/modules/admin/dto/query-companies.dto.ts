@@ -2,7 +2,7 @@ import { IsEnum, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from '
 import { Type } from 'class-transformer';
 import { CompanyStatus } from '@prisma/client';
 
-export const COMPANY_SORT_FIELDS = ['createdAt', 'name', 'status'] as const;
+export const COMPANY_SORT_FIELDS = ['createdAt', 'name', 'status', 'health', 'employees', 'lastActivity'] as const;
 export type CompanySortField = (typeof COMPANY_SORT_FIELDS)[number];
 
 export class QueryCompaniesDto {

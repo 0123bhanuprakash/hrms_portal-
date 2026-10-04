@@ -1,5 +1,7 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../prisma/prisma.service';
+import { openText, sealText } from './email-job-crypto';
 import * as nodemailer from 'nodemailer';
 import { Resend } from 'resend';
 import { promises as fs } from 'fs';
@@ -41,6 +43,8 @@ export interface SendEmailOptions {
   subject: string;
   html: string;
   from?: string;
+  /** Internal: re-sending a logged failure (the log row is updated instead of adding one) */
+  retryOf?: string;
 }
 
 type EmailProvider = 'console' | 'smtp' | 'resend';
@@ -74,7 +78,10 @@ export class EmailService implements OnModuleInit {
   private smtpLabel = '';
   private lastCheck?: { state: 'ok' | 'error'; detail: string; checkedAt: Date };
 
-  constructor(private readonly config: ConfigService) {
+  constructor(
+    private readonly config: ConfigService,
+    @Optional() private readonly prisma?: PrismaService,
+  ) {
     const configured = this.config.get<string>('email.provider') ?? 'console';
     this.provider = configured === 'mailpit' || configured === 'gmail' ? 'smtp' : (configured as EmailProvider);
     this.outputDir = path.resolve(this.config.get<string>('email.outputDir') ?? '.mail');
@@ -165,9 +172,11 @@ export class EmailService implements OnModuleInit {
         ? (this.config.get<string>('email.resend.from') ?? 'noreply@hrms.app')
         : (this.config.get<string>('email.smtp.from') ?? 'HRMS Portal <noreply@hrms.local>'));
 
+    const started = performance.now();
     try {
       if (this.provider === 'console') {
         await this.writeToConsole(from, opts);
+        this.record(opts, 'SENT', started);
         return;
       }
 
@@ -188,13 +197,57 @@ export class EmailService implements OnModuleInit {
         this.lastCheck = { state: 'ok', detail: `Last email delivered via ${this.smtpLabel}`, checkedAt: new Date() };
       }
       this.logger.log(`📧 Email sent → ${opts.to} | Subject: "${opts.subject}"`);
+      this.record(opts, 'SENT', started);
     } catch (error) {
+      this.record(opts, 'FAILED', started, describeSmtpError((error as Error).message));
       if (this.nodemailerTransport) {
         this.lastCheck = { state: 'error', detail: describeSmtpError((error as Error).message), checkedAt: new Date() };
       }
       this.logger.error(`❌ Failed to send email to ${opts.to}: ${(error as Error).message}`);
       throw error;
     }
+  }
+
+  /**
+   * Email log (Super Admin → System): subject, recipient and result. A failed
+   * email keeps its HTML encrypted so it can be retried; never blocks sending.
+   */
+  private record(opts: SendEmailOptions, status: 'SENT' | 'FAILED', started: number, error?: string) {
+    if (!this.prisma) return;
+    const prisma = this.prisma;
+    const durationMs = Math.round(performance.now() - started);
+    const secret = this.config.get<string>('jwt.secret') ?? '';
+    void (async () => {
+      if (opts.retryOf) {
+        await prisma.emailLog.update({
+          where: { id: opts.retryOf },
+          data: status === 'SENT' ? { status, error: null, payload: null, durationMs, retriedAt: new Date() } : { error: error ?? 'Failed again', retriedAt: new Date() },
+        });
+        return;
+      }
+      const user = await prisma.user.findUnique({ where: { email: opts.to.toLowerCase() }, select: { companyId: true } });
+      await prisma.emailLog.create({
+        data: {
+          companyId: user?.companyId ?? null,
+          to: opts.to,
+          subject: opts.subject.slice(0, 300),
+          status,
+          error: error?.slice(0, 500) ?? null,
+          provider: this.provider,
+          durationMs,
+          payload: status === 'FAILED' && secret ? sealText(opts.html, secret) : null,
+        },
+      });
+    })().catch((e: unknown) => this.logger.warn(`Email log not written: ${(e as Error).message}`));
+  }
+
+  /** Re-sends a logged failure with its saved content. */
+  async retry(logId: string): Promise<void> {
+    if (!this.prisma) throw new Error('Email log unavailable');
+    const row = await this.prisma.emailLog.findUnique({ where: { id: logId } });
+    if (!row || row.status !== 'FAILED' || !row.payload) throw new Error('This email can no longer be retried');
+    const html = openText(row.payload, this.config.get<string>('jwt.secret') ?? '');
+    await this.send({ to: row.to, subject: row.subject, html, retryOf: row.id });
   }
 
   /** Dev-only: print a summary (incl. links) and save the HTML to disk. */

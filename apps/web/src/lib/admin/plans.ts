@@ -135,3 +135,75 @@ export const useSetCompanyLimits = (companyId: string) =>
 
 /** "Unlimited" / "50" */
 export const formatLimit = (value: number | null | undefined) => (value === null || value === undefined ? 'Unlimited' : value.toLocaleString());
+
+// ─── Insights: usage, switches & trials, upgrade candidates, impact, history ───
+
+export interface CompanyBrief {
+  id: string;
+  name: string;
+  logoUrl: string | null;
+  color: string | null;
+}
+
+export interface PlansOverview {
+  plans: Array<{ id: string; employees: number; nearLimit: number; companies: CompanyBrief[]; featureUse: Record<string, number | null> }>;
+  totals: { companies: number; withSwitches: number; trialsEndingSoon: number };
+  switches: Array<{ company: CompanyBrief; featureKey: string; featureLabel: string; mode: 'ON' | 'OFF'; reason: string | null; expiresAt: string | null }>;
+  candidates: Array<{
+    company: CompanyBrief;
+    plan: { id: string; name: string };
+    employees: number;
+    limit: number | null;
+    extras: Array<{ key: string; label: string }>;
+    suggested: { id: string; name: string } | null;
+  }>;
+}
+
+export interface PlanImpact {
+  added: Array<{ key: string; label: string }>;
+  removed: Array<{ key: string; label: string }>;
+  companiesOnPlan: number;
+  companies: Array<{
+    company: CompanyBrief;
+    loses: Array<{ key: string; label: string; uses: number | null }>;
+    keeps: Array<{ key: string; label: string }>;
+    employees: number;
+    overLimit: boolean;
+  }>;
+}
+
+export interface PlanHistoryItem {
+  id: string;
+  action: string;
+  createdAt: string;
+  by: string;
+  added: string[];
+  removed: string[];
+  limits: Record<string, [number | null, number | null]>;
+  archived: boolean | null;
+  affectedCompanies: number | null;
+}
+
+export function usePlansOverview() {
+  return useQuery({ queryKey: [...planKeys.all, 'overview'], queryFn: async () => unwrap<PlansOverview>(await api.get('/admin/plans/overview')), staleTime: 30_000 });
+}
+
+export function usePlanHistory(id: string | null) {
+  return useQuery({ queryKey: [...planKeys.plan(id ?? ''), 'history'], queryFn: async () => unwrap<PlanHistoryItem[]>(await api.get(`/admin/plans/${id}/history`)), enabled: Boolean(id) });
+}
+
+/** "Who's affected" for an unsaved plan; refetches as the draft changes. */
+export function usePlanImpact(id: string | null, draft: { features: string[]; limits?: Record<string, number | null> } | null) {
+  const features = draft ? [...draft.features].sort() : [];
+  return useQuery({
+    queryKey: [...planKeys.plan(id ?? ''), 'impact', features.join(','), JSON.stringify(draft?.limits ?? null)],
+    queryFn: async () => unwrap<PlanImpact>(await api.post(`/admin/plans/${id}/impact`, { features, limits: draft?.limits })),
+    enabled: Boolean(id && draft),
+    staleTime: 15_000,
+    placeholderData: (prev) => prev,
+  });
+}
+
+/** Fixed colour per plan position, so a plan looks the same everywhere. */
+export const PLAN_COLORS = ['#0F766E', '#1D4ED8', '#B7791F', '#7C3AED', '#BE185D', '#0369A1'];
+export const planColor = (index: number): string => PLAN_COLORS[index % PLAN_COLORS.length] ?? '#B7791F';

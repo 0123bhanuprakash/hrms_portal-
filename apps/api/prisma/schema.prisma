@@ -311,6 +311,8 @@ model User {
   @@index([companyId])
   @@index([email])
   @@map("users")
+  companyNotes  CompanyNote[]
+  activityDays  UserActivityDay[]
 }
 
 /// Per-user UI and notification preferences
@@ -438,6 +440,8 @@ model Company {
   auditLogs       AuditLog[]
 
   @@map("companies")
+  tags         CompanyTag[]
+  notes        CompanyNote[]
 }
 
 /// Operational configuration per company
@@ -1935,4 +1939,112 @@ model TimesheetEntry {
   @@index([companyId, projectId, date])
   @@index([companyId, employeeId, date])
   @@map("timesheet_entries")
+}
+
+/// Super Admin's own labels on a company ("Pilot", "Billing hold") — never shown to the company
+model CompanyTag {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  label     String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, label])
+  @@index([label])
+  @@map("company_tags")
+}
+
+/// Super Admin's internal notes about a company — never shown to the company
+model CompanyNote {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  authorId  String?  @map("author_id") @db.Uuid
+  body      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  author  User?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, createdAt])
+  @@map("company_notes")
+}
+
+/// One row per person per day they used the portal (sign-in or session refresh) — powers active-user trends
+model UserActivityDay {
+  userId    String   @map("user_id") @db.Uuid
+  companyId String?  @map("company_id") @db.Uuid
+  day       DateTime @db.Date
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, day])
+  @@index([companyId, day])
+  @@map("user_activity_days")
+}
+
+// ─────────────────────────────────────────────────────────────
+// SYSTEM — health history, events, email log, sign-in attempts
+// (Super Admin → System). Cleared automatically after a while.
+// ─────────────────────────────────────────────────────────────
+
+/// One health check every few minutes (kept 90 days)
+model SystemHealthSample {
+  id       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  at       DateTime @default(now())
+  ok       Boolean
+  /// { database: 'ok' | 'error' | 'disabled', redis, elasticsearch, email }
+  services Json
+  /// { database: 4, email: 612 } in ms
+  latency  Json?
+
+  @@index([at])
+  @@map("system_health_samples")
+}
+
+/// Things worth showing on the timeline: API started, updated, maintenance on/off
+model SystemEvent {
+  id     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  at     DateTime @default(now())
+  /// started | updated | maintenance_on | maintenance_off | caches_cleared
+  kind   String
+  title  String
+  detail String?
+
+  @@index([at])
+  @@map("system_events")
+}
+
+/// Every email the platform tried to send — subject, recipient and result only.
+/// A failed email keeps its content encrypted for 7 days so it can be retried.
+model EmailLog {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId  String?   @map("company_id") @db.Uuid
+  to         String
+  subject    String
+  /// SENT | FAILED
+  status     String
+  error      String?
+  provider   String
+  durationMs Int?      @map("duration_ms")
+  /// Encrypted HTML, failed emails only (removed once retried or after 7 days)
+  payload    String?
+  retriedAt  DateTime? @map("retried_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([status, createdAt])
+  @@map("email_logs")
+}
+
+/// Sign-in attempts for the safety numbers (kept 30 days)
+model SignInAttempt {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  at        DateTime @default(now())
+  success   Boolean
+  userId    String?  @map("user_id") @db.Uuid
+  companyId String?  @map("company_id") @db.Uuid
+
+  @@index([at])
+  @@map("sign_in_attempts")
 }

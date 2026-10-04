@@ -3,6 +3,9 @@ import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { UserThrottlerGuard } from './common/guards/user-throttler.guard';
+import { SystemModule } from './modules/system/system.module';
+import { MaintenanceGuard } from './modules/system/maintenance.guard';
+import { RequestMetricsMiddleware } from './modules/system/request-metrics.middleware';
 import { PasswordChangeGuard } from './common';
 
 import { configuration } from './config/configuration';
@@ -100,6 +103,7 @@ import { AppController } from './app.controller';
     ThemesModule,         // Theme Studio
     UserManagementModule, // Company Admin: users, roles & permissions
     PlansModule,          // Super Admin: plans & per-company features
+    SystemModule,         // Super Admin: system health, email log, maintenance
     OrgModule,            // Org levels, org chart, reporting lines
     DelegationsModule,    // Approval delegation
   ],
@@ -121,6 +125,12 @@ import { AppController } from './app.controller';
     {
       provide: APP_GUARD,
       useClass: PasswordChangeGuard,
+    },
+
+    // ── Maintenance mode — pauses company users (Super Admins carry on) ─
+    {
+      provide: APP_GUARD,
+      useClass: MaintenanceGuard,
     },
 
     // ── Global Permission guard — enforces @RequirePermission() ─
@@ -145,7 +155,7 @@ import { AppController } from './app.controller';
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
     consumer
-      .apply(TenantContextMiddleware)
+      .apply(RequestMetricsMiddleware, TenantContextMiddleware)
       .forRoutes({ path: '*', method: RequestMethod.ALL });
   }
 }

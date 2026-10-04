@@ -14,6 +14,7 @@ import { describeUserAgent, formatDateTime, formatRelative, initials } from '@/l
 import { useAuthStore } from '@/store/useAuthStore';
 import { cn } from '@/lib/cn';
 import { DisplaySettingsCard } from '@/components/preferences/display-preferences';
+import { MenuStyleCard, MomentsCard } from '@/components/preferences/personal-look';
 
 export default function ProfilePage() {
   const user = useAuthStore((s) => s.user)!;
@@ -43,6 +44,8 @@ export default function ProfilePage() {
         <SessionsCard />
       </div>
 
+      <MenuStyleCard platform />
+      <MomentsCard platform />
       <DisplaySettingsCard />
     </div>
   );

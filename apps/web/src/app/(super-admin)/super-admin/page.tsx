@@ -17,6 +17,7 @@ import { getApiErrorMessage } from '@/lib/errors';
 import { formatRelative } from '@/lib/format';
 import { useAuthStore } from '@/store/useAuthStore';
 import { HomeHero } from '@/components/dashboard/home-sections';
+import { useMoment } from '@/components/motion/moments';
 
 /** Chart colors read the status tokens so they follow light/dark mode and themes. */
 const STATUS_SERIES = [
@@ -39,6 +40,7 @@ export default function SuperAdminDashboard() {
   const system = useSystemStatus({ refetchInterval: 60_000 });
 
   const s = stats.data;
+  const moment = useMoment({ firstName: user?.firstName });
 
   return (
     <div className="space-y-5">
@@ -51,6 +53,7 @@ export default function SuperAdminDashboard() {
       {/* Hero (sky by time of day) + system status */}
       <div className="m-stagger grid gap-5 lg:grid-cols-12">
         <HomeHero
+          moment={moment}
           className="lg:col-span-8"
           title={`${greeting()}, ${user?.firstName ?? ''}`}
           subtitle={s ? `${s.companies.active} of ${s.companies.total} companies active · ${s.companies.newLast30Days} onboarded in the last 30 days.` : 'Loading platform numbers…'}

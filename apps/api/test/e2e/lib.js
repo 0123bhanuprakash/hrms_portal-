@@ -109,6 +109,8 @@ async function dropCompany(slug) {
   const id = c.id;
   const steps = [
     () => prisma.notification.deleteMany({ where: { userId: { in: ids } } }),
+    () => prisma.emailLog.deleteMany({ where: { companyId: id } }),
+    () => prisma.signInAttempt.deleteMany({ where: { companyId: id } }),
     () => prisma.expenseClaim.deleteMany({ where: { companyId: id } }),
     () => prisma.expenseCategory.deleteMany({ where: { companyId: id } }),
     () => prisma.kudos.deleteMany({ where: { companyId: id } }),
