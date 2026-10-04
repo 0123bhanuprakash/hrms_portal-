@@ -1,0 +1,482 @@
+<title>HRMS Product Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: sticky module index on the left, one section per module; each section = 4 blocks (have / missing / enterprise / widgets) */
+:root{
+  --bg:#F5F6F8; --surface:#FFFFFF; --ink:#141821; --muted:#5B6472; --line:#E3E6EC;
+  --accent:#2F5BEA; --accent-soft:#EAF0FF;
+  --have:#157A4B; --have-soft:#E3F4EA; --gap:#B42318; --gap-soft:#FDE8E6; --ent:#8A5200; --ent-soft:#FDF1DC; --wid:#5B3FD6; --wid-soft:#EFEBFF;
+  --display:"Bricolage Grotesque",Figtree,system-ui,sans-serif; --body:Figtree,system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1218; --surface:#171B23; --ink:#E9ECF2; --muted:#9AA3B2; --line:#2A303C;
+  --accent:#7D9BFF; --accent-soft:#1D2742;
+  --have:#5FD39B; --have-soft:#123024; --gap:#FF8A7A; --gap-soft:#3A1A17; --ent:#F2B65A; --ent-soft:#33260F; --wid:#B4A3FF; --wid-soft:#251E44; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1218; --surface:#171B23; --ink:#E9ECF2; --muted:#9AA3B2; --line:#2A303C;
+  --accent:#7D9BFF; --accent-soft:#1D2742;
+  --have:#5FD39B; --have-soft:#123024; --gap:#FF8A7A; --gap-soft:#3A1A17; --ent:#F2B65A; --ent-soft:#33260F; --wid:#B4A3FF; --wid-soft:#251E44; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 var(--body)}
+.wrap{max-width:1240px;margin:0 auto;padding-inline:clamp(16px,3vw,32px);padding-block:40px 80px;display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start}
+.toc{flex:1 1 220px;max-width:250px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px);display:flex;flex-direction:column;gap:2px;font-size:14px}
+.toc b{font:600 12px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:12px 10px 6px}
+.toc a{color:var(--ink);text-decoration:none;padding:6px 10px;border-radius:8px}
+.toc a:hover,.toc a:focus-visible{background:var(--accent-soft);color:var(--accent);outline:none}
+.doc{flex:999 1 600px;min-width:0;display:flex;flex-direction:column;gap:44px}
+h1{font:800 clamp(34px,5vw,52px)/1.05 var(--display);letter-spacing:-.02em;margin:0;text-wrap:balance}
+h2{font:800 28px/1.2 var(--display);margin:0;text-wrap:balance}
+h3{font:700 15px/1.3 var(--body);margin:0;display:flex;align-items:center;gap:8px}
+p{margin:0;max-width:68ch}
+.lede{font-size:18px;color:var(--muted)}
+.meta{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:14px;color:var(--muted)}
+.meta a{color:var(--accent)}
+.legend{display:flex;flex-wrap:wrap;gap:8px}
+.tag{display:inline-flex;align-items:center;gap:6px;font:500 12px var(--mono);padding:3px 9px;border-radius:99px;white-space:nowrap}
+.t-have{background:var(--have-soft);color:var(--have)}.t-gap{background:var(--gap-soft);color:var(--gap)}.t-ent{background:var(--ent-soft);color:var(--ent)}.t-wid{background:var(--wid-soft);color:var(--wid)}
+.t-p{background:var(--accent-soft);color:var(--accent)}
+section{display:flex;flex-direction:column;gap:18px;scroll-margin-top:20px}
+.shead{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px 16px}
+.shead .who{font-size:14px;color:var(--muted)}
+.quad{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:14px}
+.blk{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.blk ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:15px}
+.blk li::marker{color:var(--muted)}
+.blk .p{font:500 11px var(--mono);color:var(--accent);margin-left:4px;white-space:nowrap}
+.note{font-size:14px;color:var(--muted)}
+.callout{background:var(--accent-soft);border-radius:14px;padding:18px 20px;display:flex;flex-direction:column;gap:8px}
+.callout strong{color:var(--accent)}
+table{width:100%;border-collapse:collapse;font-size:15px;min-width:640px}
+th{font:600 12px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding:10px 12px;border-bottom:1px solid var(--line)}
+td{padding:12px;border-bottom:1px solid var(--line);vertical-align:top}
+.tbox{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.phase{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:14px}
+.phase .blk h3{font-family:var(--display);font-size:20px}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto}}
+html{scroll-behavior:smooth}
+</style>
+
+<div class="wrap">
+  <nav class="toc" aria-label="Modules">
+    <b>Plan</b>
+    <a href="#summary">Summary</a>
+    <a href="#dashboards">Role dashboards</a>
+    <a href="#ux">Experience-wide</a>
+    <b>Modules</b>
+    <a href="#people">People &amp; core HR</a>
+    <a href="#attendance">Attendance</a>
+    <a href="#leave">Leave</a>
+    <a href="#projects">Projects &amp; timesheets</a>
+    <a href="#expenses">Expenses</a>
+    <a href="#assets">Assets</a>
+    <a href="#helpdesk">Help desk</a>
+    <a href="#engage">Engagement</a>
+    <a href="#reports">Reports &amp; analytics</a>
+    <a href="#notify">Notifications</a>
+    <a href="#admin">Access, security &amp; settings</a>
+    <a href="#superadmin">Super Admin</a>
+    <a href="#parked">Payroll, hiring, performance</a>
+    <b>Delivery</b>
+    <a href="#phases">Suggested order</a>
+  </nav>
+
+  <main class="doc">
+    <header style="display:flex;flex-direction:column;gap:16px">
+      <h1>HRMS product plan: from records to a working day</h1>
+      <p class="lede">What each module does today, what is missing, what an enterprise customer will expect, and which dashboards, widgets and quick actions would make the product feel alive. Functionality first; visual polish follows once we agree on this.</p>
+      <div class="meta"><span>aakash-portal · state on 4 Oct 2026</span><span>Designs: <a href="https://claude.ai/artifact/95bXqxb9Go7gRcVnvPXpPv">HRMS dashboard concepts</a> (4 role dashboards)</span></div>
+      <div class="legend" aria-label="Legend">
+        <span class="tag t-have">Have today</span><span class="tag t-gap">Missing</span><span class="tag t-ent">Enterprise expects</span><span class="tag t-wid">Dashboard &amp; quick actions</span><span class="tag t-p">A · B · C = suggested phase</span>
+      </div>
+    </header>
+
+    <section id="summary" aria-labelledby="sum-h">
+      <h2 id="sum-h">Summary</h2>
+      <p>The data model is already rich: attendance, leave with project-based approval, timesheets, expenses, assets, help desk, reports, roles and delegation. What makes the reference dashboards feel enterprise is not more modules, it is how the product <em>surfaces</em> that data: every person lands on a page built for their role, sees what needs them first, and can act without hunting through menus.</p>
+      <div class="callout">
+        <strong>The three biggest wins, in order</strong>
+        <p>1. <b>Role-based home dashboards</b> (employee, manager, HR, super admin) with a “Needs your action” list and real widgets. 2. <b>One approvals inbox</b> for leave, attendance, timesheets, expenses and assets, with impact hints such as leave overlaps. 3. <b>Lifecycle workflows</b> — onboarding and exit checklists that pull HR, IT and Finance tasks together. All three reuse data we already store.</p>
+      </div>
+    </section>
+
+    <section id="dashboards" aria-labelledby="dash-h">
+      <div class="shead"><h2 id="dash-h">Role dashboards</h2><span class="who">see the design canvas</span></div>
+      <div class="tbox">
+        <table>
+          <thead><tr><th>Dashboard</th><th>For</th><th>What it answers first</th><th>Key widgets</th></tr></thead>
+          <tbody>
+            <tr><td><b>My day</b></td><td>Every employee</td><td>Am I checked in? What do I need to do?</td><td>Today ring with check-in/out and late/grace status · this week’s hours · leave balances · Needs your action (sent-back timesheet, ticket replies, assets to confirm, announcements to acknowledge) · quick actions · team today · celebrations &amp; holidays</td></tr>
+            <tr><td><b>My team</b></td><td>Managers, team leads, PMs</td><td>Who is here, and what is waiting for me?</td><td>Team status tiles (in / WFH / leave / late) · approvals inbox with impact hints · 14-day attendance trend · 2-week availability grid · allocation vs logged hours · missing timesheets with one-click remind · upcoming probation reviews and anniversaries</td></tr>
+            <tr><td><b>Company pulse</b></td><td>HR, Company Admin</td><td>Is the company healthy and is anything stuck?</td><td>Headcount, present today, attrition, pending approvals, HR tickets past target · headcount trend · today’s attendance donut · Needs HR attention (missing bank details, probation due, exits with unreturned assets, expiring documents) · leave mix · approvals by module · onboarding progress · engagement</td></tr>
+            <tr><td><b>Platform</b></td><td>Super Admin</td><td>Which tenants need help, and is the platform healthy?</td><td>Companies, employees on platform, weekly active users, API p95, email failures · company table with seats, activity, module adoption, health · feature adoption · system health (DB, email, jobs, storage, backups) · sensitive activity · account actions</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">Finance (expense payouts, spend by category) and PMO (utilisation, bench, project health) get a dashboard tab of the same family in phase B, using the existing reports endpoints.</p>
+    </section>
+
+    <section id="ux" aria-labelledby="ux-h">
+      <div class="shead"><h2 id="ux-h">Experience-wide improvements</h2><span class="who">all roles</span></div>
+      <div class="quad">
+        <div class="blk"><h3><span class="tag t-gap">Missing</span> Find and act fast</h3><ul>
+          <li>Global search and command palette (Ctrl K): people, pages, requests, tickets, assets <span class="p">A</span></li>
+          <li>One approvals inbox across modules, with bulk approve and “approve all that match attendance” <span class="p">A</span></li>
+          <li>Approve or reject straight from the notification and email <span class="p">B</span></li>
+          <li>Saved views and filters on every list; column chooser; CSV/Excel export <span class="p">B</span></li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-gap">Missing</span> Guidance</h3><ul>
+          <li>Company setup checklist for new tenants (locations, holidays, leave types, invite people, roles) <span class="p">A</span></li>
+          <li>Empty states that say what goes here and how to add the first item <span class="p">A</span></li>
+          <li>Per-employee activity timeline (joined, role changes, leave, assets, tickets) <span class="p">B</span></li>
+          <li>Inline help and a short “what’s new” panel <span class="p">C</span></li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-ent">Enterprise expects</span> Reach</h3><ul>
+          <li>Installable mobile web app: check-in, apply leave, approve, log hours <span class="p">B</span></li>
+          <li>Hindi and other languages; date, number and currency formats per company <span class="p">C</span></li>
+          <li>Accessibility to WCAG 2.2 AA: keyboard, focus, contrast <span class="p">B</span></li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-wid">Dashboard &amp; quick actions</span> Consistency</h3><ul>
+          <li>One date-range picker, one KPI tile, one chart style, one status-pill set used everywhere <span class="p">A</span></li>
+          <li>Every list page opens with 3–4 summary tiles (e.g. Assets: available / with people / warranty ending) <span class="p">A</span></li>
+          <li>Lazy-loaded dialogs, charts and photos; lighter org chart and Who’s off <span class="p">A</span></li>
+        </ul></div>
+      </div>
+    </section>
+
+    <section id="people" aria-labelledby="people-h">
+      <div class="shead"><h2 id="people-h">People &amp; core HR</h2><span class="who">employees, HR, managers</span></div>
+      <div class="quad">
+        <div class="blk"><h3><span class="tag t-have">Have today</span></h3><ul>
+          <li>Employee records with departments, designations, levels, locations, reporting lines</li>
+          <li>My profile with encrypted PAN, Aadhaar and bank details; documents with private storage</li>
+          <li>Org chart, people directory, Spotlight (birthdays, anniversaries), CSV import</li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-gap">Missing</span></h3><ul>
+          <li>Onboarding checklist: tasks for HR, IT (laptop, email), Finance (bank, PF), manager (buddy, first-week plan), employee (documents) <span class="p">A</span></li>
+          <li>Exit checklist: resignation, notice, asset return, access removal, final settlement hand-off, exit interview <span class="p">A</span></li>
+          <li>Probation and confirmation workflow with manager review <span class="p">A</span></li>
+          <li>Employee lifecycle history: promotions, transfers, title and manager changes, effective-dated <span class="p">B</span></li>
+          <li>Profile change requests that HR approves (bank, address, name) <span class="p">B</span></li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-ent">Enterprise expects</span></h3><ul>
+          <li>Letter templates: offer, appointment, address proof, experience, relieving — generated as PDF with company letterhead <span class="p">B</span></li>
+          <li>Document expiry tracking (visa, passport, certifications) and acknowledgement of policies <span class="p">B</span></li>
+          <li>Custom fields per company; legal entities and cost centres <span class="p">C</span></li>
+          <li>Bulk actions: change manager, department or location for many people <span class="p">B</span></li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-wid">Dashboard &amp; quick actions</span></h3><ul>
+          <li>Profile completeness meter for employees; “missing bank details” count for HR</li>
+          <li>Onboarding board: people joining, tasks done, blockers</li>
+          <li>Quick actions: add employee, start onboarding, generate letter, start exit</li>
+        </ul></div>
+      </div>
+    </section>
+
+    <section id="attendance" aria-labelledby="att-h">
+      <div class="shead"><h2 id="att-h">Attendance</h2><span class="who">employees, managers, HR</span></div>
+      <div class="quad">
+        <div class="blk"><h3><span class="tag t-have">Have today</span></h3><ul>
+          <li>Web check-in and check-out with late minutes, policies, holidays and shifts</li>
+          <li>Corrections with project-based approval; team view; export; missing check-out reminder</li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-gap">Missing</span></h3><ul>
+          <li>Grace rules made visible (“2 of 3 grace uses left”) and late-mark to half-day / loss-of-pay rules <span class="p">A</span></li>
+          <li>Overtime calculation and compensatory off earned from extra hours or weekend work <span class="p">B</span></li>
+          <li>Shift roster with rotation and weekly-off patterns per team <span class="p">B</span></li>
+          <li>Monthly attendance lock before payroll, with a change log after the lock <span class="p">B</span></li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-ent">Enterprise expects</span></h3><ul>
+          <li>Office IP or geo-fence for check-in; selfie check-in on mobile <span class="p">B</span></li>
+          <li>Biometric device import (CSV / API) <span class="p">C</span></li>
+          <li>Anomaly alerts: repeated late arrivals, missing punches, long hours <span class="p">B</span></li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-wid">Dashboard &amp; quick actions</span></h3><ul>
+          <li>Today ring (worked vs shift), this-week bars, on-time rate, average check-in and check-out</li>
+          <li>Manager: 14-day presence trend, late and missing-punch counts</li>
+          <li>Quick actions: check in/out, fix a missed punch, request WFH</li>
+        </ul></div>
+      </div>
+    </section>
+
+    <section id="leave" aria-labelledby="leave-h">
+      <div class="shead"><h2 id="leave-h">Leave</h2><span class="who">employees, approvers, HR</span></div>
+      <div class="quad">
+        <div class="blk"><h3><span class="tag t-have">Have today</span></h3><ul>
+          <li>Leave types with balances, half days, multi-level approval routed by project</li>
+          <li>WFH as a leave type, Who’s off calendar, delegation while away</li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-gap">Missing</span></h3><ul>
+          <li>Accrual engine (monthly / quarterly), proration for joiners, year-end carry-forward and lapse run <span class="p">A</span></li>
+          <li>Overlap warning while applying and while approving (“2 of 4 available on 13 Oct”) <span class="p">A</span></li>
+          <li>Comp-off earned from attendance; restricted / optional holiday quota <span class="p">B</span></li>
+          <li>Sandwich rule and blackout periods (e.g. quarter-end) <span class="p">B</span></li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-ent">Enterprise expects</span></h3><ul>
+          <li>Policies by location, employment type and grade <span class="p">B</span></li>
+          <li>Leave encashment at year end or exit <span class="p">C</span></li>
+          <li>Calendar feed (Google / Outlook) of approved leave <span class="p">B</span></li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-wid">Dashboard &amp; quick actions</span></h3><ul>
+          <li>Balance meters per type; upcoming approved leave</li>
+          <li>HR: leave mix this month, peak days, liability of unused earned leave</li>
+          <li>Quick actions: apply leave, request WFH, cancel</li>
+        </ul></div>
+      </div>
+    </section>
+
+    <section id="projects" aria-labelledby="proj-h">
+      <div class="shead"><h2 id="proj-h">Projects &amp; timesheets</h2><span class="who">employees, leads, PMO</span></div>
+      <div class="quad">
+        <div class="blk"><h3><span class="tag t-have">Have today</span></h3><ul>
+          <li>Projects with team leads, managers and allocation % (never over 100%)</li>
+          <li>Weekly timesheets, approval like leave, compliance view, hours by project, utilisation report</li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-gap">Missing</span></h3><ul>
+          <li>Tasks or activity codes per project so hours are comparable <span class="p">B</span></li>
+          <li>Allocation planner: who is free next month, bench forecast <span class="p">B</span></li>
+          <li>Daily reminder option and timer-based logging <span class="p">B</span></li>
+          <li>Timesheet lock periods <span class="p">B</span></li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-ent">Enterprise expects</span></h3><ul>
+          <li>Client records, billing rates, budget vs actual hours and cost <span class="p">C</span></li>
+          <li>Skills matrix to staff projects <span class="p">C</span></li>
+          <li>Export to invoicing <span class="p">C</span></li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-wid">Dashboard &amp; quick actions</span></h3><ul>
+          <li>PMO: bench count, average allocation, utilisation and billable %, allocations ending soon</li>
+          <li>Lead: missing timesheets with one-click remind; allocation vs logged per person</li>
+          <li>Quick actions: log hours, copy last week, allocate someone</li>
+        </ul></div>
+      </div>
+    </section>
+
+    <section id="expenses" aria-labelledby="exp-h">
+      <div class="shead"><h2 id="exp-h">Expenses</h2><span class="who">employees, managers, Finance, HR</span></div>
+      <div class="quad">
+        <div class="blk"><h3><span class="tag t-have">Have today</span></h3><ul>
+          <li>Claims with receipts, category limits, manager then Finance and HR in parallel, reduced amounts</li>
+          <li>Payments marked paid, spend report and CSV export</li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-gap">Missing</span></h3><ul>
+          <li>Advances and settlement against a claim <span class="p">B</span></li>
+          <li>Mileage and per-diem by city <span class="p">B</span></li>
+          <li>Payout batches with a bank transfer file <span class="p">B</span></li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-ent">Enterprise expects</span></h3><ul>
+          <li>Policy limits by grade and city; budgets per project and department <span class="p">C</span></li>
+          <li>Receipt reading (amount, date, vendor) to pre-fill items <span class="p">C</span></li>
+          <li>Multi-currency claims <span class="p">C</span></li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-wid">Dashboard &amp; quick actions</span></h3><ul>
+          <li>Finance: to be paid, paid this month, spend by category and project</li>
+          <li>Employee: claims in progress and expected payout</li>
+          <li>Quick actions: new claim, add receipt, pay approved claims</li>
+        </ul></div>
+      </div>
+    </section>
+
+    <section id="assets" aria-labelledby="ast-h">
+      <div class="shead"><h2 id="ast-h">Assets</h2><span class="who">employees, IT, HR</span></div>
+      <div class="quad">
+        <div class="blk"><h3><span class="tag t-have">Have today</span></h3><ul>
+          <li>Register with tags, warranty, hand-over and returns, confirmation by the holder</li>
+          <li>Requests approved by IT head and HR, warranty and offboarding alerts</li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-gap">Missing</span></h3><ul>
+          <li>Automatic asset request from onboarding; return task in the exit checklist <span class="p">A</span></li>
+          <li>QR labels and scan-to-open; periodic stock verification <span class="p">B</span></li>
+          <li>Software licences and seat counts <span class="p">B</span></li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-ent">Enterprise expects</span></h3><ul>
+          <li>Depreciation and book value; vendor and purchase orders <span class="p">C</span></li>
+          <li>Maintenance schedule and repair history <span class="p">C</span></li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-wid">Dashboard &amp; quick actions</span></h3><ul>
+          <li>Available / with people / in repair / warranty ending tiles; unconfirmed hand-overs</li>
+          <li>Quick actions: hand over, take back, request an asset</li>
+        </ul></div>
+      </div>
+    </section>
+
+    <section id="helpdesk" aria-labelledby="hd-h">
+      <div class="shead"><h2 id="hd-h">Help desk</h2><span class="who">employees, IT, HR, Finance agents</span></div>
+      <div class="quad">
+        <div class="blk"><h3><span class="tag t-have">Have today</span></h3><ul>
+          <li>IT, HR and Finance queues, topics, attachments, internal notes, response targets, ratings, auto-close</li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-gap">Missing</span></h3><ul>
+          <li>Knowledge base: suggest articles while the employee types <span class="p">B</span></li>
+          <li>Business-hours targets that pause while waiting for the employee <span class="p">B</span></li>
+          <li>Canned replies and auto-assignment (round robin) <span class="p">B</span></li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-ent">Enterprise expects</span></h3><ul>
+          <li>Escalation rules to the queue lead when a target is missed <span class="p">B</span></li>
+          <li>Email-to-ticket; merge duplicates <span class="p">C</span></li>
+          <li>Restricted topics only HR leads can see (grievances) <span class="p">B</span></li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-wid">Dashboard &amp; quick actions</span></h3><ul>
+          <li>Open, overdue, on-time %, rating per queue; tickets by topic trend</li>
+          <li>Quick actions: raise a ticket, take next unassigned</li>
+        </ul></div>
+      </div>
+    </section>
+
+    <section id="engage" aria-labelledby="eng-h">
+      <div class="shead"><h2 id="eng-h">Engagement</h2><span class="who">everyone</span></div>
+      <div class="quad">
+        <div class="blk"><h3><span class="tag t-have">Have today</span></h3><ul>
+          <li>Announcements with audiences, acknowledgement and read reports; kudos with company values</li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-gap">Missing</span></h3><ul>
+          <li>Pulse surveys and eNPS with anonymous results <span class="p">B</span></li>
+          <li>Polls and event RSVP <span class="p">C</span></li>
+          <li>Birthday and anniversary wishes from the home page <span class="p">A</span></li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-ent">Enterprise expects</span></h3><ul>
+          <li>Recognition analytics by value and team; manager nudges for teams with no recognition <span class="p">C</span></li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-wid">Dashboard &amp; quick actions</span></h3><ul>
+          <li>Announcement read %, kudos this month, most-given value</li>
+          <li>Quick actions: give kudos, post announcement</li>
+        </ul></div>
+      </div>
+    </section>
+
+    <section id="reports" aria-labelledby="rep-h">
+      <div class="shead"><h2 id="rep-h">Reports &amp; analytics</h2><span class="who">HR, managers, PMO, Finance</span></div>
+      <div class="quad">
+        <div class="blk"><h3><span class="tag t-have">Have today</span></h3><ul>
+          <li>People, attendance &amp; leave, utilisation; expense, hours and help desk reports; CSV exports</li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-gap">Missing</span></h3><ul>
+          <li>Date-range and department filters on every report; drill-down from a chart to the people behind it <span class="p">A</span></li>
+          <li>Scheduled reports by email (weekly attendance to managers) <span class="p">B</span></li>
+          <li>Excel and PDF export <span class="p">B</span></li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-ent">Enterprise expects</span></h3><ul>
+          <li>Custom report builder with saved reports <span class="p">C</span></li>
+          <li>Absence patterns (Bradford factor), overtime cost, diversity <span class="p">C</span></li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-wid">Dashboard &amp; quick actions</span></h3><ul>
+          <li>Pin any report chart to a dashboard</li>
+        </ul></div>
+      </div>
+    </section>
+
+    <section id="notify" aria-labelledby="ntf-h">
+      <div class="shead"><h2 id="ntf-h">Notifications</h2><span class="who">everyone</span></div>
+      <div class="quad">
+        <div class="blk"><h3><span class="tag t-have">Have today</span></h3><ul>
+          <li>In-app inbox, emails, reminders for check-out, leave, timesheets, help desk targets, warranties</li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-gap">Missing</span></h3><ul>
+          <li>Per-category preferences (in-app, email, off) and a daily digest <span class="p">A</span></li>
+          <li>Approve from the notification <span class="p">B</span></li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-ent">Enterprise expects</span></h3><ul>
+          <li>Slack / Microsoft Teams / WhatsApp delivery; mobile push <span class="p">C</span></li>
+          <li>Quiet hours <span class="p">C</span></li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-wid">Dashboard &amp; quick actions</span></h3><ul>
+          <li>“Needs your action” on every home dashboard, fed by the same events</li>
+        </ul></div>
+      </div>
+    </section>
+
+    <section id="admin" aria-labelledby="adm-h">
+      <div class="shead"><h2 id="adm-h">Access, security &amp; settings</h2><span class="who">Company Admin</span></div>
+      <div class="quad">
+        <div class="blk"><h3><span class="tag t-have">Have today</span></h3><ul>
+          <li>Roles with scoped permissions, Access explorer, delegations, users, sessions, branding, themes, audit</li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-gap">Missing</span></h3><ul>
+          <li>Two-factor sign-in and password policy <span class="p">A</span></li>
+          <li>Configurable approval chains per module (levels, roles, amount thresholds) <span class="p">B</span></li>
+          <li>Data export and deletion requests (India DPDP Act) <span class="p">B</span></li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-ent">Enterprise expects</span></h3><ul>
+          <li>Single sign-on with Google Workspace and Microsoft 365; SCIM user provisioning <span class="p">B</span></li>
+          <li>IP allowlist for admins; field-level permissions <span class="p">C</span></li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-wid">Dashboard &amp; quick actions</span></h3><ul>
+          <li>Security tile: people without 2FA, admins, recent permission changes</li>
+          <li>Quick actions: invite user, assign role, delegate</li>
+        </ul></div>
+      </div>
+    </section>
+
+    <section id="superadmin" aria-labelledby="sa-h">
+      <div class="shead"><h2 id="sa-h">Super Admin</h2><span class="who">platform team</span></div>
+      <div class="quad">
+        <div class="blk"><h3><span class="tag t-have">Have today</span></h3><ul>
+          <li>Companies, plans and features, themes, audit log, system page, basic counts</li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-gap">Missing — what to monitor</span></h3><ul>
+          <li>Per-company usage: weekly active users, modules in use, last activity, invites not accepted <span class="p">A</span></li>
+          <li>Seat usage against plan limits, with alerts near the limit <span class="p">A</span></li>
+          <li>Health score per company (adoption, errors, support load) <span class="p">B</span></li>
+          <li>Email delivery, background jobs, storage, backups, API latency and errors <span class="p">A</span></li>
+          <li>Security events: failed sign-ins, exports, admin-role grants across tenants <span class="p">A</span></li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-ent">Enterprise expects</span></h3><ul>
+          <li>Subscriptions, invoices and plan changes <span class="p">C</span></li>
+          <li>Support access to a company with the admin’s consent, fully audited <span class="p">B</span></li>
+          <li>Maintenance banners and messages to company admins <span class="p">B</span></li>
+          <li>Tenant export and scheduled deletion after suspension <span class="p">B</span></li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-wid">Dashboard &amp; quick actions</span></h3><ul>
+          <li>Companies table with seats bar, activity, adoption and health pill</li>
+          <li>Quick actions: new company, change plan, message admins, resend invites</li>
+        </ul></div>
+      </div>
+    </section>
+
+    <section id="parked" aria-labelledby="pk-h">
+      <div class="shead"><h2 id="pk-h">Payroll, hiring, performance</h2><span class="who">parked or coming soon</span></div>
+      <div class="quad">
+        <div class="blk"><h3><span class="tag t-gap">Payroll</span> (you postponed it)</h3><ul>
+          <li>Salary structures, monthly run with lock, payslips, PF, ESI, PT, TDS, bank file</li>
+          <li>Uses attendance lock, leave without pay and expense payouts from the modules above</li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-gap">Recruitment</span></h3><ul>
+          <li>Job openings, candidate pipeline, interviews and scorecards, offer letters, hand-off to onboarding</li>
+        </ul></div>
+        <div class="blk"><h3><span class="tag t-gap">Performance</span></h3><ul>
+          <li>Goals or OKRs, review cycles (self, manager, peer), 1:1 notes, continuous feedback; probation reviews reuse the same forms</li>
+        </ul></div>
+      </div>
+    </section>
+
+    <section id="phases" aria-labelledby="ph-h">
+      <h2 id="ph-h">Suggested order</h2>
+      <div class="phase">
+        <div class="blk"><h3>Phase A</h3><p class="note">Makes what we have feel enterprise; reuses current data.</p><ul>
+          <li>Four role dashboards with Needs your action</li>
+          <li>One approvals inbox with overlap hints and bulk approve</li>
+          <li>Global search (Ctrl K)</li>
+          <li>Onboarding and exit checklists; probation workflow</li>
+          <li>Leave accruals and year-end run; grace and late rules</li>
+          <li>Notification preferences and digest; two-factor sign-in</li>
+          <li>Super Admin usage, seats, system health and security events</li>
+          <li>Report filters and drill-down; company setup checklist</li>
+        </ul></div>
+        <div class="blk"><h3>Phase B</h3><p class="note">Depth enterprise buyers ask for in demos.</p><ul>
+          <li>Overtime, comp-off, shift roster, attendance lock</li>
+          <li>Letters, lifecycle history, document expiry</li>
+          <li>Help desk knowledge base and business hours</li>
+          <li>Expense advances, mileage, payout batches</li>
+          <li>Asset QR, audits, licences</li>
+          <li>SSO, approval-chain builder, DPDP requests</li>
+          <li>Mobile web app; Finance and PMO dashboards</li>
+        </ul></div>
+        <div class="blk"><h3>Phase C</h3><p class="note">New modules and integrations.</p><ul>
+          <li>Payroll (when you un-park it)</li>
+          <li>Performance, then Recruitment</li>
+          <li>Surveys, custom reports, billing, integrations (Slack, Teams, WhatsApp)</li>
+        </ul></div>
+      </div>
+      <p class="note">Every item ships with tests under the rule in CONTRIBUTING.md. Visual polish of each page happens as it is touched, following the dashboard concepts.</p>
+    </section>
+  </main>
+</div>

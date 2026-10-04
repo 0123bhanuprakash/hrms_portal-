@@ -114,6 +114,15 @@ export class ReportsService {
       .sort((a, b) => byKey(a.terminationDate, b.terminationDate))
       .slice(0, 10);
     const person = (e: Row) => ({ id: e.id, firstName: e.firstName, lastName: e.lastName, avatarUrl: e.avatarUrl });
+    // Who joined or left in the last 12 months (newest first) — for the faces timeline
+    const windowStart = dateFromKey(`${months[0]}-01`).getTime();
+    const movements = [
+      ...rows.filter((e) => e.joiningDate.getTime() >= windowStart && e.joiningDate.getTime() <= nowT).map((e) => ({ ...person(e), kind: 'joined' as const, date: keyFromDate(e.joiningDate) })),
+      ...rows.filter((e) => left(e) && e.terminationDate && e.terminationDate.getTime() >= windowStart && e.terminationDate.getTime() <= nowT).map((e) => ({ ...person(e), kind: 'left' as const, date: keyFromDate(e.terminationDate!) })),
+    ]
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .slice(0, 40);
+    const avgTenureMonths = headcount ? Math.round(current.reduce((n, e) => n + (nowT - e.joiningDate.getTime()), 0) / headcount / (30.44 * 86_400_000)) : 0;
 
     return {
       asOf: today,
@@ -122,6 +131,10 @@ export class ReportsService {
       attritionPct: avg ? Math.round((leavers12 / avg) * 1000) / 10 : 0,
       leavers12,
       joiners12: trend.reduce((n, x) => n + x.joiners, 0),
+      /** Headcount just before the 12-month window (start of the bridge) */
+      startHeadcount: startCount,
+      avgTenureMonths,
+      movements,
       byDepartment: sorted(countBy((e) => e.departmentId).map(([id, count]) => ({ label: name(depts, id), count }))),
       byLocation: sorted(countBy((e) => e.locationId).map(([id, count]) => ({ label: name(locs, id), count }))),
       byType: sorted(countBy((e) => e.employmentType).map(([label, count]) => ({ label, count }))),

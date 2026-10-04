@@ -13,13 +13,16 @@ import { CompanyRolesService } from '../access/company-roles.service';
 import { DEFAULT_PLAN_KEY } from '../access/catalog';
 import { companyThemeFields, type CompanyThemeInput } from '../themes/company-theme';
 import { ThemesService } from '../themes/themes.service';
-import type { ThemeRef, ThemeTokens } from '@hrms/types';
+import type { CompanyPersonalization, MenuStyle, ThemeRef, ThemeTokens } from '@hrms/types';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { UpdateBrandingDto } from './dto/update-branding.dto';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { CompanyStatus, Prisma, UserStatus } from '@prisma/client';
 import { generateTemporaryPassword, hashPassword } from '../auth/password.util';
+import { MENU_STYLES } from '../themes/personalization';
+import { mergeUiState } from '../users/ui-state';
+import type { UpdatePersonalizationDto } from './dto/update-personalization.dto';
 
 @Injectable()
 export class CompaniesService {
@@ -263,7 +266,43 @@ export class CompaniesService {
    */
   async getTheme(companyId: string) {
     const company = await this.findOne(companyId);
-    return this.describeTheme(company.branding);
+    const settings = await this.prisma.companySettings.findUnique({ where: { companyId }, select: { uiDefaults: true } });
+    return { ...(await this.describeTheme(company.branding)), personalization: await this.personalization(companyId), uiDefaults: settings?.uiDefaults ?? {} };
+  }
+
+  /** What employees may change for themselves (defaults when settings don't exist yet). */
+  async personalization(companyId: string): Promise<CompanyPersonalization> {
+    const s = await this.prisma.companySettings.findUnique({
+      where: { companyId },
+      select: { personalThemes: true, allowedThemes: true, personalMenuStyle: true, defaultMenuStyle: true },
+    });
+    return {
+      personalThemes: s?.personalThemes ?? true,
+      allowedThemes: s?.allowedThemes ?? [],
+      personalMenuStyle: s?.personalMenuStyle ?? true,
+      defaultMenuStyle: ((MENU_STYLES as readonly string[]).includes(s?.defaultMenuStyle ?? '') ? s!.defaultMenuStyle : 'classic') as MenuStyle,
+    };
+  }
+
+  /** Company defaults for view settings (chart styles…); replaces the whole set. */
+  async updateUiDefaults(companyId: string, values: Record<string, unknown>) {
+    await this.findOne(companyId);
+    const uiDefaults = mergeUiState({}, values) as Prisma.InputJsonObject;
+    const s = await this.prisma.companySettings.upsert({ where: { companyId }, update: { uiDefaults }, create: { companyId, uiDefaults }, select: { uiDefaults: true } });
+    return s.uiDefaults;
+  }
+
+  /** Company Admins decide what employees may personalise. */
+  async updatePersonalization(companyId: string, dto: UpdatePersonalizationDto) {
+    await this.findOne(companyId);
+    const data = {
+      ...(dto.personalThemes !== undefined && { personalThemes: dto.personalThemes }),
+      ...(dto.allowedThemes !== undefined && { allowedThemes: [...new Set(dto.allowedThemes)] }),
+      ...(dto.personalMenuStyle !== undefined && { personalMenuStyle: dto.personalMenuStyle }),
+      ...(dto.defaultMenuStyle !== undefined && { defaultMenuStyle: dto.defaultMenuStyle }),
+    };
+    await this.prisma.companySettings.upsert({ where: { companyId }, update: data, create: { companyId, ...data } });
+    return this.personalization(companyId);
   }
 
   /** Company Admins replace their own theme (validated strictly). */

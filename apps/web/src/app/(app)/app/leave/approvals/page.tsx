@@ -12,6 +12,7 @@ import { LeaveRequestCard } from '@/components/leave/request-card';
 import { useAccess } from '@/lib/access/use-access';
 import { useIsApprover } from '@/lib/company/projects';
 import { leaveRange, useDecideLeave, useLeaveRequests, type LeaveRequest, type LeaveStatus } from '@/lib/company/leave';
+import { useSwipeAway } from '@/components/motion/use-swipe-away';
 import { getApiErrorMessage } from '@/lib/errors';
 
 type View = 'review' | 'all';
@@ -30,6 +31,7 @@ export default function LeaveApprovalsPage() {
   const [page, setPage] = useState(1);
   const [deciding, setDeciding] = useState<{ request: LeaveRequest; action: 'approve' | 'reject' } | null>(null);
   const list = useLeaveRequests({ view, status: view === 'all' && status ? status : undefined, page }, allowed);
+  const swipe = useSwipeAway(list.data?.data, leaveKey);
 
   if (!accessLoading && !allowed) return <EmptyState icon={<ShieldCheck />} title="No access" description="You don’t approve or review leave." />;
 
@@ -69,14 +71,14 @@ export default function LeaveApprovalsPage() {
       ) : !list.data?.data.length ? (
         <EmptyState icon={<Inbox />} title={view === 'review' ? 'All caught up' : 'No leave requests'} description={view === 'review' ? 'Nothing is waiting for you.' : undefined} />
       ) : (
-        <div className="space-y-3">
-          {list.data.data.map((r) => (
+        <div className="space-y-3 overflow-x-hidden">
+          {swipe.rows.map(({ item: r, leaving }) => (
+            <div key={r.id} className={leaving ? 'm-swipe rounded-xl' : undefined}>
             <LeaveRequestCard
-              key={r.id}
               request={r}
               showEmployee
               actions={
-                r.canDecide && (
+                !leaving && r.canDecide && (
                   <div className="flex flex-col items-start gap-1.5 md:items-end">
                     <div className="flex gap-2">
                       <Button size="sm" variant="secondary" onClick={() => setDeciding({ request: r, action: 'reject' })}><X /> Reject</Button>
@@ -91,17 +93,18 @@ export default function LeaveApprovalsPage() {
                 )
               }
             />
+            </div>
           ))}
           <Pagination page={page} totalPages={list.data.meta.totalPages} total={list.data.meta.total} limit={list.data.meta.limit} onPageChange={setPage} />
         </div>
       )}
 
-      <DecideDialog value={deciding} onClose={() => setDeciding(null)} />
+      <DecideDialog value={deciding} onClose={() => setDeciding(null)} onDone={swipe.markDone} />
     </div>
   );
 }
 
-function DecideDialog({ value, onClose }: { value: { request: LeaveRequest; action: 'approve' | 'reject' } | null; onClose: () => void }) {
+function DecideDialog({ value, onClose, onDone }: { value: { request: LeaveRequest; action: 'approve' | 'reject' } | null; onClose: () => void; onDone: (r: LeaveRequest) => void }) {
   const decide = useDecideLeave();
   const [note, setNote] = useState('');
   if (!value) return null;
@@ -111,6 +114,7 @@ function DecideDialog({ value, onClose }: { value: { request: LeaveRequest; acti
       const res = await decide.mutateAsync({ id: r.id, action, note });
       toast.success(action === 'reject' ? 'Leave rejected' : res.status === 'APPROVED' ? 'Leave approved' : `Approved — now with level ${res.currentLevel}`);
       setNote('');
+      onDone(r);
       onClose();
     } catch (err) {
       toast.error(getApiErrorMessage(err, 'Could not save the decision'));
@@ -138,3 +142,4 @@ function DecideDialog({ value, onClose }: { value: { request: LeaveRequest; acti
     </Modal>
   );
 }
+const leaveKey = (r: { id: string }) => r.id;

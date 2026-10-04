@@ -18,6 +18,7 @@ import {
   TeamQueryDto,
   UpdatePolicyDto,
   UpsertRecordDto,
+  CheckOutDto,
 } from './dto';
 
 const clientIp = (req: Request) => (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ?? req.ip;
@@ -50,8 +51,8 @@ export class AttendanceController {
   @Audit('attendance:check-out', 'attendance_record')
   @Post('check-out')
   @HttpCode(HttpStatus.OK)
-  checkOut(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Req() req: Request) {
-    return this.attendance.checkOut(ctx.companyId!, access, clientIp(req));
+  checkOut(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Req() req: Request, @Body() dto: CheckOutDto) {
+    return this.attendance.checkOut(ctx.companyId!, access, clientIp(req), dto?.note);
   }
 
   // ─── Viewing ───────────────────────────────────────────────

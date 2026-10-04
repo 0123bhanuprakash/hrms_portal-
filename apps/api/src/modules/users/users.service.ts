@@ -1,6 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdatePreferencesDto } from './dto/update-preferences.dto';
+import { Prisma } from '@prisma/client';
+import { mergeUiState } from './ui-state';
 
 @Injectable()
 export class UsersService {
@@ -110,6 +112,11 @@ export class UsersService {
    * Update user preferences
    */
   async updatePreferences(userId: string, dto: UpdatePreferencesDto) {
+    await this.assertPersonalizationAllowed(userId, dto);
+    const personal = {
+      ...(dto.colorTheme !== undefined && { colorTheme: dto.colorTheme }),
+      ...(dto.menuStyle !== undefined && { menuStyle: dto.menuStyle }),
+    };
     return this.prisma.userPreferences.upsert({
       where: { userId },
       update: {
@@ -125,9 +132,11 @@ export class UsersService {
         ...(dto.density && { density: dto.density }),
         ...(dto.textSize && { textSize: dto.textSize }),
         ...(dto.reduceMotion !== undefined && { reduceMotion: dto.reduceMotion }),
+        ...personal,
       },
       create: {
         userId,
+        ...personal,
         theme: dto.theme || 'system',
         timezone: dto.timezone || 'Asia/Kolkata',
         dateFormat: dto.dateFormat || 'DD/MM/YYYY',
@@ -144,5 +153,35 @@ export class UsersService {
         reduceMotion: dto.reduceMotion ?? false,
       },
     });
+  }
+
+  /** A personal theme or menu style only when the company allows it (choosing "company default" is always fine). */
+  private async assertPersonalizationAllowed(userId: string, dto: UpdatePreferencesDto) {
+    if (!dto.colorTheme && !dto.menuStyle) return;
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { companyId: true, company: { select: { settings: { select: { personalThemes: true, allowedThemes: true, personalMenuStyle: true } } } } },
+    });
+    const s = user?.company?.settings;
+    if (!user?.companyId || !s) return; // platform users: no company rules
+    if (dto.colorTheme) {
+      if (!s.personalThemes) throw new BadRequestException('Your company doesn’t let people choose their own theme');
+      if (s.allowedThemes.length && !s.allowedThemes.includes(dto.colorTheme)) throw new BadRequestException('Your company doesn’t offer that theme');
+    }
+    if (dto.menuStyle && !s.personalMenuStyle) throw new BadRequestException('Your company doesn’t let people choose their own menu style');
+  }
+
+  /** Merge view-setting changes into the person's saved settings. */
+  async updateUiState(userId: string, changes: Record<string, unknown>) {
+    const prefs = await this.getPreferences(userId);
+    const uiState = mergeUiState(prefs.uiState, changes) as Prisma.InputJsonObject;
+    const saved = await this.prisma.userPreferences.update({ where: { userId }, data: { uiState }, select: { uiState: true } });
+    return saved.uiState;
+  }
+
+  async resetUiState(userId: string) {
+    await this.getPreferences(userId);
+    await this.prisma.userPreferences.update({ where: { userId }, data: { uiState: {} } });
+    return {};
   }
 }

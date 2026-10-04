@@ -1,5 +1,6 @@
 'use client';
 
+import { useSwipeAway } from '@/components/motion/use-swipe-away';
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -50,6 +51,7 @@ function Sheets({ view }: { view: 'review' | 'team' }) {
   useEffect(() => setPage(1), [view, status]);
   const list = useTimesheets({ view, status: view === 'team' ? status || undefined : undefined, page });
   const approve = useApproveTimesheet();
+  const swipe = useSwipeAway(list.data?.data, byId);
 
   return (
     <div className="space-y-3">
@@ -66,9 +68,9 @@ function Sheets({ view }: { view: 'review' | 'team' }) {
       ) : !list.data?.data.length ? (
         <EmptyState icon={<ClipboardCheck />} title={view === 'review' ? 'Nothing is waiting for you' : 'No timesheets yet'} />
       ) : (
-        <div className="space-y-2">
-          {list.data.data.map((s) => (
-            <Card key={s.id} className="flex flex-wrap items-center gap-3 p-4">
+        <div className="space-y-2 overflow-x-hidden">
+          {swipe.rows.map(({ item: s, leaving }) => (
+            <Card key={s.id} className={leaving ? 'm-swipe flex flex-wrap items-center gap-3 p-4' : 'flex flex-wrap items-center gap-3 p-4'}>
               <PersonAvatar person={s.employee} />
               <Link href={`/app/timesheets?week=${s.weekStart}&employeeId=${s.employee.id}`} className="min-w-0 flex-1 hover:underline">
                 <p className="truncate font-medium">{s.employee.firstName} {s.employee.lastName} · {weekLabel(s.weekStart)}</p>
@@ -80,11 +82,11 @@ function Sheets({ view }: { view: 'review' | 'team' }) {
                 </p>
               </Link>
               <Badge tone={TS_STATUS[s.status].tone}>{TS_STATUS[s.status].label}</Badge>
-              {s.canDecide && (
+              {!leaving && s.canDecide && (
                 <Button
                   size="sm"
                   loading={approve.isPending && approve.variables?.id === s.id}
-                  onClick={() => approve.mutate({ id: s.id }, { onSuccess: () => toast.success(`Approved ${s.employee.firstName}’s week`), onError: (e) => toast.error(getApiErrorMessage(e, 'Could not approve')) })}
+                  onClick={() => approve.mutate({ id: s.id }, { onSuccess: () => { swipe.markDone(s); toast.success(`Approved ${s.employee.firstName}’s week`); }, onError: (e) => toast.error(getApiErrorMessage(e, 'Could not approve')) })}
                 >
                   <Check /> Approve
                 </Button>
@@ -161,3 +163,5 @@ function Compliance() {
     </div>
   );
 }
+
+const byId = (t: { id: string }) => t.id;

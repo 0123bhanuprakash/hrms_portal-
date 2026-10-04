@@ -50,7 +50,6 @@ export class UpdatePersonalDto {
   @IsOptional() @Transform(blankToNull) @IsString() @MaxLength(40) phone?: string | null;
   @IsOptional() @IsEnum(Gender) gender?: Gender | null;
   @IsOptional() @Transform(blankToNull) @IsDateString() dateOfBirth?: string | null;
-  @IsOptional() @IsBoolean() showBirthday?: boolean;
 
   @IsOptional() @Transform(blankToNull) @IsEmail() @MaxLength(200) personalEmail?: string | null;
   @IsOptional() @Transform(blankToNull) @IsIn(BLOOD_GROUPS) bloodGroup?: string | null;

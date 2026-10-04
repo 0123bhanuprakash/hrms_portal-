@@ -55,9 +55,32 @@ export function ProfileHeader({ person, canEditPhoto, action }: { person: Header
             <span className="inline-flex items-center gap-1.5"><CalendarDays /> Joined {formatDate(person.joiningDate)}</span>
           </div>
         </div>
+        <IdBadge person={person} />
         {action && <div className="shrink-0">{action}</div>}
       </div>
     </Card>
+  );
+}
+
+/** A small 3D ID card: employee ID on the front, years with the company on the back. */
+function IdBadge({ person }: { person: HeaderPerson }) {
+  const joined = new Date(person.joiningDate);
+  const years = Math.max(0, Math.floor((Date.now() - joined.getTime()) / (365.25 * 86_400_000)));
+  return (
+    <div className="m-badge3d hidden shrink-0 lg:block" tabIndex={0} aria-label={`Employee ID ${person.employeeId}, ${years} year${years === 1 ? '' : 's'} with the company`}>
+      <div>
+        <div className="flex flex-col justify-between bg-gradient-to-br from-primary to-primary/70 p-3 text-primary-foreground shadow-card">
+          <span className="text-2xs font-semibold uppercase tracking-wider opacity-80">Employee ID</span>
+          <span className="font-mono text-lg font-bold">{person.employeeId}</span>
+          <span className="truncate text-2xs opacity-80">{person.department?.name ?? person.designation?.name ?? ''}</span>
+        </div>
+        <div className="flex flex-col justify-between border border-border bg-surface p-3 shadow-card">
+          <span className="text-2xs font-semibold uppercase tracking-wider text-muted-foreground">With us</span>
+          <span className="text-lg font-bold">{years ? `${years} year${years === 1 ? '' : 's'}` : 'First year'}</span>
+          <span className="text-2xs text-muted-foreground">Since {formatDate(person.joiningDate)}</span>
+        </div>
+      </div>
+    </div>
   );
 }
 

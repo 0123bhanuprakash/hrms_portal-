@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { KUDOS_REACTIONS, useReact, useRemoveKudos, type KudosItem } from '@/lib
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatRelative } from '@/lib/format';
 import { cn } from '@/lib/cn';
+import { HeartBurst } from '@/components/motion/motion';
 
 /** One kudos: giver → recipients, value, message, reactions. */
 export function KudosCard({ k, compact }: { k: KudosItem; compact?: boolean }) {
@@ -39,23 +40,7 @@ export function KudosCard({ k, compact }: { k: KudosItem; compact?: boolean }) {
             <div className="mt-3 flex flex-wrap items-center gap-1.5">
               {KUDOS_REACTIONS.map((emoji) => {
                 const r = k.reactions.find((x) => x.emoji === emoji);
-                return (
-                  <button
-                    key={emoji}
-                    type="button"
-                    aria-pressed={Boolean(r?.mine)}
-                    aria-label={`React ${emoji}`}
-                    onClick={() => react.mutate({ id: k.id, emoji })}
-                    className={cn(
-                      'inline-flex h-7 items-center gap-1 rounded-full border px-2 text-xs transition-colors',
-                      r?.mine ? 'border-primary bg-primary-soft text-primary-soft-foreground' : 'border-border hover:bg-subtle',
-                      !r && 'opacity-60 hover:opacity-100',
-                    )}
-                  >
-                    {emoji}
-                    {r && <span className="tabular-nums">{r.count}</span>}
-                  </button>
-                );
+                return <ReactionButton key={emoji} emoji={emoji} count={r?.count} mine={Boolean(r?.mine)} onReact={() => react.mutate({ id: k.id, emoji })} />;
               })}
               <span className="ml-auto text-xs text-muted-foreground">{formatRelative(k.createdAt)}</span>
               {k.canRemove && (
@@ -81,5 +66,29 @@ export function KudosCard({ k, compact }: { k: KudosItem; compact?: boolean }) {
         </div>
       </div>
     </Card>
+  );
+}
+
+/** A reaction; adding one gives a small heart burst. */
+function ReactionButton({ emoji, count, mine, onReact }: { emoji: string; count?: number; mine: boolean; onReact: () => void }) {
+  const [fire, setFire] = useState(0);
+  return (
+    <button
+      type="button"
+      aria-pressed={mine}
+      aria-label={`React ${emoji}`}
+      onClick={() => {
+        if (!mine) setFire((n) => n + 1);
+        onReact();
+      }}
+      className={cn(
+        'inline-flex h-7 items-center gap-1 rounded-full border px-2 text-xs transition-colors',
+        mine ? 'border-primary bg-primary-soft text-primary-soft-foreground' : 'border-border hover:bg-subtle',
+        !count && 'opacity-60 hover:opacity-100',
+      )}
+    >
+      <HeartBurst fire={fire}>{emoji}</HeartBurst>
+      {count ? <span className="tabular-nums">{count}</span> : null}
+    </button>
   );
 }

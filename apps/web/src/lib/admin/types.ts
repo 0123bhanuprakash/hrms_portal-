@@ -36,6 +36,8 @@ export interface CompanyListItem {
   updatedAt: string;
   branding: Pick<CompanyBranding, 'logoUrl' | 'primaryColor' | 'displayName'> | null;
   settings: Pick<CompanySettings, 'employeeIdPrefix'> | null;
+  /** Plan and its limits (null limit = unlimited) */
+  plan?: { key: string; name: string; limits: { maxEmployees?: number | null } | null } | null;
   _count: { users: number; employees: number };
 }
 

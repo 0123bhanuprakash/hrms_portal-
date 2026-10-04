@@ -11,6 +11,7 @@ import { Modal } from '@/components/ui/modal';
 import { PageHeader } from '@/components/ui/page-header';
 import { Tooltip } from '@/components/ui/tooltip';
 import { ThemePicker } from '@/components/theme/theme-picker';
+import { EmployeeChoicesCard } from '@/components/theme/employee-choices';
 import { ThemeEditorPanels, useThemeHistory, useUndoShortcuts, useUnsavedGuard } from '@/components/theme/theme-editor';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useAccess } from '@/lib/access/use-access';
@@ -160,6 +161,8 @@ function CompanyThemeEditor({
         companyName={branding.data?.displayName}
         previewNote="Preview only — your team sees the new look after you publish"
       />
+
+      <EmployeeChoicesCard companyId={companyId} />
 
       <Modal
         open={pickerOpen}

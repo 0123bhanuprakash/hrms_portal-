@@ -1,5 +1,6 @@
 'use client';
 
+import { useSwipeAway } from '@/components/motion/use-swipe-away';
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { ArrowRight, Check, ClipboardCheck, Inbox, ShieldCheck, X } from 'lucide-react';
@@ -26,6 +27,7 @@ export default function AttendanceApprovalsPage() {
   const [rejecting, setRejecting] = useState<Correction | null>(null);
   const list = useCorrections({ view: 'review', status, page }, allowed);
   const review = useReviewCorrection();
+  const swipe = useSwipeAway(list.data?.data, byId);
 
   if (!accessLoading && !allowed) {
     return <EmptyState icon={<ShieldCheck />} title="No approvals" description="You don’t approve attendance corrections." />;
@@ -35,6 +37,7 @@ export default function AttendanceApprovalsPage() {
   const approve = async (c: Correction) => {
     try {
       await review.mutateAsync({ id: c.id, action: 'approve' });
+      swipe.markDone(c);
       toast.success(`Approved ${c.employee.firstName}’s correction for ${dayLabel(c.date)}`);
     } catch (err) {
       toast.error(getApiErrorMessage(err, 'Could not approve'));
@@ -68,9 +71,9 @@ export default function AttendanceApprovalsPage() {
       ) : !list.data?.data.length ? (
         <EmptyState icon={<ClipboardCheck />} title={status === 'PENDING' ? 'All caught up' : 'Nothing here yet'} description={status === 'PENDING' ? 'No corrections are waiting for you.' : undefined} />
       ) : (
-        <div className="space-y-3">
-          {list.data.data.map((c) => (
-            <Card key={c.id} className="p-4">
+        <div className="space-y-3 overflow-x-hidden">
+          {swipe.rows.map(({ item: c, leaving }) => (
+            <Card key={c.id} className={leaving ? 'm-swipe p-4' : 'p-4'}>
               <div className="flex flex-col gap-4 md:flex-row md:items-center">
                 <div className="flex min-w-0 flex-1 items-start gap-3">
                   <PersonAvatar person={c.employee} />
@@ -94,7 +97,7 @@ export default function AttendanceApprovalsPage() {
                     </p>
                   </div>
                 </div>
-                {c.status === 'PENDING' ? (
+                {leaving ? null : c.status === 'PENDING' ? (
                   <div className="flex shrink-0 gap-2">
                     <Button variant="secondary" onClick={() => setRejecting(c)} disabled={review.isPending}><X /> Reject</Button>
                     <Button onClick={() => approve(c)} loading={review.isPending && review.variables?.id === c.id && review.variables.action === 'approve'}><Check /> Approve</Button>
@@ -109,12 +112,12 @@ export default function AttendanceApprovalsPage() {
         </div>
       )}
 
-      <RejectDialog correction={rejecting} onClose={() => setRejecting(null)} />
+      <RejectDialog correction={rejecting} onClose={() => setRejecting(null)} onDone={swipe.markDone} />
     </div>
   );
 }
 
-function RejectDialog({ correction, onClose }: { correction: Correction | null; onClose: () => void }) {
+function RejectDialog({ correction, onClose, onDone }: { correction: Correction | null; onClose: () => void; onDone: (c: Correction) => void }) {
   const review = useReviewCorrection();
   const [note, setNote] = useState('');
   if (!correction) return null;
@@ -123,6 +126,7 @@ function RejectDialog({ correction, onClose }: { correction: Correction | null; 
       await review.mutateAsync({ id: correction.id, action: 'reject', note });
       toast.success('Request rejected');
       setNote('');
+      onDone(correction);
       onClose();
     } catch (err) {
       toast.error(getApiErrorMessage(err, 'Could not reject'));
@@ -150,3 +154,5 @@ function RejectDialog({ correction, onClose }: { correction: Correction | null; 
     </Modal>
   );
 }
+
+const byId = (c: { id: string }) => c.id;

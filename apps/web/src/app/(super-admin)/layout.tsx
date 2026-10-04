@@ -239,7 +239,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
         {/* Workspace */}
         <div className={cn('flex h-14 items-center gap-2.5 px-3', collapsed && 'lg:justify-center lg:px-0')}>
           <Link href="/super-admin" className="flex min-w-0 items-center gap-2.5 rounded-md">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-card shadow-inner-highlight">
+            <span className="m-shine flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-card shadow-inner-highlight">
               <ShieldCheck className="h-[18px] w-[18px]" />
             </span>
             <span className={cn('min-w-0 leading-tight', collapsed && 'lg:hidden')}>
@@ -373,7 +373,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
         </header>
 
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-          <div className="mx-auto max-w-6xl animate-fade-up" key={pathname}>
+          <div className={cn('mx-auto animate-fade-up', pathname === '/super-admin' ? 'max-w-[1500px]' : 'max-w-6xl')} key={pathname}>
             {children}
           </div>
         </main>

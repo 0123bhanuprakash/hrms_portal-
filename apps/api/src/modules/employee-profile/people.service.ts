@@ -96,16 +96,17 @@ export class PeopleService {
     const today = dateFromKey(localDateKey(new Date(), timeZone));
     const people = await this.prisma.employee.findMany({
       where: { companyId, employmentStatus: { not: EmploymentStatus.TERMINATED } },
-      select: { ...BASIC, dateOfBirth: true, showBirthday: true, joiningDate: true },
+      select: { ...BASIC, dateOfBirth: true, joiningDate: true },
     });
 
-    const basic = ({ dateOfBirth: _d, showBirthday: _s, joiningDate: _j, ...p }: (typeof people)[number]) => p;
+    const basic = ({ dateOfBirth: _d, joiningDate: _j, ...p }: (typeof people)[number]) => p;
     const birthdays: Array<ReturnType<typeof basic> & { date: string; inDays: number }> = [];
     const anniversaries: Array<ReturnType<typeof basic> & { date: string; inDays: number; years: number }> = [];
     const newJoiners: Array<ReturnType<typeof basic> & { joiningDate: Date }> = [];
 
     for (const person of people) {
-      if (person.showBirthday && person.dateOfBirth) {
+      // Everyone’s birthday is celebrated (day and month only — never the year)
+      if (person.dateOfBirth) {
         const next = nextOccurrence(person.dateOfBirth, today);
         const inDays = Math.round((next.getTime() - today.getTime()) / DAY);
         if (inDays <= SPOTLIGHT_DAYS) birthdays.push({ ...basic(person), date: monthDay(next), inDays });

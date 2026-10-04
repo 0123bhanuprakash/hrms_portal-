@@ -21,7 +21,8 @@
     "db:seed": "prisma db seed",
     "db:setup": "prisma migrate deploy && prisma db seed",
     "db:studio": "prisma studio",
-    "db:seed-demo": "node prisma/seed-demo.cjs"
+    "db:seed-demo": "node prisma/seed-demo.cjs",
+    "db:seed-demo-avatars": "node prisma/seed-demo-avatars.cjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1142.0",

@@ -45,6 +45,22 @@ export interface AttendanceRecord {
   status: DayStatus;
   isManualEntry: boolean;
   notes: string | null;
+  /** Check-in sessions today */
+  sessions: number;
+  breakMinutes: number | null;
+  /** Start of the session still running */
+  openSince: string | null;
+  earlyCheckout: boolean;
+}
+
+/** One check-in or check-out tap. */
+export interface Punch {
+  id: string;
+  kind: 'IN' | 'OUT';
+  at: string;
+  source: string;
+  note: string | null;
+  early: boolean;
 }
 
 export interface TodayAttendance {
@@ -56,6 +72,11 @@ export interface TodayAttendance {
   status: DayStatus | null;
   holiday: { name: string } | null;
   leave: DayLeave | null;
+  punches?: Punch[];
+  /** On a project that needs night work: may stay checked in past midnight */
+  nightShift?: boolean;
+  /** Last night's shift still running */
+  carriedOver?: { date: string; openSince: string } | null;
 }
 
 export interface CalendarDay {
@@ -234,7 +255,7 @@ export function useCalendar(month: string, employeeId?: string) {
   });
 }
 
-export function useTeamAttendance(q: { date?: string; search?: string; departmentId?: string; status?: string; page?: number; limit?: number }) {
+export function useTeamAttendance(q: { date?: string; search?: string; departmentId?: string; status?: string; page?: number; limit?: number }, enabled = true) {
   return useQuery({
     queryKey: attendanceKeys.team(q),
     queryFn: async () => {
@@ -242,6 +263,7 @@ export function useTeamAttendance(q: { date?: string; search?: string; departmen
       return unwrap<TeamDay>(await api.get('/attendance/team', { params }));
     },
     placeholderData: keepPreviousData,
+    enabled,
   });
 }
 
@@ -288,7 +310,7 @@ function useAttendanceMutation<V, R>(fn: (v: V) => Promise<R>, extra: ReadonlyAr
 }
 
 export const useCheckIn = () => useAttendanceMutation(async () => unwrap<AttendanceRecord>(await api.post('/attendance/check-in')));
-export const useCheckOut = () => useAttendanceMutation(async () => unwrap<AttendanceRecord>(await api.post('/attendance/check-out')));
+export const useCheckOut = () => useAttendanceMutation(async (body: { note?: string } = {}) => unwrap<AttendanceRecord & { early: boolean }>(await api.post('/attendance/check-out', body)));
 
 export const useRequestCorrection = () =>
   useAttendanceMutation(async (body: { date: string; checkIn: string; checkOut?: string | null; reason: string }) => unwrap<Correction>(await api.post('/attendance/regularisations', body)));

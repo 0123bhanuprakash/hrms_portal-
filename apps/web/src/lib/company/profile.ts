@@ -54,7 +54,6 @@ export interface PrivateProfile {
   phone: string | null;
   gender: string | null;
   dateOfBirth: string | null;
-  showBirthday: boolean;
   personal: {
     personalEmail: string | null;
     bloodGroup: string | null;
@@ -196,7 +195,6 @@ export type PersonalInput = Partial<{
   phone: string | null;
   gender: string | null;
   dateOfBirth: string | null;
-  showBirthday: boolean;
   personalEmail: string | null;
   bloodGroup: string | null;
   maritalStatus: string | null;

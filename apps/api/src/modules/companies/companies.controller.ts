@@ -20,6 +20,8 @@ import { UpdateCompanyDto } from './dto/update-company.dto';
 import { UpdateBrandingDto } from './dto/update-branding.dto';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { UpdateCompanyThemeDto } from './dto/update-company-theme.dto';
+import { UpdatePersonalizationDto } from './dto/update-personalization.dto';
+import { UpdateUiDefaultsDto } from './dto/update-ui-defaults.dto';
 import { Public } from '../auth/decorators/public.decorator';
 import {
   SuperAdminOnly,
@@ -220,6 +222,38 @@ export class CompaniesController {
   ) {
     this.assertTenantAccess(id, ctx);
     return this.companiesService.updateTheme(id, dto);
+  }
+
+  /**
+   * What employees may personalise (own theme, menu style) — Company Admin
+   * PUT /companies/:id/personalization
+   */
+  @RequirePermission('branding.manage')
+  @Audit('company:personalization:update', 'company_settings', { companyIdParam: 'id' })
+  @Put(':id/personalization')
+  async updatePersonalization(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: UpdatePersonalizationDto,
+    @TenantCtx() ctx: TenantContext,
+  ) {
+    this.assertTenantAccess(id, ctx);
+    return this.companiesService.updatePersonalization(id, dto);
+  }
+
+  /**
+   * Company defaults for view settings — Company Admin
+   * PUT /companies/:id/ui-defaults  { values: { key: value } }
+   */
+  @RequirePermission('branding.manage')
+  @Audit('company:ui-defaults:update', 'company_settings', { companyIdParam: 'id' })
+  @Put(':id/ui-defaults')
+  async updateUiDefaults(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: UpdateUiDefaultsDto,
+    @TenantCtx() ctx: TenantContext,
+  ) {
+    this.assertTenantAccess(id, ctx);
+    return this.companiesService.updateUiDefaults(id, dto.values);
   }
 
   /**

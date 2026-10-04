@@ -39,6 +39,8 @@ export interface Assignment {
   role: ProjectRole;
   roleLabel: string;
   allocation: number;
+  /** May stay checked in past midnight for this project */
+  nightShift?: boolean;
   startDate: string;
   endDate: string | null;
   active: boolean;
@@ -151,7 +153,7 @@ export type ProjectInput = { name: string; code: string; description?: string | 
 export const useSaveProject = () =>
   useProjectMutation(async ({ id, ...body }: ProjectInput & { id?: string }) => unwrap<ProjectDetail>(id ? await api.patch(`/projects/${id}`, body) : await api.post('/projects', body)));
 
-export type MemberInput = { employeeId: string; role: ProjectRole; leadEmployeeId?: string | null; allocation: number; startDate: string; endDate?: string | null };
+export type MemberInput = { employeeId: string; role: ProjectRole; leadEmployeeId?: string | null; allocation: number; nightShift?: boolean; startDate: string; endDate?: string | null };
 export const useSaveMember = (projectId: string) =>
   useProjectMutation(async ({ id, ...body }: MemberInput & { id?: string }) =>
     unwrap<Assignment & { unassignedMembers: number }>(id ? await api.patch(`/projects/${projectId}/members/${id}`, body) : await api.post(`/projects/${projectId}/members`, body)),

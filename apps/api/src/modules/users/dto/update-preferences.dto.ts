@@ -1,4 +1,5 @@
-import { IsString, IsOptional, IsBoolean, IsIn } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsIn, ValidateIf } from 'class-validator';
+import { BUILTIN_THEME_KEYS, MENU_STYLES } from '../../themes/personalization';
 
 export class UpdatePreferencesDto {
   @IsOptional()
@@ -37,4 +38,14 @@ export class UpdatePreferencesDto {
   @IsOptional()
   @IsBoolean()
   reduceMotion?: boolean;
+
+  /** A built-in theme key; null = back to the company theme */
+  @ValidateIf((_, v) => v !== null && v !== undefined)
+  @IsIn([...BUILTIN_THEME_KEYS], { message: 'colorTheme must be one of the built-in themes' })
+  colorTheme?: string | null;
+
+  /** classic | rail | floating | collapsible; null = the company default */
+  @ValidateIf((_, v) => v !== null && v !== undefined)
+  @IsIn([...MENU_STYLES], { message: 'menuStyle must be classic, rail, floating or collapsible' })
+  menuStyle?: string | null;
 }
