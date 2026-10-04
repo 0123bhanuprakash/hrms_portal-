@@ -36,10 +36,11 @@ export default function AttendanceApprovalsPage() {
 
   const approve = async (c: Correction) => {
     try {
-      await review.mutateAsync({ id: c.id, action: 'approve' });
       swipe.markDone(c);
+      await review.mutateAsync({ id: c.id, action: 'approve' });
       toast.success(`Approved ${c.employee.firstName}’s correction for ${dayLabel(c.date)}`);
     } catch (err) {
+      swipe.unmark(c);
       toast.error(getApiErrorMessage(err, 'Could not approve'));
     }
   };
@@ -68,7 +69,7 @@ export default function AttendanceApprovalsPage() {
         <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 w-full" />)}</div>
       ) : list.isError ? (
         <ErrorState message={getApiErrorMessage(list.error, 'Could not load requests')} onRetry={() => list.refetch()} />
-      ) : !list.data?.data.length ? (
+      ) : !swipe.rows.length ? (
         <EmptyState icon={<ClipboardCheck />} title={status === 'PENDING' ? 'All caught up' : 'Nothing here yet'} description={status === 'PENDING' ? 'No corrections are waiting for you.' : undefined} />
       ) : (
         <div className="space-y-3 overflow-x-hidden">
@@ -108,7 +109,7 @@ export default function AttendanceApprovalsPage() {
               </div>
             </Card>
           ))}
-          <Pagination page={page} totalPages={list.data.meta.totalPages} total={list.data.meta.total} limit={list.data.meta.limit} onPageChange={setPage} />
+          {list.data && <Pagination page={page} totalPages={list.data.meta.totalPages} total={list.data.meta.total} limit={list.data.meta.limit} onPageChange={setPage} />}
         </div>
       )}
 
@@ -123,10 +124,10 @@ function RejectDialog({ correction, onClose, onDone }: { correction: Correction 
   if (!correction) return null;
   const submit = async () => {
     try {
+      onDone(correction);
       await review.mutateAsync({ id: correction.id, action: 'reject', note });
       toast.success('Request rejected');
       setNote('');
-      onDone(correction);
       onClose();
     } catch (err) {
       toast.error(getApiErrorMessage(err, 'Could not reject'));

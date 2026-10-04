@@ -33,9 +33,11 @@ import { CelebrationsCard, ComingUpCard, HomeHero, KudosTickerCard, LeaveBalance
 import { HomeAnnouncements } from '@/components/engagement/home-cards';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useAccess } from '@/lib/access/use-access';
-import { useCompanyStats } from '@/lib/company/queries';
+import { useCompanyBranding, useCompanyStats } from '@/lib/company/queries';
 import { useMyCard, useSpotlight } from '@/lib/company/profile';
 import { cn } from '@/lib/cn';
+import { useMoment } from '@/components/motion/moments';
+import { useToday } from '@/lib/company/attendance';
 
 export default function HomePage() {
   const { user, companyId } = useAuthStore();
@@ -103,6 +105,18 @@ export default function HomePage() {
   } else {
     hero = employeeHero;
   }
+
+  // Atmosphere: your birthday / anniversary, festivals, monsoon, Friday, office lights for admins
+  const branding = useCompanyBranding(companyId);
+  const today = useToday(hasFeature('time.attendance'));
+  const moment = useMoment({
+    spotlight: spotlight.data,
+    myEmployeeId: employee?.id,
+    firstName: user?.firstName,
+    companyName: branding.data?.displayName,
+    shiftEnd: today.data?.policy.shiftEnd,
+    office: showStats && companyToday.counts && companyToday.present !== undefined ? { present: companyToday.present + companyToday.counts.workFromHome, total: companyToday.counts.total } : undefined,
+  });
 
   // Next to the hero: company attendance for admins, my day for everyone else
   const myDay = isEmployee && hasFeature('time.attendance') && can('attendance.mark');
@@ -188,7 +202,7 @@ export default function HomePage() {
     <div className="space-y-5">
       {/* Hero + today */}
       <div className={cn('m-stagger grid gap-5', heroSide && 'lg:grid-cols-12')}>
-        <HomeHero className={cn(heroSide && 'lg:col-span-8')} title={hero.title} subtitle={hero.subtitle} stats={hero.stats} actions={hero.actions} />
+        <HomeHero className={cn(heroSide && 'lg:col-span-8')} title={hero.title} subtitle={hero.subtitle} stats={hero.stats} actions={hero.actions} moment={moment} />
         {heroSide && <div className="min-w-0 lg:col-span-4 [&>*]:h-full">{heroSide}</div>}
       </div>
 

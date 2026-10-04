@@ -204,3 +204,46 @@ html[data-hidden] .m-ticker > ul, html[data-hidden] .m-pulse::before, html[data-
 .m-shine { position: relative; overflow: hidden; }
 .m-shine::after { content: ''; position: absolute; inset: 0; background: linear-gradient(115deg, transparent 35%, hsl(0 0% 100% / 0.55) 50%, transparent 65%); background-size: 250% 100%; animation: m-shine-loop 5s ease-in-out infinite; }
 @keyframes m-shine-loop { 0%, 65% { background-position: 120% 0; } 100% { background-position: -120% 0; } }
+
+/* ============================================================
+   Atmosphere moments (components/motion/moments.tsx)
+   ============================================================ */
+.m-sky[data-part='birthday'] { background: linear-gradient(160deg, #2f5e8c 0%, #6fa7d4 50%, #f3c784 100%); }
+.m-sky[data-part='diwali'] { background: linear-gradient(160deg, #1a0f2e 0%, #3b1b3f 55%, #5c2a20 100%); }
+.m-sky[data-part='holi'] { background: linear-gradient(160deg, #7a2b5a 0%, #c2457a 45%, #f08a4b 100%); }
+.m-sky[data-part='snow'] { background: linear-gradient(160deg, #0f2233 0%, #1c3d5a 60%, #3d6b8c 100%); }
+.m-sky[data-part='rain'] { background: linear-gradient(160deg, #2b3440 0%, #46566a 60%, #6a7d90 100%); }
+.m-sky[data-part='rain'] .m-sun, .m-sky[data-part='diwali'] .m-sun, .m-sky[data-part='holi'] .m-sun, .m-sky[data-part='snow'] .m-sun { display: none; }
+.m-layer { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.m-moment-pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 700; color: #fff; background: rgb(255 255 255 / 0.16); border: 1px solid rgb(255 255 255 / 0.25); backdrop-filter: blur(6px); animation: m-rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.m-moment-pill svg { width: 14px; height: 14px; }
+/* birthday balloons */
+.m-balloon { position: absolute; bottom: -70px; width: 30px; height: 38px; border-radius: 50% 50% 48% 48%; opacity: 0.9; animation: m-balloon 9s ease-in infinite; }
+.m-balloon::after { content: ''; position: absolute; left: 50%; top: 100%; width: 1px; height: 34px; background: rgb(255 255 255 / 0.55); }
+@keyframes m-balloon { 0% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-170px) rotate(4deg); } 100% { transform: translateY(-360px) rotate(-3deg); } }
+/* fireworks */
+.m-firework { position: absolute; width: 2px; height: 2px; animation: m-boom-wrap 2.4s ease-out infinite; }
+@keyframes m-boom-wrap { to { opacity: 1; } }
+.m-firework i { position: absolute; width: 5px; height: 5px; border-radius: 50%; opacity: 0; animation-name: m-boom; animation-timing-function: ease-out; animation-iteration-count: infinite; }
+@keyframes m-boom { 0% { opacity: 1; transform: rotate(var(--a)) translateX(0); } 70% { opacity: 1; } 100% { opacity: 0; transform: rotate(var(--a)) translateX(64px); } }
+/* diwali */
+.m-bulb { position: absolute; width: 7px; height: 7px; border-radius: 50%; box-shadow: 0 0 12px currentColor; animation: m-twinkle-b 1s ease-in-out infinite alternate; }
+@keyframes m-twinkle-b { to { opacity: 0.3; } }
+.m-diya { position: absolute; bottom: 14px; width: 30px; height: 12px; border-radius: 0 0 18px 18px; background: #b7791f; }
+.m-diya b { position: absolute; left: 50%; top: -15px; width: 9px; height: 15px; margin-left: -4.5px; border-radius: 50% 50% 30% 30%; background: radial-gradient(circle at 50% 70%, #fff4c2, #ffb347 60%, transparent 70%); transform-origin: bottom; animation: m-flame 0.6s ease-in-out infinite alternate; }
+@keyframes m-flame { to { transform: scaleY(1.2) rotate(3deg); } }
+/* holi */
+.m-puff { position: absolute; width: 30px; height: 30px; border-radius: 50%; filter: blur(2px); opacity: 0; animation: m-puff 3.2s ease-out infinite; }
+@keyframes m-puff { 0% { opacity: 0.85; transform: scale(0.2); } 100% { opacity: 0; transform: scale(4); } }
+/* snow + rain */
+.m-snow { position: absolute; top: -10px; border-radius: 50%; background: #fff; opacity: 0.9; animation: m-snow 8s linear infinite; }
+@keyframes m-snow { to { transform: translate(24px, 320px); } }
+.m-rain { position: absolute; top: -20px; width: 1.5px; height: 16px; background: rgb(220 235 255 / 0.55); transform: rotate(12deg); animation: m-rain 0.9s linear infinite; }
+@keyframes m-rain { to { transform: translate(-40px, 320px) rotate(12deg); } }
+/* office lights */
+.m-building { position: absolute; right: 3%; bottom: 0; width: 124px; height: 132px; display: grid; grid-template-columns: repeat(6, 1fr); align-content: start; gap: 7px; padding: 12px; box-sizing: border-box; background: rgb(10 14 32 / 0.7); border: 1px solid rgb(255 255 255 / 0.1); border-bottom: 0; border-radius: 6px 6px 0 0; }
+.m-building i { height: 12px; border-radius: 2px; background: rgb(255 255 255 / 0.08); }
+.m-building i.on { animation: m-lit 1.2s ease both; }
+@keyframes m-lit { from { background: rgb(255 255 255 / 0.08); } to { background: #ffd27a; box-shadow: 0 0 8px #ffd27a88; } }
+@media (max-width: 640px) { .m-building { display: none; } }
+html[data-hidden] .m-balloon, html[data-hidden] .m-firework i, html[data-hidden] .m-bulb, html[data-hidden] .m-diya b, html[data-hidden] .m-puff, html[data-hidden] .m-snow, html[data-hidden] .m-rain { animation-play-state: paused; }

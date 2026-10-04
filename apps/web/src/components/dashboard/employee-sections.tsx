@@ -57,7 +57,8 @@ export function TodayCard() {
           ) : t.leave?.status === 'APPROVED' ? (
             <Badge tone="info">{t.leave.name}</Badge>
           ) : (
-            status && <Badge tone={status.tone === 'outline' ? 'neutral' : status.tone} dot>{status.label}</Badge>
+            // Checked out early today: the day isn't over, so no 'Absent' / 'Half day' yet
+            done && (t.status === 'ABSENT' || t.status === 'HALF_DAY') ? <Badge tone="neutral" dot>Checked out</Badge> : status && <Badge tone={status.tone === 'outline' ? 'neutral' : status.tone} dot>{status.label}</Badge>
           )
         }
       />

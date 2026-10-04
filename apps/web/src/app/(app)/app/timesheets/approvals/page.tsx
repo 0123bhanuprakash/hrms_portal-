@@ -65,7 +65,7 @@ function Sheets({ view }: { view: 'review' | 'team' }) {
         <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}</div>
       ) : list.isError ? (
         <ErrorState message={getApiErrorMessage(list.error, 'Could not load timesheets')} onRetry={() => void list.refetch()} />
-      ) : !list.data?.data.length ? (
+      ) : !swipe.rows.length ? (
         <EmptyState icon={<ClipboardCheck />} title={view === 'review' ? 'Nothing is waiting for you' : 'No timesheets yet'} />
       ) : (
         <div className="space-y-2 overflow-x-hidden">
@@ -86,14 +86,17 @@ function Sheets({ view }: { view: 'review' | 'team' }) {
                 <Button
                   size="sm"
                   loading={approve.isPending && approve.variables?.id === s.id}
-                  onClick={() => approve.mutate({ id: s.id }, { onSuccess: () => { swipe.markDone(s); toast.success(`Approved ${s.employee.firstName}’s week`); }, onError: (e) => toast.error(getApiErrorMessage(e, 'Could not approve')) })}
+                  onClick={() => {
+                    swipe.markDone(s);
+                    approve.mutate({ id: s.id }, { onSuccess: () => toast.success(`Approved ${s.employee.firstName}’s week`), onError: (e) => { swipe.unmark(s); toast.error(getApiErrorMessage(e, 'Could not approve')); } });
+                  }}
                 >
                   <Check /> Approve
                 </Button>
               )}
             </Card>
           ))}
-          <Pagination page={page} totalPages={list.data.meta.totalPages} total={list.data.meta.total} limit={list.data.meta.limit} onPageChange={setPage} />
+          {list.data && <Pagination page={page} totalPages={list.data.meta.totalPages} total={list.data.meta.total} limit={list.data.meta.limit} onPageChange={setPage} />}
         </div>
       )}
     </div>

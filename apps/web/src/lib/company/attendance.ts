@@ -91,6 +91,9 @@ export interface CalendarDay {
   holiday: { name: string; isOptional: boolean } | null;
   correction: { id: string; status: CorrectionStatus } | null;
   leave: DayLeave | null;
+  sessions?: number;
+  breakMinutes?: number | null;
+  earlyCheckout?: boolean;
 }
 
 /** Leave touching a day (approved changes the status; pending is shown as a hint). */

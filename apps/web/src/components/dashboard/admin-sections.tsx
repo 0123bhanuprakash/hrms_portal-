@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import * as Popover from '@radix-ui/react-popover';
 import { CalendarClock, ClipboardCheck, Clock, Headset, LogOut as LeaveIcon, Megaphone, PackageOpen, Receipt, ShieldCheck, Timer, Upload, UserPlus, Users, UsersRound } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, Skeleton } from '@/components/ui/feedback';
@@ -281,25 +282,30 @@ function Bridge({ start, joined, left, end }: { start: number; joined: number; l
 /** Profile photos on a 12-month timeline: joiners above the line, leavers below. */
 function FacesTimeline({ months, movements }: { months: string[]; movements: Array<{ id: string; firstName: string; lastName: string; avatarUrl: string | null; kind: 'joined' | 'left'; date: string }> }) {
   if (!movements.length) return <p className="py-6 text-center text-sm text-muted-foreground">Nobody joined or left in the last 12 months.</p>;
-  const col = (kind: 'joined' | 'left', m: string) => movements.filter((x) => x.kind === kind && x.date.startsWith(m)).slice(0, 4);
+  const all = (kind: 'joined' | 'left', m: string) => movements.filter((x) => x.kind === kind && x.date.startsWith(m));
+  const col = (kind: 'joined' | 'left', m: string) => all(kind, m).slice(0, 3);
+  const more = (kind: 'joined' | 'left', m: string) => Math.max(0, all(kind, m).length - 3);
+  const extra = (n: number) => (n ? <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-[10px] font-bold">+{n}</span> : null);
   return (
     <div className="grid grid-cols-12 gap-1">
       {months.map((m, i) => (
         <div key={m} className="flex flex-col items-center">
-          <div className="flex min-h-[92px] flex-col-reverse items-center justify-start gap-1">
+          <div className="flex h-[112px] flex-col-reverse items-center justify-start gap-1 overflow-hidden">
             {col('joined', m).map((p, k) => (
               <span key={p.id} title={`${p.firstName} ${p.lastName} joined · ${formatDate(p.date)}`} className="m-pop transition-transform hover:z-10 hover:scale-125" style={{ animationDelay: `${(i * 2 + k) * 50}ms` }}>
                 <PersonAvatar person={p} size="xs" className="ring-2 ring-success" />
               </span>
             ))}
+            {extra(more('joined', m))}
           </div>
           <div className="my-1 h-0.5 w-full bg-border" />
-          <div className="flex min-h-[60px] flex-col items-center gap-1">
+          <div className="flex h-[84px] flex-col items-center gap-1 overflow-hidden">
             {col('left', m).map((p, k) => (
               <span key={p.id} title={`${p.firstName} ${p.lastName} left · ${formatDate(p.date)}`} className="m-pop grayscale-[40%] transition-transform hover:z-10 hover:scale-125" style={{ animationDelay: `${(i * 2 + k) * 50}ms` }}>
                 <PersonAvatar person={p} size="xs" className="ring-2 ring-destructive" />
               </span>
             ))}
+            {extra(more('left', m))}
           </div>
           <span className="text-2xs text-muted-foreground">{monthLabel(m).split(' ')[0]}</span>
         </div>
@@ -385,7 +391,8 @@ export function WhosOffCard() {
   const todayKey = localKey(now);
   const q = useWhosOff({ month }, enabled);
   const [view, setView] = useUiState<WhosOffView>('whos-off:view', 'calendar', (v): v is WhosOffView => v === 'calendar' || v === 'list');
-  const [picked, setPicked] = useState(todayKey);
+  // The day whose details are open in a popup (click a day; Esc or click outside closes it)
+  const [openDay, setOpenDay] = useState<string | null>(null);
   if (!enabled) return null;
 
   const leaves = (q.data?.leaves ?? []).filter((l) => l.status === 'APPROVED');
@@ -407,8 +414,6 @@ export function WhosOffCard() {
   const daysIn = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const lead = (first.getDay() + 6) % 7;
   const cells = Array.from({ length: lead + daysIn }, (_, i) => (i < lead ? null : localKey(new Date(now.getFullYear(), now.getMonth(), i - lead + 1))));
-  const pickedList = offOn(picked);
-  const pickedLabel = new Date(`${picked}T00:00:00`).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
     <Card>
@@ -442,47 +447,70 @@ export function WhosOffCard() {
               const holiday = holidays.get(key);
               const weekend = [5, 6].includes(i % 7);
               const preview = holiday ?? (off.length ? off.map((l) => `${l.employee.firstName} · ${isWfh(l) ? 'WFH' : l.leaveType.name}`).join('\n') : 'Nobody off');
+              const open = openDay === key;
+              const label = new Date(`${key}T00:00:00`).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
               return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setPicked(key)}
-                  aria-pressed={picked === key}
-                  aria-label={`${key}: ${holiday ?? `${off.length} off`}`}
-                  className={cn(
-                    'group relative flex h-11 flex-col items-center justify-center gap-1 rounded-md border text-xs transition-all hover:-translate-y-0.5 hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                    picked === key ? 'border-primary bg-primary-soft' : 'border-border',
-                    holiday && picked !== key && 'bg-info-soft',
-                    weekend && !holiday && picked !== key && 'bg-muted/60',
-                    key === todayKey && 'ring-1 ring-primary',
-                  )}
-                >
-                  <b className="tabular-nums">{Number(key.slice(8))}</b>
-                  <span className="flex h-1.5 gap-0.5">
-                    {off.slice(0, 3).map((l) => <i key={l.id} className={cn('h-1.5 w-1.5 rounded-full', isWfh(l) ? 'bg-info' : 'bg-destructive')} />)}
-                  </span>
-                  <span className="pointer-events-none absolute bottom-[calc(100%+6px)] left-1/2 z-20 hidden -translate-x-1/2 whitespace-pre rounded-md bg-foreground px-2 py-1 text-left text-2xs font-medium text-background shadow-menu group-hover:block">{preview}</span>
-                </button>
+                <Popover.Root key={key} open={open} onOpenChange={(o) => setOpenDay(o ? key : null)}>
+                  <Popover.Trigger asChild>
+                    <button
+                      type="button"
+                      aria-label={`${label}: ${holiday ?? `${off.length} off`}`}
+                      className={cn(
+                        'group relative flex h-11 flex-col items-center justify-center gap-1 rounded-md border text-xs transition-all hover:-translate-y-0.5 hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                        open ? 'border-primary bg-primary-soft' : 'border-border',
+                        holiday && !open && 'bg-info-soft',
+                        weekend && !holiday && !open && 'bg-muted/60',
+                        key === todayKey && 'ring-1 ring-primary',
+                      )}
+                    >
+                      <b className="tabular-nums">{Number(key.slice(8))}</b>
+                      <span className="flex h-1.5 gap-0.5">
+                        {off.slice(0, 3).map((l) => <i key={l.id} className={cn('h-1.5 w-1.5 rounded-full', isWfh(l) ? 'bg-info' : 'bg-destructive')} />)}
+                      </span>
+                      {!open && <span className="pointer-events-none absolute bottom-[calc(100%+6px)] left-1/2 z-20 hidden -translate-x-1/2 whitespace-pre rounded-md bg-foreground px-2 py-1 text-left text-2xs font-medium text-background shadow-menu group-hover:block">{preview}</span>}
+                    </button>
+                  </Popover.Trigger>
+                  <Popover.Portal>
+                    <Popover.Content
+                      side="bottom"
+                      align="center"
+                      sideOffset={6}
+                      collisionPadding={12}
+                      className="z-50 w-72 rounded-xl border border-border bg-raised p-3 text-raised-foreground shadow-menu data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
+                    >
+                      <div className="mb-2 flex items-center gap-2">
+                        <p className="flex-1 text-sm font-semibold">{label}</p>
+                        {holiday ? <Badge tone="info">Holiday</Badge> : <Badge tone={off.length ? 'danger' : 'neutral'}>{off.length} off</Badge>}
+                      </div>
+                      {holiday && <p className="mb-2 text-xs text-muted-foreground">{holiday} — company holiday</p>}
+                      {off.length ? (
+                        <ul className="max-h-64 space-y-2 overflow-y-auto pr-1">
+                          {off.map((l) => (
+                            <li key={l.id} className="flex items-center gap-2.5 text-sm">
+                              <PersonAvatar person={l.employee} size="sm" />
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate font-medium">{l.employee.firstName} {l.employee.lastName}</span>
+                                <span className="block truncate text-2xs text-muted-foreground">{formatDate(l.startDate)}{l.endDate !== l.startDate ? ` – ${formatDate(l.endDate)}` : ''}{l.halfDay ? ' · half day' : ''}</span>
+                              </span>
+                              <Badge tone={isWfh(l) ? 'info' : 'danger'}>{isWfh(l) ? 'WFH' : l.leaveType.name}</Badge>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        !holiday && <p className="text-xs text-muted-foreground">Nobody is off.</p>
+                      )}
+                      <Link href="/app/leave/calendar" onClick={() => setOpenDay(null)} className="mt-3 block border-t border-border pt-2 text-center text-xs font-medium text-primary hover:underline">
+                        Open full calendar
+                      </Link>
+                      <Popover.Arrow className="fill-[hsl(var(--border))]" />
+                    </Popover.Content>
+                  </Popover.Portal>
+                </Popover.Root>
               );
             })}
           </div>
-          <div className="mt-3 rounded-lg border border-border p-3" aria-live="polite">
-            <p className="mb-2 text-xs font-semibold">{pickedLabel}{holidays.get(picked) ? ` · ${holidays.get(picked)}` : ''}</p>
-            {pickedList.length ? (
-              <ul className="space-y-2">
-                {pickedList.map((l) => (
-                  <li key={l.id} className="flex items-center gap-2.5 text-sm">
-                    <PersonAvatar person={l.employee} size="xs" />
-                    <span className="min-w-0 flex-1 truncate font-medium">{l.employee.firstName} {l.employee.lastName}</span>
-                    <Badge tone={isWfh(l) ? 'info' : 'danger'}>{isWfh(l) ? 'WFH' : l.leaveType.name}</Badge>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-xs text-muted-foreground">{holidays.get(picked) ? 'Company holiday.' : 'Nobody is off.'}</p>
-            )}
-          </div>
-          <div className="mt-2 flex gap-3 text-2xs text-muted-foreground">
+          <div className="mt-3 flex gap-3 text-2xs text-muted-foreground">
+            <span className="mr-auto">Click a day for details</span>
             <span className="flex items-center gap-1"><i className="h-1.5 w-1.5 rounded-full bg-destructive" />Leave</span>
             <span className="flex items-center gap-1"><i className="h-1.5 w-1.5 rounded-full bg-info" />WFH</span>
             <span className="flex items-center gap-1"><i className="h-2 w-2 rounded-sm bg-info-soft" />Holiday</span>

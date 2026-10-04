@@ -299,14 +299,18 @@ export class AttendanceService {
     // Latest request per day wins
     const correctionByDate = new Map(corrections.map((c) => [keyFromDate(c.date), { id: c.id, status: c.status }]));
     const joiningKey = keyFromDate(employee.joiningDate);
+    // A night shift that started yesterday and is still running isn't a missed check-out
+    const yesterdayKey = addDays(todayKey, -1);
+    const nightOpen = byDate.get(yesterdayKey)?.openSince && (await this.nightShiftAllowed(companyId, targetId, todayKey)) && Date.now() - byDate.get(yesterdayKey)!.openSince!.getTime() < 24 * 3600_000;
 
     const days = keys.map((dateKey) => {
       const record = byDate.get(dateKey) ?? null;
       const holiday = holidays.get(dateKey) ?? null;
       const leave = leaves.get(targetId + '|' + dateKey) ?? null;
+      const derived = deriveDay({ dateKey, todayKey, joiningKey, record, holiday: Boolean(holiday), policy, leave: this.approved(leave) });
       return {
         date: dateKey,
-        status: deriveDay({ dateKey, todayKey, joiningKey, record, holiday: Boolean(holiday), policy, leave: this.approved(leave) }),
+        status: nightOpen && dateKey === yesterdayKey && derived === 'MISSING_CHECKOUT' ? ('WORKING' as const) : derived,
         leave,
         checkIn: record?.checkIn ?? null,
         checkOut: record?.checkOut ?? null,

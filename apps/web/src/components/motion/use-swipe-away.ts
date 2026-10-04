@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 /**
- * Approve → swipe away. Call `markDone(item)` after a decision; when the
+ * Approve → swipe away. Call `markDone(item)` when the decision is sent
+ * (and `unmark(item)` if it fails); when the
  * list refreshes without that item, it stays in place for a moment with
  * `leaving: true` (render it with `m-swipe`) and then goes. Items that
  * disappear for other reasons (filters, paging) just go.
@@ -18,6 +19,19 @@ export function useSwipeAway<T>(items: T[] | undefined, keyOf: (item: T) => stri
       setDone((m) => new Map(m).set(k, item));
       // Still in the list (e.g. the "All" view)? Forget it after a while
       setTimeout(() => setDone((m) => { if (!m.has(k)) return m; const next = new Map(m); next.delete(k); return next; }), 5000);
+    },
+    [keyOf],
+  );
+
+  const unmark = useCallback(
+    (item: T) => {
+      const k = keyOf(item);
+      setDone((m) => {
+        if (!m.has(k)) return m;
+        const next = new Map(m);
+        next.delete(k);
+        return next;
+      });
     },
     [keyOf],
   );
@@ -48,5 +62,5 @@ export function useSwipeAway<T>(items: T[] | undefined, keyOf: (item: T) => stri
     last.current = out.map((o) => o.item);
   });
 
-  return { rows: out, markDone };
+  return { rows: out, markDone, unmark };
 }

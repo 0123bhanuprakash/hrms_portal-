@@ -191,7 +191,7 @@ function skyNow(d = new Date()): { part: DayPart; x: number; y: number; moon: bo
 }
 
 /** Hero card: sky by time of day, pointer spotlight, theme accent glow. */
-export function SkyHero({ className, children }: { className?: string; children: React.ReactNode }) {
+export function SkyHero({ className, children, skyPart, decoration }: { className?: string; children: React.ReactNode; skyPart?: string; decoration?: React.ReactNode }) {
   const [sky, setSky] = useState(() => skyNow());
   const ref = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -206,13 +206,14 @@ export function SkyHero({ className, children }: { className?: string; children:
   };
   return (
     <section ref={ref} onPointerMove={onMove} className={cn('m-hero rounded-xl border border-white/10 shadow-card', className)}>
-      <div className="m-sky" data-part={sky.part} aria-hidden>
-        {sky.moon
+      <div className="m-sky" data-part={skyPart === 'night' ? 'night' : skyPart ?? sky.part} aria-hidden>
+        {sky.moon || skyPart === 'night'
           ? Array.from({ length: 18 }, (_, i) => <span key={i} className="m-star" style={{ left: `${(i * 53) % 100}%`, top: `${(i * 29) % 70}%`, animationDelay: `${(i % 6) * 0.5}s` }} />)
           : [0, 1].map((i) => <span key={i} className="m-cloud" style={{ top: `${22 + i * 30}%`, width: `${60 + i * 20}px`, left: `${50 + i * 20}%`, animationDelay: `${-i * 25}s` }} />)}
-        <span className="m-sun" data-moon={sky.moon ? '' : undefined} style={{ ['--sun-x' as string]: `${sky.x}%`, ['--sun-y' as string]: `${sky.y}%` }} />
+        <span className="m-sun" data-moon={sky.moon || skyPart === 'night' ? '' : undefined} style={{ ['--sun-x' as string]: `${sky.x}%`, ['--sun-y' as string]: `${sky.y}%` }} />
         <span className="m-hills" />
       </div>
+      {decoration}
       {children}
     </section>
   );

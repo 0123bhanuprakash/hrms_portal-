@@ -21,6 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, Skeleton, Tabs } from '@/components/ui/feedback';
 import { PersonAvatar } from '@/components/profile/person-avatar';
 import { CountUp, Confetti, RevealWords, SkyHero, useReducedMotion } from '@/components/motion/motion';
+import { MomentLayer, type Moment } from '@/components/motion/moments';
 import { Donut, HBars, RingsRow, ViewAs, useChartStyle } from '@/components/dashboard/charts';
 import { useAccess } from '@/lib/access/use-access';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -60,11 +61,12 @@ export interface HeroAction {
 }
 
 /** The sky card at the top of every home: greeting, a line about today, numbers and shortcuts. */
-export function HomeHero({ title, subtitle, stats, actions, className }: { title: string; subtitle?: React.ReactNode; stats: HeroStat[]; actions: HeroAction[]; className?: string }) {
+export function HomeHero({ title, subtitle, stats, actions, className, moment }: { title: string; subtitle?: React.ReactNode; stats: HeroStat[]; actions: HeroAction[]; className?: string; moment?: Moment | null }) {
   const userId = useAuthStore((s) => s.user?.id);
   return (
-    <SkyHero className={cn('flex flex-col gap-5 p-6', className)}>
+    <SkyHero className={cn('flex flex-col gap-5 p-6', className)} skyPart={moment?.sky} decoration={moment ? <MomentLayer moment={moment} /> : undefined}>
       <div>
+        {moment && <span className="m-moment-pill mb-2">{moment.icon}{moment.pill}</span>}
         <p className="text-xs font-semibold text-white/80">{todayLabel()}</p>
         <h1 className="mt-1 text-[28px] font-bold leading-tight tracking-tight text-white sm:text-[32px]">
           <RevealWords text={title} storageKey={`greet-${userId}`} />
@@ -186,12 +188,18 @@ export function MyWeekCard() {
                 <span className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">{fmtDay.format(d)}</span>
                 <span className="text-lg font-bold tabular-nums">{d.getUTCDate()}</span>
               </div>
-              {meta && rec?.status !== 'UPCOMING' && <span className={cn('w-fit rounded-full px-2 py-0.5 text-2xs font-semibold', meta.cell)}>{isToday && rec?.status === 'NOT_CHECKED_IN' ? 'Today' : meta.label}</span>}
+              {meta && rec?.status !== 'UPCOMING' && <span className={cn('w-fit rounded-full px-2 py-0.5 text-2xs font-semibold', meta.cell)}>{isToday && rec?.status === 'NOT_CHECKED_IN' ? 'Today' : isToday && rec?.checkOut && (rec.status === 'ABSENT' || rec.status === 'HALF_DAY') ? 'Checked out' : meta.label}</span>}
               {rec?.checkIn && (
                 <div className="space-y-0.5 text-2xs tabular-nums">
                   <p className="flex justify-between"><span className="text-muted-foreground">In</span><b>{clock(rec.checkIn, tz)}</b></p>
                   <p className="flex justify-between"><span className="text-muted-foreground">Out</span><b>{rec.checkOut ? clock(rec.checkOut, tz) : '—'}</b></p>
                 </div>
+              )}
+              {((rec?.sessions ?? 0) > 1 || rec?.earlyCheckout) && (
+                <span className="text-2xs text-muted-foreground">
+                  {(rec?.sessions ?? 0) > 1 && `${rec!.sessions} sessions`}
+                  {rec?.earlyCheckout && <b className="ml-1 font-semibold text-warning">early</b>}
+                </span>
               )}
               {rec?.holiday && <span className="line-clamp-2 text-2xs text-muted-foreground">{rec.holiday.name}</span>}
               {rec?.leave && !rec.checkIn && <span className="line-clamp-2 text-2xs text-muted-foreground">{rec.leave.name}</span>}

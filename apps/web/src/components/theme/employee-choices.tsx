@@ -164,7 +164,7 @@ function DefaultViews({ companyId }: { companyId: string }) {
   const theme = useCompanyTheme(companyId);
   const prefs = usePreferences();
   const update = useUpdateUiDefaults(companyId);
-  const mine = Object.fromEntries(Object.entries(prefs.data?.uiState ?? {}).filter(([k]) => k.startsWith('chart:')));
+  const mine = Object.fromEntries(Object.entries(prefs.data?.uiState ?? {}).filter(([k]) => k.startsWith('chart:') || k.startsWith('moments:')));
   const current = Object.keys(theme.data?.uiDefaults ?? {}).length;
   const save = async (values: Record<string, unknown>, done: string) => {
     try {
@@ -177,15 +177,15 @@ function DefaultViews({ companyId }: { companyId: string }) {
   return (
     <div className="flex flex-wrap items-start gap-4 px-5 py-4">
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold">Default chart views</p>
+        <p className="text-sm font-semibold">Default views and moments</p>
         <p className="text-xs text-muted-foreground">
-          What everyone sees until they pick their own. {current ? `${current} default${current === 1 ? '' : 's'} set.` : 'None set — built-in defaults are used.'} Set your own chart styles on the home page, then copy them here.
+          What everyone sees until they pick their own. {current ? `${current} default${current === 1 ? '' : 's'} set.` : 'None set — built-in defaults are used.'} Set your own chart styles (home page) and moments (Preferences), then copy them here.
         </p>
       </div>
       <div className="flex gap-2">
         {current > 0 && <Button size="sm" variant="ghost" disabled={update.isPending} onClick={() => save({}, 'Company defaults cleared')}>Clear</Button>}
         <Button size="sm" variant="secondary" loading={update.isPending} disabled={!Object.keys(mine).length} onClick={() => save(mine, 'Your chart views are now the company default')}>
-          Use my chart views ({Object.keys(mine).length})
+          Use my choices ({Object.keys(mine).length})
         </Button>
       </div>
     </div>

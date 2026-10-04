@@ -48,7 +48,7 @@ export function CheckInCard({ showCalendarLink = true }: { showCalendarLink?: bo
             ) : t.leave?.status === 'APPROVED' ? (
               <Badge tone="info">{t.leave.name}{t.leave.halfDay ? ' (half day)' : ''}</Badge>
             ) : (
-              status && <Badge tone={status.tone} dot>{status.label}</Badge>
+              done && (t.status === 'ABSENT' || t.status === 'HALF_DAY') ? <Badge tone="neutral" dot>Checked out</Badge> : status && <Badge tone={status.tone} dot>{status.label}</Badge>
             )}
             {r?.checkIn && <span>First in {clock(r.checkIn, tz)}</span>}
             {r?.checkOut && !working && <span>· Out {clock(r.checkOut, tz)}</span>}

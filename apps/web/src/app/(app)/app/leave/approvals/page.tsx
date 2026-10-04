@@ -68,7 +68,7 @@ export default function LeaveApprovalsPage() {
         <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-28 w-full" />)}</div>
       ) : list.isError ? (
         <ErrorState message={getApiErrorMessage(list.error, 'Could not load requests')} onRetry={() => list.refetch()} />
-      ) : !list.data?.data.length ? (
+      ) : !swipe.rows.length ? (
         <EmptyState icon={<Inbox />} title={view === 'review' ? 'All caught up' : 'No leave requests'} description={view === 'review' ? 'Nothing is waiting for you.' : undefined} />
       ) : (
         <div className="space-y-3 overflow-x-hidden">
@@ -95,28 +95,29 @@ export default function LeaveApprovalsPage() {
             />
             </div>
           ))}
-          <Pagination page={page} totalPages={list.data.meta.totalPages} total={list.data.meta.total} limit={list.data.meta.limit} onPageChange={setPage} />
+          {list.data && <Pagination page={page} totalPages={list.data.meta.totalPages} total={list.data.meta.total} limit={list.data.meta.limit} onPageChange={setPage} />}
         </div>
       )}
 
-      <DecideDialog value={deciding} onClose={() => setDeciding(null)} onDone={swipe.markDone} />
+      <DecideDialog value={deciding} onClose={() => setDeciding(null)} onDone={swipe.markDone} onUndo={swipe.unmark} />
     </div>
   );
 }
 
-function DecideDialog({ value, onClose, onDone }: { value: { request: LeaveRequest; action: 'approve' | 'reject' } | null; onClose: () => void; onDone: (r: LeaveRequest) => void }) {
+function DecideDialog({ value, onClose, onDone, onUndo }: { value: { request: LeaveRequest; action: 'approve' | 'reject' } | null; onClose: () => void; onDone: (r: LeaveRequest) => void; onUndo: (r: LeaveRequest) => void }) {
   const decide = useDecideLeave();
   const [note, setNote] = useState('');
   if (!value) return null;
   const { request: r, action } = value;
   const submit = async () => {
     try {
+      onDone(r);
       const res = await decide.mutateAsync({ id: r.id, action, note });
       toast.success(action === 'reject' ? 'Leave rejected' : res.status === 'APPROVED' ? 'Leave approved' : `Approved — now with level ${res.currentLevel}`);
       setNote('');
-      onDone(r);
       onClose();
     } catch (err) {
+      onUndo(r);
       toast.error(getApiErrorMessage(err, 'Could not save the decision'));
     }
   };

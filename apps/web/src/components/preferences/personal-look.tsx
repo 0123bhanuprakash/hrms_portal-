@@ -12,6 +12,7 @@ import { THEME_PRESETS } from '@/lib/theme/presets';
 import { getApiErrorMessage } from '@/lib/errors';
 import { Button } from '@/components/ui/button';
 import { useResetUiState } from '@/lib/preferences/ui-state';
+import { MOMENT_GROUPS, useMomentsOff } from '@/components/motion/moments';
 import { cn } from '@/lib/cn';
 
 // ============================================================
@@ -155,20 +156,23 @@ export function MenuStyleSketch({ style }: { style: MenuStyle }) {
   );
 }
 
-/** Pick how the side menu looks (desktop; phones keep the slide-out menu). */
-export function MenuStyleCard() {
+/**
+ * Pick how the side menu looks (desktop; phones keep the slide-out menu).
+ * `platform`: the Super Admin console — no company rules, Classic is the default.
+ */
+export function MenuStyleCard({ platform = false }: { platform?: boolean }) {
   const companyId = useAuthStore((s) => s.companyId);
-  const theme = useCompanyTheme(companyId);
+  const theme = useCompanyTheme(platform ? null : companyId);
   const prefs = usePreferences();
   const { save, pending } = usePersonalSave();
   const rules = theme.data?.personalization;
-  if (!rules?.personalMenuStyle || !prefs.data) return null;
+  if ((!platform && !rules?.personalMenuStyle) || !prefs.data) return null;
 
   const current = prefs.data.menuStyle ?? null;
-  const fallback = rules.defaultMenuStyle;
+  const fallback: MenuStyle = platform ? 'classic' : rules!.defaultMenuStyle;
   return (
     <Card>
-      <CardHeader title="Menu style" description={`How the side menu looks on larger screens. Company default: ${MENU_STYLE_INFO[fallback].label}.`} />
+      <CardHeader title="Menu style" description={`How the side menu looks on larger screens. ${platform ? 'Default' : 'Company default'}: ${MENU_STYLE_INFO[fallback].label}.`} />
       <div role="radiogroup" aria-label="Menu style" className="grid grid-cols-2 gap-3 px-5 pb-5 lg:grid-cols-4">
         {(Object.keys(MENU_STYLE_INFO) as MenuStyle[]).map((style) => {
           const selected = (current ?? fallback) === style;
@@ -226,6 +230,67 @@ export function SavedViewsCard() {
         >
           Reset to company defaults
         </Button>
+      </div>
+    </Card>
+  );
+}
+
+const PREVIEWS: Array<{ kind: string; label: string }> = [
+  { kind: 'birthday', label: 'Birthday' },
+  { kind: 'anniversary', label: 'Anniversary' },
+  { kind: 'diwali', label: 'Diwali' },
+  { kind: 'holi', label: 'Holi' },
+  { kind: 'christmas', label: 'Christmas' },
+  { kind: 'newyear', label: 'New Year' },
+  { kind: 'monsoon', label: 'Monsoon' },
+  { kind: 'friday', label: 'Friday' },
+  { kind: 'office', label: 'Office lights' },
+];
+
+/**
+ * Atmosphere moments in the home hero: switch groups off, or preview one.
+ * `platform`: the Super Admin console — no personal dates or office lights there.
+ */
+export function MomentsCard({ platform = false }: { platform?: boolean }) {
+  const [off, setOff] = useMomentsOff();
+  const groups = platform ? MOMENT_GROUPS.filter((g) => g.key !== 'personal' && g.key !== 'office') : MOMENT_GROUPS;
+  const previews = platform ? PREVIEWS.filter((p) => !['birthday', 'anniversary', 'office'].includes(p.kind)) : PREVIEWS;
+  const home = platform ? '/super-admin' : '/app';
+  return (
+    <Card>
+      <CardHeader
+        title="Moments on your home page"
+        description={
+          platform
+            ? 'Small touches in the sky at the top of the dashboard — festivals, the monsoon, Friday afternoons. Everything else is the sky by time of day.'
+            : 'Small celebrations in the sky at the top of Home — your birthday, festivals, the monsoon, Friday afternoons. The biggest moment of the day wins; everything else is the sky by time of day.'
+        }
+      />
+      <div className="divide-y divide-border border-t border-border">
+        {groups.map((g) => {
+          const on = !off.includes(g.key);
+          return (
+            <label key={g.key} className="flex cursor-pointer items-center gap-3 px-5 py-3 text-sm">
+              <span className="flex-1">{g.label}</span>
+              <input
+                type="checkbox"
+                role="switch"
+                className="h-4 w-4 accent-[hsl(var(--primary))]"
+                checked={on}
+                onChange={() => setOff(on ? [...off, g.key] : off.filter((k) => k !== g.key))}
+                aria-label={g.label}
+              />
+            </label>
+          );
+        })}
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5 border-t border-border px-5 py-3">
+        <span className="mr-1 text-xs text-muted-foreground">Preview:</span>
+        {previews.map((p) => (
+          <a key={p.kind} href={`${home}?moment=${p.kind}`} className="rounded-full border border-border px-2.5 py-1 text-xs font-medium transition-colors hover:bg-subtle">
+            {p.label}
+          </a>
+        ))}
       </div>
     </Card>
   );
