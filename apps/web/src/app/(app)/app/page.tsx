@@ -1,28 +1,23 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import {
   ArrowRight,
-  Award,
-  Building2,
-  Cake,
+  BarChart3,
   FolderKanban,
   Receipt,
   CalendarCheck,
   CalendarClock,
   ClipboardCheck,
-  CalendarDays,
   Home,
   IdCard,
   ImageIcon,
+  Megaphone,
   Network,
   Palette,
-  PartyPopper,
   Plane,
   SlidersHorizontal,
-  Sparkles,
-  UserCheck,
   UserPlus,
   Users,
   UsersRound,
@@ -30,261 +25,235 @@ import {
   LifeBuoy,
   Timer,
 } from 'lucide-react';
-import { Card, CardHeader, Skeleton, Tabs } from '@/components/ui/feedback';
-import { PageHeader } from '@/components/ui/page-header';
-import { StatCard } from '@/components/ui/stat-card';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardHeader } from '@/components/ui/feedback';
 import { PersonAvatar, PersonRow } from '@/components/profile/person-avatar';
-import { CompletionCard } from '@/components/profile/profile-header';
-import { CheckInCard } from '@/components/attendance/check-in-card';
-import { HomeAnnouncements, HomeKudos } from '@/components/engagement/home-cards';
+import { NeedsActionCard, TodayCard, useNeedsAction } from '@/components/dashboard/employee-sections';
+import { AdminActionsCard, ApprovalsCard, AttendanceTodayCard, DepartmentsCard, JoinersCard, ProbationCard, WhosOffCard, useApprovals, useCompanyToday } from '@/components/dashboard/admin-sections';
+import { CelebrationsCard, ComingUpCard, HomeHero, KudosTickerCard, LeaveBalanceCard, MyProjectsCard, MyWeekCard, greeting, useEmployeeHero, type HeroAction, type HeroStat } from '@/components/dashboard/home-sections';
+import { HomeAnnouncements } from '@/components/engagement/home-cards';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useAccess } from '@/lib/access/use-access';
 import { useCompanyBranding, useCompanyStats } from '@/lib/company/queries';
-import { useMyCard, useSpotlight, type Spotlight } from '@/lib/company/profile';
-import { formatDate } from '@/lib/format';
+import { useMyCard, useSpotlight } from '@/lib/company/profile';
 import { cn } from '@/lib/cn';
-
-function greeting(): string {
-  const h = new Date().getHours();
-  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
-}
-
-/** "MM-DD" → "12 Oct" */
-const monthDay = (md: string) => {
-  const [m, d] = md.split('-').map(Number);
-  return new Date(2000, (m ?? 1) - 1, d ?? 1).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-};
-const inDays = (n: number) => (n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : `In ${n} days`);
+import { useMoment } from '@/components/motion/moments';
+import { useToday } from '@/lib/company/attendance';
 
 export default function HomePage() {
   const { user, companyId } = useAuthStore();
   const { can, scopeOf, hasFeature, isOwner } = useAccess();
-  const branding = useCompanyBranding(companyId);
   const me = useMyCard();
   const spotlight = useSpotlight(can('org.view'));
   const employee = me.data?.employee;
+  const isEmployee = Boolean(employee);
 
   // Company-wide numbers for people who manage the company, not for everyone
   const showStats = Boolean(user?.isSuperAdmin || isOwner || can('user.view') || scopeOf('employee.view') === 'company');
   const stats = useCompanyStats(showStats ? companyId : null);
-  const s = stats.data;
+  const companyToday = useCompanyToday();
+  const approvals = useApprovals();
+  const needs = useNeedsAction(me.data);
+  const celebrating = [...(spotlight.data?.birthdays ?? []), ...(spotlight.data?.anniversaries ?? [])].filter((p) => p.inDays === 0).map((p) => p.firstName);
+  const employeeHero = useEmployeeHero(needs.loading ? undefined : needs.rows.length, [...new Set(celebrating)]);
 
   const quick = [
-    { href: '/app/profile', icon: IdCard, title: 'My profile', text: 'Personal, bank & documents', show: Boolean(employee) },
+    { href: '/app/profile', icon: IdCard, title: 'My profile', text: 'Personal, bank & documents', show: isEmployee },
     { href: '/app/people', icon: Users, title: 'People', text: 'Find a colleague', show: can('org.view') && hasFeature('people.directory') },
     { href: '/app/org', icon: Network, title: 'Org chart', text: 'Teams and reporting lines', show: can('org.view') },
     { href: '/app/projects', icon: FolderKanban, title: 'Projects', text: can('project.manage') ? 'Create projects, allocate people' : 'Who works on what', show: hasFeature('work.projects') && can('project.view') },
-    { href: '/app/attendance', icon: CalendarCheck, title: 'My attendance', text: 'Calendar and corrections', show: Boolean(employee) && hasFeature('time.attendance') && can('attendance.view') },
-    { href: '/app/leave?apply=', icon: Plane, title: 'Apply leave', text: 'Casual, sick, earned and more', show: Boolean(employee) && hasFeature('time.leave') && can('leave.request') },
-    { href: '/app/leave?apply=WFH', icon: Home, title: 'Work from home', text: 'Request a WFH day', show: Boolean(employee) && hasFeature('time.leave') && can('leave.request') },
-    { href: '/app/expenses', icon: Receipt, title: 'Claim expenses', text: 'Get reimbursed for work spend', show: Boolean(employee) && hasFeature('ops.expenses') && can('expense.submit') },
-    { href: '/app/assets/mine', icon: PackageCheck, title: 'My assets', text: 'Your equipment, or request something', show: Boolean(employee) && hasFeature('ops.assets') && can('asset.view') },
-    { href: '/app/helpdesk', icon: LifeBuoy, title: 'Get help', text: 'Raise a ticket to IT, HR or Finance', show: Boolean(employee) && hasFeature('ops.helpdesk') && can('ticket.create') },
-    { href: '/app/timesheets', icon: Timer, title: 'Timesheet', text: 'Log this week’s hours', show: Boolean(employee) && hasFeature('work.timesheets') && can('timesheet.submit') },
+    { href: '/app/attendance', icon: CalendarCheck, title: 'My attendance', text: 'Calendar and corrections', show: isEmployee && hasFeature('time.attendance') && can('attendance.view') },
+    { href: '/app/leave?apply=', icon: Plane, title: 'Apply leave', text: 'Casual, sick, earned and more', show: isEmployee && hasFeature('time.leave') && can('leave.request') },
+    { href: '/app/leave?apply=WFH', icon: Home, title: 'Work from home', text: 'Request a WFH day', show: isEmployee && hasFeature('time.leave') && can('leave.request') },
+    { href: '/app/expenses', icon: Receipt, title: 'Claim expenses', text: 'Get reimbursed for work spend', show: isEmployee && hasFeature('ops.expenses') && can('expense.submit') },
+    { href: '/app/assets/mine', icon: PackageCheck, title: 'My assets', text: 'Your equipment, or request something', show: isEmployee && hasFeature('ops.assets') && can('asset.view') },
+    { href: '/app/helpdesk', icon: LifeBuoy, title: 'Get help', text: 'Raise a ticket to IT, HR or Finance', show: isEmployee && hasFeature('ops.helpdesk') && can('ticket.create') },
+    { href: '/app/timesheets', icon: Timer, title: 'Timesheet', text: 'Log this week’s hours', show: isEmployee && hasFeature('work.timesheets') && can('timesheet.submit') },
     { href: '/app/leave/approvals', icon: CalendarClock, title: 'Leave approvals', text: 'Requests waiting for you', show: hasFeature('time.leave') && can('leave.approve') },
     { href: '/app/attendance/approvals', icon: ClipboardCheck, title: 'Attendance approvals', text: 'Corrections waiting for you', show: hasFeature('time.attendance') && can('attendance.approve') },
     { href: '/app/employees', icon: UsersRound, title: 'Employees', text: 'Manage employee records', show: can('employee.view') && scopeOf('employee.view') !== 'own' },
   ].filter((q) => q.show);
 
+  // ── Hero ───────────────────────────────────────────────────
+  let hero: { title: string; subtitle?: string; stats: HeroStat[]; actions: HeroAction[] };
+  if (showStats) {
+    const c = companyToday.counts;
+    const s = stats.data;
+    const parts: string[] = [];
+    if (c && companyToday.present !== undefined) parts.push(c.total ? `${companyToday.present} of ${c.total} people are in.` : 'Not a working day today.');
+    if (approvals.total !== undefined) parts.push(approvals.total ? `${approvals.total} approval${approvals.total === 1 ? '' : 's'} waiting for you.` : 'No approvals waiting.');
+    if (celebrating.length) parts.push(`${celebrating.length} ${celebrating.length === 1 ? 'person is' : 'people are'} celebrating today.`);
+    const actions: HeroAction[] = [];
+    if (can('employee.create')) actions.push({ href: '/app/employees', label: 'Add employee', icon: <UserPlus />, primary: true });
+    if (hasFeature('engage.announcements') && can('announcement.post')) actions.push({ href: '/app/announcements', label: 'Post announcement', icon: <Megaphone /> });
+    if (hasFeature('insights.reports') && can('report.view')) actions.push({ href: '/app/reports', label: 'Reports', icon: <BarChart3 /> });
+    actions.push(...employeeHero.actions.filter((a) => a.label !== 'Timesheet').map((a) => ({ ...a, primary: false })));
+    hero = {
+      title: `${greeting()}, ${user?.firstName ?? ''}`,
+      subtitle: parts.join(' '),
+      stats: [
+        { label: 'Employees', value: s?.employeeCount, suffix: s ? `· ${s.departmentCount} depts` : undefined },
+        ...(companyToday.enabled
+          ? [
+              { label: 'Present today', value: companyToday.present, suffix: c ? `/ ${c.total}` : undefined },
+              { label: 'On leave', value: c?.onLeave, suffix: c ? `· ${c.workFromHome} WFH` : undefined },
+            ]
+          : []),
+        { label: 'Waiting for you', value: approvals.total, tone: approvals.total ? 'warn' : undefined },
+      ],
+      actions: actions.slice(0, 4),
+    };
+  } else {
+    hero = employeeHero;
+  }
+
+  // Atmosphere: your birthday / anniversary, festivals, monsoon, Friday, office lights for admins
+  const branding = useCompanyBranding(companyId);
+  const today = useToday(hasFeature('time.attendance'));
+  const moment = useMoment({
+    spotlight: spotlight.data,
+    myEmployeeId: employee?.id,
+    firstName: user?.firstName,
+    companyName: branding.data?.displayName,
+    shiftEnd: today.data?.policy.shiftEnd,
+    office: showStats && companyToday.counts && companyToday.present !== undefined ? { present: companyToday.present + companyToday.counts.workFromHome, total: companyToday.counts.total } : undefined,
+  });
+
+  // Next to the hero: company attendance for admins, my day for everyone else
+  const myDay = isEmployee && hasFeature('time.attendance') && can('attendance.mark');
+  const heroSide = showStats && companyToday.enabled ? <AttendanceTodayCard className="h-full" /> : myDay ? <TodayCard /> : null;
+
+  const team = employee && (employee.reportingManager || employee.subordinates.length > 0) && (
+    <Card>
+      <CardHeader icon={<Users />} title="My team" />
+      <div className="space-y-4 px-5 pb-5">
+        {employee.reportingManager && (
+          <div>
+            <p className="mb-1.5 text-xs text-muted-foreground">Reports to</p>
+            <PersonRow person={employee.reportingManager} />
+          </div>
+        )}
+        {employee.subordinates.length > 0 && (
+          <div>
+            <p className="mb-2 text-xs text-muted-foreground">Direct reports · {employee.directReportCount}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {employee.subordinates.map((p) => (
+                <span key={p.id} title={`${p.firstName} ${p.lastName}`}>
+                  <PersonAvatar person={p} size="sm" />
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+
+  const quickCard = quick.length > 0 && (
+    <Card>
+      <CardHeader title="Quick actions" />
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-2 px-4 pb-4">
+        {quick.map(({ href, icon: Icon, title, text }) => (
+          <Link key={href} href={href} className="m-lift group flex items-center gap-3 rounded-lg border border-border p-2.5 transition-colors hover:border-foreground/20 hover:bg-subtle">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary-soft-foreground">
+              <Icon className="h-4 w-4" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-semibold">{title}</span>
+              <span className="block truncate text-xs text-muted-foreground">{text}</span>
+            </span>
+            <ArrowRight className="h-4 w-4 -translate-x-1 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100" />
+          </Link>
+        ))}
+      </div>
+    </Card>
+  );
+
+  const makeItYours = (
+    <Card>
+      <CardHeader title="Make it yours" />
+      <div className="space-y-1 px-3 pb-3">
+        {[
+          ...(user?.isSuperAdmin || can('branding.manage')
+            ? [
+                { href: '/app/settings/theme', icon: Palette, title: 'Theme', text: 'Colors, font, shapes' },
+                { href: '/app/settings/branding', icon: ImageIcon, title: 'Branding', text: 'Logo, favicon and name' },
+              ]
+            : []),
+          { href: '/app/settings/preferences', icon: SlidersHorizontal, title: 'Preferences', text: 'Theme, menu style, time zone' },
+        ].map(({ href, icon: Icon, title, text }) => (
+          <Link key={href} href={href} className="group flex items-center gap-3 rounded-lg p-2.5 transition-colors hover:bg-muted/60">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+              <Icon className="h-4 w-4" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-medium">{title}</span>
+              <span className="block truncate text-xs text-muted-foreground">{text}</span>
+            </span>
+          </Link>
+        ))}
+      </div>
+    </Card>
+  );
+
+  const celebrations = can('org.view') && <CelebrationsCard data={spotlight.data} loading={spotlight.isLoading} />;
+  const comingUp = can('org.view') && <ComingUpCard data={spotlight.data} loading={spotlight.isLoading} />;
+
   return (
-    <div className="space-y-6">
-      <PageHeader
-        eyebrow={new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}
-        title={`${greeting()}, ${user?.firstName ?? ''}`}
-        description={branding.data?.displayName ? `Welcome to ${branding.data.displayName}.` : 'Your HR workspace at a glance.'}
-      />
+    <div className="space-y-5">
+      {/* Hero + today */}
+      <div className={cn('m-stagger grid gap-5', heroSide && 'lg:grid-cols-12')}>
+        <HomeHero className={cn(heroSide && 'lg:col-span-8')} title={hero.title} subtitle={hero.subtitle} stats={hero.stats} actions={hero.actions} moment={moment} />
+        {heroSide && <div className="min-w-0 lg:col-span-4 [&>*]:h-full">{heroSide}</div>}
+      </div>
 
-      {showStats && (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatCard title="Employees" value={s?.employeeCount} icon={<Users />} />
-          <StatCard title="Departments" value={s?.departmentCount} icon={<Building2 />} tone="info" />
-          <StatCard title="Portal users" value={s?.userCount} icon={<UsersRound />} tone="neutral" />
-          <StatCard title="Active users" value={s?.activeUserCount} icon={<UserCheck />} tone="success" />
-        </div>
-      )}
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="space-y-4 lg:col-span-2">
-          <HomeAnnouncements />
-          {employee && hasFeature('time.attendance') && can('attendance.mark') && <CheckInCard />}
-          {me.data?.completion && me.data.completion.percent < 100 && <CompletionCard completion={me.data.completion} href="/app/profile" compact />}
-
-          <Card>
-            <CardHeader title="Quick actions" />
-            <div className="grid gap-2 px-3 pb-3 sm:grid-cols-2">
-              {quick.map(({ href, icon: Icon, title, text }) => (
-                <Link key={href} href={href} className="group flex items-center gap-3 rounded-lg p-2.5 transition-colors hover:bg-muted/60">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary-soft-foreground">
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-medium">{title}</span>
-                    <span className="block truncate text-xs text-muted-foreground">{text}</span>
-                  </span>
-                  <ArrowRight className="h-4 w-4 -translate-x-1 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100" />
-                </Link>
-              ))}
-            </div>
-          </Card>
-
-          {can('org.view') && <SpotlightCard data={spotlight.data} loading={spotlight.isLoading} />}
-        </div>
-
-        <div className="space-y-4">
-          {employee && (employee.reportingManager || employee.subordinates.length > 0) && (
-            <Card>
-              <CardHeader icon={<Users />} title="My team" />
-              <div className="space-y-4 px-5 pb-5">
-                {employee.reportingManager && (
-                  <div>
-                    <p className="mb-1.5 text-xs text-muted-foreground">Reports to</p>
-                    <PersonRow person={employee.reportingManager} />
-                  </div>
-                )}
-                {employee.subordinates.length > 0 && (
-                  <div>
-                    <p className="mb-2 text-xs text-muted-foreground">Direct reports · {employee.directReportCount}</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {employee.subordinates.map((p) => (
-                        <span key={p.id} title={`${p.firstName} ${p.lastName}`}>
-                          <PersonAvatar person={p} size="sm" />
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </Card>
+      {/* Main + side columns; the last card in each column stretches so both end level */}
+      <div className="grid gap-5 lg:grid-cols-12">
+        <div className="m-stagger flex min-w-0 flex-col gap-5 lg:col-span-8 [&>*:last-child]:flex-1">
+          {showStats ? (
+            <>
+              <ApprovalsCard />
+              {isEmployee && hasFeature('time.attendance') && can('attendance.view') && <MyWeekCard />}
+              <Pair>
+                <WhosOffCard />
+                <DepartmentsCard />
+              </Pair>
+              <JoinersCard />
+              <Pair>
+                {isEmployee && <NeedsActionCard me={me.data} />}
+                <ProbationCard />
+              </Pair>
+              {quickCard}
+            </>
+          ) : (
+            <>
+              {isEmployee && hasFeature('time.attendance') && can('attendance.view') && <MyWeekCard />}
+              {isEmployee && hasFeature('time.leave') && can('leave.view') && <LeaveBalanceCard />}
+              <Pair>
+                {isEmployee && <NeedsActionCard me={me.data} />}
+                <MyProjectsCard />
+              </Pair>
+              <ApprovalsCard />
+              {quickCard}
+            </>
           )}
-
-          <HomeKudos />
-          {can('org.view') && <HolidaysCard data={spotlight.data} loading={spotlight.isLoading} />}
-
-          <Card>
-            <CardHeader title="Make it yours" />
-            <div className="space-y-1 px-3 pb-3">
-              {[
-                ...(user?.isSuperAdmin || can('branding.manage')
-                  ? [
-                      { href: '/app/settings/theme', icon: Palette, title: 'Theme', text: 'Colors, font, shapes' },
-                      { href: '/app/settings/branding', icon: ImageIcon, title: 'Branding', text: 'Logo, favicon and name' },
-                    ]
-                  : []),
-                { href: '/app/settings/preferences', icon: SlidersHorizontal, title: 'Preferences', text: 'Appearance, time zone, date format' },
-              ].map(({ href, icon: Icon, title, text }) => (
-                <Link key={href} href={href} className="group flex items-center gap-3 rounded-lg p-2.5 transition-colors hover:bg-muted/60">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-medium">{title}</span>
-                    <span className="block truncate text-xs text-muted-foreground">{text}</span>
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </Card>
+        </div>
+        <div className="m-stagger flex min-w-0 flex-col gap-5 lg:col-span-4 [&>*:last-child]:flex-1">
+          {celebrations}
+          {showStats && myDay && companyToday.enabled && <TodayCard />}
+          {showStats && <AdminActionsCard />}
+          {comingUp}
+          {team}
+          {makeItYours}
+          <KudosTickerCard />
         </div>
       </div>
+
+      <HomeAnnouncements />
     </div>
   );
 }
 
-// ─── Spotlight ──────────────────────────────────────────────
-
-type SpotTab = 'birthdays' | 'anniversaries' | 'joiners';
-
-function SpotlightCard({ data, loading }: { data?: Spotlight; loading: boolean }) {
-  const [tab, setTab] = useState<SpotTab>('birthdays');
-  const tabs: Array<{ id: SpotTab; label: string; icon: React.ReactNode; count?: number }> = [
-    { id: 'birthdays', label: 'Birthdays', icon: <Cake />, count: data?.birthdays.length },
-    { id: 'anniversaries', label: 'Work anniversaries', icon: <Award />, count: data?.anniversaries.length },
-    { id: 'joiners', label: 'New joiners', icon: <UserPlus />, count: data?.newJoiners.length },
-  ];
-
-  const rows =
-    tab === 'birthdays'
-      ? data?.birthdays.map((p) => ({ p, right: monthDay(p.date), sub: inDays(p.inDays), highlight: p.inDays === 0 }))
-      : tab === 'anniversaries'
-        ? data?.anniversaries.map((p) => ({ p, right: `${p.years} yr${p.years === 1 ? '' : 's'}`, sub: `${inDays(p.inDays)} · ${monthDay(p.date)}`, highlight: p.inDays === 0 }))
-        : data?.newJoiners.map((p) => ({ p, right: formatDate(p.joiningDate), sub: p.department?.name ?? '', highlight: false }));
-
-  const empty = {
-    birthdays: 'No birthdays in the next 30 days.',
-    anniversaries: 'No work anniversaries in the next 30 days.',
-    joiners: 'Nobody new in the last 30 days.',
-  }[tab];
-
-  return (
-    <Card>
-      <CardHeader icon={<Sparkles />} title="Spotlight" description="Celebrate your colleagues" />
-      <div className="px-5">
-        <Tabs tabs={tabs} value={tab} onChange={setTab} />
-      </div>
-      {loading ? (
-        <div className="space-y-2 p-5">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-        </div>
-      ) : !rows?.length ? (
-        <p className="px-5 py-8 text-center text-sm text-muted-foreground">{empty}</p>
-      ) : (
-        <ul className="divide-y divide-border">
-          {rows.slice(0, 8).map(({ p, right, sub, highlight }) => (
-            <li key={p.id} className={cn('flex items-center gap-3 px-5 py-2.5', highlight && 'bg-primary-soft/40')}>
-              <PersonAvatar person={p} size="sm" />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">
-                  {p.firstName} {p.lastName} {highlight && <PartyPopper className="ml-1 inline h-3.5 w-3.5 text-primary" />}
-                </p>
-                <p className="truncate text-xs text-muted-foreground">{p.designation?.name ?? sub}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-medium tabular-nums">{right}</p>
-                <p className="text-xs text-muted-foreground">{sub}</p>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-      {tab === 'birthdays' && (
-        <p className="border-t border-border px-5 py-2.5 text-xs text-muted-foreground">
-          Only people who chose to share their birthday appear here. <Link href="/app/profile" className="font-medium text-primary hover:underline">Change yours</Link>
-        </p>
-      )}
-    </Card>
-  );
-}
-
-function HolidaysCard({ data, loading }: { data?: Spotlight; loading: boolean }) {
-  return (
-    <Card>
-      <CardHeader icon={<CalendarDays />} title="Upcoming holidays" />
-      {loading ? (
-        <div className="px-5 pb-5"><Skeleton className="h-16 w-full" /></div>
-      ) : !data?.holidays.length ? (
-        <p className="px-5 pb-5 text-sm text-muted-foreground">No holidays added yet.</p>
-      ) : (
-        <ul className="space-y-2.5 px-5 pb-5">
-          {data.holidays.map((h) => {
-            const d = new Date(h.date);
-            return (
-              <li key={h.id} className="flex items-center gap-3">
-                <span className="flex w-11 shrink-0 flex-col items-center rounded-lg border border-border py-1 leading-tight">
-                  <span className="text-2xs font-medium uppercase text-muted-foreground">{d.toLocaleDateString(undefined, { month: 'short', timeZone: 'UTC' })}</span>
-                  <span className="text-sm font-semibold tabular-nums">{d.getUTCDate()}</span>
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium">{h.name}</span>
-                  <span className="block text-xs text-muted-foreground">{d.toLocaleDateString(undefined, { weekday: 'long', timeZone: 'UTC' })}</span>
-                </span>
-                {h.isOptional && <Badge>Optional</Badge>}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </Card>
-  );
+/** Two cards side by side at equal height; one card alone takes the full row. */
+function Pair({ children }: { children: React.ReactNode }) {
+  return <div className="grid items-stretch gap-5 empty:hidden md:grid-cols-2 [&>*:only-child]:md:col-span-2">{children}</div>;
 }

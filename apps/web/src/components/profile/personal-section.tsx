@@ -61,7 +61,7 @@ export function PersonalSection({ employeeId, data, isSelf }: { employeeId: stri
         />
         <p className="flex items-center gap-2 border-t border-border px-5 py-3 text-xs text-muted-foreground">
           <Cake className="h-3.5 w-3.5" />
-          {data.showBirthday ? 'Birthday (day and month) is shown to colleagues in Spotlight.' : 'Birthday is hidden from colleagues.'}
+          Your birthday (day and month only, never the year) appears in Celebrations so colleagues can wish you.
         </p>
       </Card>
 
@@ -99,7 +99,6 @@ interface Form {
   gender: string;
   bloodGroup: string;
   maritalStatus: string;
-  showBirthday: boolean;
   current: Required<{ [K in keyof Address]: string }>;
   permanent: Required<{ [K in keyof Address]: string }>;
   sameAddress: boolean;
@@ -138,7 +137,6 @@ function PersonalDialog({ open, onClose, employeeId, data, isSelf }: { open: boo
       gender: data.gender ?? '',
       bloodGroup: p?.bloodGroup ?? '',
       maritalStatus: p?.maritalStatus ?? '',
-      showBirthday: data.showBirthday,
       current,
       permanent,
       sameAddress: Boolean(p?.currentAddress) && JSON.stringify(current) === JSON.stringify(permanent),
@@ -163,7 +161,6 @@ function PersonalDialog({ open, onClose, employeeId, data, isSelf }: { open: boo
       gender: f.gender || null,
       bloodGroup: f.bloodGroup,
       maritalStatus: f.maritalStatus,
-      showBirthday: f.showBirthday,
       currentAddress: filled(f.current),
       permanentAddress: filled(f.sameAddress ? f.current : f.permanent),
       emergencyContactName: f.emergencyContactName,
@@ -249,13 +246,7 @@ function PersonalDialog({ open, onClose, employeeId, data, isSelf }: { open: boo
               {MARITAL_STATUSES.map((m) => <option key={m} value={m}>{pretty(m)}</option>)}
             </select>
           </Field>
-          <label className="flex items-start gap-2 text-sm sm:col-span-2">
-            <input type="checkbox" className="mt-0.5 accent-[hsl(var(--primary))]" checked={f.showBirthday} onChange={(e) => set('showBirthday', e.target.checked)} />
-            <span>
-              <span className="font-medium">Show my birthday to colleagues</span>
-              <span className="block text-xs text-muted-foreground">Only the day and month appear in Spotlight — never the year.</span>
-            </span>
-          </label>
+
         </section>
 
         <section className="space-y-3">

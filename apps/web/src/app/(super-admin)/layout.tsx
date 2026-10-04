@@ -37,27 +37,28 @@ import { CommandMenu, NAV_SHORTCUTS, ShortcutsDialog } from '@/components/super-
 import { useOpenQueueDashboard, useSystemStatus, useThemeSettings } from '@/lib/admin/queries';
 import { ThemeStyle } from '@/components/theme/theme-style';
 import { DisplayPreferences } from '@/components/preferences/display-preferences';
+import { ClassicNav, CollapsibleNav, FloatingNav, RailNav, type SidebarGroup } from '@/components/layout/sidebar-nav';
+import { usePreferences, type UserPreferences } from '@/lib/company/queries';
 import { resolveTheme } from '@/lib/theme/presets';
-import type { ThemeTokens } from '@hrms/types';
+import type { MenuStyle, ThemeTokens } from '@hrms/types';
 import { getApiErrorMessage } from '@/lib/errors';
 import { initials } from '@/lib/format';
 import { cn } from '@/lib/cn';
 
-const NAV_GROUPS: Array<{
-  label: string;
-  items: Array<{ name: string; href: string; icon: React.ElementType; exact?: boolean }>;
-}> = [
-  { label: 'Overview', items: [{ name: 'Dashboard', href: '/super-admin', icon: LayoutDashboard, exact: true }] },
+const NAV_GROUPS: SidebarGroup[] = [
+  { label: 'Overview', icon: LayoutDashboard, items: [{ name: 'Dashboard', href: '/super-admin', icon: LayoutDashboard, exact: true }] },
   {
     label: 'Tenants',
+    icon: Building2,
     items: [
       { name: 'Companies', href: '/super-admin/companies', icon: Building2, exact: true },
       { name: 'Onboard company', href: '/super-admin/companies/new', icon: Plus },
     ],
   },
-  { label: 'Governance', items: [{ name: 'Audit logs', href: '/super-admin/audit-logs', icon: FileText }] },
+  { label: 'Governance', icon: FileText, items: [{ name: 'Audit logs', href: '/super-admin/audit-logs', icon: FileText }] },
   {
     label: 'Platform',
+    icon: Layers,
     items: [
       { name: 'Plans', href: '/super-admin/plans', icon: Layers },
       { name: 'Themes', href: '/super-admin/themes', icon: Palette },
@@ -67,6 +68,23 @@ const NAV_GROUPS: Array<{
 ];
 
 const THEME_CACHE_KEY = 'sa-theme-tokens';
+
+/** The Super Admin's menu style (Profile → Menu style), cached so a reload doesn't flash Classic first. */
+function useMenuStyle(prefs: UserPreferences | undefined, userId: string | undefined): MenuStyle {
+  const [cached, setCached] = useState<MenuStyle | null>(null);
+  const key = `sa-menu-style-${userId}`;
+  const style = prefs ? (prefs.menuStyle ?? 'classic') : null;
+  useEffect(() => {
+    if (!userId) return;
+    try {
+      if (style) localStorage.setItem(key, style);
+      else setCached(localStorage.getItem(key) as MenuStyle | null);
+    } catch {
+      /* storage unavailable */
+    }
+  }, [style, key, userId]);
+  return style ?? cached ?? 'classic';
+}
 
 /**
  * Applies the Super Admin portal theme. The last theme is cached per browser
@@ -160,6 +178,8 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
   const [mobileOpen, setMobileOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const prefs = usePreferences();
+  const menuStyle = useMenuStyle(prefs.data, user?.id);
 
   const allowed = hydrated && isAuthenticated && Boolean(user?.isSuperAdmin) && !user?.mustChangePassword;
 
@@ -218,6 +238,9 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
   }
 
   const fullName = `${user!.firstName} ${user!.lastName}`;
+  // Classic can be collapsed to icons; Rail is always icons
+  const rail = menuStyle === 'rail';
+  const compact = rail || (menuStyle === 'classic' && collapsed);
 
   return (
     <div className="flex min-h-screen bg-canvas text-foreground">
@@ -232,17 +255,18 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
         className={cn(
           'fixed inset-y-0 left-0 z-40 flex flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width,transform] duration-200 ease-out',
           'lg:sticky lg:top-0 lg:h-screen lg:translate-x-0',
-          collapsed ? 'lg:w-[60px]' : 'lg:w-60',
+          rail ? 'lg:w-[84px]' : compact ? 'lg:w-[60px]' : 'lg:w-60',
+          menuStyle === 'floating' && 'lg:top-3 lg:m-3 lg:mr-0 lg:h-[calc(100vh-1.5rem)] lg:rounded-2xl lg:border lg:shadow-card',
           mobileOpen ? 'w-60 translate-x-0' : 'w-60 -translate-x-full',
         )}
       >
         {/* Workspace */}
-        <div className={cn('flex h-14 items-center gap-2.5 px-3', collapsed && 'lg:justify-center lg:px-0')}>
+        <div className={cn('flex h-14 items-center gap-2.5 px-3', compact && 'lg:justify-center lg:px-0')}>
           <Link href="/super-admin" className="flex min-w-0 items-center gap-2.5 rounded-md">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-card shadow-inner-highlight">
+            <span className="m-shine flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-card shadow-inner-highlight">
               <ShieldCheck className="h-[18px] w-[18px]" />
             </span>
-            <span className={cn('min-w-0 leading-tight', collapsed && 'lg:hidden')}>
+            <span className={cn('min-w-0 leading-tight', compact && 'lg:hidden')}>
               <span className="block truncate text-sm font-semibold text-foreground">HRMS Platform</span>
               <span className="block truncate text-2xs text-sidebar-muted">Super Admin console</span>
             </span>
@@ -253,18 +277,18 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
         </div>
 
         {/* Search shortcut */}
-        <div className={cn('px-3 pb-2', collapsed && 'lg:px-2')}>
-          <Tooltip content="Search" shortcut="Ctrl K" side="right" disabled={!collapsed}>
+        <div className={cn('px-3 pb-2', compact && 'lg:px-2')}>
+          <Tooltip content="Search" shortcut="Ctrl K" side="right" disabled={!compact}>
             <button
               onClick={() => setCommandOpen(true)}
               className={cn(
                 'flex h-8 w-full items-center gap-2 rounded-md border border-sidebar-border bg-background/60 px-2.5 text-xs text-sidebar-muted transition-colors hover:border-foreground/15 hover:text-sidebar-foreground',
-                collapsed && 'lg:justify-center lg:px-0',
+                compact && 'lg:justify-center lg:px-0',
               )}
             >
               <Search className="h-3.5 w-3.5 shrink-0" />
-              <span className={cn('flex-1 text-left', collapsed && 'lg:hidden')}>Search…</span>
-              <span className={cn('flex gap-0.5', collapsed && 'lg:hidden')}>
+              <span className={cn('flex-1 text-left', compact && 'lg:hidden')}>Search…</span>
+              <span className={cn('flex gap-0.5', compact && 'lg:hidden')}>
                 <Kbd>Ctrl</Kbd>
                 <Kbd>K</Kbd>
               </span>
@@ -272,41 +296,52 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
           </Tooltip>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 py-2" aria-label="Main">
-          {NAV_GROUPS.map((group) => (
-            <div key={group.label} className="mb-4">
-              <p className={cn('mb-1 px-2 text-2xs font-medium uppercase tracking-wider text-sidebar-muted', collapsed && 'lg:invisible lg:h-0 lg:mb-0')}>
-                {group.label}
-              </p>
-              <ul className="space-y-0.5">
-                {group.items.map(({ name, href, icon: Icon, exact }) => {
-                  const active = exact ? pathname === href : pathname.startsWith(href);
-                  return (
-                    <li key={href}>
-                      <Tooltip content={name} side="right" disabled={!collapsed}>
-                        <Link
-                          href={href}
-                          aria-current={active ? 'page' : undefined}
-                          className={cn(
-                            'group relative flex h-8 items-center gap-2.5 rounded-md px-2 text-[13px] font-medium transition-colors',
-                            collapsed && 'lg:justify-center lg:px-0',
-                            active
-                              ? 'bg-sidebar-active text-sidebar-active-foreground'
-                              : 'text-sidebar-foreground hover:bg-sidebar-active/60 hover:text-sidebar-active-foreground',
-                          )}
-                        >
-                          {active && <span className="absolute -left-3 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-primary" aria-hidden />}
-                          <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-primary' : 'text-sidebar-muted group-hover:text-sidebar-foreground')} />
-                          <span className={cn('truncate', collapsed && 'lg:hidden')}>{name}</span>
-                        </Link>
-                      </Tooltip>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
-        </nav>
+        {menuStyle === 'rail' ? (
+          <>
+            <ClassicNav groups={NAV_GROUPS} pathname={pathname} className="lg:hidden" />
+            <RailNav groups={NAV_GROUPS} pathname={pathname} className="hidden lg:flex" />
+          </>
+        ) : menuStyle === 'floating' ? (
+          <FloatingNav groups={NAV_GROUPS} pathname={pathname} />
+        ) : menuStyle === 'collapsible' ? (
+          <CollapsibleNav groups={NAV_GROUPS} pathname={pathname} />
+        ) : (
+          <nav className="flex-1 overflow-y-auto px-3 py-2" aria-label="Main">
+            {NAV_GROUPS.map((group) => (
+              <div key={group.label} className="mb-4">
+                <p className={cn('mb-1 px-2 text-2xs font-medium uppercase tracking-wider text-sidebar-muted', compact && 'lg:invisible lg:h-0 lg:mb-0')}>
+                  {group.label}
+                </p>
+                <ul className="space-y-0.5">
+                  {group.items.map(({ name, href, icon: Icon, exact }) => {
+                    const active = exact ? pathname === href : pathname.startsWith(href);
+                    return (
+                      <li key={href}>
+                        <Tooltip content={name} side="right" disabled={!compact}>
+                          <Link
+                            href={href}
+                            aria-current={active ? 'page' : undefined}
+                            className={cn(
+                              'group relative flex h-8 items-center gap-2.5 rounded-md px-2 text-[13px] font-medium transition-colors',
+                              compact && 'lg:justify-center lg:px-0',
+                              active
+                                ? 'bg-sidebar-active text-sidebar-active-foreground'
+                                : 'text-sidebar-foreground hover:bg-sidebar-active/60 hover:text-sidebar-active-foreground',
+                            )}
+                          >
+                            {active && <span className="absolute -left-3 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-primary" aria-hidden />}
+                            <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-primary' : 'text-sidebar-muted group-hover:text-sidebar-foreground')} />
+                            <span className={cn('truncate', compact && 'lg:hidden')}>{name}</span>
+                          </Link>
+                        </Tooltip>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ))}
+          </nav>
+        )}
 
         {/* User card */}
         <div className="border-t border-sidebar-border p-2">
@@ -317,17 +352,17 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
               <button
                 className={cn(
                   'flex w-full items-center gap-2.5 rounded-md p-1.5 text-left transition-colors hover:bg-sidebar-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                  collapsed && 'lg:justify-center',
+                  compact && 'lg:justify-center',
                 )}
               >
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-primary to-primary/70 text-xs font-semibold text-primary-foreground">
                   {initials(fullName)}
                 </span>
-                <span className={cn('min-w-0 flex-1 leading-tight', collapsed && 'lg:hidden')}>
+                <span className={cn('min-w-0 flex-1 leading-tight', compact && 'lg:hidden')}>
                   <span className="block truncate text-[13px] font-medium text-foreground">{fullName}</span>
                   <span className="block truncate text-2xs text-sidebar-muted">Super Admin</span>
                 </span>
-                <ChevronsUpDown className={cn('h-3.5 w-3.5 text-sidebar-muted', collapsed && 'lg:hidden')} />
+                <ChevronsUpDown className={cn('h-3.5 w-3.5 text-sidebar-muted', compact && 'lg:hidden')} />
               </button>
             )}
             items={[
@@ -337,6 +372,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
               { label: 'Sign out', icon: <LogOut />, danger: true, onSelect: handleLogout },
             ]}
           />
+          {menuStyle === 'classic' && (
           <button
             onClick={toggleCollapsed}
             className="mt-1 hidden h-7 w-full items-center justify-center gap-2 rounded-md text-2xs text-sidebar-muted transition-colors hover:bg-sidebar-active hover:text-sidebar-foreground lg:flex"
@@ -344,6 +380,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
           >
             {collapsed ? <PanelLeftOpen className="h-3.5 w-3.5" /> : <><PanelLeftClose className="h-3.5 w-3.5" /> Collapse</>}
           </button>
+          )}
         </div>
       </aside>
 
@@ -373,7 +410,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
         </header>
 
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-          <div className="mx-auto max-w-6xl animate-fade-up" key={pathname}>
+          <div className={cn('mx-auto animate-fade-up', pathname === '/super-admin' ? 'max-w-[1500px]' : 'max-w-6xl')} key={pathname}>
             {children}
           </div>
         </main>

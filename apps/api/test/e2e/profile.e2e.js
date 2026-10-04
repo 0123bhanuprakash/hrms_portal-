@@ -57,7 +57,8 @@ const form = (buf, name, type, fields = {}) => { const f = new FormData(); f.app
     const roles = {};
     for (const t of templates) roles[t.key] = (await p.role.create({ data: { companyId: company.id, key: t.key, name: t.name, isOwner: t.isOwner, isSystemRole: t.isOwner, rolePermissions: { create: t.rolePermissions.map((rp) => ({ permissionId: rp.permissionId, scope: rp.scope })) } } })).id;
     const hash = await bcrypt.hash(PW, 10);
-    const today = new Date(); const utc = (y, m, d) => new Date(Date.UTC(y, m, d));
+    // The company's calendar day (Asia/Kolkata, UTC+5:30) — the UTC day differs between 00:00 and 05:30 IST
+    const today = new Date(Date.now() + 330 * 60_000); const utc = (y, m, d) => new Date(Date.UTC(y, m, d));
     const people = {};
     const mk = async (name, keys, managerId, extra = {}) => {
       const u = await p.user.create({ data: { email: `${name}@${SLUG}.test`, passwordHash: hash, firstName: name, lastName: 'T', companyId: company.id, status: 'ACTIVE', emailVerifiedAt: new Date(), lastLoginAt: new Date(), userRoles: { create: keys.map((k) => ({ roleId: roles[k], companyId: company.id })) } } });
@@ -148,7 +149,7 @@ const form = (buf, name, type, fields = {}) => { const f = new FormData(); f.app
     const dir = await call(P, 'GET', '/people?search=emp');
     check('Directory (any employee) — basic fields only', dir.status === 200 && dir.body.data.length === 1 && !('phone' in dir.body.data[0]) && !('dateOfBirth' in dir.body.data[0]), JSON.stringify(dir.body.data?.[0]));
     const sp = (await call(P, 'GET', '/people/spotlight')).data;
-    check('Spotlight: opted-in birthday only, no year', sp.birthdays.length === 1 && sp.birthdays[0].id === emp.id && sp.birthdays[0].inDays === 3 && !JSON.stringify(sp.birthdays).includes('1995'), JSON.stringify(sp.birthdays));
+    check('Spotlight: everyone’s birthday, day and month only', sp.birthdays.length === 2 && sp.birthdays.some((b) => b.id === emp.id && b.inDays === 3) && !JSON.stringify(sp.birthdays).match(/199[05]/), JSON.stringify(sp.birthdays));
     check('Spotlight: 2-year anniversary in 5 days', sp.anniversaries.some((a) => a.id === emp.id && a.years === 2 && a.inDays === 5), JSON.stringify(sp.anniversaries));
     check('Spotlight: new joiner + holiday', sp.newJoiners.some((n) => n.id === people.peer.id) && sp.holidays[0]?.name === 'Test Day');
 

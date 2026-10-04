@@ -46,6 +46,13 @@ export class AccessService {
     });
   }
 
+  /** Drops every cached role, delegation and user row (they rebuild on the next request). */
+  clearCaches(): void {
+    this.roleCache.clear();
+    this.delegationCache.clear();
+    this.userRows.clear();
+  }
+
   /** Loads (or reuses) the request user's row; concurrent requests share one query. */
   cachedUserRow<T>(userId: string, load: () => Promise<T>): Promise<T> {
     const now = Date.now();

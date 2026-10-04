@@ -16,6 +16,7 @@ import { EmailProducerService } from '../email/email.producer.service';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { hashPassword } from './password.util';
+import { MaintenanceService } from '../system/maintenance.service';
 import type { JwtPayload } from '@hrms/types';
 import type {
   LoginResponse,
@@ -73,6 +74,7 @@ export class AuthService {
     private readonly config: ConfigService,
     private readonly emailProducerService: EmailProducerService,
     private readonly accessService: AccessService,
+    private readonly maintenance: MaintenanceService,
   ) {}
 
   // ─── Login ─────────────────────────────────────────────────
@@ -94,6 +96,7 @@ export class AuthService {
     if (!user) {
       // Timing-safe: still run bcrypt to prevent timing attacks
       await bcrypt.compare(password, '$2a$12$invalidhashtopreventtimingattack');
+      this.recordSignIn(false, null, null);
       throw new UnauthorizedException('Invalid email or password');
     }
 
@@ -117,6 +120,7 @@ export class AuthService {
     const passwordValid = await bcrypt.compare(password, user.passwordHash);
 
     if (!passwordValid) {
+      this.recordSignIn(false, user.id, user.companyId);
       const newAttempts = user.loginAttempts + 1;
       const shouldLock = newAttempts >= MAX_LOGIN_ATTEMPTS;
 
@@ -162,6 +166,8 @@ export class AuthService {
       );
     }
     this.assertCompanyActive(user.company);
+    // Maintenance mode: company users wait; Super Admins carry on
+    await this.maintenance.assertOpenFor({ isSuperAdmin: user.isSuperAdmin });
 
     // 5. Reset lockout counters on successful login
     await this.prisma.user.update({
@@ -172,6 +178,8 @@ export class AuthService {
         lastLoginAt: new Date(),
       },
     });
+    this.markActive(user.id, user.companyId);
+    this.recordSignIn(true, user.id, user.companyId);
 
     // 7. Effective access (roles ∪ grants ∩ enabled features) — for the response only;
     //    tokens carry no permissions, they're resolved fresh on every request
@@ -271,6 +279,7 @@ export class AuthService {
       device,
       stored.familyId, // keep same family for reuse detection chain
     );
+    this.markActive(stored.userId, stored.user.companyId);
 
     return {
       access_token: accessToken,
@@ -597,6 +606,21 @@ export class AuthService {
     });
 
     return { accessToken, refreshToken: rawRefreshToken };
+  }
+
+  /** One row per person per day they use the portal (active-user trends). Never blocks sign-in. */
+  private markActive(userId: string, companyId: string | null): void {
+    const day = new Date(new Date().toISOString().slice(0, 10));
+    this.prisma.userActivityDay
+      .createMany({ data: [{ userId, companyId, day }], skipDuplicates: true })
+      .catch((err: Error) => this.logger.warn(`Could not record activity: ${err.message}`));
+  }
+
+  /** Sign-in attempts for Super Admin → System (sign-in safety). Never blocks sign-in. */
+  private recordSignIn(success: boolean, userId: string | null, companyId: string | null): void {
+    this.prisma.signInAttempt
+      .create({ data: { success, userId, companyId } })
+      .catch((err: Error) => this.logger.warn(`Could not record sign-in: ${err.message}`));
   }
 
   /** Users of an INACTIVE / SUSPENDED company cannot log in or refresh. */

@@ -175,6 +175,7 @@ export class AdminService {
         include: {
           branding: { select: { logoUrl: true, primaryColor: true, displayName: true } },
           settings: { select: { employeeIdPrefix: true } },
+          plan: { select: { key: true, name: true, limits: true } },
           _count: { select: { users: true, employees: true } },
         },
       }),

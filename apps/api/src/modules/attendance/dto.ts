@@ -94,3 +94,11 @@ export class SaveHolidayDto {
   @Matches(DATE, { message: 'date must be YYYY-MM-DD' }) date!: string;
   @IsOptional() @IsBoolean() isOptional?: boolean;
 }
+
+/** POST /attendance/check-out — an optional reason when leaving before a full day */
+export class CheckOutDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
+}

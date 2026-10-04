@@ -9,6 +9,8 @@ import {
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
+  Put,
+  Delete,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
@@ -16,7 +18,10 @@ import { CompaniesService } from '../companies/companies.service';
 import { CreateCompanyAdminDto } from './dto/create-company-admin.dto';
 import { CreateCompanyDto } from '../companies/dto/create-company.dto';
 import { QueryAuditLogsDto } from './dto/query-audit-logs.dto';
-import { QueryCompaniesDto } from './dto/query-companies.dto';
+import { CompanyInsightsService } from './company-insights.service';
+import type { JwtPayload } from '@hrms/types';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { AddCompanyNoteDto, BulkCompaniesDto, CompanyInsightsQueryDto, SetCompanyTagsDto } from './dto/company-insights.dto';
 import {
   AdminUpdateCompanyDto,
   SendTestEmailDto,
@@ -54,6 +59,7 @@ export class AdminController {
   constructor(
     private readonly adminService: AdminService,
     private readonly companiesService: CompaniesService,
+    private readonly insights: CompanyInsightsService,
   ) {}
 
   // ─── Platform ──────────────────────────────────────────────
@@ -93,9 +99,56 @@ export class AdminController {
   // ─── Companies ─────────────────────────────────────────────
 
   @Get('companies')
-  @ApiOperation({ summary: 'List companies' })
-  getCompanies(@Query() query: QueryCompaniesDto) {
-    return this.adminService.listCompanies(query);
+  @ApiOperation({ summary: 'List companies with usage, setup, health and tags' })
+  getCompanies(@Query() query: CompanyInsightsQueryDto) {
+    return this.insights.list(query);
+  }
+
+  @Get('companies/summary')
+  @ApiOperation({ summary: 'Headline numbers, onboarding pipeline and what needs attention' })
+  getCompaniesSummary() {
+    return this.insights.summary();
+  }
+
+  @Get('companies/tags')
+  @ApiOperation({ summary: 'Every tag in use, with counts' })
+  getCompanyTags() {
+    return this.insights.allTags();
+  }
+
+  @Audit('company:bulk:update', 'company')
+  @Post('companies/bulk')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Change status or plan, or add / remove a tag, for several companies' })
+  bulkCompanies(@Body() dto: BulkCompaniesDto) {
+    return this.insights.bulk(dto);
+  }
+
+  @Get('companies/:id/insights')
+  @ApiOperation({ summary: 'Side panel: daily active users, module use, setup, activity, tags and notes' })
+  getCompanyInsights(@Param('id', uuid) id: string) {
+    return this.insights.insights(id);
+  }
+
+  @Audit('company:tags:update', 'company', { companyIdParam: 'id' })
+  @Put('companies/:id/tags')
+  @ApiOperation({ summary: 'Replace the Super Admin tags on a company' })
+  setCompanyTags(@Param('id', uuid) id: string, @Body() dto: SetCompanyTagsDto) {
+    return this.insights.setTags(id, dto.tags);
+  }
+
+  @Audit('company:note:create', 'company', { companyIdParam: 'id' })
+  @Post('companies/:id/notes')
+  @ApiOperation({ summary: 'Add an internal note (never shown to the company)' })
+  addCompanyNote(@Param('id', uuid) id: string, @Body() dto: AddCompanyNoteDto, @CurrentUser() user: JwtPayload) {
+    return this.insights.addNote(id, user.sub, dto.body);
+  }
+
+  @Audit('company:note:delete', 'company', { companyIdParam: 'id' })
+  @Delete('companies/:id/notes/:noteId')
+  @ApiOperation({ summary: 'Remove an internal note' })
+  removeCompanyNote(@Param('id', uuid) id: string, @Param('noteId', uuid) noteId: string) {
+    return this.insights.removeNote(id, noteId);
   }
 
   @Audit('company:create', 'company')

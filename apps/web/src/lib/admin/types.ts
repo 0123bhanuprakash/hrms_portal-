@@ -36,7 +36,11 @@ export interface CompanyListItem {
   updatedAt: string;
   branding: Pick<CompanyBranding, 'logoUrl' | 'primaryColor' | 'displayName'> | null;
   settings: Pick<CompanySettings, 'employeeIdPrefix'> | null;
+  /** Plan and its limits (null limit = unlimited) */
+  plan?: { key: string; name: string; limits: { maxEmployees?: number | null } | null } | null;
   _count: { users: number; employees: number };
+  /** Usage, setup, health and tags (Super Admin list) */
+  insights?: import('./company-insights').CompanyInsights;
 }
 
 export interface Company {
@@ -126,8 +130,12 @@ export interface CompaniesQuery {
   limit?: number;
   search?: string;
   status?: CompanyStatus;
-  sortBy?: 'createdAt' | 'name' | 'status';
+  sortBy?: 'createdAt' | 'name' | 'status' | 'health' | 'employees' | 'lastActivity';
   sortOrder?: 'asc' | 'desc';
+  /** Plan key */
+  plan?: string;
+  tag?: string;
+  health?: 'healthy' | 'watch' | 'at_risk';
 }
 
 export interface AuditLogsQuery {

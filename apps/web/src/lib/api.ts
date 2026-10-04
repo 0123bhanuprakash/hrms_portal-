@@ -69,9 +69,16 @@ api.interceptors.response.use((response) => {
   return response;
 });
 
+/** Fired when the platform is paused for maintenance (company users). */
+export const MAINTENANCE_EVENT = 'hrms:maintenance';
+
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
+    const problem = error.response?.data as { code?: string; detail?: string } | undefined;
+    if (error.response?.status === 503 && problem?.code === 'maintenance' && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent(MAINTENANCE_EVENT, { detail: problem.detail ?? '' }));
+    }
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retry?: boolean;
     };

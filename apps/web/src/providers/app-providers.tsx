@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/reac
 import { ThemeProvider as NextThemesProvider } from 'next-themes';
 import { Toaster } from 'sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { MotionVisibility, SuccessTick } from '@/components/motion/motion';
 import { useAuthStore } from '@/store/useAuthStore';
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
@@ -30,12 +31,16 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
         enableSystem
         disableTransitionOnChange
       >
+        <MotionVisibility />
         <TooltipProvider delayDuration={300} skipDelayDuration={100}>
           {children}
         </TooltipProvider>
         <Toaster
-          position="bottom-right"
+          position="top-right"
+          offset={64}
+          duration={4000}
           closeButton
+          icons={{ success: <SuccessTick size={20} /> }}
           toastOptions={{
             classNames: {
               toast:

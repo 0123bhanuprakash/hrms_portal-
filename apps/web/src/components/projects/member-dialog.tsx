@@ -15,6 +15,7 @@ interface Form {
   role: ProjectRole;
   leadEmployeeId: string;
   allocation: number;
+  nightShift: boolean;
   startDate: string;
   endDate: string;
 }
@@ -23,7 +24,7 @@ interface Form {
 export function MemberDialog({ project, value, onClose }: { project: ProjectDetail; value: Assignment | 'new' | null; onClose: () => void }) {
   const save = useSaveMember(project.id);
   const chart = useOrgChart();
-  const [f, setF] = useState<Form>({ employeeId: '', role: 'MEMBER', leadEmployeeId: '', allocation: 100, startDate: project.startDate, endDate: project.endDate ?? '' });
+  const [f, setF] = useState<Form>({ employeeId: '', role: 'MEMBER', leadEmployeeId: '', allocation: 100, nightShift: false, startDate: project.startDate, endDate: project.endDate ?? '' });
   const [error, setError] = useState<string | null>(null);
   const editing = value && value !== 'new' ? value : null;
 
@@ -33,8 +34,8 @@ export function MemberDialog({ project, value, onClose }: { project: ProjectDeta
     const start = project.today > project.startDate ? project.today : project.startDate;
     setF(
       editing
-        ? { employeeId: editing.employee.id, role: editing.role, leadEmployeeId: editing.lead?.id ?? '', allocation: editing.allocation, startDate: editing.startDate, endDate: editing.endDate ?? '' }
-        : { employeeId: '', role: 'MEMBER', leadEmployeeId: '', allocation: 100, startDate: start, endDate: project.endDate ?? '' },
+        ? { employeeId: editing.employee.id, role: editing.role, leadEmployeeId: editing.lead?.id ?? '', allocation: editing.allocation, nightShift: Boolean(editing.nightShift), startDate: editing.startDate, endDate: editing.endDate ?? '' }
+        : { employeeId: '', role: 'MEMBER', leadEmployeeId: '', allocation: 100, nightShift: false, startDate: start, endDate: project.endDate ?? '' },
     );
   }, [value, editing, project]);
 
@@ -64,6 +65,7 @@ export function MemberDialog({ project, value, onClose }: { project: ProjectDeta
         role: f.role,
         leadEmployeeId: f.role === 'MEMBER' ? f.leadEmployeeId || null : null,
         allocation: Number(f.allocation),
+        nightShift: f.nightShift,
         startDate: f.startDate,
         endDate: f.endDate || null,
       });
@@ -124,6 +126,13 @@ export function MemberDialog({ project, value, onClose }: { project: ProjectDeta
             <span className="text-sm text-muted-foreground">%</span>
           </div>
         </Field>
+        <label className="flex items-start gap-2 text-sm sm:col-span-2">
+          <input type="checkbox" className="mt-0.5 accent-[hsl(var(--primary))]" checked={f.nightShift} onChange={(e) => set('nightShift', e.target.checked)} />
+          <span>
+            <span className="font-medium">Works night shifts on this project</span>
+            <span className="block text-xs text-muted-foreground">They can stay checked in past midnight; the shift counts towards the day it started.</span>
+          </span>
+        </label>
         <div className="rounded-lg border border-border bg-subtle/50 px-3 py-2.5 text-sm sm:col-span-2" aria-live="polite">
           {!f.employeeId ? (
             <p className="text-muted-foreground">Choose someone to see how much of their time is free.</p>

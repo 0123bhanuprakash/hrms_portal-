@@ -70,8 +70,9 @@ export function EmptyState({
 }) {
   return (
     <div className={cn('flex flex-col items-center justify-center px-6 py-14 text-center', className)}>
-      <div className="relative mb-4">
+      <div className="relative mb-5 flex h-16 w-16 items-center justify-center">
         <div className="absolute inset-0 -m-3 rounded-full bg-primary/5 blur-xl" aria-hidden />
+        <div className="m-layers absolute" aria-hidden><i /><i /><i /></div>
         <div className="relative flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-surface text-muted-foreground shadow-card [&_svg]:size-5">
           {icon}
         </div>

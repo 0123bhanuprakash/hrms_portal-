@@ -1,5 +1,5 @@
 import { Transform, Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min, MinLength, IsBoolean } from 'class-validator';
 import { ProjectRole, ProjectStatus } from '@prisma/client';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -31,6 +31,8 @@ export class SaveMemberDto {
   /** Members only: a team lead of the same project */
   @IsOptional() @IsUUID() leadEmployeeId?: string | null;
   @IsInt() @Min(1) @Max(100) allocation!: number;
+  /** The project needs this person to work nights (they may stay checked in past midnight) */
+  @IsOptional() @IsBoolean() nightShift?: boolean;
   @Matches(DATE, { message: 'startDate must be YYYY-MM-DD' }) startDate!: string;
   @IsOptional() @Transform(blankToNull) @Matches(DATE, { message: 'endDate must be YYYY-MM-DD' }) endDate?: string | null;
 }

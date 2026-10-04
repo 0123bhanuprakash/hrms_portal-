@@ -70,3 +70,28 @@ export interface PlatformThemeSettings {
   /** Theme every newly onboarded company starts with */
   defaultCompanyTheme: ThemeRef;
 }
+
+// ─── Personalisation (per employee) ──────────────────────────
+
+/** Built-in theme presets (keys of apps/web/src/lib/theme/presets.ts) an employee may pick. */
+export const BUILTIN_THEME_KEYS = [
+  'indigo', 'ocean', 'emerald', 'sunset', 'rose', 'violet-brand', 'slate-corporate', 'high-contrast',
+  'aurora', 'obsidian-gold', 'nordic-frost', 'forest', 'lavender-mist', 'sandstone', 'carbon-mono', 'cobalt-pro',
+] as const;
+export type BuiltinThemeKey = (typeof BUILTIN_THEME_KEYS)[number];
+
+/** Layouts of the main menu. `classic` is today's sidebar and the default. */
+export const MENU_STYLES = ['classic', 'rail', 'floating', 'collapsible'] as const;
+export type MenuStyle = (typeof MENU_STYLES)[number];
+
+/** What a company lets its people change for themselves. */
+export interface CompanyPersonalization {
+  /** Employees may pick their own colour theme */
+  personalThemes: boolean;
+  /** Themes they may pick from; empty = all built-in themes */
+  allowedThemes: string[];
+  /** Employees may pick their own menu style */
+  personalMenuStyle: boolean;
+  /** Menu style for everyone who hasn't picked one */
+  defaultMenuStyle: MenuStyle;
+}

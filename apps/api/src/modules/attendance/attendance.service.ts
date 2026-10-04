@@ -7,6 +7,8 @@ import { AttendancePolicyService, type CompanyPolicy } from './policy.service';
 import { HolidaysService } from './holidays.service';
 import { deriveDay, lateMinutesFor, statusForMinutes, workedMinutes, type DayStatus } from './attendance-rules';
 import { addDays, dateFromKey, keyFromDate, localDateKey, monthKeys, weekdayOfKey, zonedInstant } from './time-zone';
+
+const addDaysDate = (d: Date, n: number) => new Date(d.getTime() + n * 86_400_000);
 import type { CalendarQueryDto, ExportQueryDto, TeamQueryDto, UpsertRecordDto } from './dto';
 
 const RECORD_SELECT = {
@@ -21,7 +23,13 @@ const RECORD_SELECT = {
   checkInSource: true,
   checkOutSource: true,
   notes: true,
+  sessions: true,
+  breakMinutes: true,
+  openSince: true,
+  earlyCheckout: true,
 } satisfies Prisma.AttendanceRecordSelect;
+
+const PUNCH_SELECT = { id: true, kind: true, at: true, source: true, note: true, early: true } satisfies Prisma.AttendancePunchSelect;
 type RecordRow = Prisma.AttendanceRecordGetPayload<{ select: typeof RECORD_SELECT }>;
 
 const PERSON = {
@@ -137,24 +145,66 @@ export class AttendanceService {
       : null;
     if (!employee) return { hasProfile: false, date: todayKey, serverTime: now, policy, record: null, status: null, holiday: null, leave: null };
 
-    const [record, holidays, leaves] = await Promise.all([
+    const [record, holidays, leaves, punches, nightShift] = await Promise.all([
       this.prisma.attendanceRecord.findUnique({ where: { companyId_employeeId_date: { companyId, employeeId: employee.id, date: dateFromKey(todayKey) } }, select: RECORD_SELECT }),
       this.holidays.between(companyId, todayKey, todayKey),
       this.leavesBetween(companyId, [employee.id], todayKey, todayKey, policy),
+      this.prisma.attendancePunch.findMany({ where: { companyId, employeeId: employee.id, date: dateFromKey(todayKey) }, select: PUNCH_SELECT, orderBy: { at: 'asc' } }),
+      this.nightShiftAllowed(companyId, employee.id, todayKey),
     ]);
+    // A night shift still running from yesterday
+    const carried = nightShift ? await this.openNightShift(companyId, employee.id, todayKey, now) : null;
     const holiday = holidays.get(todayKey) ?? null;
     const leave = leaves.get(employee.id + '|' + todayKey) ?? null;
     const status = deriveDay({ dateKey: todayKey, todayKey, joiningKey: keyFromDate(employee.joiningDate), record, holiday: Boolean(holiday), policy, leave: this.approved(leave) });
-    return { hasProfile: true, date: todayKey, serverTime: now, policy, record, status, holiday, leave };
+    return { hasProfile: true, date: todayKey, serverTime: now, policy, record, status, holiday, leave, punches, nightShift, carriedOver: carried ? { date: keyFromDate(carried.date), openSince: carried.openSince } : null };
   }
 
+  /**
+   * Check in. The first check-in of the day sets the day's start (and lateness);
+   * after a check-out you can check in again — each check-in starts a new session.
+   */
   async checkIn(companyId: string, access: AccessContext, ip: string | undefined) {
-    const { policy, employeeId, todayKey, existing } = await this.selfContext(companyId, access);
-    if (existing?.checkIn) throw new ConflictException('You have already checked in today');
+    const { policy, employeeId, todayKey, existing, carried } = await this.selfContext(companyId, access);
+    if (carried) throw new ConflictException('You are still checked in from your night shift — check out first');
+    if (existing?.openSince) throw new ConflictException('You are already checked in');
     const now = new Date();
-    const data = {
+    const date = dateFromKey(todayKey);
+    return this.prisma.$transaction(async (tx) => {
+      const record =
+        existing?.checkIn && existing.checkOut
+          ? // Back again: a new session; the time away counts as a break
+            await tx.attendanceRecord.update({
+              where: { id: existing.id },
+              data: {
+                openSince: now,
+                checkOut: null,
+                sessions: { increment: 1 },
+                breakMinutes: (existing.breakMinutes ?? 0) + workedMinutes(existing.checkOut, now),
+                earlyCheckout: false,
+                status: AttendanceStatus.PRESENT,
+              },
+              select: RECORD_SELECT,
+            })
+          : await tx.attendanceRecord.upsert({
+              where: { companyId_employeeId_date: { companyId, employeeId, date } },
+              update: this.firstSession(now, policy, ip),
+              create: { ...this.firstSession(now, policy, ip), companyId, employeeId, date },
+              select: RECORD_SELECT,
+            });
+      await tx.attendancePunch.create({ data: { companyId, employeeId, recordId: record.id, date, kind: 'IN', at: now, source: 'WEB', ip: ip ?? null } });
+      return record;
+    });
+  }
+
+  private firstSession(now: Date, policy: CompanyPolicy, ip: string | undefined) {
+    return {
       checkIn: now,
       checkOut: null,
+      openSince: now,
+      sessions: 1,
+      breakMinutes: null,
+      earlyCheckout: false,
       workingMinutes: null,
       lateMinutes: lateMinutesFor(now, policy, policy.timeZone) || null,
       status: AttendanceStatus.PRESENT,
@@ -162,25 +212,47 @@ export class AttendanceService {
       checkInIp: ip ?? null,
       isManualEntry: false,
     };
-    return this.prisma.attendanceRecord.upsert({
-      where: { companyId_employeeId_date: { companyId, employeeId, date: dateFromKey(todayKey) } },
-      update: data,
-      create: { ...data, companyId, employeeId, date: dateFromKey(todayKey) },
-      select: RECORD_SELECT,
+  }
+
+  /**
+   * Check out. Time worked = all sessions added up. Before a full day the
+   * check-out is marked early, with an optional reason for the manager.
+   */
+  async checkOut(companyId: string, access: AccessContext, ip: string | undefined, note?: string) {
+    const { policy, employeeId, existing, carried } = await this.selfContext(companyId, access);
+    const target = existing?.openSince ? existing : carried;
+    if (!target?.openSince) {
+      if (existing?.checkIn) throw new ConflictException('You have already checked out');
+      throw new BadRequestException('You have not checked in today');
+    }
+    const now = new Date();
+    const worked = (target.workingMinutes ?? 0) + workedMinutes(target.openSince, now);
+    const early = worked < policy.fullDayMinutes;
+    const reason = note?.trim() ? note.trim().slice(0, 500) : null;
+    return this.prisma.$transaction(async (tx) => {
+      const record = await tx.attendanceRecord.update({
+        where: { id: target.id },
+        data: { checkOut: now, openSince: null, workingMinutes: worked, status: statusForMinutes(worked, policy), earlyCheckout: early, checkOutSource: 'WEB', checkOutIp: ip ?? null },
+        select: RECORD_SELECT,
+      });
+      await tx.attendancePunch.create({ data: { companyId, employeeId, recordId: target.id, date: target.date, kind: 'OUT', at: now, source: 'WEB', ip: ip ?? null, early, note: reason } });
+      return { ...record, early };
     });
   }
 
-  async checkOut(companyId: string, access: AccessContext, ip: string | undefined) {
-    const { policy, existing } = await this.selfContext(companyId, access);
-    if (!existing?.checkIn) throw new BadRequestException('You have not checked in today');
-    if (existing.checkOut) throw new ConflictException('You have already checked out today');
-    const now = new Date();
-    const worked = workedMinutes(existing.checkIn, now);
-    return this.prisma.attendanceRecord.update({
-      where: { id: existing.id },
-      data: { checkOut: now, workingMinutes: worked, status: statusForMinutes(worked, policy), checkOutSource: 'WEB', checkOutIp: ip ?? null },
-      select: RECORD_SELECT,
+  /** People on a project that needs night work may stay checked in past midnight. */
+  async nightShiftAllowed(companyId: string, employeeId: string, dateKey: string): Promise<boolean> {
+    const date = dateFromKey(dateKey);
+    const n = await this.prisma.projectMember.count({
+      where: { companyId, employeeId, nightShift: true, startDate: { lte: date }, OR: [{ endDate: null }, { endDate: { gte: addDaysDate(date, -1) } }] },
     });
+    return n > 0;
+  }
+
+  /** Yesterday's session still running (night shift), if it started less than 24 hours ago. */
+  private async openNightShift(companyId: string, employeeId: string, todayKey: string, now: Date) {
+    const y = await this.prisma.attendanceRecord.findUnique({ where: { companyId_employeeId_date: { companyId, employeeId, date: dateFromKey(addDays(todayKey, -1)) } } });
+    return y?.openSince && now.getTime() - y.openSince.getTime() < 24 * 3600_000 ? y : null;
   }
 
   private async selfContext(companyId: string, access: AccessContext) {
@@ -190,10 +262,14 @@ export class AttendanceService {
     const employee = await this.prisma.employee.findFirst({ where: { id: access.employee.id, companyId }, select: { id: true, employmentStatus: true } });
     if (!employee || employee.employmentStatus === EmploymentStatus.TERMINATED) throw new ForbiddenException('Attendance cannot be recorded for this profile');
     const todayKey = localDateKey(new Date(), policy.timeZone);
-    const existing = await this.prisma.attendanceRecord.findUnique({
-      where: { companyId_employeeId_date: { companyId, employeeId: employee.id, date: dateFromKey(todayKey) } },
-    });
-    return { policy, employeeId: employee.id, todayKey, existing };
+    const now = new Date();
+    const [existing, nightShift] = await Promise.all([
+      this.prisma.attendanceRecord.findUnique({ where: { companyId_employeeId_date: { companyId, employeeId: employee.id, date: dateFromKey(todayKey) } } }),
+      this.nightShiftAllowed(companyId, employee.id, todayKey),
+    ]);
+    // The day resets at 12 AM — except a night shift, which can carry on into the next day
+    const carried = nightShift && !existing?.openSince ? await this.openNightShift(companyId, employee.id, todayKey, now) : null;
+    return { policy, employeeId: employee.id, todayKey, existing, carried };
   }
 
   // ─── Calendar (one person, one month) ─────────────────────
@@ -223,19 +299,26 @@ export class AttendanceService {
     // Latest request per day wins
     const correctionByDate = new Map(corrections.map((c) => [keyFromDate(c.date), { id: c.id, status: c.status }]));
     const joiningKey = keyFromDate(employee.joiningDate);
+    // A night shift that started yesterday and is still running isn't a missed check-out
+    const yesterdayKey = addDays(todayKey, -1);
+    const nightOpen = byDate.get(yesterdayKey)?.openSince && (await this.nightShiftAllowed(companyId, targetId, todayKey)) && Date.now() - byDate.get(yesterdayKey)!.openSince!.getTime() < 24 * 3600_000;
 
     const days = keys.map((dateKey) => {
       const record = byDate.get(dateKey) ?? null;
       const holiday = holidays.get(dateKey) ?? null;
       const leave = leaves.get(targetId + '|' + dateKey) ?? null;
+      const derived = deriveDay({ dateKey, todayKey, joiningKey, record, holiday: Boolean(holiday), policy, leave: this.approved(leave) });
       return {
         date: dateKey,
-        status: deriveDay({ dateKey, todayKey, joiningKey, record, holiday: Boolean(holiday), policy, leave: this.approved(leave) }),
+        status: nightOpen && dateKey === yesterdayKey && derived === 'MISSING_CHECKOUT' ? ('WORKING' as const) : derived,
         leave,
         checkIn: record?.checkIn ?? null,
         checkOut: record?.checkOut ?? null,
         workingMinutes: record?.workingMinutes ?? null,
         lateMinutes: record?.lateMinutes ?? null,
+        sessions: record?.sessions ?? 0,
+        breakMinutes: record?.breakMinutes ?? null,
+        earlyCheckout: record?.earlyCheckout ?? false,
         isManualEntry: record?.isManualEntry ?? false,
         notes: record?.notes ?? null,
         holiday: holiday ? { name: holiday.name, isOptional: holiday.isOptional } : null,
@@ -325,6 +408,10 @@ export class AttendanceService {
           status: dto.status ?? AttendanceStatus.ABSENT,
           checkInSource: null,
           checkOutSource: null,
+          sessions: 0,
+          openSince: null,
+          breakMinutes: null,
+          earlyCheckout: false,
         };
     const date = dateFromKey(dto.date);
     return this.prisma.attendanceRecord.upsert({
@@ -349,6 +436,11 @@ export class AttendanceService {
       workingMinutes: worked,
       lateMinutes: lateMinutesFor(inAt, policy, policy.timeZone) || null,
       status: worked === null ? AttendanceStatus.PRESENT : statusForMinutes(worked, policy),
+      // A corrected day is one session; still running when there's no check-out
+      sessions: 1,
+      openSince: outAt ? null : inAt,
+      breakMinutes: null,
+      earlyCheckout: worked !== null && worked < policy.fullDayMinutes,
     };
   }
 

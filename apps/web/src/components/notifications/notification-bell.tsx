@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import * as Popover from '@radix-ui/react-popover';
@@ -21,6 +21,15 @@ export function NotificationBell() {
   const markAll = useMarkAllRead();
   const count = unread.data ?? 0;
 
+  // Ring once when something new arrives (not on first load)
+  const [ringKey, setRingKey] = useState(0);
+  const last = useRef<number | null>(null);
+  useEffect(() => {
+    if (unread.data === undefined) return;
+    if (last.current !== null && unread.data > last.current) setRingKey((k) => k + 1);
+    last.current = unread.data;
+  }, [unread.data]);
+
   const openItem = (n: AppNotification) => {
     if (!n.readAt) markRead.mutate(n.id);
     setOpen(false);
@@ -32,12 +41,13 @@ export function NotificationBell() {
       <Popover.Trigger asChild>
         <button
           type="button"
-          className="relative rounded-md p-2 text-muted-foreground transition-colors hover:bg-subtle hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          key={ringKey}
+          className={cn(ringKey > 0 && 'm-ring', 'relative rounded-md p-2 text-muted-foreground transition-colors hover:bg-subtle hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring')}
           aria-label={count ? `Notifications, ${count} unread` : 'Notifications'}
         >
           <Bell className="h-[18px] w-[18px]" />
           {count > 0 && (
-            <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground tabular-nums">
+            <span data-count className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground tabular-nums">
               {count > 99 ? '99+' : count}
             </span>
           )}

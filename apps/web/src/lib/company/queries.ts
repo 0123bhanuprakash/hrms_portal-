@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ThemeRef, ThemeTokens } from '@hrms/types';
+import type { CompanyPersonalization, MenuStyle, ThemeRef, ThemeTokens } from '@hrms/types';
 import { api } from '@/lib/api';
 import { resolveTheme } from '@/lib/theme/presets';
 import type { DensityPref, TextSizePref } from '@/lib/preferences/display';
@@ -15,6 +15,10 @@ export interface CompanyThemeResponse {
   themeSource: ThemeRef | null;
   /** Present when the company has no theme of its own yet */
   platformDefault: { ref: ThemeRef; tokens: ThemeTokens | null } | null;
+  /** What employees may change for themselves */
+  personalization?: CompanyPersonalization;
+  /** Company defaults for view settings (chart styles…) */
+  uiDefaults?: Record<string, unknown>;
 }
 
 export interface CompanyBrandingResponse {
@@ -41,6 +45,12 @@ export interface UserPreferences {
   density?: DensityPref;
   textSize?: TextSizePref;
   reduceMotion?: boolean;
+  /** Built-in theme key; null = the company theme */
+  colorTheme?: string | null;
+  /** null = the company default */
+  menuStyle?: MenuStyle | null;
+  /** View settings that follow the person (see lib/preferences/ui-state) */
+  uiState?: Record<string, unknown>;
 }
 
 export const companyKeys = {
@@ -80,6 +90,17 @@ export function useUpdateCompanyTheme(companyId: string) {
     mutationFn: (body: { themeTokens: ThemeTokens; themeSource?: ThemeRef }) =>
       unwrap<CompanyThemeResponse>(api.put(`/companies/${companyId}/theme`, body)),
     onSuccess: (data) => qc.setQueryData(companyKeys.theme(companyId), data),
+  });
+}
+
+/** Company Admins decide what employees may personalise. */
+export function useUpdatePersonalization(companyId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Partial<CompanyPersonalization>) =>
+      unwrap<CompanyPersonalization>(api.put(`/companies/${companyId}/personalization`, body)),
+    onSuccess: (personalization) =>
+      qc.setQueryData<CompanyThemeResponse>(companyKeys.theme(companyId), (old) => (old ? { ...old, personalization } : old)),
   });
 }
 

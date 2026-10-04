@@ -21,6 +21,11 @@ export class EntitlementService {
 
   constructor(private readonly prisma: PrismaService) {}
 
+  /** Drops every cached company entitlement (they rebuild on the next request). */
+  clearCaches(): void {
+    this.cache.clear();
+  }
+
   async forCompany(companyId: string, featuresVersion: number): Promise<Entitlements> {
     const cacheKey = `${companyId}@${featuresVersion}`;
     const hit = this.cache.get(cacheKey);

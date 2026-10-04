@@ -77,3 +77,16 @@ export class CompanyLimitsDto {
   @IsObject()
   limits!: Record<string, number | null>;
 }
+
+export class PlanImpactDto {
+  @ApiProperty({ type: [String], description: 'The features the plan would have' })
+  @IsArray()
+  @ArrayMaxSize(100)
+  @IsString({ each: true })
+  features!: string[];
+
+  @ApiPropertyOptional({ example: { maxEmployees: 50 }, description: 'The limits the plan would have (null = unlimited)' })
+  @IsOptional()
+  @IsObject()
+  limits?: Record<string, number | null>;
+}

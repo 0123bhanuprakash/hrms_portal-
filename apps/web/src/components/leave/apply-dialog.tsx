@@ -8,6 +8,7 @@ import { Field, Input, Textarea, inputClass } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { days, previewLeave, useApplyLeave, useLeaveBalances, type HalfDay, type LeavePreview } from '@/lib/company/leave';
 import { getApiErrorMessage } from '@/lib/errors';
+import { RangeSweep } from '@/components/motion/motion';
 
 const todayKey = () => {
   const d = new Date();
@@ -131,6 +132,8 @@ export function ApplyLeaveDialog({ open, onClose, initialTypeCode }: { open: boo
             </select>
           </Field>
         )}
+
+        {preview && !checking && !preview.errors.length && preview.dates.length > 0 && <RangeSweep from={start} to={end} isOff={(iso) => !preview.dates.includes(iso)} />}
 
         <div className="rounded-lg border border-border bg-subtle/50 px-3 py-2.5 text-sm" aria-live="polite">
           {checking || !preview ? (

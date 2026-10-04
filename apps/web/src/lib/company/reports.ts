@@ -31,6 +31,9 @@ export interface PeopleReport {
   byLevel: Count[];
   tenure: Count[];
   trend: Array<{ month: string; joiners: number; leavers: number; headcount: number }>;
+  startHeadcount: number;
+  avgTenureMonths: number;
+  movements: Array<Mini & { kind: 'joined' | 'left'; date: string }>;
   probation: Array<Mini & { joiningDate: string; confirmationDate: string | null }>;
   notice: Array<Mini & { terminationDate: string | null }>;
 }

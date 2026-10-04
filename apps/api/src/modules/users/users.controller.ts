@@ -1,6 +1,7 @@
-import { Controller, Get, Patch, Body, Request } from '@nestjs/common';
+import { Controller, Delete, Get, Patch, Body, Request } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UpdatePreferencesDto } from './dto/update-preferences.dto';
+import { UpdateUiStateDto } from './dto/update-ui-state.dto';
 import { Audit } from '../../common';
 
 @Controller('users')
@@ -44,5 +45,21 @@ export class UsersController {
     @Body() dto: UpdatePreferencesDto,
   ) {
     return this.usersService.updatePreferences(req.user.sub, dto);
+  }
+
+  /**
+   * Save view settings (chart styles, open menu sections…): { changes: { key: value | null } }
+   */
+  @Patch('me/ui-state')
+  async updateUiState(@Request() req: any, @Body() body: UpdateUiStateDto) {
+    return this.usersService.updateUiState(req.user.sub, body.changes);
+  }
+
+  /**
+   * Forget every saved view setting (back to the company defaults)
+   */
+  @Delete('me/ui-state')
+  async resetUiState(@Request() req: any) {
+    return this.usersService.resetUiState(req.user.sub);
   }
 }

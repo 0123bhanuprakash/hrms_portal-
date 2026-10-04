@@ -18,6 +18,7 @@ const MEMBER_SELECT = {
   id: true,
   role: true,
   allocation: true,
+  nightShift: true,
   startDate: true,
   endDate: true,
   employee: { select: PERSON },
@@ -226,6 +227,7 @@ export class ProjectsService {
         role: dto.role,
         leadEmployeeId: lead,
         allocation: dto.allocation,
+        ...(dto.nightShift !== undefined && { nightShift: dto.nightShift }),
         startDate: dateFromKey(dto.startDate),
         endDate: end ? dateFromKey(end) : null,
       };

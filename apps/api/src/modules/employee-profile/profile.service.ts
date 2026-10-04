@@ -44,7 +44,6 @@ export class ProfileService {
         phone: true,
         gender: true,
         dateOfBirth: true,
-        showBirthday: true,
         personal: true,
         bankDetails: true,
         statutoryInfo: true,
@@ -55,7 +54,6 @@ export class ProfileService {
       phone: employee.phone,
       gender: employee.gender,
       dateOfBirth: employee.dateOfBirth,
-      showBirthday: employee.showBirthday,
       personal: employee.personal && {
         personalEmail: employee.personal.personalEmail,
         bloodGroup: employee.personal.bloodGroup,
@@ -108,7 +106,6 @@ export class ProfileService {
           ...(dto.phone !== undefined && { phone: dto.phone }),
           ...(dto.gender !== undefined && { gender: dto.gender }),
           ...(dto.dateOfBirth !== undefined && { dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : null }),
-          ...(typeof dto.showBirthday === 'boolean' && { showBirthday: dto.showBirthday }),
         },
       });
       if (Object.keys(personal).length) {

@@ -3,12 +3,13 @@
 import React, { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
-import { Check, Laptop, Moon, Sun } from 'lucide-react';
+import { Check, Moon, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, Skeleton } from '@/components/ui/feedback';
 import { Field, inputClass } from '@/components/ui/field';
 import { PageHeader } from '@/components/ui/page-header';
 import { DisplaySettingsCard } from '@/components/preferences/display-preferences';
+import { ColourThemeCard, MenuStyleCard, MomentsCard, SavedViewsCard } from '@/components/preferences/personal-look';
 import { NotificationSettingsCard } from '@/components/notifications/notification-settings-card';
 import { usePreferences, useUpdatePreferences, type UserPreferences } from '@/lib/company/queries';
 import { getApiErrorMessage } from '@/lib/errors';
@@ -36,15 +37,14 @@ const DATE_FORMATS = [
 const APPEARANCE: Array<{ value: UserPreferences['theme']; label: string; icon: React.ReactNode }> = [
   { value: 'light', label: 'Light', icon: <Sun /> },
   { value: 'dark', label: 'Dark', icon: <Moon /> },
-  { value: 'system', label: 'System', icon: <Laptop /> },
 ];
 
 export default function PreferencesPage() {
   const prefs = usePreferences();
   const update = useUpdatePreferences();
-  const { setTheme } = useTheme();
+  const { setTheme, resolvedTheme } = useTheme();
   const [form, setForm] = useState<Pick<UserPreferences, 'theme' | 'timezone' | 'dateFormat'>>({
-    theme: 'system',
+    theme: 'light',
     timezone: 'Asia/Kolkata',
     dateFormat: 'DD/MM/YYYY',
   });
@@ -52,12 +52,13 @@ export default function PreferencesPage() {
   useEffect(() => {
     if (prefs.data) {
       setForm({
-        theme: (['light', 'dark', 'system'] as const).includes(prefs.data.theme) ? prefs.data.theme : 'system',
+        // Only light and dark are offered; an old “system” choice shows as what the device uses now
+        theme: prefs.data.theme === 'dark' || prefs.data.theme === 'light' ? prefs.data.theme : resolvedTheme === 'dark' ? 'dark' : 'light',
         timezone: prefs.data.timezone || 'Asia/Kolkata',
         dateFormat: prefs.data.dateFormat || 'DD/MM/YYYY',
       });
     }
-  }, [prefs.data]);
+  }, [prefs.data, resolvedTheme]);
 
   const dirty =
     prefs.data &&
@@ -80,8 +81,8 @@ export default function PreferencesPage() {
 
       <form onSubmit={save} className="space-y-4">
         <Card>
-          <CardHeader title="Appearance" description="Choose light, dark, or follow your device." />
-          <div role="radiogroup" className="grid grid-cols-3 gap-3 px-5 pb-5">
+          <CardHeader title="Appearance" description="Choose light or dark. You can also flip it from the switch in the top bar." />
+          <div role="radiogroup" className="grid grid-cols-2 gap-3 px-5 pb-5">
             {APPEARANCE.map((a) => {
               const selected = form.theme === a.value;
               return (
@@ -143,6 +144,10 @@ export default function PreferencesPage() {
         </div>
       </form>
 
+      <ColourThemeCard />
+      <MenuStyleCard />
+      <MomentsCard />
+      <SavedViewsCard />
       <DisplaySettingsCard />
       <NotificationSettingsCard />
     </div>

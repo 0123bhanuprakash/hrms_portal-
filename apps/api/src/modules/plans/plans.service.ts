@@ -87,11 +87,22 @@ export class PlansService {
       }),
     ]);
     const affectedCompanies = await this.entitlements.bumpPlan(id);
+    const after = await this.get(id);
+    // Limit and archive changes, so the plan's history can show them
+    const beforeLimits = (before.limits ?? {}) as Record<string, number | null>;
+    const limits: Record<string, [number | null, number | null]> = {};
+    for (const key of new Set([...Object.keys(beforeLimits), ...Object.keys(after.limits)])) {
+      const a = beforeLimits[key] ?? null;
+      const b = after.limits[key] ?? null;
+      if (a !== b) limits[key] = [a, b];
+    }
     return {
-      ...(await this.get(id)),
+      ...after,
       changes: {
         added: features.filter((f) => !previous.has(f)),
         removed: [...previous].filter((f) => !features.includes(f)),
+        limits,
+        archived: after.isActive === before.isActive ? null : !after.isActive,
         affectedCompanies,
       },
     };
@@ -221,7 +232,7 @@ export class PlansService {
   // ─── Helpers ──────────────────────────────────────────────
 
   /** Known, available features; core features always included; dependencies added. */
-  private normalizeFeatures(keys: string[]): string[] {
+  normalizeFeatures(keys: string[]): string[] {
     const result = new Set<string>(CORE_FEATURES);
     const add = (key: string) => {
       const f = FEATURE_BY_KEY.get(key);

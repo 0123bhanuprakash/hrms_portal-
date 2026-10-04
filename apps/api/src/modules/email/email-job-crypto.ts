@@ -54,3 +54,12 @@ export function openJobData<T extends object>(data: T, secret: string): T {
   }
   return copy as T;
 }
+
+/** Encrypts a whole text (e.g. a failed email's HTML kept for a retry). */
+export function sealText(value: string, secret: string): string {
+  return encrypt(value, deriveKey(secret));
+}
+
+export function openText(value: string, secret: string): string {
+  return value.startsWith(PREFIX) ? decrypt(value, deriveKey(secret)) : value;
+}
