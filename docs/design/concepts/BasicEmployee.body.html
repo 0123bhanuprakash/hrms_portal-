@@ -1,0 +1,118 @@
+<div class="app">
+  <nav class="side" aria-label="Main">
+    <div class="brand"><span class="logo">A</span>aakash-portal</div>
+    <a class="nav on" href="#">Home</a>
+    <a class="nav" href="#">My profile</a>
+    <a class="nav" href="#">People</a>
+    <a class="nav" href="#">Org chart</a>
+    <div class="grp">My work</div>
+    <a class="nav" href="#">My attendance</a>
+    <a class="nav" href="#">My leave</a>
+    <a class="nav" href="#">My timesheet</a>
+    <a class="nav" href="#">My expenses</a>
+    <a class="nav" href="#">My assets</a>
+    <a class="nav" href="#">My tickets</a>
+    <div class="grp">Company</div>
+    <a class="nav" href="#">Announcements</a>
+    <a class="nav" href="#">Kudos</a>
+    <a class="nav" href="#">Holidays</a>
+  </nav>
+
+  <main class="main">
+    <div class="top">
+      <label class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input aria-label="Search" placeholder="Search…"></label>
+      <button class="iconbtn" style="margin-left:auto" aria-label="Notifications, 3 unread"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21h4"/></svg><span class="dot"></span></button>
+      <span class="avatar">NG</span>
+    </div>
+
+    <div class="hello row" style="justify-content:space-between;flex-wrap:wrap">
+      <div><h1>Good morning, Neha</h1><p>Monday, 5 October · Software Engineer · Bengaluru HQ</p></div>
+      <div class="row" style="flex-wrap:wrap"><a class="btn ghost" href="#">Apply leave</a><a class="btn primary" href="#">Check in</a></div>
+    </div>
+
+    <div class="grid">
+      <section class="card" aria-labelledby="b-today">
+        <div class="ch"><h2 id="b-today">Today</h2><span class="pill ok">Checked in</span></div>
+        <div class="row" style="gap:20px">
+          <svg width="112" height="112" viewBox="0 0 120 120" role="img" aria-label="6 hours 12 minutes worked"><circle cx="60" cy="60" r="50" fill="none" stroke="#EEF0F3" stroke-width="12"/><circle cx="60" cy="60" r="50" fill="none" stroke="#2F5BEA" stroke-width="12" stroke-linecap="round" stroke-dasharray="216 314" transform="rotate(-90 60 60)"/><text x="60" y="58" text-anchor="middle" font-size="22" font-weight="800" fill="#141821" font-family="Figtree">6h 12m</text><text x="60" y="78" text-anchor="middle" font-size="12" fill="#5B6472" font-family="Figtree">worked</text></svg>
+          <div style="display:flex;flex-direction:column;gap:8px" class="small">
+            <div><span class="muted">In</span> <b>09:42</b> · <span class="muted">Out</span> —</div>
+            <span class="pill warn" style="align-self:flex-start">12 min late</span>
+            <div class="muted">Shift 09:30 – 18:30</div>
+          </div>
+        </div>
+        <button class="btn ghost" style="width:100%">Check out</button>
+      </section>
+
+      <section class="card" aria-labelledby="b-month">
+        <div class="ch"><h2 id="b-month">October so far</h2><a class="small" href="#">Calendar</a></div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+          <div><span class="big" style="font-size:28px">2</span><div class="small muted">Present</div></div>
+          <div><span class="big" style="font-size:28px">1</span><div class="small muted">Holiday</div></div>
+          <div><span class="big" style="font-size:28px">0</span><div class="small muted">Leave / WFH</div></div>
+          <div><span class="big" style="font-size:28px;color:#8A5200">1</span><div class="small muted">Late arrivals</div></div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="b-bal">
+        <div class="ch"><h2 id="b-bal">Leave balance</h2><a class="small" href="#">My leave</a></div>
+        <div style="display:flex;flex-direction:column;gap:12px" class="small">
+          <div><div class="row" style="justify-content:space-between"><b>Casual</b><span>8 of 12</span></div><div class="meter"><b style="width:67%;background:#2F5BEA"></b></div></div>
+          <div><div class="row" style="justify-content:space-between"><b>Sick</b><span>6 of 10</span></div><div class="meter"><b style="width:60%;background:#157A4B"></b></div></div>
+          <div><div class="row" style="justify-content:space-between"><b>Earned</b><span>14 of 18</span></div><div class="meter"><b style="width:78%;background:#C2560C"></b></div></div>
+          <div><div class="row" style="justify-content:space-between"><b>Work from home</b><span>19 of 24</span></div><div class="meter"><b style="width:79%;background:#7A5AF8"></b></div></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(360px,1fr))">
+      <section class="card" aria-labelledby="b-todo">
+        <div class="ch"><h2 id="b-todo">Needs your action</h2><span class="pill bad">4</span></div>
+        <ul class="list">
+          <li class="li"><span class="ico bad">!</span><div style="flex:1;min-width:0"><b>Timesheet sent back</b><div class="small muted">21–27 Sep · “Friday shows 12 hours”</div></div><a class="btn ghost" href="#" style="height:36px">Fix</a></li>
+          <li class="li"><span class="ico warn">?</span><div style="flex:1;min-width:0"><b>IT needs more information</b><div class="small muted">Ticket #1 · Laptop battery</div></div><a class="btn ghost" href="#" style="height:36px">Reply</a></li>
+          <li class="li"><span class="ico info">✓</span><div style="flex:1;min-width:0"><b>Confirm you received LAP-0004</b><div class="small muted">ThinkPad T14</div></div><a class="btn ghost" href="#" style="height:36px">I have it</a></li>
+          <li class="li"><span class="ico neu">i</span><div style="flex:1;min-width:0"><b>Acknowledge an announcement</b><div class="small muted">Welcome to our new HR portal</div></div><a class="btn ghost" href="#" style="height:36px">Read</a></li>
+        </ul>
+      </section>
+
+      <section class="card" aria-labelledby="b-qa">
+        <h2 id="b-qa">Quick actions</h2>
+        <div class="qa">
+          <a href="#">Apply leave<span>Casual, sick, earned</span></a>
+          <a href="#">Work from home<span>Request a WFH day</span></a>
+          <a href="#">Log hours<span>This week’s timesheet</span></a>
+          <a href="#">Claim expense<span>Upload a receipt</span></a>
+          <a href="#">Raise a ticket<span>IT, HR or Finance</span></a>
+          <a href="#">Request an asset<span>Laptop, monitor…</span></a>
+        </div>
+      </section>
+    </div>
+
+    <div class="grid">
+      <section class="card" aria-labelledby="b-team">
+        <div class="ch"><h2 id="b-team">My team</h2><a class="small" href="#">Org chart</a></div>
+        <ul class="list small">
+          <li class="li"><span class="avatar av-s">PS</span><div style="flex:1"><b>Priya Sharma</b><div class="muted">Reports to · Engineering Lead</div></div></li>
+          <li class="li"><span class="avatar av-s">AV</span><div style="flex:1"><b>Amit Verma</b><div class="muted">Software Engineer</div></div></li>
+          <li class="li"><span class="avatar av-s">SK</span><div style="flex:1"><b>Sara Khan</b><div class="muted">Software Engineer</div></div></li>
+        </ul>
+      </section>
+      <section class="card" aria-labelledby="b-ann">
+        <div class="ch"><h2 id="b-ann">Announcements</h2><a class="small" href="#">All</a></div>
+        <ul class="list small">
+          <li class="li" style="align-items:flex-start"><span class="pill info">Pinned</span><div><b>Welcome to our new HR portal</b><div class="muted">Hema Iyer · 2 days ago</div></div></li>
+          <li class="li" style="align-items:flex-start"><span class="pill neu">News</span><div><b>Diwali celebrations on 6 November</b><div class="muted">Hema Iyer · 2 days ago</div></div></li>
+        </ul>
+      </section>
+      <section class="card" aria-labelledby="b-cel">
+        <div class="ch"><h2 id="b-cel">Spotlight &amp; holidays</h2></div>
+        <ul class="list small">
+          <li class="li"><span class="avatar av-s">RK</span><div style="flex:1"><b>Ravi Kumar</b><div class="muted">Birthday · Tuesday</div></div></li>
+          <li class="li"><span class="avatar av-s">MJ</span><div style="flex:1"><b>Meena Joshi</b><div class="muted">Work anniversary · Thursday</div></div></li>
+          <li class="li"><span class="ico warn" style="font-weight:800">20</span><div style="flex:1"><b>Diwali</b><div class="muted">Tue 20 Oct</div></div></li>
+        </ul>
+      </section>
+    </div>
+  </main>
+</div>

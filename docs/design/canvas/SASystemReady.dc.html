@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>System readiness</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F7F5F0}
+.app{display:flex;min-height:100vh;font-family:Manrope,system-ui,sans-serif;color:#1C1917;background:#F7F5F0;position:relative}
+.sb{flex:0 0 250px;background:#FBFAF7;border-right:1px solid #EFEBE3;display:flex;flex-direction:column}
+.sb-h{display:flex;gap:10px;align-items:center;padding:16px 14px}
+.sb-logo{width:34px;height:34px;border-radius:8px;background:#B7791F;color:#fff;display:flex;align-items:center;justify-content:center}
+.sb-h b{display:block;font-size:15px}.sb-h span{font-size:11.5px;color:#78716C}
+.sb-s{margin:0 14px 10px;height:36px;border:1px solid #E8E3D9;border-radius:8px;display:flex;align-items:center;gap:8px;padding:0 8px;color:#78716C;font-size:13px;background:#fff}
+.kbd{border:1px solid #E8E3D9;border-radius:4px;padding:0 5px;font-size:11px;font-family:monospace}
+.sb-g{padding:10px 14px 2px;font-size:11px;font-weight:700;letter-spacing:.06em;color:#A8A29E}
+.sb-i{display:flex;align-items:center;gap:10px;height:36px;margin:0 14px;padding:0 10px;border-radius:6px;font-size:14px;color:#44403C}
+.sb-i svg{color:#A8A29E}
+.sb-i.on{background:#FBF1DF;color:#1C1917;font-weight:700;position:relative}.sb-i.on svg{color:#B7791F}
+.sb-i.on::before{content:"";position:absolute;left:-14px;top:7px;bottom:7px;width:3px;border-radius:0 3px 3px 0;background:#B7791F}
+.sb-f{margin-top:auto;border-top:1px solid #EFEBE3;padding:10px 14px;display:flex;gap:10px;align-items:center}
+.av{width:34px;height:34px;border-radius:8px;background:#FBF1DF;color:#8A5A12;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex:none}
+.col{flex:1;min-width:0;display:flex;flex-direction:column}
+.hdr{height:60px;border-bottom:1px solid #EFEBE3;display:flex;align-items:center;justify-content:space-between;padding:0 30px}
+.crumb{font-size:14px;color:#78716C}.crumb b{color:#1C1917;font-weight:600}
+.op{display:flex;align-items:center;gap:16px;font-size:13px;color:#78716C}
+.dot{width:8px;height:8px;border-radius:50%;background:#22C55E;display:inline-block}
+.tg{width:56px;height:30px;border-radius:99px;background:#F1EEE8;position:relative;border:1px solid #E8E3D9}.tg::after{content:"";position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#F5B342}
+.main{padding:26px 34px 40px;display:flex;flex-direction:column;gap:18px;box-sizing:border-box;width:100%}
+h1{margin:0;font-size:28px;font-weight:800;letter-spacing:-.02em}
+.sub{color:#78716C;font-size:14.5px;margin-top:4px}
+.row{display:flex;align-items:center;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 15px;border-radius:9px;border:1px solid #E8E3D9;background:#fff;color:#1C1917;font-size:13.5px;font-weight:700;white-space:nowrap}
+.btn.pri{background:#B7791F;border-color:#B7791F;color:#fff}.btn.sm{height:30px;padding:0 10px;font-size:12.5px}.btn.danger{color:#C2410C;border-color:#F2C9B8}
+.card{background:#fff;border:1px solid #E8E3D9;border-radius:14px;box-shadow:0 1px 2px rgba(28,25,23,.04)}
+.sec{padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.sec h3{margin:0;font-size:14.5px;display:flex;align-items:center;gap:8px}.sec h3 svg{color:#78716C}
+.sec h3 .r{margin-left:auto;font-size:12px;font-weight:500;color:#78716C}
+.tabs{display:flex;gap:22px;border-bottom:1px solid #E8E3D9;font-size:14px;color:#78716C}
+.tabs span{padding:10px 0;display:flex;gap:6px;align-items:center}.tabs span.on{color:#1C1917;font-weight:700;box-shadow:inset 0 -2px 0 #B7791F}
+.tabs i{font-style:normal;font-size:11px;font-weight:800;border-radius:99px;padding:1px 7px;background:#FEF3E2;color:#B45309}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.p-ok{background:#E7F6EC;color:#15803D}.p-warn{background:#FEF3E2;color:#B45309}.p-bad{background:#FDECE5;color:#C2410C}.p-neu{background:#EFEBE3;color:#78716C}.p-info{background:#E8EFFD;color:#1D4ED8}
+.mut{color:#78716C}.xs{font-size:12px}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.kpi{padding:14px 16px;display:flex;flex-direction:column;gap:4px;position:relative;overflow:hidden}
+.kpi span{font-size:12px;color:#78716C}.kpi b{font-size:26px;font-weight:800;letter-spacing:-.02em}.kpi small{font-size:12px;color:#78716C}
+.kpi svg.sp{position:absolute;right:14px;bottom:14px}
+/* hero */
+.hero{display:flex;align-items:center;gap:20px;padding:20px 22px;border-radius:16px;background:linear-gradient(120deg,#ECF8F0,#F6FBF7 60%,#fff);border:1px solid #CBEBD6;position:relative;overflow:hidden}
+.pulse{width:54px;height:54px;border-radius:16px;background:#15803D;color:#fff;display:flex;align-items:center;justify-content:center;position:relative;flex:none}
+.pulse::after{content:"";position:absolute;inset:-6px;border-radius:20px;border:2px solid #34C77B;animation:ping 2.4s ease-out infinite}
+@keyframes ping{0%{opacity:.7;transform:scale(.9)}100%{opacity:0;transform:scale(1.25)}}
+.bars{display:flex;gap:2px;align-items:flex-end;height:30px}.bars i{flex:1;height:100%;border-radius:2px;background:#34C77B}
+.bars i.w{background:#F2B65A}.bars i.b{background:#EF6B4A}.bars i.n{background:#E7E5E4}
+.svc{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.sv{padding:16px;display:flex;flex-direction:column;gap:10px;position:relative;overflow:hidden}
+.sv .top{display:flex;align-items:center;gap:10px}
+.ic{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex:none}
+.sv b.nm{font-size:15px}
+.lat{display:flex;align-items:flex-end;justify-content:space-between;border-top:1px solid #EFEBE3;padding-top:10px}
+.lat b{font-size:20px}.lat small{font-size:11px;color:#78716C}
+.how{border:1px dashed #E8E3D9;border-radius:10px;padding:10px;background:#FAF8F4;font-size:12px}
+code{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;background:#EFEBE3;padding:1px 6px;border-radius:5px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#78716C;padding:8px 10px;border-bottom:1px solid #E8E3D9}
+td{padding:9px 10px;border-bottom:1px solid #EFEBE3}
+.meter{height:6px;border-radius:99px;background:#EFEBE3;overflow:hidden}.meter i{display:block;height:100%;border-radius:99px;transform-origin:left;animation:fillw 1s cubic-bezier(.2,.8,.2,1) both}
+@keyframes fillw{from{transform:scaleX(0)}}
+.chart polyline,.chart path.ln{stroke-dasharray:2000;animation:draw 1.6s ease both}@keyframes draw{from{stroke-dashoffset:2000}}
+.g2{display:grid;grid-template-columns:1.4fr 1fr;gap:18px}.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.g2e{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.li{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #EFEBE3;font-size:13px}.li:last-child{border-bottom:0}
+.ck{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid #EFEBE3;font-size:13px}.ck:last-child{border-bottom:0}
+.ck i{width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:none;font-style:normal;font-size:11px;font-weight:800;margin-top:1px}
+.tl{display:flex;gap:12px;font-size:13px}.tl .d{width:10px;height:10px;border-radius:50%;margin-top:4px;flex:none;box-shadow:0 0 0 3px #fff,0 0 0 4px #E8E3D9}
+.sw{width:42px;height:24px;border-radius:99px;background:#D6D3D1;position:relative;flex:none}.sw::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2)}.sw.on{background:#B7791F}.sw.on::after{left:21px}
+.banner{border-radius:10px;padding:10px 14px;background:#FFF4E0;border:1px solid #F3D9A8;color:#7A4B0B;font-size:12.5px;display:flex;gap:8px;align-items:center}
+.tool{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid #EFEBE3;border-radius:12px;background:#FAF8F4}
+.tool b{display:block;font-size:13.5px}.tool span.xs{display:block}
+</style>
+</helmet>
+<div class="app"><aside class="sb">
+<div class="sb-h"><span class="sb-logo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg></span><span><b>HRMS Platform</b><span>Super Admin console</span></span></div>
+<div class="sb-s"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><span style="flex:1">Search…</span><span class="kbd">Ctrl</span><span class="kbd">K</span></div>
+<div class="sb-g">OVERVIEW</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Dashboard</div>
+<div class="sb-g">TENANTS</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2M10 6h4M10 10h4M10 14h4M10 18h4"/></svg>Companies</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg>Onboard company</div>
+<div class="sb-g">GOVERNANCE</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M10 9H8M16 13H8M16 17H8"/></svg>Audit logs</div>
+<div class="sb-g">PLATFORM</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65M22 12.65l-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg>Plans</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.65-.75 1.65-1.69 0-.44-.18-.84-.44-1.13-.29-.29-.44-.65-.44-1.13a1.64 1.64 0 0 1 1.67-1.67h2c3.05 0 5.56-2.5 5.56-5.55C21.97 6.01 17.46 2 12 2z"/></svg>Themes</div><div class="sb-i on"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/></svg>System</div>
+<div class="sb-f"><span class="av">SA</span><span style="flex:1"><b style="display:block;font-size:14px">Super Admin</b><span class="xs mut">Super Admin</span></span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></svg></div>
+</aside><div class="col"><header class="hdr"><div class="crumb">Platform &nbsp;›&nbsp; <b>System</b></div><div class="op"><span><span class="dot"></span>&nbsp; Operational</span><span class="tg"></span></div></header><main class="main">
+<div class="row" style="align-items:flex-end"><div style="flex:1"><h1>System</h1><div class="sub">Health, speed and setup of this deployment — and the tools to look after it.</div></div><span class="xs mut">Updated 4 s ago · every 15 s</span><span class="btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5M3 21v-5h5"/></svg>Check now</span></div>
+<div class="tabs"><span class="">Health & speed</span><span class="">Data & delivery</span><span class="on">Readiness & tools<i>3</i></span></div>
+<div class="g2">
+  <div class="card sec"><h3><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg>Ready for real users?<span class="r">from this server’s settings — values are never shown</span></h3>
+    <div class="row" style="gap:20px;align-items:center"><span style="position:relative;width:110px;height:110px;display:inline-block;flex:none"><svg width="110" height="110"><circle cx="55" cy="55" r="50" fill="none" stroke="#EFEBE3" stroke-width="8"/><circle cx="55" cy="55" r="50" fill="none" stroke="#F2B65A" stroke-width="8" stroke-linecap="round" stroke-dasharray="179.51958020513104 314.1592653589793" transform="rotate(-90 55 55)"/></svg><b style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:22px"><span>4/7</span><small style="font-size:10.5px;color:#78716C;font-weight:600">done</small></b></span>
+      <div style="flex:1"><div style="font-size:16px;font-weight:800">Almost there — 3 things before going live</div><div class="xs mut" style="margin-top:4px;line-height:1.5">Fine for testing today. Fix the three below before inviting real companies.</div></div></div>
+    <div><div class="ck"><i style="background:#E7F6EC;color:#15803D"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></i><div style="flex:1"><b>Strong secrets</b><div class="xs mut">JWT secrets are long and random; personal data encryption key is set</div></div></div><div class="ck"><i style="background:#E7F6EC;color:#15803D"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></i><div style="flex:1"><b>Real email provider</b><div class="xs mut">Gmail SMTP — people receive invites and resets</div></div></div><div class="ck"><i style="background:#E7F6EC;color:#15803D"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></i><div style="flex:1"><b>Database backups</b><div class="xs mut">Managed by your database host</div></div></div><div class="ck"><i style="background:#FEF3E2;color:#B45309">!</i><div style="flex:1"><b>Redis for the email queue</b><div class="xs mut">Failed emails are not retried. Add REDIS_URL.</div></div><span class="btn sm">How to fix</span></div><div class="ck"><i style="background:#FEF3E2;color:#B45309">!</i><div style="flex:1"><b>Files on durable storage</b><div class="xs mut">Uploads are on this server’s disk — lost if it’s replaced. Use S3.</div></div><span class="btn sm">How to fix</span></div><div class="ck"><i style="background:#FDECE5;color:#C2410C">!</i><div style="flex:1"><b>Running in production mode</b><div class="xs mut">NODE_ENV is “development”: slower, more logging, detailed errors.</div></div><span class="btn sm">How to fix</span></div><div class="ck"><i style="background:#E7F6EC;color:#15803D"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></i><div style="flex:1"><b>HTTPS and allowed web addresses</b><div class="xs mut">CORS limited to WEB_URL</div></div></div></div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:18px">
+    <div class="card sec"><h3><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>Maintenance mode</h3>
+      <div class="row"><div style="flex:1"><b style="font-size:13.5px">Pause the portal for everyone</b><div class="xs mut">Company users see a notice instead of the app. Super Admins can still sign in.</div></div><span class="sw"></span></div>
+      <div class="xs mut" style="font-weight:700">NOTICE PEOPLE WILL SEE</div>
+      <div class="banner"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg><span><b>Scheduled upgrade</b> — HRMS will be unavailable on Sat 10 Oct, 11 PM – 12 AM.</span></div>
+      <div class="row"><span class="btn sm">Edit notice</span><span class="btn sm">Show notice in advance</span><span class="xs mut" style="margin-left:auto">Off</span></div>
+    </div>
+    <div class="card sec"><h3><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Sign-in safety<span class="r">last 24 hours</span></h3>
+      <div class="row" style="gap:8px"><div style="flex:1;border:1px solid #EFEBE3;border-radius:10px;padding:10px;background:#FAF8F4"><div class="xs mut">Successful sign-ins</div><b style="font-size:19px;color:#1C1917">1,912</b></div><div style="flex:1;border:1px solid #EFEBE3;border-radius:10px;padding:10px;background:#FAF8F4"><div class="xs mut">Wrong passwords</div><b style="font-size:19px;color:#B45309">23</b></div><div style="flex:1;border:1px solid #EFEBE3;border-radius:10px;padding:10px;background:#FAF8F4"><div class="xs mut">Accounts locked</div><b style="font-size:19px;color:#C2410C">1</b></div></div>
+      <div class="li"><span class="av" style="width:30px;height:30px;font-size:10px">VK</span><span style="flex:1"><b>vikram.aakash@yopmail.com</b><div class="xs mut">aakash-portal · locked 12 min ago after 5 wrong passwords</div></span><span class="btn sm">Unlock</span></div>
+    </div>
+  </div>
+</div>
+<div class="g2e">
+  <div class="card sec"><h3><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>Tools</h3>
+    <div class="tool"><span class="ic" style="background:#FBF1DF;color:#B7791F;width:34px;height:34px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5M3 21v-5h5"/></svg></span><span style="flex:1"><b>Run all health checks now</b><span class="xs mut">Database, email, Redis and search — results in a few seconds</span></span><span class="btn sm">Run</span></div><div class="tool"><span class="ic" style="background:#FBF1DF;color:#B7791F;width:34px;height:34px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m13 11 9-9M14.6 12.6c.8.8.9 2.1.2 3L10 22l-8-8 6.4-4.8c.9-.7 2.2-.6 3 .2z"/><path d="m6.8 13.8 3.4 3.4"/></svg></span><span style="flex:1"><b>Clear access caches</b><span class="xs mut">Use if a plan or role change doesn’t show up straight away</span></span><span class="btn sm">Clear</span></div><div class="tool"><span class="ic" style="background:#FBF1DF;color:#B7791F;width:34px;height:34px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg></span><span style="flex:1"><b>Send a test email</b><span class="xs mut">Check delivery to any address</span></span><span class="btn sm">Send</span></div><div class="tool"><span class="ic" style="background:#FBF1DF;color:#B7791F;width:34px;height:34px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></span><span style="flex:1"><b>Download diagnostics</b><span class="xs mut">Versions, settings (no secrets) and recent errors — for support</span></span><span class="btn sm">Download</span></div>
+  </div>
+  <div class="card sec"><h3><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/></svg>Incidents &amp; changes<span class="r">last 30 days</span></h3>
+    <div class="tl"><span class="d" style="background:#15803D"></span><div><b>All systems operational</b><div class="xs mut">now</div></div></div><div class="tl"><span class="d" style="background:#EF6B4A"></span><div><b>Email down for 14 minutes</b><div class="xs mut">Gmail rejected sign-in · 21 Sep, 10:02 – 10:16 · 3 emails not sent</div></div></div><div class="tl"><span class="d" style="background:#1D4ED8"></span><div><b>Updated to v0.0.1</b><div class="xs mut">Migration company_insights applied · 3 Oct, 22:51</div></div></div><div class="tl"><span class="d" style="background:#F2B65A"></span><div><b>Slow responses for 6 minutes</b><div class="xs mut">Reports during month-end · 30 Sep, 18:40</div></div></div><div class="tl"><span class="d" style="background:#1D4ED8"></span><div><b>API restarted</b><div class="xs mut">1 Oct, 09:12</div></div></div>
+    <div class="row xs mut" style="border-top:1px solid #EFEBE3;padding-top:10px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg> API v0.0.1 · Node 24.12 · started 3 days ago · build 3f2aaa8</div>
+  </div>
+</div>
+</main></div></div></x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1300}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

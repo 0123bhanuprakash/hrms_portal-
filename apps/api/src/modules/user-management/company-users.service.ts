@@ -202,6 +202,9 @@ export class CompanyUsersService {
       ),
     ]);
     const updated = await this.find(companyId, id);
+    // New role (e.g. manager) → starter kit extras for that group
+    const emp = await this.prisma.employee.findFirst({ where: { userId: id, companyId }, select: { id: true } });
+    if (emp && unique.some((r) => !user.userRoles.some((ur) => ur.role.id === r))) this.employees.provisionKit(companyId, emp.id, 'promotion');
     return {
       ...this.present(updated, actor),
       changes: {

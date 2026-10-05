@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Check-in sessions</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#FAF8F4}
+.w{font-family:Manrope,system-ui,sans-serif;color:#18181B;padding:40px;background:#FAF8F4;box-sizing:border-box}
+.w h1{margin:0 0 6px;font-size:28px;font-weight:800;letter-spacing:-.02em}
+.w>p.lead{margin:0 0 24px;color:#6B6B73;max-width:980px;line-height:1.5}
+.card{background:#FFFFFF;border:1px solid #E7E1D6;border-radius:14px;box-shadow:0 1px 2px rgba(24,24,27,.04), 0 6px 18px -8px rgba(24,24,27,.12);padding:18px 20px;display:flex;flex-direction:column;gap:12px;box-sizing:border-box;min-width:0}
+.card h2{margin:0;font-size:15px;font-weight:800}
+.hd{display:flex;align-items:center;gap:10px}.hd h2{flex:1}
+.tag{font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px;background:#F6EBD6;color:#7A4E0E;white-space:nowrap}
+.tag.ok{background:#E4F3EA;color:#157A4B}.tag.neu{background:#F0EDE7;color:#4A4A52}
+.mut{color:#6B6B73}.xs{font-size:12px}.sm{font-size:13px}
+.why{font-size:12.5px;color:#6B6B73;line-height:1.5;border-top:1px solid #EFEAE0;padding-top:10px;margin-top:auto}
+.why b{color:#18181B}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}}
+@keyframes growy{from{transform:scaleY(0)}}
+@keyframes fillw{from{transform:scaleX(0)}}
+@keyframes pop{from{opacity:0;transform:scale(.7)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.today{gap:14px}
+.ring{position:relative;width:110px;height:110px;flex:none}
+.tline{position:relative;height:26px;border-radius:8px;background:#F0EBE1}
+.tline .shift{position:absolute;top:-4px;bottom:-4px;left:39.6%;width:37.5%;border:1.5px dashed #D9D0BF;border-radius:8px}
+.tline .s{position:absolute;top:5px;bottom:5px;border-radius:5px;background:#157A4B;animation:fillw .9s cubic-bezier(.2,.8,.2,1) both;transform-origin:left}
+.tline .s.open{background:repeating-linear-gradient(45deg,#157A4B,#157A4B 6px,#2fa36b 6px,#2fa36b 12px);animation:fillw .9s both,stripe 1s linear infinite}
+@keyframes stripe{to{background-position:24px 0}}
+.tline .now{position:absolute;top:-6px;bottom:-6px;width:2px;background:#B7791F}
+.ticks{display:flex;justify-content:space-between;font-size:11px;color:#6B6B73}
+.ses{display:flex;flex-direction:column;gap:6px}
+.ses div{display:flex;align-items:center;gap:10px;font-size:13px;padding:7px 10px;border-radius:8px;background:#FAF8F4;border:1px solid #EFEAE0}
+.ses div b{font-variant-numeric:tabular-nums}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:42px;border-radius:10px;font:inherit;font-weight:800;font-size:14px;border:1px solid #D9D0BF;background:#FFFFFF;color:#18181B;padding:0 16px}
+.btn.pri{background:#B7791F;border-color:#B7791F;color:#18181B}
+.modal{border-radius:16px;background:#FFFFFF;border:1px solid #E7E1D6;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);padding:22px;display:flex;flex-direction:column;gap:14px}
+.modal h2{font-size:18px}
+textarea{font:inherit;border:1px solid #D9D0BF;border-radius:10px;padding:10px;min-height:70px;resize:none;background:#FAF8F4}
+.chips{display:flex;flex-wrap:wrap;gap:6px}.chips span{font-size:12px;font-weight:700;padding:5px 10px;border-radius:99px;border:1px solid #E7E1D6;background:#FAF8F4}
+.gate{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;font-size:13px;padding:8px 10px;border-radius:8px;border:1px solid #EFEAE0}
+.src{font-size:11px;font-weight:800;padding:2px 8px;border-radius:99px}
+</style>
+</helmet>
+<div class="w"><h1>Check in &amp; out — many times a day</h1><p class="lead">Each check-in and check-out is saved. The day runs <b>12 AM – 12 AM</b> and resets at midnight. Time worked = the sessions added up (breaks don’t count). Night shifts: people on a project that needs night work can stay checked in past midnight.</p>
+<div class="g3">
+<section class="card today"><div class="hd"><h2>Today</h2><span class="tag ok">Checked in · session 2</span></div>
+<div style="display:flex;align-items:center;gap:16px"><div class="ring"><svg width="110" height="110" viewBox="0 0 110 110"><circle cx="55" cy="55" r="47" fill="none" stroke="#F0EBE1" stroke-width="11"/><circle cx="55" cy="55" r="47" fill="none" stroke="#B7791F" stroke-width="11" stroke-linecap="round" stroke-dasharray="209.6698937005828 400" transform="rotate(-90 55 55)"/></svg><div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><b style="font-size:20px">5h 40m</b><span class="xs mut">of 8h</span></div></div>
+<div class="sm" style="display:flex;flex-direction:column;gap:5px"><span class="mut xs">First in</span><b>09:12</b><span class="mut xs">Break so far</span><b>32m</b></div></div>
+<div><div class="tline"><span class="shift"></span><span class="s" style="left:38.3%;width:15.6%"></span><span class="s open" style="left:56.2%;width:6.4%;animation-delay:.3s"></span><span class="now" style="left:62.6%"></span></div><div class="ticks" style="margin-top:6px"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div></div>
+<div class="ses"><div><span class="src" style="background:#E4F3EA;color:#157A4B">1</span><span style="flex:1">09:12 – 12:58</span><b>3h 46m</b></div><div><span class="src" style="background:#E4F3EA;color:#157A4B">2</span><span style="flex:1">13:30 – now</span><b>1h 54m</b></div></div>
+<span class="btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>Check out</span></section>
+
+<section class="modal"><div style="display:flex;align-items:center;gap:10px"><span style="width:40px;height:40px;border-radius:12px;background:#FBEFD9;color:#8A5200;display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span><h2 style="margin:0">Checking out early?</h2></div>
+<p class="sm" style="margin:0">You’ve worked <b>5h 40m</b> today — <b>2h 20m</b> short of your 8-hour day. You can add a reason for your manager, or just check out.</p>
+<div class="chips"><span>Doctor’s appointment</span><span>Personal work</span><span>Working remotely later</span><span>Feeling unwell</span></div>
+<textarea placeholder="Reason (optional)"></textarea>
+<div style="display:flex;gap:10px;justify-content:flex-end"><span class="btn">Just check out</span><span class="btn pri">Add note &amp; check out</span></div>
+<p class="xs mut" style="margin:0">You can still check in again later today.</p></section>
+
+<section class="card"><h2>Every tap is kept (ready for gate cards)</h2>
+<div class="gate"><b style="font-variant-numeric:tabular-nums">09:12</b><span>Web · office Wi-Fi</span><span class="src" style="background:#F0EDE7;color:#157A4B">In</span></div><div class="gate"><b style="font-variant-numeric:tabular-nums">12:58</b><span>Web</span><span class="src" style="background:#F0EDE7;color:#B42318">Out</span></div><div class="gate"><b style="font-variant-numeric:tabular-nums">13:30</b><span>Mobile</span><span class="src" style="background:#F0EDE7;color:#157A4B">In</span></div><div class="gate"><b style="font-variant-numeric:tabular-nums">—</b><span>Card reader · not connected yet</span><span class="src" style="background:#F0EDE7;color:#6B6B73">Gate</span></div>
+<div class="why"><b>Later, with card readers:</b> taps at the gate arrive as more entries. Then we can flag <b>checked in but never tapped in</b> (possible tailgating), <b>entered twice without leaving</b>, and <b>late against the shift start</b> (09:30 today).</div></section>
+</div></div></x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":820}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

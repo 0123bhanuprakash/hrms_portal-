@@ -221,6 +221,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   assets: 'Assets',
   mine: 'My assets',
   requests: 'Requests',
+  request: 'Request',
   helpdesk: 'Helpdesk',
   queue: 'Queue',
   timesheets: 'Timesheets',

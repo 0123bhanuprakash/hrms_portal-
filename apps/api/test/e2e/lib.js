@@ -120,6 +120,8 @@ async function dropCompany(slug) {
     () => prisma.ticketMessage.deleteMany({ where: { companyId: id } }),
     () => prisma.ticket.deleteMany({ where: { companyId: id } }),
     () => prisma.ticketCategory.deleteMany({ where: { companyId: id } }),
+    () => prisma.starterKitRule.deleteMany({ where: { companyId: id } }),
+    () => prisma.assetCheck.deleteMany({ where: { companyId: id } }),
     () => prisma.assetRequest.deleteMany({ where: { companyId: id } }),
     () => prisma.assetAssignment.deleteMany({ where: { companyId: id } }),
     () => prisma.asset.deleteMany({ where: { companyId: id } }),

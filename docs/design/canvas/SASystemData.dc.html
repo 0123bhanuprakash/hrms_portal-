@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>System data</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F7F5F0}
+.app{display:flex;min-height:100vh;font-family:Manrope,system-ui,sans-serif;color:#1C1917;background:#F7F5F0;position:relative}
+.sb{flex:0 0 250px;background:#FBFAF7;border-right:1px solid #EFEBE3;display:flex;flex-direction:column}
+.sb-h{display:flex;gap:10px;align-items:center;padding:16px 14px}
+.sb-logo{width:34px;height:34px;border-radius:8px;background:#B7791F;color:#fff;display:flex;align-items:center;justify-content:center}
+.sb-h b{display:block;font-size:15px}.sb-h span{font-size:11.5px;color:#78716C}
+.sb-s{margin:0 14px 10px;height:36px;border:1px solid #E8E3D9;border-radius:8px;display:flex;align-items:center;gap:8px;padding:0 8px;color:#78716C;font-size:13px;background:#fff}
+.kbd{border:1px solid #E8E3D9;border-radius:4px;padding:0 5px;font-size:11px;font-family:monospace}
+.sb-g{padding:10px 14px 2px;font-size:11px;font-weight:700;letter-spacing:.06em;color:#A8A29E}
+.sb-i{display:flex;align-items:center;gap:10px;height:36px;margin:0 14px;padding:0 10px;border-radius:6px;font-size:14px;color:#44403C}
+.sb-i svg{color:#A8A29E}
+.sb-i.on{background:#FBF1DF;color:#1C1917;font-weight:700;position:relative}.sb-i.on svg{color:#B7791F}
+.sb-i.on::before{content:"";position:absolute;left:-14px;top:7px;bottom:7px;width:3px;border-radius:0 3px 3px 0;background:#B7791F}
+.sb-f{margin-top:auto;border-top:1px solid #EFEBE3;padding:10px 14px;display:flex;gap:10px;align-items:center}
+.av{width:34px;height:34px;border-radius:8px;background:#FBF1DF;color:#8A5A12;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex:none}
+.col{flex:1;min-width:0;display:flex;flex-direction:column}
+.hdr{height:60px;border-bottom:1px solid #EFEBE3;display:flex;align-items:center;justify-content:space-between;padding:0 30px}
+.crumb{font-size:14px;color:#78716C}.crumb b{color:#1C1917;font-weight:600}
+.op{display:flex;align-items:center;gap:16px;font-size:13px;color:#78716C}
+.dot{width:8px;height:8px;border-radius:50%;background:#22C55E;display:inline-block}
+.tg{width:56px;height:30px;border-radius:99px;background:#F1EEE8;position:relative;border:1px solid #E8E3D9}.tg::after{content:"";position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#F5B342}
+.main{padding:26px 34px 40px;display:flex;flex-direction:column;gap:18px;box-sizing:border-box;width:100%}
+h1{margin:0;font-size:28px;font-weight:800;letter-spacing:-.02em}
+.sub{color:#78716C;font-size:14.5px;margin-top:4px}
+.row{display:flex;align-items:center;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 15px;border-radius:9px;border:1px solid #E8E3D9;background:#fff;color:#1C1917;font-size:13.5px;font-weight:700;white-space:nowrap}
+.btn.pri{background:#B7791F;border-color:#B7791F;color:#fff}.btn.sm{height:30px;padding:0 10px;font-size:12.5px}.btn.danger{color:#C2410C;border-color:#F2C9B8}
+.card{background:#fff;border:1px solid #E8E3D9;border-radius:14px;box-shadow:0 1px 2px rgba(28,25,23,.04)}
+.sec{padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.sec h3{margin:0;font-size:14.5px;display:flex;align-items:center;gap:8px}.sec h3 svg{color:#78716C}
+.sec h3 .r{margin-left:auto;font-size:12px;font-weight:500;color:#78716C}
+.tabs{display:flex;gap:22px;border-bottom:1px solid #E8E3D9;font-size:14px;color:#78716C}
+.tabs span{padding:10px 0;display:flex;gap:6px;align-items:center}.tabs span.on{color:#1C1917;font-weight:700;box-shadow:inset 0 -2px 0 #B7791F}
+.tabs i{font-style:normal;font-size:11px;font-weight:800;border-radius:99px;padding:1px 7px;background:#FEF3E2;color:#B45309}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.p-ok{background:#E7F6EC;color:#15803D}.p-warn{background:#FEF3E2;color:#B45309}.p-bad{background:#FDECE5;color:#C2410C}.p-neu{background:#EFEBE3;color:#78716C}.p-info{background:#E8EFFD;color:#1D4ED8}
+.mut{color:#78716C}.xs{font-size:12px}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.kpi{padding:14px 16px;display:flex;flex-direction:column;gap:4px;position:relative;overflow:hidden}
+.kpi span{font-size:12px;color:#78716C}.kpi b{font-size:26px;font-weight:800;letter-spacing:-.02em}.kpi small{font-size:12px;color:#78716C}
+.kpi svg.sp{position:absolute;right:14px;bottom:14px}
+/* hero */
+.hero{display:flex;align-items:center;gap:20px;padding:20px 22px;border-radius:16px;background:linear-gradient(120deg,#ECF8F0,#F6FBF7 60%,#fff);border:1px solid #CBEBD6;position:relative;overflow:hidden}
+.pulse{width:54px;height:54px;border-radius:16px;background:#15803D;color:#fff;display:flex;align-items:center;justify-content:center;position:relative;flex:none}
+.pulse::after{content:"";position:absolute;inset:-6px;border-radius:20px;border:2px solid #34C77B;animation:ping 2.4s ease-out infinite}
+@keyframes ping{0%{opacity:.7;transform:scale(.9)}100%{opacity:0;transform:scale(1.25)}}
+.bars{display:flex;gap:2px;align-items:flex-end;height:30px}.bars i{flex:1;height:100%;border-radius:2px;background:#34C77B}
+.bars i.w{background:#F2B65A}.bars i.b{background:#EF6B4A}.bars i.n{background:#E7E5E4}
+.svc{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.sv{padding:16px;display:flex;flex-direction:column;gap:10px;position:relative;overflow:hidden}
+.sv .top{display:flex;align-items:center;gap:10px}
+.ic{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex:none}
+.sv b.nm{font-size:15px}
+.lat{display:flex;align-items:flex-end;justify-content:space-between;border-top:1px solid #EFEBE3;padding-top:10px}
+.lat b{font-size:20px}.lat small{font-size:11px;color:#78716C}
+.how{border:1px dashed #E8E3D9;border-radius:10px;padding:10px;background:#FAF8F4;font-size:12px}
+code{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;background:#EFEBE3;padding:1px 6px;border-radius:5px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#78716C;padding:8px 10px;border-bottom:1px solid #E8E3D9}
+td{padding:9px 10px;border-bottom:1px solid #EFEBE3}
+.meter{height:6px;border-radius:99px;background:#EFEBE3;overflow:hidden}.meter i{display:block;height:100%;border-radius:99px;transform-origin:left;animation:fillw 1s cubic-bezier(.2,.8,.2,1) both}
+@keyframes fillw{from{transform:scaleX(0)}}
+.chart polyline,.chart path.ln{stroke-dasharray:2000;animation:draw 1.6s ease both}@keyframes draw{from{stroke-dashoffset:2000}}
+.g2{display:grid;grid-template-columns:1.4fr 1fr;gap:18px}.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.g2e{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.li{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #EFEBE3;font-size:13px}.li:last-child{border-bottom:0}
+.ck{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid #EFEBE3;font-size:13px}.ck:last-child{border-bottom:0}
+.ck i{width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:none;font-style:normal;font-size:11px;font-weight:800;margin-top:1px}
+.tl{display:flex;gap:12px;font-size:13px}.tl .d{width:10px;height:10px;border-radius:50%;margin-top:4px;flex:none;box-shadow:0 0 0 3px #fff,0 0 0 4px #E8E3D9}
+.sw{width:42px;height:24px;border-radius:99px;background:#D6D3D1;position:relative;flex:none}.sw::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2)}.sw.on{background:#B7791F}.sw.on::after{left:21px}
+.banner{border-radius:10px;padding:10px 14px;background:#FFF4E0;border:1px solid #F3D9A8;color:#7A4B0B;font-size:12.5px;display:flex;gap:8px;align-items:center}
+.tool{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid #EFEBE3;border-radius:12px;background:#FAF8F4}
+.tool b{display:block;font-size:13.5px}.tool span.xs{display:block}
+</style>
+</helmet>
+<div class="app"><aside class="sb">
+<div class="sb-h"><span class="sb-logo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg></span><span><b>HRMS Platform</b><span>Super Admin console</span></span></div>
+<div class="sb-s"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><span style="flex:1">Search…</span><span class="kbd">Ctrl</span><span class="kbd">K</span></div>
+<div class="sb-g">OVERVIEW</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Dashboard</div>
+<div class="sb-g">TENANTS</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2M10 6h4M10 10h4M10 14h4M10 18h4"/></svg>Companies</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg>Onboard company</div>
+<div class="sb-g">GOVERNANCE</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M10 9H8M16 13H8M16 17H8"/></svg>Audit logs</div>
+<div class="sb-g">PLATFORM</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65M22 12.65l-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg>Plans</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.65-.75 1.65-1.69 0-.44-.18-.84-.44-1.13-.29-.29-.44-.65-.44-1.13a1.64 1.64 0 0 1 1.67-1.67h2c3.05 0 5.56-2.5 5.56-5.55C21.97 6.01 17.46 2 12 2z"/></svg>Themes</div><div class="sb-i on"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/></svg>System</div>
+<div class="sb-f"><span class="av">SA</span><span style="flex:1"><b style="display:block;font-size:14px">Super Admin</b><span class="xs mut">Super Admin</span></span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></svg></div>
+</aside><div class="col"><header class="hdr"><div class="crumb">Platform &nbsp;›&nbsp; <b>System</b></div><div class="op"><span><span class="dot"></span>&nbsp; Operational</span><span class="tg"></span></div></header><main class="main">
+<div class="row" style="align-items:flex-end"><div style="flex:1"><h1>System</h1><div class="sub">Health, speed and setup of this deployment — and the tools to look after it.</div></div><span class="xs mut">Updated 4 s ago · every 15 s</span><span class="btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5M3 21v-5h5"/></svg>Check now</span></div>
+<div class="tabs"><span class="">Health & speed</span><span class="on">Data & delivery</span><span class="">Readiness & tools<i>3</i></span></div>
+<div class="g3">
+  <div class="card sec"><h3><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg>Database<span class="pill p-ok" style="margin-left:auto">PostgreSQL 16</span></h3>
+    <div class="row" style="gap:16px"><span style="position:relative;width:96px;height:96px;display:inline-block;flex:none"><svg width="96" height="96"><circle cx="48" cy="48" r="43" fill="none" stroke="#EFEBE3" stroke-width="8"/><circle cx="48" cy="48" r="43" fill="none" stroke="#0F766E" stroke-width="8" stroke-linecap="round" stroke-dasharray="167.50972028940777 270.1769682087222" transform="rotate(-90 48 48)"/></svg><b style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:22px"><span>412</span><small style="font-size:10.5px;color:#78716C;font-weight:600">MB</small></b></span>
+      <div style="flex:1" class="xs"><div class="li"><span class="mut" style="flex:1">Connections</span><b>7 of 20</b></div><div class="li"><span class="mut" style="flex:1">Slow queries (&gt;1 s) today</span><b>0</b></div><div class="li"><span class="mut" style="flex:1">Latest migration</span><b>company_insights</b></div></div></div>
+    <div class="xs mut" style="font-weight:700;margin-top:4px">BIGGEST TABLES</div>
+    <div><div class="row xs"><code style="background:none;padding:0;flex:1">attendance_records</code><span class="mut">1,82,000 rows</span><b style="width:52px;text-align:right">46 MB</b></div><div class="meter" style="margin-top:4px"><i style="width:100%;background:#0F766E"></i></div></div><div><div class="row xs"><code style="background:none;padding:0;flex:1">audit_logs</code><span class="mut">96,400 rows</span><b style="width:52px;text-align:right">31 MB</b></div><div class="meter" style="margin-top:4px"><i style="width:67.3913043478261%;background:#0F766E"></i></div></div><div><div class="row xs"><code style="background:none;padding:0;flex:1">notifications</code><span class="mut">41,200 rows</span><b style="width:52px;text-align:right">9 MB</b></div><div class="meter" style="margin-top:4px"><i style="width:19.565217391304348%;background:#0F766E"></i></div></div><div><div class="row xs"><code style="background:none;padding:0;flex:1">leave_requests</code><span class="mut">8,300 rows</span><b style="width:52px;text-align:right">3 MB</b></div><div class="meter" style="margin-top:4px"><i style="width:6.521739130434782%;background:#0F766E"></i></div></div><div><div class="row xs"><code style="background:none;padding:0;flex:1">employees</code><span class="mut">517 rows</span><b style="width:52px;text-align:right">1 MB</b></div><div class="meter" style="margin-top:4px"><i style="width:2.1739130434782608%;background:#0F766E"></i></div></div>
+  </div>
+  <div class="card sec"><h3><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12H2M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><path d="M6 16h.01M10 16h.01"/></svg>File storage<span class="pill p-neu" style="margin-left:auto">Local disk</span></h3>
+    <div class="row" style="gap:16px"><span style="position:relative;width:96px;height:96px;display:inline-block;flex:none"><svg width="96" height="96"><circle cx="48" cy="48" r="43" fill="none" stroke="#EFEBE3" stroke-width="8"/><circle cx="48" cy="48" r="43" fill="none" stroke="#B7791F" stroke-width="8" stroke-linecap="round" stroke-dasharray="48.63185427757 270.1769682087222" transform="rotate(-90 48 48)"/></svg><b style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:22px"><span>1.8</span><small style="font-size:10.5px;color:#78716C;font-weight:600">GB</small></b></span>
+      <div style="flex:1" class="xs"><div class="li"><span class="mut" style="flex:1">Files</span><b>2,946</b></div><div class="li"><span class="mut" style="flex:1">Disk free</span><b>8.2 GB of 10 GB</b></div><div class="li"><span class="mut" style="flex:1">Added this week</span><b>+64 MB</b></div></div></div>
+    <div class="xs mut" style="font-weight:700;margin-top:4px">BY COMPANY</div>
+    <div><div class="row xs"><span style="width:8px;height:8px;border-radius:3px;background:#5B5BF0"></span><span style="flex:1">Perf Bench</span><b>1.2 GB</b></div><div class="meter" style="margin-top:4px"><i style="width:100%;background:#B7791F"></i></div></div><div><div class="row xs"><span style="width:8px;height:8px;border-radius:3px;background:#E9416A"></span><span style="flex:1">aakash-portal</span><b>0.55 GB</b></div><div class="meter" style="margin-top:4px"><i style="width:45.833333333333336%;background:#B7791F"></i></div></div><div><div class="row xs"><span style="width:8px;height:8px;border-radius:3px;background:#2F5BEA"></span><span style="flex:1">Beta Test Co</span><b>0.03 GB</b></div><div class="meter" style="margin-top:4px"><i style="width:2.5%;background:#B7791F"></i></div></div><div><div class="row xs"><span style="width:8px;height:8px;border-radius:3px;background:#C2410C"></span><span style="flex:1">Acme Test Company</span><b>0.02 GB</b></div><div class="meter" style="margin-top:4px"><i style="width:1.6666666666666667%;background:#B7791F"></i></div></div>
+    <div class="xs mut">Receipts, documents and logos. Moving to S3 keeps files safe if the server is replaced.</div>
+  </div>
+  <div class="card sec"><h3><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>Background jobs<span class="pill p-neu" style="margin-left:auto">Inline</span></h3>
+    <div class="how" style="font-size:12.5px;line-height:1.55">Without Redis, emails go out <b>during the request</b>. If Gmail is slow, the person clicking waits — and a failed email isn’t tried again.</div>
+    <div class="xs mut" style="font-weight:700">WITH REDIS YOU’D SEE</div>
+    <div class="row" style="gap:8px"><div style="flex:1;border:1px solid #EFEBE3;border-radius:10px;padding:8px;opacity:.6"><div class="xs mut">Waiting</div><b style="font-size:17px;color:#78716C">0</b></div><div style="flex:1;border:1px solid #EFEBE3;border-radius:10px;padding:8px;opacity:.6"><div class="xs mut">Running</div><b style="font-size:17px;color:#1D4ED8">2</b></div><div style="flex:1;border:1px solid #EFEBE3;border-radius:10px;padding:8px;opacity:.6"><div class="xs mut">Failed</div><b style="font-size:17px;color:#C2410C">1</b></div><div style="flex:1;border:1px solid #EFEBE3;border-radius:10px;padding:8px;opacity:.6"><div class="xs mut">Done today</div><b style="font-size:17px;color:#15803D">1,284</b></div></div>
+    <div class="row"><span class="btn sm"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy REDIS_URL setting</span><span class="btn sm" style="opacity:.5"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>Open Bull Board</span></div>
+  </div>
+</div>
+<div class="card sec"><h3><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>Email delivery<span class="pill p-ok">Connected · Gmail</span><span class="r">From <code>HRMS &lt;no-reply@…&gt;</code> · checked 1 min ago</span></h3>
+  <div class="kpis" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+    <div style="border:1px solid #EFEBE3;border-radius:12px;padding:12px 14px;background:#FAF8F4"><div class="xs mut">Sent today</div><b style="font-size:22px;color:#1C1917">214</b></div><div style="border:1px solid #EFEBE3;border-radius:12px;padding:12px 14px;background:#FAF8F4"><div class="xs mut">Failed today</div><b style="font-size:22px;color:#C2410C">1</b></div><div style="border:1px solid #EFEBE3;border-radius:12px;padding:12px 14px;background:#FAF8F4"><div class="xs mut">Average send time</div><b style="font-size:22px;color:#1C1917">0.6 s</b></div><div style="border:1px solid #EFEBE3;border-radius:12px;padding:12px 14px;background:#FAF8F4"><div class="xs mut">Bounced (7 days)</div><b style="font-size:22px;color:#B45309">3</b></div>
+  </div>
+  <table><thead><tr><th>Email</th><th>To</th><th>Company</th><th>Status</th><th style="text-align:right">When</th><th></th></tr></thead><tbody>
+  <tr><td><b>Leave approved</b></td><td class="mut">priya.aakash@yopmail.com</td><td>aakash-portal</td><td><span class="pill p-ok">Sent</span></td><td style="text-align:right" class="mut">2 min ago</td><td style="text-align:right"></td></tr><tr><td><b>Password reset</b></td><td class="mut">hr@perf-bench.test</td><td>Perf Bench</td><td><span class="pill p-ok">Sent</span></td><td style="text-align:right" class="mut">18 min ago</td><td style="text-align:right"></td></tr><tr><td><b>Company admin invite</b><div class="xs" style="color:#C2410C">Mailbox not found (550)</div></td><td class="mut">admin@beta-test.local</td><td>Beta Test Co</td><td><span class="pill p-bad">Failed</span></td><td style="text-align:right" class="mut">1 h ago</td><td style="text-align:right"><span class="btn sm"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5M3 21v-5h5"/></svg>Retry</span></td></tr><tr><td><b>Timesheet reminder</b></td><td class="mut">42 people</td><td>aakash-portal</td><td><span class="pill p-ok">Sent</span></td><td style="text-align:right" class="mut">3 h ago</td><td style="text-align:right"></td></tr><tr><td><b>Expense submitted</b></td><td class="mut">hema.aakash@yopmail.com</td><td>aakash-portal</td><td><span class="pill p-ok">Sent</span></td><td style="text-align:right" class="mut">5 h ago</td><td style="text-align:right"></td></tr>
+  </tbody></table>
+  <div class="row" style="border-top:1px solid #EFEBE3;padding-top:12px"><span class="xs mut" style="flex:1">Only the subject, recipient and result are kept — never the email body. Cleared after 30 days.</span><span style="display:flex;gap:8px;align-items:center"><span class="btn sm" style="width:220px;justify-content:flex-start;color:#78716C;font-weight:500">you@example.com</span><span class="btn sm pri">Send test email</span></span></div>
+</div>
+</main></div></div></x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1340}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

@@ -5,9 +5,10 @@ import { EmployeeImportService } from './employee-import.service';
 import { EmployeeLifecycleService } from './lifecycle.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { EmailModule } from '../email/email.module';
+import { AssetsModule } from '../assets/assets.module';
 
 @Module({
-  imports: [PrismaModule, EmailModule],
+  imports: [PrismaModule, EmailModule, AssetsModule],
   controllers: [EmployeesController],
   providers: [EmployeesService, EmployeeImportService, EmployeeLifecycleService],
   exports: [EmployeesService, EmployeeLifecycleService],

@@ -11,5 +11,6 @@ import { HelpdeskRemindersService } from './helpdesk-reminders.service';
   imports: [PrismaModule, EmployeeProfileModule],
   controllers: [HelpdeskController],
   providers: [TicketCategoriesService, TicketsService, HelpdeskRemindersService],
+  exports: [TicketsService],
 })
 export class HelpdeskModule {}

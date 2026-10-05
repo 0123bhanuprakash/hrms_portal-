@@ -123,15 +123,19 @@ async function cleanup() {
     const lost = await call(S.it, 'POST', `/assets/${lap2.id}/status`, { status: 'LOST', notes: 'Left in a cab' });
     check('Lost while assigned closes the assignment', lost.data?.status === 'LOST' && lost.data.holder === null && lost.data.history[0].returnNotes.includes('lost'));
 
-    // ── Requests: IT head + HR in parallel
+    // ── Requests: team lead → manager → HR → IT head (no project here, so the manager first)
     const rq = await call(S.peer, 'POST', '/assets/requests', { typeId: types.Monitor.id, reason: 'Second screen for design work' });
     check('Employee requests a monitor', rq.status === 201 && rq.data.status === 'PENDING', JSON.stringify(rq.body));
     check('Duplicate open request → 409', (await call(S.peer, 'POST', '/assets/requests', { typeId: types.Monitor.id, reason: 'Again please' })).status === 409);
     await wait();
-    check('IT and HR notified', (await p.notification.count({ where: { userId: { in: [P.it.user.id, P.hr.user.id] }, type: 'asset.requested' } })) === 2);
+    check('Manager notified first (not HR / IT yet)', (await p.notification.count({ where: { userId: P.boss.user.id, type: 'asset.requested' } })) === 1 && (await p.notification.count({ where: { userId: { in: [P.it.user.id, P.hr.user.id] }, type: 'asset.requested' } })) === 0);
     check('Employee cannot approve → 403', (await call(S.emp, 'POST', `/assets/requests/${rq.data.id}/approve`, {})).status === 403);
+    check('HR must wait for the manager → 403', (await call(S.hr, 'POST', `/assets/requests/${rq.data.id}/approve`, {})).status === 403);
+    const m1 = await call(S.boss, 'POST', `/assets/requests/${rq.data.id}/approve`, {});
+    check('Manager approves → HR next', m1.data?.stage === 'HR' && m1.data.steps.find((x) => x.stage === 'MANAGER').status === 'APPROVED', JSON.stringify(m1.body).slice(0, 300));
+    check('IT must wait for HR → 403', (await call(S.it, 'POST', `/assets/requests/${rq.data.id}/approve`, {})).status === 403);
     const h1 = await call(S.hr, 'POST', `/assets/requests/${rq.data.id}/approve`, { note: 'OK from HR' });
-    check('HR approves first (parallel) — still pending', h1.data?.status === 'PENDING' && h1.data.hr.status === 'APPROVED');
+    check('HR approves — IT head next', h1.data?.status === 'PENDING' && h1.data.stage === 'IT');
     const i1 = await call(S.it, 'POST', `/assets/requests/${rq.data.id}/approve`, {});
     check('IT head approves → APPROVED', i1.data?.status === 'APPROVED' && i1.data.canFulfil);
     await wait();
@@ -142,12 +146,13 @@ async function cleanup() {
     check('Fulfil by handing over a monitor', ful.status === 200 && (await call(S.peer, 'GET', `/assets/requests/${rq.data.id}`)).data.status === 'FULFILLED');
 
     const rq2 = await call(S.emp, 'POST', '/assets/requests', { typeId: types.Phone.id, reason: 'On-call phone for support' });
-    const rj = await call(S.it, 'POST', `/assets/requests/${rq2.data.id}/reject`, { reason: 'Use the shared on-call phone' });
-    check('IT rejects → REJECTED, HR side skipped', rj.data?.status === 'REJECTED' && rj.data.hr.status === 'SKIPPED');
+    const rj = await call(S.boss, 'POST', `/assets/requests/${rq2.data.id}/reject`, { reason: 'Use the shared on-call phone' });
+    check('Manager rejects → REJECTED, later steps skipped', rj.data?.status === 'REJECTED' && rj.data.steps.find((x) => x.stage === 'HR').status === 'SKIPPED' && rj.data.steps.find((x) => x.stage === 'IT').status === 'SKIPPED');
     const rq3 = await call(S.emp, 'POST', '/assets/requests', { typeId: types.Headset.id, reason: 'Noise cancelling for calls' });
+    await call(S.boss, 'POST', `/assets/requests/${rq3.data.id}/approve`, {});
     const b1 = await call(S.both, 'POST', `/assets/requests/${rq3.data.id}/approve`, {});
-    check('IT+HR person approves one side', b1.data?.status === 'PENDING' && [b1.data.it.status, b1.data.hr.status].filter((x) => x === 'APPROVED').length === 1);
-    check('…but not the other side → 403', (await call(S.both, 'POST', `/assets/requests/${rq3.data.id}/approve`, {})).status === 403);
+    check('IT+HR person approves the HR step', b1.data?.status === 'PENDING' && b1.data.stage === 'IT');
+    check('…but not the IT step too → 403', (await call(S.both, 'POST', `/assets/requests/${rq3.data.id}/approve`, {})).status === 403);
     check('Employee cancels own request', (await call(S.emp, 'POST', `/assets/requests/${rq3.data.id}/cancel`)).data?.status === 'CANCELLED');
     const own = await call(S.it, 'POST', '/assets/requests', { typeId: types.Headset.id, reason: 'My own headset please' });
     check('Nobody approves their own request → 404', (await call(S.it, 'POST', `/assets/requests/${own.data.id}/approve`, {})).status === 404);

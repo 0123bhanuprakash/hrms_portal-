@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Plan editor</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F7F5F0}
+.app{display:flex;min-height:100vh;font-family:Manrope,system-ui,sans-serif;color:#1C1917;background:#F7F5F0;position:relative}
+.sb{flex:0 0 250px;background:#FBFAF7;border-right:1px solid #EFEBE3;display:flex;flex-direction:column}
+.sb-h{display:flex;gap:10px;align-items:center;padding:16px 14px}
+.sb-logo{width:34px;height:34px;border-radius:8px;background:#B7791F;color:#fff;display:flex;align-items:center;justify-content:center}
+.sb-h b{display:block;font-size:15px}.sb-h span{font-size:11.5px;color:#78716C}
+.sb-s{margin:0 14px 10px;height:36px;border:1px solid #E8E3D9;border-radius:8px;display:flex;align-items:center;gap:8px;padding:0 8px;color:#78716C;font-size:13px;background:#fff}
+.kbd{border:1px solid #E8E3D9;border-radius:4px;padding:0 5px;font-size:11px;font-family:monospace}
+.sb-g{padding:10px 14px 2px;font-size:11px;font-weight:700;letter-spacing:.06em;color:#A8A29E}
+.sb-i{display:flex;align-items:center;gap:10px;height:36px;margin:0 14px;padding:0 10px;border-radius:6px;font-size:14px;color:#44403C}
+.sb-i svg{color:#A8A29E}
+.sb-i.on{background:#FBF1DF;color:#1C1917;font-weight:700;position:relative}.sb-i.on svg{color:#B7791F}
+.sb-i.on::before{content:"";position:absolute;left:-14px;top:7px;bottom:7px;width:3px;border-radius:0 3px 3px 0;background:#B7791F}
+.sb-f{margin-top:auto;border-top:1px solid #EFEBE3;padding:10px 14px;display:flex;gap:10px;align-items:center}
+.av{width:34px;height:34px;border-radius:8px;background:#FBF1DF;color:#8A5A12;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex:none}
+.col{flex:1;min-width:0;display:flex;flex-direction:column}
+.hdr{height:60px;border-bottom:1px solid #EFEBE3;display:flex;align-items:center;justify-content:space-between;padding:0 30px;background:#F7F5F0}
+.crumb{font-size:14px;color:#78716C}.crumb b{color:#1C1917;font-weight:600}
+.op{display:flex;align-items:center;gap:16px;font-size:13px;color:#78716C}
+.dot{width:8px;height:8px;border-radius:50%;background:#22C55E;display:inline-block}
+.tg{width:56px;height:30px;border-radius:99px;background:#F1EEE8;position:relative;border:1px solid #E8E3D9}.tg::after{content:"";position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#F5B342}
+.main{padding:26px 34px 40px;display:flex;flex-direction:column;gap:18px;width:100%;box-sizing:border-box}
+.eyebrow{font-size:13px;color:#B7791F;font-weight:600}
+h1{margin:2px 0 0;font-size:30px;font-weight:800;letter-spacing:-.02em}
+.sub{color:#78716C;font-size:14.5px;margin-top:4px;max-width:760px}
+.row{display:flex;align-items:center;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px;border-radius:9px;border:1px solid #E8E3D9;background:#fff;color:#1C1917;font:inherit;font-size:13.5px;font-weight:700;white-space:nowrap}
+.btn.pri{background:#B7791F;border-color:#B7791F;color:#fff}
+.btn.sm{height:32px;padding:0 11px;font-size:12.5px}
+.btn.ghost{border-color:transparent;background:none}
+.card{background:#FFFFFF;border:1px solid #E8E3D9;border-radius:14px;box-shadow:0 1px 2px rgba(28,25,23,.04)}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.kpi{padding:14px 16px;display:flex;flex-direction:column;gap:4px;position:relative;overflow:hidden}
+.kpi span{font-size:12px;color:#78716C}.kpi b{font-size:26px;font-weight:800;letter-spacing:-.02em}
+.kpi small{font-size:12px;color:#78716C}
+.dist{display:flex;height:8px;border-radius:99px;overflow:hidden;background:#EFEBE3;margin-top:6px}.dist i{display:block;height:100%}
+.seg{display:flex;border:1px solid #E8E3D9;border-radius:9px;overflow:hidden;background:#fff}.seg span{height:36px;padding:0 12px;display:flex;align-items:center;gap:6px;color:#78716C;font-size:13px;font-weight:600}.seg span.on{background:#FBF1DF;color:#8A5A12}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.chip{display:inline-flex;align-items:center;font-size:12.5px;padding:4px 10px;border-radius:99px;background:#FBF1DF;color:#8A5A12;border:1px solid #F3E2C2}
+.chip.new{background:#E7F6EC;color:#15803D;border-color:#CBEBD6;font-weight:700}
+.mut{color:#78716C}.xs{font-size:12px}
+/* tier cards */
+.tiers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;align-items:stretch}
+.tier{position:relative;display:flex;flex-direction:column;overflow:hidden;transition:transform .25s,box-shadow .25s}
+.tier:hover{transform:translateY(-4px);box-shadow:0 18px 40px -18px rgba(28,25,23,.25)}
+.tier .band{height:96px;position:relative;overflow:hidden}
+.tier .band::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.45) 50%,transparent 70%);transform:translateX(-100%);animation:shine 4.5s ease-in-out infinite}
+@keyframes shine{0%,60%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+.steps{position:absolute;left:22px;bottom:-1px;display:flex;align-items:flex-end;gap:5px}.steps i{display:block;width:18px;border-radius:4px 4px 0 0;background:rgba(255,255,255,.55)}.steps i.on{background:#fff}
+.tier .body{padding:18px 22px 20px;display:flex;flex-direction:column;gap:14px;flex:1}
+.tier h2{margin:0;font-size:21px;font-weight:800;display:flex;align-items:center;gap:8px}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.stats div{background:#FAF8F4;border:1px solid #EFEBE3;border-radius:10px;padding:10px 12px}
+.stats b{display:block;font-size:18px;font-weight:800}.stats span{font-size:11.5px;color:#78716C}
+.ringw{display:flex;align-items:center;gap:12px}
+.inc{font-size:12.5px;color:#78716C;font-weight:600}
+.faces{display:flex}.faces span{width:26px;height:26px;border-radius:7px;border:2px solid #fff;margin-left:-6px;display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:800;color:#fff}.faces span:first-child{margin-left:0}
+.badge-pop{position:absolute;top:14px;right:14px;background:#fff;color:#8A5A12;font-size:11px;font-weight:800;padding:4px 10px;border-radius:99px;box-shadow:0 4px 12px rgba(0,0,0,.12)}
+.tfoot{border-top:1px solid #EFEBE3;padding:12px 22px;display:flex;align-items:center;gap:8px}
+.side2{display:grid;grid-template-columns:1.2fr 1fr;gap:18px}
+.sec{padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.sec h3{margin:0;font-size:15px;display:flex;align-items:center;gap:8px}
+.li{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid #EFEBE3;border-radius:10px;background:#FAF8F4;font-size:13px}
+.lg{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11.5px;color:#fff;flex:none}
+.meter{height:6px;border-radius:99px;background:#EFEBE3;overflow:hidden}.meter i{display:block;height:100%;border-radius:99px;transform-origin:left;animation:fillw 1s cubic-bezier(.2,.8,.2,1) both}
+@keyframes fillw{from{transform:scaleX(0)}}
+/* compare */
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:13.5px}
+th,td{padding:11px 14px;border-bottom:1px solid #EFEBE3;text-align:center}
+th:first-child,td:first-child{text-align:left}
+thead th{position:sticky;top:0;background:#fff;vertical-align:bottom;padding:16px 14px}
+.grp td{background:#FAF8F4;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#78716C;padding:8px 14px}
+.yes{display:inline-flex;width:24px;height:24px;border-radius:50%;align-items:center;justify-content:center;color:#fff}
+.no{display:inline-block;width:14px;height:2px;border-radius:2px;background:#D6D3D1}
+.use{display:block;font-size:10.5px;color:#78716C;margin-top:3px}
+.col-hi{background:linear-gradient(#FBF1DF,#FBF1DF) padding-box}
+td.col-hi,th.col-hi{background:#FFFBF3}
+.diff td{background:#FFFDF8}
+/* editor */
+.ed{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:18px;align-items:start}
+.tabs{display:flex;gap:22px;border-bottom:1px solid #E8E3D9;font-size:14px;color:#78716C;padding:0 4px}
+.tabs span{padding:10px 0;display:flex;align-items:center;gap:6px}.tabs span.on{color:#1C1917;font-weight:700;box-shadow:inset 0 -2px 0 #B7791F}
+.tabs i{font-style:normal;font-size:11px;background:#EFEBE3;border-radius:99px;padding:1px 7px;font-weight:700}
+.fg{padding:14px 16px;display:flex;flex-direction:column;gap:2px}
+.fg h4{margin:0 0 6px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#78716C;display:flex;justify-content:space-between}
+.fr{display:flex;align-items:center;gap:12px;padding:9px 8px;border-radius:9px}
+.fr:hover{background:#FAF8F4}
+.fr .nm{flex:1;font-size:14px;font-weight:600}.fr .nm small{display:block;font-size:12px;color:#78716C;font-weight:500}
+.sw{width:38px;height:22px;border-radius:99px;background:#D6D3D1;position:relative;flex:none;transition:background .2s}.sw::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:left .2s}
+.sw.on{background:#B7791F}.sw.on::after{left:19px}.sw.lock{opacity:.55}
+.fr.chg{background:#FFF8EC;outline:1px dashed #E9C98D}
+.fr.chg.off{background:#FFF3EF;outline-color:#F2B8A2}
+.tag{font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:99px}
+.save{position:sticky;bottom:0;margin-top:4px;display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:14px;background:#1C1917;color:#F5F5F4;box-shadow:0 18px 40px -16px rgba(0,0,0,.45);font-size:13.5px}
+.save .btn{height:34px}
+.impact{border:1px solid #F2C9B8;background:#FFF6F2}
+.tl{display:flex;gap:10px;font-size:12.5px}.tl .d{width:8px;height:8px;border-radius:50%;margin-top:5px;flex:none}
+</style>
+</helmet>
+<div class="app"><aside class="sb">
+<div class="sb-h"><span class="sb-logo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg></span><span><b>HRMS Platform</b><span>Super Admin console</span></span></div>
+<div class="sb-s"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><span style="flex:1">Search…</span><span class="kbd">Ctrl</span><span class="kbd">K</span></div>
+<div class="sb-g">OVERVIEW</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Dashboard</div>
+<div class="sb-g">TENANTS</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2M10 6h4M10 10h4M10 14h4M10 18h4"/></svg>Companies</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg>Onboard company</div>
+<div class="sb-g">GOVERNANCE</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M10 9H8M16 13H8M16 17H8"/></svg>Audit logs</div>
+<div class="sb-g">PLATFORM</div><div class="sb-i on"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65M22 12.65l-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg>Plans</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.65-.75 1.65-1.69 0-.44-.18-.84-.44-1.13-.29-.29-.44-.65-.44-1.13a1.64 1.64 0 0 1 1.67-1.67h2c3.05 0 5.56-2.5 5.56-5.55C21.97 6.01 17.46 2 12 2z"/></svg>Themes</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/></svg>System</div>
+<div class="sb-f"><span class="av">SA</span><span style="flex:1"><b style="display:block;font-size:14px">Super Admin</b><span class="xs mut">Super Admin</span></span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></svg></div>
+</aside><div class="col"><header class="hdr"><div class="crumb">Platform &nbsp;›&nbsp; Plans &nbsp;›&nbsp; <b>Growth</b></div><div class="op"><span><span class="dot"></span>&nbsp; Operational</span><span class="tg"></span></div></header><main class="main">
+<div class="row" style="align-items:flex-start"><span style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#1D4ED8,#1D4ED8bb);display:flex;align-items:center;justify-content:center;color:#fff"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65M22 12.65l-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg></span>
+<div style="flex:1"><h1 style="font-size:26px">Growth <span class="pill" style="background:#E7F6EC;color:#15803D;vertical-align:middle">Active</span></h1><div class="sub">Payroll, documents and reports for growing companies. · key <code style="background:#EFEBE3;padding:1px 6px;border-radius:5px">growth</code></div></div>
+<span class="btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Duplicate</span><span class="btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4"/></svg>Archive</span></div>
+<div class="tabs"><span class="on">Features <i>11</i></span><span>Limits</span><span>Companies <i>0</i></span><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/></svg>History</span></div>
+<div class="ed">
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <div class="row"><span class="btn sm"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>Find a feature…</span><span class="xs mut" style="flex:1">Features that need another feature switch it on with them.</span><span class="btn sm ghost">Turn all on</span><span class="btn sm ghost">Copy from Starter ▾</span></div>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start"><div class="card fg"><h4><span>People</span><span>3/3</span></h4><div class="fr "><span class="nm">Employee directory</span><span class="sw on "></span></div><div class="fr "><span class="nm">Organisation structure<small>Needs Employee directory</small></span><span class="sw on "></span></div><div class="fr "><span class="nm">Employee documents<small>Uploads count toward storage</small></span><span class="sw on "></span></div></div><div class="card fg"><h4><span>Time</span><span>2/3</span></h4><div class="fr "><span class="nm">Attendance</span><span class="sw on "></span></div><div class="fr "><span class="nm">Leave</span><span class="sw on "></span></div><div class="fr "><span class="nm">Shifts & rosters <span class="tag" style="background:#F1EAFE;color:#6D28D9">BETA</span></span><span class="sw  "></span></div></div><div class="card fg"><h4><span>Engagement</span><span>1/2</span></h4><div class="fr "><span class="nm">Announcements</span><span class="sw  "></span></div><div class="fr chg on"><span class="nm">Kudos</span><span class="tag" style="background:#E7F6EC;color:#15803D">ADDED</span><span class="sw on "></span></div></div><div class="card fg"><h4><span>Work</span><span>0/4</span></h4><div class="fr "><span class="nm">Assets</span><span class="sw  "></span></div><div class="fr "><span class="nm">Helpdesk</span><span class="sw  "></span></div><div class="fr "><span class="nm">Projects</span><span class="sw  "></span></div><div class="fr "><span class="nm">Timesheets<small>Needs Projects</small></span><span class="sw  "></span></div></div><div class="card fg"><h4><span>Pay</span><span>1/3</span></h4><div class="fr "><span class="nm">Expenses</span><span class="sw  "></span></div><div class="fr chg off"><span class="nm">Payroll<small style="color:#C2410C">Also turns off Salary &amp; compensation</small></span><span class="tag" style="background:#FDECE5;color:#C2410C">REMOVED</span><span class="sw  "></span></div><div class="fr "><span class="nm">Salary & compensation<small>Needs Payroll</small></span><span class="sw on "></span></div></div><div class="card fg"><h4><span>Insights</span><span>1/1</span></h4><div class="fr "><span class="nm">Reports</span><span class="sw on "></span></div></div><div class="card fg"><h4><span>Administration</span><span>3/3</span></h4><div class="fr "><span class="nm">Users & roles</span><span class="sw on lock"></span></div><div class="fr "><span class="nm">Settings & branding</span><span class="sw on lock"></span></div><div class="fr "><span class="nm">Audit log</span><span class="sw on "></span></div></div></div>
+    <div class="save"><b style="color:#FCD34D">2 unsaved changes</b><span style="opacity:.75">+ Kudos · − Payroll (and Salary)</span><span style="flex:1"></span><span class="btn sm" style="background:transparent;color:#F5F5F4;border-color:#44403C">Discard</span><span class="btn sm pri">Review &amp; save</span></div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:14px;position:sticky;top:0">
+    <div class="card sec impact"><h3 style="color:#C2410C"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>Before you save — who’s affected</h3>
+      <div class="xs" style="line-height:1.55">Removing <b>Payroll</b> also removes <b>Salary &amp; compensation</b> for companies on Growth.</div>
+      <div class="li" style="background:#fff"><span class="lg" style="width:30px;height:30px;background:#5B5BF0">PB</span><div style="flex:1"><b style="display:block">Perf Bench</b><span class="xs" style="color:#C2410C">used Payroll 12 times in 30 days</span></div></div><div class="li" style="background:#fff"><span class="lg" style="width:30px;height:30px;background:linear-gradient(135deg,#E9416A,#7A2BD9)">AP</span><div style="flex:1"><b style="display:block">aakash-portal</b><span class="xs" style="color:#15803D">has it switched on directly — not affected</span></div></div>
+      <div class="xs mut">Data stays — the menu and pages just hide. Turn it back on and everything returns.</div>
+    </div>
+    <div class="card sec"><h3><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Limits</h3>
+      <div class="row"><span style="flex:1;font-size:13.5px;font-weight:600">Max employees</span><span class="btn sm" style="width:90px;justify-content:space-between">500 <span class="mut">▾</span></span></div>
+      <div class="xs mut">Companies on this plan today use at most 0 of 500. Set empty for unlimited.</div>
+    </div>
+    <div class="card sec"><h3><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/></svg>Recent changes</h3>
+      <div class="tl"><span class="d" style="background:#B7791F"></span><div><b>Max employees 250 → 500</b><div class="mut">you · 2 days ago</div></div></div><div class="tl"><span class="d" style="background:#15803D"></span><div><b>+ Reports, + Audit log</b><div class="mut">you · 3 days ago</div></div></div><div class="tl"><span class="d" style="background:#78716C"></span><div><b>Plan created</b><div class="mut">seed · 3 days ago</div></div></div>
+    </div>
+  </div>
+</div>
+</main></div></div></x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1500}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

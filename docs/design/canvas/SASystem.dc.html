@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>System health</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F7F5F0}
+.app{display:flex;min-height:100vh;font-family:Manrope,system-ui,sans-serif;color:#1C1917;background:#F7F5F0;position:relative}
+.sb{flex:0 0 250px;background:#FBFAF7;border-right:1px solid #EFEBE3;display:flex;flex-direction:column}
+.sb-h{display:flex;gap:10px;align-items:center;padding:16px 14px}
+.sb-logo{width:34px;height:34px;border-radius:8px;background:#B7791F;color:#fff;display:flex;align-items:center;justify-content:center}
+.sb-h b{display:block;font-size:15px}.sb-h span{font-size:11.5px;color:#78716C}
+.sb-s{margin:0 14px 10px;height:36px;border:1px solid #E8E3D9;border-radius:8px;display:flex;align-items:center;gap:8px;padding:0 8px;color:#78716C;font-size:13px;background:#fff}
+.kbd{border:1px solid #E8E3D9;border-radius:4px;padding:0 5px;font-size:11px;font-family:monospace}
+.sb-g{padding:10px 14px 2px;font-size:11px;font-weight:700;letter-spacing:.06em;color:#A8A29E}
+.sb-i{display:flex;align-items:center;gap:10px;height:36px;margin:0 14px;padding:0 10px;border-radius:6px;font-size:14px;color:#44403C}
+.sb-i svg{color:#A8A29E}
+.sb-i.on{background:#FBF1DF;color:#1C1917;font-weight:700;position:relative}.sb-i.on svg{color:#B7791F}
+.sb-i.on::before{content:"";position:absolute;left:-14px;top:7px;bottom:7px;width:3px;border-radius:0 3px 3px 0;background:#B7791F}
+.sb-f{margin-top:auto;border-top:1px solid #EFEBE3;padding:10px 14px;display:flex;gap:10px;align-items:center}
+.av{width:34px;height:34px;border-radius:8px;background:#FBF1DF;color:#8A5A12;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex:none}
+.col{flex:1;min-width:0;display:flex;flex-direction:column}
+.hdr{height:60px;border-bottom:1px solid #EFEBE3;display:flex;align-items:center;justify-content:space-between;padding:0 30px}
+.crumb{font-size:14px;color:#78716C}.crumb b{color:#1C1917;font-weight:600}
+.op{display:flex;align-items:center;gap:16px;font-size:13px;color:#78716C}
+.dot{width:8px;height:8px;border-radius:50%;background:#22C55E;display:inline-block}
+.tg{width:56px;height:30px;border-radius:99px;background:#F1EEE8;position:relative;border:1px solid #E8E3D9}.tg::after{content:"";position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#F5B342}
+.main{padding:26px 34px 40px;display:flex;flex-direction:column;gap:18px;box-sizing:border-box;width:100%}
+h1{margin:0;font-size:28px;font-weight:800;letter-spacing:-.02em}
+.sub{color:#78716C;font-size:14.5px;margin-top:4px}
+.row{display:flex;align-items:center;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 15px;border-radius:9px;border:1px solid #E8E3D9;background:#fff;color:#1C1917;font-size:13.5px;font-weight:700;white-space:nowrap}
+.btn.pri{background:#B7791F;border-color:#B7791F;color:#fff}.btn.sm{height:30px;padding:0 10px;font-size:12.5px}.btn.danger{color:#C2410C;border-color:#F2C9B8}
+.card{background:#fff;border:1px solid #E8E3D9;border-radius:14px;box-shadow:0 1px 2px rgba(28,25,23,.04)}
+.sec{padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.sec h3{margin:0;font-size:14.5px;display:flex;align-items:center;gap:8px}.sec h3 svg{color:#78716C}
+.sec h3 .r{margin-left:auto;font-size:12px;font-weight:500;color:#78716C}
+.tabs{display:flex;gap:22px;border-bottom:1px solid #E8E3D9;font-size:14px;color:#78716C}
+.tabs span{padding:10px 0;display:flex;gap:6px;align-items:center}.tabs span.on{color:#1C1917;font-weight:700;box-shadow:inset 0 -2px 0 #B7791F}
+.tabs i{font-style:normal;font-size:11px;font-weight:800;border-radius:99px;padding:1px 7px;background:#FEF3E2;color:#B45309}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.p-ok{background:#E7F6EC;color:#15803D}.p-warn{background:#FEF3E2;color:#B45309}.p-bad{background:#FDECE5;color:#C2410C}.p-neu{background:#EFEBE3;color:#78716C}.p-info{background:#E8EFFD;color:#1D4ED8}
+.mut{color:#78716C}.xs{font-size:12px}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.kpi{padding:14px 16px;display:flex;flex-direction:column;gap:4px;position:relative;overflow:hidden}
+.kpi span{font-size:12px;color:#78716C}.kpi b{font-size:26px;font-weight:800;letter-spacing:-.02em}.kpi small{font-size:12px;color:#78716C}
+.kpi svg.sp{position:absolute;right:14px;bottom:14px}
+/* hero */
+.hero{display:flex;align-items:center;gap:20px;padding:20px 22px;border-radius:16px;background:linear-gradient(120deg,#ECF8F0,#F6FBF7 60%,#fff);border:1px solid #CBEBD6;position:relative;overflow:hidden}
+.pulse{width:54px;height:54px;border-radius:16px;background:#15803D;color:#fff;display:flex;align-items:center;justify-content:center;position:relative;flex:none}
+.pulse::after{content:"";position:absolute;inset:-6px;border-radius:20px;border:2px solid #34C77B;animation:ping 2.4s ease-out infinite}
+@keyframes ping{0%{opacity:.7;transform:scale(.9)}100%{opacity:0;transform:scale(1.25)}}
+.bars{display:flex;gap:2px;align-items:flex-end;height:30px}.bars i{flex:1;height:100%;border-radius:2px;background:#34C77B}
+.bars i.w{background:#F2B65A}.bars i.b{background:#EF6B4A}.bars i.n{background:#E7E5E4}
+.svc{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.sv{padding:16px;display:flex;flex-direction:column;gap:10px;position:relative;overflow:hidden}
+.sv .top{display:flex;align-items:center;gap:10px}
+.ic{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex:none}
+.sv b.nm{font-size:15px}
+.lat{display:flex;align-items:flex-end;justify-content:space-between;border-top:1px solid #EFEBE3;padding-top:10px}
+.lat b{font-size:20px}.lat small{font-size:11px;color:#78716C}
+.how{border:1px dashed #E8E3D9;border-radius:10px;padding:10px;background:#FAF8F4;font-size:12px}
+code{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;background:#EFEBE3;padding:1px 6px;border-radius:5px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#78716C;padding:8px 10px;border-bottom:1px solid #E8E3D9}
+td{padding:9px 10px;border-bottom:1px solid #EFEBE3}
+.meter{height:6px;border-radius:99px;background:#EFEBE3;overflow:hidden}.meter i{display:block;height:100%;border-radius:99px;transform-origin:left;animation:fillw 1s cubic-bezier(.2,.8,.2,1) both}
+@keyframes fillw{from{transform:scaleX(0)}}
+.chart polyline,.chart path.ln{stroke-dasharray:2000;animation:draw 1.6s ease both}@keyframes draw{from{stroke-dashoffset:2000}}
+.g2{display:grid;grid-template-columns:1.4fr 1fr;gap:18px}.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.g2e{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.li{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #EFEBE3;font-size:13px}.li:last-child{border-bottom:0}
+.ck{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid #EFEBE3;font-size:13px}.ck:last-child{border-bottom:0}
+.ck i{width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:none;font-style:normal;font-size:11px;font-weight:800;margin-top:1px}
+.tl{display:flex;gap:12px;font-size:13px}.tl .d{width:10px;height:10px;border-radius:50%;margin-top:4px;flex:none;box-shadow:0 0 0 3px #fff,0 0 0 4px #E8E3D9}
+.sw{width:42px;height:24px;border-radius:99px;background:#D6D3D1;position:relative;flex:none}.sw::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2)}.sw.on{background:#B7791F}.sw.on::after{left:21px}
+.banner{border-radius:10px;padding:10px 14px;background:#FFF4E0;border:1px solid #F3D9A8;color:#7A4B0B;font-size:12.5px;display:flex;gap:8px;align-items:center}
+.tool{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid #EFEBE3;border-radius:12px;background:#FAF8F4}
+.tool b{display:block;font-size:13.5px}.tool span.xs{display:block}
+</style>
+</helmet>
+<div class="app"><aside class="sb">
+<div class="sb-h"><span class="sb-logo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg></span><span><b>HRMS Platform</b><span>Super Admin console</span></span></div>
+<div class="sb-s"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><span style="flex:1">Search…</span><span class="kbd">Ctrl</span><span class="kbd">K</span></div>
+<div class="sb-g">OVERVIEW</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Dashboard</div>
+<div class="sb-g">TENANTS</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2M10 6h4M10 10h4M10 14h4M10 18h4"/></svg>Companies</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg>Onboard company</div>
+<div class="sb-g">GOVERNANCE</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M10 9H8M16 13H8M16 17H8"/></svg>Audit logs</div>
+<div class="sb-g">PLATFORM</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65M22 12.65l-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg>Plans</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.65-.75 1.65-1.69 0-.44-.18-.84-.44-1.13-.29-.29-.44-.65-.44-1.13a1.64 1.64 0 0 1 1.67-1.67h2c3.05 0 5.56-2.5 5.56-5.55C21.97 6.01 17.46 2 12 2z"/></svg>Themes</div><div class="sb-i on"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/></svg>System</div>
+<div class="sb-f"><span class="av">SA</span><span style="flex:1"><b style="display:block;font-size:14px">Super Admin</b><span class="xs mut">Super Admin</span></span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></svg></div>
+</aside><div class="col"><header class="hdr"><div class="crumb">Platform &nbsp;›&nbsp; <b>System</b></div><div class="op"><span><span class="dot"></span>&nbsp; Operational</span><span class="tg"></span></div></header><main class="main">
+<div class="row" style="align-items:flex-end"><div style="flex:1"><h1>System</h1><div class="sub">Health, speed and setup of this deployment — and the tools to look after it.</div></div><span class="xs mut">Updated 4 s ago · every 15 s</span><span class="btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5M3 21v-5h5"/></svg>Check now</span></div>
+<div class="tabs"><span class="on">Health & speed</span><span class="">Data & delivery</span><span class="">Readiness & tools<i>3</i></span></div>
+<div class="hero">
+  <span class="pulse"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>
+  <div style="flex:1;min-width:0"><div style="font-size:19px;font-weight:800">All systems operational</div><div class="xs mut" style="margin-top:2px">No problems in the last 12 days · API up 3 days 4 hours · v0.0.1 · development</div>
+    <div style="margin-top:12px"><div class="bars"><i class="n"></i><i class="n"></i><i class="n"></i><i class="n"></i><i class="n"></i><i class="n"></i><i class="n"></i><i class="n"></i><i class="n"></i><i class="n"></i><i class="n"></i><i class="n"></i><i class="n"></i><i class="n"></i><i class="n"></i><i class="n"></i><i class="n"></i><i class="n"></i><i class="n"></i><i class="n"></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class="w"></i><i class="w"></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class="b"></i><i class=""></i><i class=""></i><i class="w"></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i></div><div class="row xs mut" style="justify-content:space-between;margin-top:5px"><span>90 days ago</span><span><b style="color:#15803D">99.96%</b> uptime</span><span>Today</span></div></div>
+  </div>
+</div>
+<div class="kpis">
+  <div class="card kpi"><span>Requests · last hour</span><b>3,214</b><small>54 a minute on average</small><svg class="chart" width="90" height="30" viewBox="0 0 90 30" style="flex:none"><polyline points="0.0,27.0 4.7,10.7 9.5,11.3 14.2,4.8 18.9,8.2 23.7,3.0 28.4,20.0 33.2,20.5 37.9,17.2 42.6,17.5 47.4,14.4 52.1,14.4 56.8,17.2 61.6,16.4 66.3,14.6 71.1,16.9 75.8,17.2 80.5,15.1 85.3,13.8 90.0,14.6" fill="none" stroke="#B7791F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+  <div class="card kpi"><span>Typical response (p95)</span><b>118 ms</b><small><span style="color:#15803D">▼ 12%</span> vs yesterday</small><svg class="chart" width="90" height="30" viewBox="0 0 90 30" style="flex:none"><polyline points="0.0,26.5 4.7,3.5 9.5,3.0 14.2,6.1 18.9,7.3 23.7,6.7 28.4,23.7 33.2,23.7 37.9,23.9 42.6,22.8 47.4,26.0 52.1,23.1 56.8,26.3 61.6,27.0 66.3,26.8 71.1,27.0 75.8,24.5 80.5,23.1 85.3,22.9 90.0,26.4" fill="none" stroke="#0F766E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+  <div class="card kpi"><span>Errors · last hour</span><b style="color:#15803D">0.2%</b><small>6 server errors · 41 rejected (4xx)</small></div>
+  <div class="card kpi"><span>People signed in now</span><b>486</b><small>active in the last 15 minutes · 4 companies</small></div>
+</div>
+<div class="svc"><div class="card sv">
+  <div class="top"><span class="ic" style="background:#E7F6EC;color:#15803D"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg></span><div style="flex:1"><b class="nm">Database</b><div class="xs mut">PostgreSQL · all data</div></div><span class="pill p-ok"><span class="dot" style="width:6px;height:6px;background:currentColor"></span>Operational</span></div>
+  <div class="lat"><div><b>4 ms</b><div><small>response · last check</small></div></div><svg class="chart" width="96" height="30" viewBox="0 0 96 30" style="flex:none"><path d="M0,30 L0.0,19.0 L8.7,27.0 L17.5,11.0 L26.2,27.0 L34.9,19.0 L43.6,27.0 L52.4,3.0 L61.1,19.0 L69.8,27.0 L78.5,27.0 L87.3,19.0 L96.0,27.0 L96,30 Z" fill="#15803D" opacity=".12"/><polyline points="0.0,19.0 8.7,27.0 17.5,11.0 26.2,27.0 34.9,19.0 43.6,27.0 52.4,3.0 61.1,19.0 69.8,27.0 78.5,27.0 87.3,19.0 96.0,27.0" fill="none" stroke="#15803D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+</div><div class="card sv">
+  <div class="top"><span class="ic" style="background:#E7F6EC;color:#15803D"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg></span><div style="flex:1"><b class="nm">Email</b><div class="xs mut">Gmail SMTP · invites, alerts</div></div><span class="pill p-ok"><span class="dot" style="width:6px;height:6px;background:currentColor"></span>Connected</span></div>
+  <div class="lat"><div><b>612 ms</b><div><small>response · last check</small></div></div><svg class="chart" width="96" height="30" viewBox="0 0 96 30" style="flex:none"><path d="M0,30 L0.0,27.0 L8.7,15.0 L17.5,23.0 L26.2,21.0 L34.9,25.0 L43.6,3.0 L52.4,19.0 L61.1,20.6 L69.8,22.0 L78.5,17.0 L87.3,20.0 L96.0,20.6 L96,30 Z" fill="#15803D" opacity=".12"/><polyline points="0.0,27.0 8.7,15.0 17.5,23.0 26.2,21.0 34.9,25.0 43.6,3.0 52.4,19.0 61.1,20.6 69.8,22.0 78.5,17.0 87.3,20.0 96.0,20.6" fill="none" stroke="#15803D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+</div><div class="card sv">
+  <div class="top"><span class="ic" style="background:#EFEBE3;color:#78716C"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg></span><div style="flex:1"><b class="nm">Redis</b><div class="xs mut">Queue & cache</div></div><span class="pill p-neu">Not set up</span></div>
+  <div class="how">Add <code>REDIS_URL</code> to retry failed emails in the background and share caches between servers.<div class="row" style="margin-top:8px"><span class="btn sm"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy setting</span><span class="xs mut">then restart the API</span></div></div>
+</div><div class="card sv">
+  <div class="top"><span class="ic" style="background:#EFEBE3;color:#78716C"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span><div style="flex:1"><b class="nm">Search</b><div class="xs mut">Elasticsearch</div></div><span class="pill p-neu">Not set up</span></div>
+  <div class="how">Optional. Add <code>ELASTICSEARCH_URL</code> for fast people search on big companies.<div class="row" style="margin-top:8px"><span class="btn sm"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy setting</span><span class="xs mut">then restart the API</span></div></div>
+</div></div>
+<div class="g2">
+  <div class="card sec"><h3><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Traffic &amp; speed<span class="r">last 60 minutes · <span style="color:#B7791F">■</span> requests / min &nbsp; <span style="color:#0F766E">■</span> p95 ms</span></h3>
+    <svg class="chart" width="100%" viewBox="0 0 700 170" preserveAspectRatio="none" style="height:190px">
+      <line x1="0" x2="700" y1="37.5" y2="37.5" stroke="#EFEBE3"/><line x1="0" x2="700" y1="75" y2="75" stroke="#EFEBE3"/><line x1="0" x2="700" y1="112.5" y2="112.5" stroke="#EFEBE3"/>
+      <rect x="486.4406779661017" y="0" width="59.32203389830509" height="150" fill="#FEF3E2"/>
+      <path d="M0,150 L0.0,97.5 L11.9,91.4 L23.7,98.5 L35.6,90.4 L47.5,82.3 L59.3,77.3 L71.2,84.3 L83.1,62.1 L94.9,67.2 L106.8,70.2 L118.6,72.2 L130.5,59.1 L142.4,63.1 L154.2,78.3 L166.1,69.2 L178.0,78.3 L189.8,70.2 L201.7,85.4 L213.6,79.3 L225.4,84.3 L237.3,96.5 L249.2,104.5 L261.0,86.4 L272.9,89.4 L284.7,114.6 L296.6,110.6 L308.5,101.5 L320.3,124.7 L332.2,121.7 L344.1,121.7 L355.9,120.7 L367.8,131.8 L379.7,134.8 L391.5,114.6 L403.4,128.8 L415.3,132.8 L427.1,123.7 L439.0,126.8 L450.8,128.8 L462.7,109.6 L474.6,116.7 L486.4,53.0 L498.3,55.1 L510.2,29.8 L522.0,42.9 L533.9,22.7 L545.8,89.4 L557.6,91.4 L569.5,78.3 L581.4,79.3 L593.2,67.2 L605.1,67.2 L616.9,78.3 L628.8,75.3 L640.7,68.2 L652.5,77.3 L664.4,78.3 L676.3,70.2 L688.1,65.2 L700.0,68.2 L700,150 Z" fill="#B7791F" opacity=".12"/>
+      <polyline points="0.0,97.5 11.9,91.4 23.7,98.5 35.6,90.4 47.5,82.3 59.3,77.3 71.2,84.3 83.1,62.1 94.9,67.2 106.8,70.2 118.6,72.2 130.5,59.1 142.4,63.1 154.2,78.3 166.1,69.2 178.0,78.3 189.8,70.2 201.7,85.4 213.6,79.3 225.4,84.3 237.3,96.5 249.2,104.5 261.0,86.4 272.9,89.4 284.7,114.6 296.6,110.6 308.5,101.5 320.3,124.7 332.2,121.7 344.1,121.7 355.9,120.7 367.8,131.8 379.7,134.8 391.5,114.6 403.4,128.8 415.3,132.8 427.1,123.7 439.0,126.8 450.8,128.8 462.7,109.6 474.6,116.7 486.4,53.0 498.3,55.1 510.2,29.8 522.0,42.9 533.9,22.7 545.8,89.4 557.6,91.4 569.5,78.3 581.4,79.3 593.2,67.2 605.1,67.2 616.9,78.3 628.8,75.3 640.7,68.2 652.5,77.3 664.4,78.3 676.3,70.2 688.1,65.2 700.0,68.2" fill="none" stroke="#B7791F" stroke-width="2.2"/>
+      <polyline points="0.0,93.0 11.9,104.2 23.7,101.9 35.6,101.0 47.5,101.9 59.3,94.8 71.2,101.9 83.1,101.9 94.9,105.1 106.8,105.9 118.6,96.6 130.5,107.7 142.4,105.1 154.2,96.2 166.1,94.8 178.0,92.6 189.8,93.5 201.7,94.8 213.6,96.6 225.4,98.4 237.3,100.2 249.2,109.5 261.0,104.2 272.9,103.7 284.7,105.9 296.6,102.8 308.5,97.9 320.3,97.0 332.2,105.1 344.1,93.0 355.9,109.9 367.8,103.7 379.7,99.7 391.5,101.9 403.4,108.2 415.3,92.1 427.1,101.9 439.0,94.4 450.8,99.7 462.7,101.5 474.6,107.7 486.4,24.5 498.3,22.7 510.2,33.9 522.0,38.3 533.9,36.1 545.8,97.5 557.6,97.5 569.5,98.4 581.4,94.4 593.2,105.9 605.1,95.3 616.9,106.8 628.8,109.5 640.7,108.6 652.5,109.5 664.4,100.6 676.3,95.3 688.1,94.8 700.0,107.3" fill="none" stroke="#0F766E" stroke-width="2" stroke-dasharray="0" />
+      <text x="510.1694915254237" y="14" font-size="11" fill="#B45309" text-anchor="middle" font-family="Manrope">month-end reports</text>
+      <text x="0" y="166" font-size="11" fill="#78716C" text-anchor="start" font-family="Manrope">−60m</text><text x="175" y="166" font-size="11" fill="#78716C" text-anchor="middle" font-family="Manrope">−45m</text><text x="350" y="166" font-size="11" fill="#78716C" text-anchor="middle" font-family="Manrope">−30m</text><text x="525" y="166" font-size="11" fill="#78716C" text-anchor="middle" font-family="Manrope">−15m</text><text x="700" y="166" font-size="11" fill="#78716C" text-anchor="end" font-family="Manrope">now</text>
+    </svg>
+  </div>
+  <div class="card sec"><h3><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>Slowest pages<span class="r">p95 · last hour</span></h3>
+    <table><thead><tr><th>Endpoint</th><th style="text-align:right">Calls</th><th style="text-align:right">p95</th></tr></thead><tbody>
+    <tr><td><span class="pill p-neu" style="font-size:10px;padding:1px 6px">GET</span> <code style="background:none;padding:0">/reports/people</code><div class="meter" style="margin-top:5px;width:80%"><i style="width:100%;background:#F2B65A"></i></div></td><td style="text-align:right" class="mut">41</td><td style="text-align:right"><b style="color:#B45309">640 ms</b></td></tr><tr><td><span class="pill p-neu" style="font-size:10px;padding:1px 6px">GET</span> <code style="background:none;padding:0">/attendance/calendar</code><div class="meter" style="margin-top:5px;width:80%"><i style="width:38.75%;background:#0F766E"></i></div></td><td style="text-align:right" class="mut">388</td><td style="text-align:right"><b style="color:#1C1917">248 ms</b></td></tr><tr><td><span class="pill p-neu" style="font-size:10px;padding:1px 6px">POST</span> <code style="background:none;padding:0">/auth/login</code><div class="meter" style="margin-top:5px;width:80%"><i style="width:35.9375%;background:#0F766E"></i></div></td><td style="text-align:right" class="mut">96</td><td style="text-align:right"><b style="color:#1C1917">230 ms</b></td></tr><tr><td><span class="pill p-neu" style="font-size:10px;padding:1px 6px">GET</span> <code style="background:none;padding:0">/admin/companies</code><div class="meter" style="margin-top:5px;width:80%"><i style="width:29.6875%;background:#0F766E"></i></div></td><td style="text-align:right" class="mut">52</td><td style="text-align:right"><b style="color:#1C1917">190 ms</b></td></tr><tr><td><span class="pill p-neu" style="font-size:10px;padding:1px 6px">GET</span> <code style="background:none;padding:0">/leave/requests</code><div class="meter" style="margin-top:5px;width:80%"><i style="width:17.1875%;background:#0F766E"></i></div></td><td style="text-align:right" class="mut">214</td><td style="text-align:right"><b style="color:#1C1917">110 ms</b></td></tr>
+    </tbody></table>
+    <div class="xs mut">Counted on this API server since it started. Over 500 ms is marked.</div>
+  </div>
+</div>
+</main></div></div></x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1320}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

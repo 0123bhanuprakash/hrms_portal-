@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Profile activity</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F7F5F0}
+.app{display:flex;min-height:100vh;font-family:Manrope,system-ui,sans-serif;color:#1C1917;background:#F7F5F0;position:relative}
+.sb{flex:0 0 250px;background:#FBFAF7;border-right:1px solid #EFEBE3;display:flex;flex-direction:column}
+.sb-h{display:flex;gap:10px;align-items:center;padding:16px 14px}
+.sb-logo{width:34px;height:34px;border-radius:8px;background:#B7791F;color:#fff;display:flex;align-items:center;justify-content:center}
+.sb-h b{display:block;font-size:15px}.sb-h span{font-size:11.5px;color:#78716C}
+.sb-s{margin:0 14px 10px;height:36px;border:1px solid #E8E3D9;border-radius:8px;display:flex;align-items:center;gap:8px;padding:0 8px;color:#78716C;font-size:13px;background:#fff}
+.kbd{border:1px solid #E8E3D9;border-radius:4px;padding:0 5px;font-size:11px;font-family:monospace;background:#fff}
+.sb-g{padding:10px 14px 2px;font-size:11px;font-weight:700;letter-spacing:.06em;color:#A8A29E}
+.sb-i{display:flex;align-items:center;gap:10px;height:36px;margin:0 14px;padding:0 10px;border-radius:6px;font-size:14px;color:#44403C}
+.sb-i svg{color:#A8A29E}
+.sb-f{margin-top:auto;border-top:1px solid #EFEBE3;padding:10px 14px;display:flex;gap:10px;align-items:center;background:#FBF1DF}
+.av{width:34px;height:34px;border-radius:8px;background:#B7791F;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex:none}
+.col{flex:1;min-width:0;display:flex;flex-direction:column}
+.hdr{height:60px;border-bottom:1px solid #EFEBE3;display:flex;align-items:center;justify-content:space-between;padding:0 30px}
+.crumb{font-size:14px;color:#78716C}.crumb b{color:#1C1917;font-weight:600}
+.op{display:flex;align-items:center;gap:16px;font-size:13px;color:#78716C}
+.dot{width:8px;height:8px;border-radius:50%;background:#22C55E;display:inline-block}
+.tg{width:56px;height:30px;border-radius:99px;background:#F1EEE8;position:relative;border:1px solid #E8E3D9}.tg::after{content:"";position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#F5B342}
+.main{padding:26px 34px 40px;display:flex;flex-direction:column;gap:18px;box-sizing:border-box;width:100%}
+.row{display:flex;align-items:center;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 15px;border-radius:9px;border:1px solid #E8E3D9;background:#fff;color:#1C1917;font-size:13.5px;font-weight:700;white-space:nowrap}
+.btn.pri{background:#B7791F;border-color:#B7791F;color:#fff}.btn.sm{height:30px;padding:0 10px;font-size:12.5px}.btn.danger{color:#C2410C;border-color:#F2C9B8}.btn.ghost{border-color:transparent;background:none}
+.card{background:#fff;border:1px solid #E8E3D9;border-radius:14px;box-shadow:0 1px 2px rgba(28,25,23,.04)}
+.sec{padding:18px 20px;display:flex;flex-direction:column;gap:12px}
+.sec h3{margin:0;font-size:15px;display:flex;align-items:center;gap:8px}.sec h3 svg{color:#78716C}
+.sec h3 .r{margin-left:auto;font-size:12px;font-weight:500;color:#78716C}
+.mut{color:#78716C}.xs{font-size:12px}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.p-ok{background:#E7F6EC;color:#15803D}.p-warn{background:#FEF3E2;color:#B45309}.p-bad{background:#FDECE5;color:#C2410C}.p-neu{background:#EFEBE3;color:#78716C}.p-gold{background:#FBF1DF;color:#8A5A12}.p-info{background:#E8EFFD;color:#1D4ED8}
+/* layout: sub-nav + content */
+.wrap{display:grid;grid-template-columns:220px minmax(0,1fr);gap:22px;align-items:start}
+.snav{position:sticky;top:0;display:flex;flex-direction:column;gap:2px}
+.snav a{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;font-size:14px;color:#44403C;text-decoration:none}
+.snav a svg{color:#78716C}.snav a.on{background:#fff;border:1px solid #E8E3D9;font-weight:700;box-shadow:0 1px 2px rgba(0,0,0,.04)}.snav a.on svg{color:#B7791F}
+.snav a i{margin-left:auto;font-style:normal;font-size:11px;font-weight:800;padding:1px 7px;border-radius:99px;background:#FEF3E2;color:#B45309}
+.ttl h1{margin:0;font-size:28px;font-weight:800;letter-spacing:-.02em}.ttl p{margin:4px 0 0;color:#78716C;font-size:14.5px}
+/* hero */
+.hero{position:relative;overflow:hidden;border-radius:18px;border:1px solid #E8E3D9;background:#fff}
+.cover{height:118px;background:radial-gradient(120% 140% at 0% 0%,#F7D79A 0%,#E9B45A 35%,#B7791F 70%,#7A4B0B 100%);position:relative}
+.cover::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(115deg,rgba(255,255,255,.08) 0 2px,transparent 2px 14px)}
+.cover .shine{position:absolute;inset:0;background:linear-gradient(110deg,transparent 35%,rgba(255,255,255,.35) 50%,transparent 65%);animation:sh 5s ease-in-out infinite}
+@keyframes sh{0%,55%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+.hb{display:flex;align-items:flex-end;gap:18px;padding:0 24px 20px;margin-top:-44px;position:relative}
+.big{width:96px;height:96px;border-radius:24px;background:linear-gradient(135deg,#1C1917,#44403C);color:#F7D79A;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:800;border:4px solid #fff;box-shadow:0 10px 24px -10px rgba(0,0,0,.4);position:relative;flex:none}
+.big .cam{position:absolute;right:-6px;bottom:-6px;width:30px;height:30px;border-radius:10px;background:#fff;border:1px solid #E8E3D9;display:flex;align-items:center;justify-content:center;color:#1C1917}
+.facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid #EFEBE3}
+.facts div{padding:14px 20px;border-right:1px solid #EFEBE3}.facts div:last-child{border-right:0}
+.facts span{display:block;font-size:11.5px;color:#78716C}.facts b{font-size:15px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:18px}.g21{display:grid;grid-template-columns:1.25fr 1fr;gap:18px}
+.fld{display:flex;flex-direction:column;gap:5px}.fld label{font-size:12.5px;font-weight:700}
+.inp{height:38px;border:1px solid #E8E3D9;border-radius:9px;padding:0 12px;display:flex;align-items:center;font-size:13.5px;background:#fff;gap:8px}
+.inp.ro{background:#FAF8F4;color:#78716C}
+.tl{display:flex;gap:12px;font-size:13px;padding:8px 0;border-bottom:1px solid #EFEBE3}.tl:last-child{border-bottom:0}
+.tl .d{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex:none}
+.ck{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #EFEBE3;font-size:13.5px}.ck:last-child{border-bottom:0}
+.ck i{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:none;font-style:normal;font-size:11px;font-weight:800}
+.steps{display:flex;gap:8px}.steps span{flex:1;height:5px;border-radius:99px;background:#EFEBE3}.steps span.on{background:#B7791F}
+.qr{width:150px;height:150px;border-radius:14px;border:1px solid #E8E3D9;padding:10px;background:#fff;flex:none}
+.codes{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;font-family:ui-monospace,Menlo,monospace;font-size:13px}
+.codes span{padding:7px 10px;border-radius:8px;background:#FAF8F4;border:1px solid #EFEBE3;text-align:center;letter-spacing:.06em}
+.otp{display:flex;gap:8px}.otp span{width:42px;height:50px;border-radius:10px;border:1.5px solid #E8E3D9;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800}.otp span.f{border-color:#B7791F;box-shadow:0 0 0 3px #FBF1DF}
+.dev{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid #EFEBE3;border-radius:12px}
+.dev.cur{border-color:#E9C98D;background:#FFFBF3}
+.dev .ic{width:40px;height:40px;border-radius:11px;background:#FAF8F4;display:flex;align-items:center;justify-content:center;flex:none;color:#78716C}
+.meter{height:6px;border-radius:99px;background:#EFEBE3;overflow:hidden;display:flex;gap:3px}.meter i{flex:1;border-radius:99px;background:#EFEBE3}
+.sw{width:42px;height:24px;border-radius:99px;background:#D6D3D1;position:relative;flex:none}.sw::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2)}.sw.on{background:#B7791F}.sw.on::after{left:21px}
+.setrow{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #EFEBE3}.setrow:last-child{border-bottom:0}
+.setrow b{display:block;font-size:13.5px}.setrow span.xs{display:block}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#78716C;padding:8px 10px;border-bottom:1px solid #E8E3D9}
+td{padding:10px;border-bottom:1px solid #EFEBE3}
+tr.sus td{background:#FFF7F3}
+.chips{display:flex;gap:6px}.chips span{padding:6px 12px;border-radius:8px;font-size:12.5px;font-weight:600;color:#78716C}.chips span.on{background:#B7791F;color:#fff}
+.tile{border:1px solid #E8E3D9;border-radius:12px;padding:8px;display:flex;flex-direction:column;gap:8px;position:relative}
+.tile.on{border-color:#B7791F;box-shadow:0 0 0 3px #FBF1DF}
+.sk{height:74px;border-radius:8px;background:#FAF8F4;display:flex;gap:4px;padding:6px;overflow:hidden}
+.sk i{display:block;border-radius:4px;background:#E7E1D6}
+.team{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #EFEBE3}.team:last-child{border-bottom:0}
+.kb{display:grid;grid-template-columns:1fr auto;gap:8px 14px;font-size:13px}
+</style>
+</helmet>
+<div class="app"><aside class="sb">
+<div class="sb-h"><span class="sb-logo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg></span><span><b>HRMS Platform</b><span>Super Admin console</span></span></div>
+<div class="sb-s"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><span style="flex:1">Search…</span><span class="kbd">Ctrl</span><span class="kbd">K</span></div>
+<div class="sb-g">OVERVIEW</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Dashboard</div>
+<div class="sb-g">TENANTS</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2M10 6h4M10 10h4M10 14h4M10 18h4"/></svg>Companies</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg>Onboard company</div>
+<div class="sb-g">GOVERNANCE</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M10 9H8M16 13H8M16 17H8"/></svg>Audit logs</div>
+<div class="sb-g">PLATFORM</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65M22 12.65l-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg>Plans</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.65-.75 1.65-1.69 0-.44-.18-.84-.44-1.13-.29-.29-.44-.65-.44-1.13a1.64 1.64 0 0 1 1.67-1.67h2c3.05 0 5.56-2.5 5.56-5.55C21.97 6.01 17.46 2 12 2z"/></svg>Themes</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/></svg>System</div>
+<div class="sb-f"><span class="av">BP</span><span style="flex:1"><b style="display:block;font-size:14px">Bhanu Prakash</b><span class="xs mut">Super Admin</span></span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></svg></div>
+</aside><div class="col"><header class="hdr"><div class="crumb">Platform &nbsp;›&nbsp; <b>Profile &amp; security</b></div><div class="op"><span><span class="dot"></span>&nbsp; Operational</span><span class="tg"></span></div></header><main class="main">
+<div class="ttl"><h1>Profile &amp; security</h1><p>Your Super Admin account — keep it locked down, it can change every company.</p></div>
+<div class="wrap"><nav class="snav"><a class=""><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Account</a><a class=""><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Security<i>2</i></a><a class="on"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/></svg>Sign-in activity</a><a class=""><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.65-.75 1.65-1.69 0-.44-.18-.84-.44-1.13-.29-.29-.44-.65-.44-1.13a1.64 1.64 0 0 1 1.67-1.67h2c3.05 0 5.56-2.5 5.56-5.55C21.97 6.01 17.46 2 12 2z"/></svg>Appearance</a><a class=""><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>Shortcuts</a></nav>
+<div style="display:flex;flex-direction:column;gap:18px">
+  <div class="card sec"><h3><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/></svg>Sign-in activity<span class="r">last 30 days · only your account</span></h3>
+    <div class="row"><div class="chips"><span class="on">All</span><span>Successful</span><span>Failed</span></div><span class="pill p-bad" style="margin-left:auto">2 failed tries from a new place</span><span class="btn sm"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Export</span></div>
+    <table><thead><tr><th>Event</th><th>Device</th><th>Place</th><th>IP</th><th style="text-align:right">When</th></tr></thead><tbody>
+    <tr class=""><td><span class="pill p-ok">Signed in</span></td><td>Chrome on Windows</td><td>Hyderabad, IN</td><td class="mut" style="font-family:monospace;font-size:12px">49.36.x.x</td><td style="text-align:right" class="mut">Today 09:12</td></tr><tr class=""><td><span class="pill p-ok">Signed in</span></td><td>Safari on iPhone</td><td>Hyderabad, IN</td><td class="mut" style="font-family:monospace;font-size:12px">106.208.x.x</td><td style="text-align:right" class="mut">Today 07:40</td></tr><tr class="sus"><td><span class="pill p-bad">Wrong password</span> <span class="xs" style="color:#C2410C;font-weight:700">new place</span></td><td>Firefox on Linux</td><td>Frankfurt, DE</td><td class="mut" style="font-family:monospace;font-size:12px">185.220.x.x</td><td style="text-align:right" class="mut">Yesterday 02:13</td></tr><tr class="sus"><td><span class="pill p-bad">Wrong password</span> <span class="xs" style="color:#C2410C;font-weight:700">new place</span></td><td>Firefox on Linux</td><td>Frankfurt, DE</td><td class="mut" style="font-family:monospace;font-size:12px">185.220.x.x</td><td style="text-align:right" class="mut">Yesterday 02:12</td></tr><tr class=""><td><span class="pill p-ok">Password changed</span></td><td>Chrome on Windows</td><td>Hyderabad, IN</td><td class="mut" style="font-family:monospace;font-size:12px">49.36.x.x</td><td style="text-align:right" class="mut">20 Sep</td></tr><tr class=""><td><span class="pill p-ok">Signed in</span></td><td>Edge on Windows</td><td>Bengaluru, IN</td><td class="mut" style="font-family:monospace;font-size:12px">122.171.x.x</td><td style="text-align:right" class="mut">1 Oct</td></tr>
+    </tbody></table>
+    <div class="row" style="background:#FDECE5;border-radius:10px;padding:10px 12px;font-size:13px"><span style="color:#C2410C"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg></span><span style="flex:1"><b>Wasn’t you?</b> Change your password and sign out every device in one step.</span><span class="btn sm danger">Secure my account</span></div>
+  </div>
+  <div class="g2">
+    <div class="card sec"><h3><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>Platform admins<span class="r">people who can change every company</span></h3>
+      <div class="team"><span class="av" style="background:#B7791F">BP</span><div style="flex:1"><b style="font-size:13.5px">Bhanu Prakash</b><div class="xs mut">last active Active now</div></div><span class="pill p-warn">You · 2-step off</span></div><div class="team"><span class="av" style="background:#44403C">RK</span><div style="flex:1"><b style="font-size:13.5px">Ravi Kumar</b><div class="xs mut">last active 3 hours ago</div></div><span class="pill p-ok">2-step on</span></div>
+      <div class="row"><span class="btn sm"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Invite a Super Admin</span><span class="xs mut">They get an email to set a password and 2-step sign-in.</span></div>
+    </div>
+    <div class="card sec"><h3><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.65-.75 1.65-1.69 0-.44-.18-.84-.44-1.13-.29-.29-.44-.65-.44-1.13a1.64 1.64 0 0 1 1.67-1.67h2c3.05 0 5.56-2.5 5.56-5.55C21.97 6.01 17.46 2 12 2z"/></svg>Appearance<span class="r">Menu style · Moments · Display — one place</span></h3>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px"><div class="tile on"><div class="sk"><i style="width:30px"></i><i style="flex:1;background:#F2EEE6"></i></div><b style="font-size:12px">Classic</b></div><div class="tile "><div class="sk"><i style="width:14px"></i><i style="flex:1;background:#F2EEE6"></i></div><b style="font-size:12px">Rail</b></div><div class="tile "><div class="sk"><i style="width:30px;border-radius:7px;margin:2px"></i><i style="flex:1;background:#F2EEE6"></i></div><b style="font-size:12px">Floating</b></div><div class="tile "><div class="sk"><i style="width:30px"></i><i style="flex:1;background:#F2EEE6"></i></div><b style="font-size:12px">Collapsible</b></div></div>
+      <div class="setrow"><span style="flex:1"><b>Moments in the sky</b><span class="xs mut">Festivals, monsoon, Friday wind-down</span></span><span class="sw on"></span></div>
+      <div class="setrow"><span style="flex:1"><b>Density · Text size · Motion</b><span class="xs mut">Comfortable · Normal · Full</span></span><span class="btn sm">Change</span></div>
+    </div>
+  </div>
+  <div class="card sec"><h3><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>Keyboard shortcuts<span class="r">press <span class="kbd">?</span> anywhere</span></h3>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px 30px"><div class="row" style="justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid #EFEBE3"><span>Search everything</span><span><span class="kbd">Ctrl</span> <span class="kbd">K</span></span></div><div class="row" style="justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid #EFEBE3"><span>Go to Companies</span><span><span class="kbd">g</span> <span class="kbd">c</span></span></div><div class="row" style="justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid #EFEBE3"><span>Go to Plans</span><span><span class="kbd">g</span> <span class="kbd">p</span></span></div><div class="row" style="justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid #EFEBE3"><span>Go to System</span><span><span class="kbd">g</span> <span class="kbd">s</span></span></div><div class="row" style="justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid #EFEBE3"><span>Focus page search</span><span><span class="kbd">/</span></span></div><div class="row" style="justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid #EFEBE3"><span>Onboard a company</span><span><span class="kbd">g</span> <span class="kbd">n</span></span></div></div>
+  </div>
+</div></div>
+</main></div></div></x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1300}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,809 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Admin.dc.html": {
+      "expand": "fill",
+      "h": 1640,
+      "is_interactive": true,
+      "title": "Final · Company Admin / HR home — try the chart “View as” switch",
+      "w": 1440,
+      "x": 3040,
+      "y": 0
+    },
+    "Atmosphere.dc.html": {
+      "expand": "fill",
+      "h": 1500,
+      "title": "Atmosphere — moments like the sky (live)",
+      "w": 1440,
+      "x": 1520,
+      "y": 4100
+    },
+    "CAAnnounceCompose.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Company · New announcement — type, cover, rich text, audience count, confirm-by date, schedule, phone preview",
+      "w": 1440,
+      "x": 1520,
+      "y": 18900
+    },
+    "CAAnnounceCovers.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Announcements · Covers — colours, animated scenes, 3D art, upload image / short video / Lottie, focal point, motion leve",
+      "w": 1440,
+      "x": 0,
+      "y": 20500
+    },
+    "CAAnnounceDetail.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Company · Announcement detail — reactions, confirm, reach funnel, by department, nudge people",
+      "w": 1440,
+      "x": 3040,
+      "y": 18900
+    },
+    "CAAnnounceFeed2.dc.html": {
+      "expand": "fill",
+      "h": 1340,
+      "title": "Announcements · Employee feed — greeting, catch-up stories, animated hero carousel, grouped by day, rich cards per type,",
+      "w": 1440,
+      "x": 1520,
+      "y": 20500
+    },
+    "CAAnnouncePost2.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Announcements · Post — animated cover, reading progress, event countdown + .ics, seen by, more like this; phone story mo",
+      "w": 1440,
+      "x": 3040,
+      "y": 20500
+    },
+    "CAAnnouncements.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Company · Announcements — pinned hero, types, unread / to-confirm, coming-up events, poster stats",
+      "w": 1440,
+      "x": 0,
+      "y": 18900
+    },
+    "CAAssetDetail.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Assets · Asset detail — bought, warranty, repairs, history, specs, documents (QR label coming soon)",
+      "w": 1440,
+      "x": 0,
+      "y": 31900
+    },
+    "CAAssetRegister.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Assets · Register — KPIs, list / by person / by type, bulk actions, needs attention (incl. loans due), stock; QR coming soon",
+      "w": 1440,
+      "x": 4560,
+      "y": 30500
+    },
+    "CAAssetRequest.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Assets · Request something — catalog with stock, keep or loan (return date), for me / my team, team lead → manager → HR → IT head",
+      "w": 1440,
+      "x": 1520,
+      "y": 30500
+    },
+    "CAAssetRequests.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Assets · Requests — queue with steps (team lead → manager → HR → IT head) & stock, hand over: best match, condition, checklist",
+      "w": 1440,
+      "x": 3040,
+      "y": 30500
+    },
+    "CAAssetReturns.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Assets · Returns & yearly check — leavers’ assets to collect, “do you still have it?” campaign",
+      "w": 1440,
+      "x": 1520,
+      "y": 31900
+    },
+    "CAAssetTypes.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Assets · Types — prefix, icon, replace after, warranty, keep-in-stock, extra fields, hand-over checklist, requestable, loans",
+      "w": 1440,
+      "x": 3040,
+      "y": 31900
+    },
+    "CAAssetWhoSees.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Assets · Who sees and does what — Employee, Line manager, IT head, HR, Company admin",
+      "w": 1440,
+      "x": 4560,
+      "y": 31900
+    },
+    "CAAssetsMine.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Assets · My assets — cards (kept & on loan), confirm hand-over, report a problem (IT ticket), swap / return, request tracker, yearly check",
+      "w": 1440,
+      "x": 0,
+      "y": 30500
+    },
+    "CAEmployeeProfile.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Company · Employee profile — header with actions, at-a-glance numbers, employment history, profile checklist",
+      "w": 1440,
+      "x": 3040,
+      "y": 17200
+    },
+    "CAEmployees.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Company · Employees — lifecycle counts, needs attention, richer table with profile %, bulk actions",
+      "w": 1440,
+      "x": 0,
+      "y": 17200
+    },
+    "CAEmployeesLifecycle.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Company · Employees — lifecycle board (joining → probation → active → notice → left) + add-employee steps",
+      "w": 1440,
+      "x": 1520,
+      "y": 17200
+    },
+    "CAExpenseApprovals.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Expenses · Approvals — flags (over limit, duplicate, no receipt), bulk-approve clean claims, receipt beside items, per-i",
+      "w": 1440,
+      "x": 4560,
+      "y": 27400
+    },
+    "CAExpenseCategories.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Expenses · Categories — per-item & monthly limits, receipt rule, over-limit with a reason; every claim manager → Finance",
+      "w": 1440,
+      "x": 3040,
+      "y": 28800
+    },
+    "CAExpenseEditor.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Expenses · Claim editor — receipt drop, inline policy checks, over-limit allowed with a reason, who approves (manager →",
+      "w": 1440,
+      "x": 1520,
+      "y": 27400
+    },
+    "CAExpensePayments.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Expenses · Payments (Finance) — COMING SOON — grouped by person, payment batch → bank file → mark paid (today: mark each",
+      "w": 1440,
+      "x": 0,
+      "y": 28800
+    },
+    "CAExpenseReports.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Expenses · Spend reports — monthly trend, re-billable vs company, category, team, project, exceptions",
+      "w": 1440,
+      "x": 1520,
+      "y": 28800
+    },
+    "CAExpenseTracker.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Expenses · Claim tracker — steps with names & times, lowered amounts explained, Q&A without sending back, history",
+      "w": 1440,
+      "x": 3040,
+      "y": 27400
+    },
+    "CAExpenseWhoSees.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Expenses · Who sees and does what — Employee, Team lead/PM, Line manager, HR, Finance, Company admin",
+      "w": 1440,
+      "x": 4560,
+      "y": 28800
+    },
+    "CAExpensesMine.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Expenses · My expenses — month summary, claim cards with live step tracker, limits left this month, monthly bills, paid-",
+      "w": 1440,
+      "x": 0,
+      "y": 27400
+    },
+    "CAKudos.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Company · Kudos — composer with values, filters, add-my-thanks, most thanked, your badges",
+      "w": 1440,
+      "x": 4560,
+      "y": 18900
+    },
+    "CAKudosInsights.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Company · Recognition insights (HR) — trend, values, who thanks whom, not thanked in 90 days",
+      "w": 1440,
+      "x": 6080,
+      "y": 18900
+    },
+    "CAMyProjects.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Projects · My projects (employee) — my allocation, my lead/approver, latest update, coming milestones, who’s away",
+      "w": 1440,
+      "x": 6080,
+      "y": 22200
+    },
+    "CAOrganisation.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Company · Organisation — photo org chart with zoom & focus, team panel, org health, departments",
+      "w": 1440,
+      "x": 4560,
+      "y": 17200
+    },
+    "CAPeople.dc.html": {
+      "expand": "fill",
+      "h": 1360,
+      "title": "Company · People — photo cards, who’s in today, new / birthday / away highlights, A–Z",
+      "w": 1440,
+      "x": 0,
+      "y": 15400
+    },
+    "CAPeopleQuick.dc.html": {
+      "expand": "fill",
+      "h": 1300,
+      "title": "Company · People — quick look: reporting line, teammates, birthday, kudos",
+      "w": 1440,
+      "x": 3040,
+      "y": 15400
+    },
+    "CAPeopleTeams.dc.html": {
+      "expand": "fill",
+      "h": 1300,
+      "title": "Company · People — teams view (photo walls by department) + compact list",
+      "w": 1440,
+      "x": 1520,
+      "y": 15400
+    },
+    "CAProjectDetail.dc.html": {
+      "expand": "fill",
+      "h": 1440,
+      "title": "Projects · Project detail — roadmap, weekly PM status updates, milestones with owners, team & approvals, open roles",
+      "w": 1440,
+      "x": 3040,
+      "y": 22200
+    },
+    "CAProjects.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Projects · Portfolio — KPIs, health from milestones + schedule + staffing, next milestone, team, last PM update",
+      "w": 1440,
+      "x": 0,
+      "y": 22200
+    },
+    "CAProjectsTimeline.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Projects · Timeline — Gantt with milestones and today line, overlaps to watch",
+      "w": 1440,
+      "x": 1520,
+      "y": 22200
+    },
+    "CAReports.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Company · Reports — overview: compare to last month, what changed, headcount waterfall, report library",
+      "w": 1440,
+      "x": 0,
+      "y": 13700
+    },
+    "CAReportsPeople.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Company · Reports — people: trend, levels, leavers heat table, coming up, click-through to people",
+      "w": 1440,
+      "x": 1520,
+      "y": 13700
+    },
+    "CAReportsTime.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Company · Reports — attendance calendar, late by weekday, leave balances, utilisation by week, schedule email",
+      "w": 1440,
+      "x": 3040,
+      "y": 13700
+    },
+    "CAResourcePlanner.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Projects · Resource planner (PMO) — weekly allocation heatmap, fix-this-first, find someone free",
+      "w": 1440,
+      "x": 4560,
+      "y": 22200
+    },
+    "CATimesheetApprovals.dc.html": {
+      "expand": "fill",
+      "h": 1240,
+      "title": "Timesheets · Team approvals (lead) — people × days grid, only your project’s blocks, approve days or week, send back wit",
+      "w": 1440,
+      "x": 0,
+      "y": 25600
+    },
+    "CATimesheetLog.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Timesheets · Log work — drag a time range, pick one of my projects, describe the work; overlaps blocked, billable from t",
+      "w": 1440,
+      "x": 1520,
+      "y": 24200
+    },
+    "CATimesheetReport.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Timesheets · Report — hours by project (billable/investment vs planned), planned vs logged per person, searchable entrie",
+      "w": 1440,
+      "x": 1520,
+      "y": 25600
+    },
+    "CATimesheetRules.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "title": "Timesheets · Rules (HR/admin) — time ranges, no overlaps, lead → PM → line manager routing, attendance checks, reminders",
+      "w": 1440,
+      "x": 3040,
+      "y": 25600
+    },
+    "CATimesheetSubmit.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Timesheets · Submit — sends every unsent day up to today, checks against attendance, goes to each project lead; partly a",
+      "w": 1440,
+      "x": 3040,
+      "y": 24200
+    },
+    "CATimesheetWeek.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Timesheets · My week (Tempo-style) — calendar of work blocks per project, attendance line, timer, my projects, gaps to f",
+      "w": 1440,
+      "x": 0,
+      "y": 24200
+    },
+    "ChartStyles.dc.html": {
+      "expand": "fill",
+      "h": 1500,
+      "is_interactive": true,
+      "title": "Chart styles — choose how you see your data (works)",
+      "w": 1440,
+      "x": 1520,
+      "y": 2100
+    },
+    "CheckInSessions.dc.html": {
+      "expand": "fill",
+      "h": 820,
+      "title": "Check in & out many times a day + early check-out",
+      "w": 1440,
+      "x": 6080,
+      "y": 4100
+    },
+    "ComponentIdeas.dc.html": {
+      "expand": "fill",
+      "h": 1260,
+      "title": "Component ideas from other products",
+      "w": 1440,
+      "x": 3040,
+      "y": 4100
+    },
+    "EmployeeDark.dc.html": {
+      "expand": "fill",
+      "h": 1660,
+      "title": "Final · Employee home (dark)",
+      "w": 1440,
+      "x": 1520,
+      "y": 0
+    },
+    "HeroArt.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "title": "Hero art options — instead of the orb / globe",
+      "w": 1440,
+      "x": 0,
+      "y": 2100
+    },
+    "JoinersLeavers.dc.html": {
+      "expand": "fill",
+      "h": 1360,
+      "title": "Joiners & leavers — four engaging designs",
+      "w": 1440,
+      "x": 0,
+      "y": 4100
+    },
+    "Main.dc.html": {
+      "expand": "fill",
+      "h": 1660,
+      "title": "Final · Employee home",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "MotionFinal.dc.html": {
+      "expand": "fill",
+      "h": 1500,
+      "title": "Final animation set + effect on speed",
+      "w": 1440,
+      "x": 4560,
+      "y": 2100
+    },
+    "SACompanies.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "title": "Super Admin · Companies — list with health, usage, attention and bulk actions",
+      "w": 1440,
+      "x": 0,
+      "y": 6100
+    },
+    "SACompaniesCards.dc.html": {
+      "expand": "fill",
+      "h": 1380,
+      "title": "Super Admin · Companies — card view + onboarding pipeline",
+      "w": 1440,
+      "x": 1520,
+      "y": 6100
+    },
+    "SACompanyPanel.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "title": "Super Admin · Companies — click a company: side panel",
+      "w": 1440,
+      "x": 3040,
+      "y": 6100
+    },
+    "SAPlanEditor.dc.html": {
+      "expand": "fill",
+      "h": 1500,
+      "title": "Super Admin · Plans — editor with “who’s affected” before saving",
+      "w": 1440,
+      "x": 3040,
+      "y": 7900
+    },
+    "SAPlans.dc.html": {
+      "expand": "fill",
+      "h": 1500,
+      "title": "Super Admin · Plans — tier cards, summary, upgrade candidates, trials",
+      "w": 1440,
+      "x": 0,
+      "y": 7900
+    },
+    "SAPlansCompare.dc.html": {
+      "expand": "fill",
+      "h": 1640,
+      "title": "Super Admin · Plans — compare grid with real use",
+      "w": 1440,
+      "x": 1520,
+      "y": 7900
+    },
+    "SAProfile.dc.html": {
+      "expand": "fill",
+      "h": 1060,
+      "title": "Super Admin · Profile — account: cover, security score, details, your recent actions",
+      "w": 1440,
+      "x": 0,
+      "y": 11800
+    },
+    "SAProfileActivity.dc.html": {
+      "expand": "fill",
+      "h": 1300,
+      "title": "Super Admin · Profile — sign-in activity, platform admins, appearance, shortcuts",
+      "w": 1440,
+      "x": 3040,
+      "y": 11800
+    },
+    "SAProfileSecurity.dc.html": {
+      "expand": "fill",
+      "h": 1380,
+      "title": "Super Admin · Profile — security: 2-step sign-in, recovery codes, password, devices, protection",
+      "w": 1440,
+      "x": 1520,
+      "y": 11800
+    },
+    "SASystem.dc.html": {
+      "expand": "fill",
+      "h": 1320,
+      "title": "Super Admin · System — health & speed: 90-day uptime, traffic, slowest pages",
+      "w": 1440,
+      "x": 0,
+      "y": 9900
+    },
+    "SASystemData.dc.html": {
+      "expand": "fill",
+      "h": 1340,
+      "title": "Super Admin · System — data & delivery: database, files, jobs, email log",
+      "w": 1440,
+      "x": 1520,
+      "y": 9900
+    },
+    "SASystemReady.dc.html": {
+      "expand": "fill",
+      "h": 1300,
+      "title": "Super Admin · System — readiness checklist, maintenance mode, sign-in safety, tools",
+      "w": 1440,
+      "x": 3040,
+      "y": 9900
+    },
+    "SuperAdmin.dc.html": {
+      "expand": "fill",
+      "h": 1160,
+      "is_interactive": true,
+      "title": "Final · Super Admin overview",
+      "w": 1440,
+      "x": 4560,
+      "y": 0
+    },
+    "ThemeAdaptive.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Animations follow the theme",
+      "w": 1440,
+      "x": 3040,
+      "y": 2100
+    },
+    "WhosOffCalendar.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "is_interactive": true,
+      "title": "Who’s off calendar (try it) + company icon options",
+      "w": 1440,
+      "x": 4560,
+      "y": 4100
+    },
+    "CAAssetKits.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Assets · Starter kits — who gets what (rules add up), new joiners to prepare (reserved / to order), kit in the add-employee form, promotions",
+      "w": 1440,
+      "x": 0,
+      "y": 33300
+    },
+    "CAAssetProducts.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Assets · Product animations (live) — laptop lid opens & boots, phone lights up, monitor powers on, ID card flips, headset waves, keys type; repair / loan / returned / lost",
+      "w": 1440,
+      "x": 1520,
+      "y": 33300
+    },
+    "CAAssetMotion.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Assets · Animation ideas (live) — hand-over unboxing, kit packing, request tracker, loan countdown, low stock, all confirmed, card tilt",
+      "w": 1440,
+      "x": 3040,
+      "y": 33300
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-10-03T22:27:26Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "notes": {
+    "n1": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Final dashboards — balanced layout, living hero, the animations you picked",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "n10": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Company · Employees & Organisation — list, lifecycle, profile, org chart",
+      "w": 240,
+      "x": 0,
+      "y": 16900
+    },
+    "n11": {
+      "kind": "title1",
+      "maxW": 7600,
+      "text": "Company · Announcements & Kudos — feed, composer, reach, kudos wall, recognition insights",
+      "w": 240,
+      "x": 0,
+      "y": 18600
+    },
+    "n12": {
+      "kind": "title1",
+      "maxW": 4600,
+      "text": "Announcements, round 2 — animated & 3D covers, fuller employee feed, immersive post",
+      "w": 240,
+      "x": 0,
+      "y": 20200
+    },
+    "n13": {
+      "kind": "title1",
+      "maxW": 7600,
+      "text": "Company · Projects — portfolio, timeline, project detail, resource planner, my projects",
+      "w": 240,
+      "x": 0,
+      "y": 21900
+    },
+    "n14": {
+      "kind": "title1",
+      "maxW": 4500,
+      "text": "Company · Timesheets (Tempo-style) — my week, log work, submit, team approvals, report, rules",
+      "w": 240,
+      "x": 0,
+      "y": 23900
+    },
+    "n15": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Company · Expenses — my expenses, claim editor, tracker, approvals, payments, spend reports, categories, who sees what",
+      "w": 240,
+      "x": 0,
+      "y": 27100
+    },
+    "n16": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Company · Assets — my assets, request catalog, requests & hand-over, register, asset detail, returns & yearly check, types, who sees what",
+      "w": 240,
+      "x": 0,
+      "y": 30200
+    },
+    "n2": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Hero art · chart styles · theme-adaptive motion · speed",
+      "w": 240,
+      "x": 0,
+      "y": 1800
+    },
+    "n3": {
+      "kind": "title1",
+      "maxW": 7520,
+      "text": "Next round — joiners & leavers, atmosphere, component ideas, who’s off calendar, check-in sessions",
+      "w": 240,
+      "x": 0,
+      "y": 3800
+    },
+    "n4": {
+      "kind": "title1",
+      "maxW": 4480,
+      "text": "Super Admin · Companies — richer list, cards, company panel",
+      "w": 240,
+      "x": 0,
+      "y": 5800
+    },
+    "n5": {
+      "kind": "title1",
+      "maxW": 4480,
+      "text": "Super Admin · Plans — tier cards, compare grid, editor with impact preview",
+      "w": 240,
+      "x": 0,
+      "y": 7600
+    },
+    "n6": {
+      "kind": "title1",
+      "maxW": 4480,
+      "text": "Super Admin · System — health & speed, data & delivery, readiness & tools",
+      "w": 240,
+      "x": 0,
+      "y": 9600
+    },
+    "n7": {
+      "kind": "title1",
+      "maxW": 4480,
+      "text": "Super Admin · Profile & security — account, 2-step sign-in, activity & appearance",
+      "w": 240,
+      "x": 0,
+      "y": 11500
+    },
+    "n8": {
+      "kind": "title1",
+      "maxW": 4480,
+      "text": "Company · Reports & analytics — overview, people, attendance & utilisation",
+      "w": 240,
+      "x": 0,
+      "y": 13400
+    },
+    "n9": {
+      "kind": "title1",
+      "maxW": 4480,
+      "text": "Company · People directory — photo cards, teams, quick look",
+      "w": 240,
+      "x": 0,
+      "y": 15100
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "EmployeeDark.dc.html",
+    "Admin.dc.html",
+    "SuperAdmin.dc.html",
+    "HeroArt.dc.html",
+    "ChartStyles.dc.html",
+    "ThemeAdaptive.dc.html",
+    "MotionFinal.dc.html",
+    "JoinersLeavers.dc.html",
+    "Atmosphere.dc.html",
+    "ComponentIdeas.dc.html",
+    "WhosOffCalendar.dc.html",
+    "CheckInSessions.dc.html",
+    "SACompanies.dc.html",
+    "SACompaniesCards.dc.html",
+    "SACompanyPanel.dc.html",
+    "SAPlans.dc.html",
+    "SAPlansCompare.dc.html",
+    "SAPlanEditor.dc.html",
+    "SASystem.dc.html",
+    "SASystemData.dc.html",
+    "SASystemReady.dc.html",
+    "SAProfile.dc.html",
+    "SAProfileSecurity.dc.html",
+    "SAProfileActivity.dc.html",
+    "CAReports.dc.html",
+    "CAReportsPeople.dc.html",
+    "CAReportsTime.dc.html",
+    "CAPeople.dc.html",
+    "CAPeopleTeams.dc.html",
+    "CAPeopleQuick.dc.html",
+    "CAEmployees.dc.html",
+    "CAEmployeesLifecycle.dc.html",
+    "CAEmployeeProfile.dc.html",
+    "CAOrganisation.dc.html",
+    "CAAnnouncements.dc.html",
+    "CAAnnounceCompose.dc.html",
+    "CAAnnounceDetail.dc.html",
+    "CAKudos.dc.html",
+    "CAKudosInsights.dc.html",
+    "CAAnnounceCovers.dc.html",
+    "CAAnnounceFeed2.dc.html",
+    "CAAnnouncePost2.dc.html",
+    "CAProjects.dc.html",
+    "CAProjectsTimeline.dc.html",
+    "CAProjectDetail.dc.html",
+    "CAResourcePlanner.dc.html",
+    "CAMyProjects.dc.html",
+    "CATimesheetWeek.dc.html",
+    "CATimesheetLog.dc.html",
+    "CATimesheetSubmit.dc.html",
+    "CATimesheetApprovals.dc.html",
+    "CATimesheetReport.dc.html",
+    "CATimesheetRules.dc.html",
+    "CAExpensesMine.dc.html",
+    "CAExpenseEditor.dc.html",
+    "CAExpenseTracker.dc.html",
+    "CAExpenseApprovals.dc.html",
+    "CAExpensePayments.dc.html",
+    "CAExpenseReports.dc.html",
+    "CAExpenseCategories.dc.html",
+    "CAExpenseWhoSees.dc.html",
+    "CAAssetsMine.dc.html",
+    "CAAssetRequest.dc.html",
+    "CAAssetRequests.dc.html",
+    "CAAssetRegister.dc.html",
+    "CAAssetDetail.dc.html",
+    "CAAssetReturns.dc.html",
+    "CAAssetTypes.dc.html",
+    "CAAssetWhoSees.dc.html",
+    "CAAssetKits.dc.html",
+    "CAAssetProducts.dc.html",
+    "CAAssetMotion.dc.html"
+  ],
+  "pages": [],
+  "title": "HRMS final dashboards"
+}

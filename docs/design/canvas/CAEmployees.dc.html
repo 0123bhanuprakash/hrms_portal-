@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Employees list</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F6F7FB}
+.app{display:flex;min-height:100vh;font-family:Manrope,system-ui,sans-serif;color:#111827;background:#F6F7FB;position:relative}
+.sb{flex:0 0 240px;background:#FFFFFF;border-right:1px solid #E5E7EF;display:flex;flex-direction:column}
+.sb-h{display:flex;gap:10px;align-items:center;padding:14px}
+.logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#E9416A,#7A2BD9);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px}
+.sb-h b{display:block;font-size:14px}.sb-h span{font-size:11px;color:#6B7280}
+.sb-g{padding:12px 14px 3px;font-size:10.5px;font-weight:700;letter-spacing:.07em;color:#9CA3AF}
+.sb-i{display:flex;align-items:center;gap:10px;height:34px;margin:0 10px;padding:0 10px;border-radius:7px;font-size:13.5px;color:#374151}
+.sb-i svg{color:#9CA3AF}.sb-i.on{background:#EEF0FF;color:#3730A3;font-weight:700}.sb-i.on svg{color:#4F46E5}
+.col{flex:1;min-width:0;display:flex;flex-direction:column}
+.hdr{height:56px;border-bottom:1px solid #E5E7EF;display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:rgba(255,255,255,.7)}
+.crumb{font-size:13.5px;color:#6B7280}.crumb b{color:#111827}
+.main{padding:24px 30px 40px;display:flex;flex-direction:column;gap:16px}
+.eyebrow{font-size:12.5px;color:#4F46E5;font-weight:700}
+h1{margin:2px 0 0;font-size:26px;font-weight:800;letter-spacing:-.02em}
+.sub{color:#6B7280;font-size:14px;margin-top:3px}
+.row{display:flex;align-items:center;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 14px;border-radius:9px;border:1px solid #E5E7EF;background:#fff;color:#111827;font-size:13px;font-weight:700;white-space:nowrap}
+.btn.pri{background:#4F46E5;border-color:#4F46E5;color:#fff}.btn.sm{height:30px;padding:0 10px;font-size:12px}
+.card{background:#fff;border:1px solid #E5E7EF;border-radius:14px;box-shadow:0 1px 2px rgba(17,24,39,.04)}
+.sec{padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.sec h3{margin:0;font-size:14.5px;display:flex;align-items:center;gap:8px}.sec h3 svg{color:#6B7280}
+.sec h3 .r{margin-left:auto;font-size:12px;font-weight:500;color:#6B7280}
+.mut{color:#6B7280}.xs{font-size:12px}
+.tabs{display:flex;gap:4px;background:#fff;border:1px solid #E5E7EF;border-radius:11px;padding:4px;width:max-content}
+.tabs span{display:flex;align-items:center;gap:7px;padding:7px 14px;border-radius:8px;font-size:13px;color:#6B7280;font-weight:600}
+.tabs span.on{background:#4F46E5;color:#fff}
+.fbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:9px;border:1px solid #E5E7EF;background:#fff;font-size:12.5px;font-weight:600;color:#374151}
+.chip.on{border-color:#C7C9F7;background:#EEF0FF;color:#3730A3}
+.seg{display:flex;border:1px solid #E5E7EF;border-radius:9px;overflow:hidden;background:#fff}.seg span{padding:7px 11px;font-size:12px;font-weight:600;color:#6B7280}.seg span.on{background:#111827;color:#fff}
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.kpi{padding:14px 16px;display:flex;flex-direction:column;gap:3px;position:relative;overflow:hidden}
+.kpi span.l{font-size:12px;color:#6B7280}.kpi b.v{font-size:25px;font-weight:800;letter-spacing:-.02em}
+.delta{font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;gap:2px}
+.d-up{color:#059669}.d-dn{color:#DC2626}.d-flat{color:#6B7280}
+.kpi svg.sp{position:absolute;right:12px;bottom:12px}
+.hl{display:flex;gap:12px;padding:12px 14px;border-radius:12px;border:1px solid #E5E7EF;background:#fff;align-items:flex-start}
+.hl .ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.g21{display:grid;grid-template-columns:1.5fr 1fr;gap:16px}.g12{display:grid;grid-template-columns:1fr 1.4fr;gap:16px}
+.lib{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid #EEF0F5;border-radius:12px;background:#F8F9FC}
+.lib .ic{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none}
+.bar{height:8px;border-radius:99px;background:#EEF0F5;overflow:hidden}.bar i{display:block;height:100%;border-radius:99px;transform-origin:left;animation:fw 1s cubic-bezier(.2,.8,.2,1) both}
+@keyframes fw{from{transform:scaleX(0)}}
+.chart polyline,.chart path.ln{stroke-dasharray:3000;animation:draw 1.6s ease both}@keyframes draw{from{stroke-dashoffset:3000}}
+.heat{display:grid;gap:3px}.heat i{display:block;border-radius:4px;aspect-ratio:1}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#6B7280;padding:8px 10px;border-bottom:1px solid #E5E7EF}
+td{padding:9px 10px;border-bottom:1px solid #EEF0F5}
+.av{width:28px;height:28px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;color:#fff;flex:none}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.p-ok{background:#E6F6F0;color:#059669}.p-warn{background:#FEF3E2;color:#D97706}.p-bad{background:#FDECEC;color:#DC2626}.p-pri{background:#EEF0FF;color:#3730A3}.p-neu{background:#EEF0F5;color:#6B7280}
+.dim{position:absolute;inset:0;background:rgba(17,24,39,.35);z-index:4}
+.drawer{position:absolute;top:0;right:0;bottom:0;width:440px;background:#fff;border-left:1px solid #E5E7EF;z-index:5;display:flex;flex-direction:column;box-shadow:-24px 0 50px -20px rgba(0,0,0,.35)}
+.modal{position:absolute;left:50%;top:150px;transform:translateX(-50%);width:480px;background:#fff;border:1px solid #E5E7EF;border-radius:16px;z-index:5;box-shadow:0 30px 60px -20px rgba(0,0,0,.4)}
+.fld{display:flex;flex-direction:column;gap:5px;font-size:12.5px}.fld label{font-weight:700}
+.inp{height:36px;border:1px solid #E5E7EF;border-radius:9px;padding:0 11px;display:flex;align-items:center;font-size:13px;gap:8px;background:#fff}
+
+.ph{position:relative;overflow:hidden;border-radius:14px;flex:none}
+.ph svg{display:block}
+.st{position:absolute;display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:800;padding:3px 8px;border-radius:99px;background:rgba(255,255,255,.92);box-shadow:0 2px 6px rgba(0,0,0,.12)}
+.st i{width:7px;height:7px;border-radius:50%;display:inline-block}
+.pc{display:flex;flex-direction:column;overflow:hidden;transition:transform .25s,box-shadow .25s}
+.pc:hover{transform:translateY(-4px);box-shadow:0 18px 36px -18px rgba(17,24,39,.35)}
+.pc .body{padding:12px 14px 14px;display:flex;flex-direction:column;gap:4px}
+.pc b.n{font-size:15px}.pc .role{font-size:12.5px;color:#6B7280}
+.tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:#F8F9FC;border:1px solid #EEF0F5;color:#374151}
+.acts{display:flex;gap:6px;padding:0 14px 14px}
+.acts span{flex:1;height:30px;border-radius:8px;border:1px solid #E5E7EF;display:flex;align-items:center;justify-content:center;gap:5px;font-size:12px;font-weight:700;color:#374151}
+.rail{display:flex;flex-direction:column;gap:2px;position:sticky;top:0;font-size:10.5px;font-weight:800;color:#9CA3AF;text-align:center}
+.rail span{padding:1px 0}.rail span.on{color:#4F46E5}
+.hlstrip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.hlc{padding:14px 16px;display:flex;align-items:center;gap:12px}
+.stack{display:flex}.stack .ph{border:2.5px solid #fff;margin-left:-10px;border-radius:50%}.stack .ph:first-child{margin-left:0}
+.search{display:flex;align-items:center;gap:8px;height:42px;padding:0 14px;border:1px solid #E5E7EF;border-radius:12px;background:#fff;flex:1;color:#6B7280;font-size:14px;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+.wall{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px}
+.grp{display:flex;flex-direction:column;gap:10px}
+.grp h3{margin:0;font-size:15px;display:flex;align-items:center;gap:10px}
+.mini{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid #EEF0F5;border-radius:12px;background:#fff}
+
+.life{display:flex;gap:0;border:1px solid #E5E7EF;border-radius:12px;overflow:hidden;background:#fff}
+.life span{flex:1;padding:10px 12px;font-size:12px;color:#6B7280;border-right:1px solid #EEF0F5;display:flex;flex-direction:column;gap:2px}
+.life span:last-child{border-right:0}.life span b{font-size:18px;color:#111827}.life span.on{background:#EEF0FF;box-shadow:inset 0 -3px 0 #4F46E5}
+.att{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #EEF0F5;font-size:13px}.att:last-child{border-bottom:0}
+.att .ic{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex:none}
+.comp{height:6px;width:70px;border-radius:99px;background:#EEF0F5;overflow:hidden}.comp i{display:block;height:100%;border-radius:99px}
+.cb{width:16px;height:16px;border-radius:4px;border:1.5px solid #CBD0DC;display:inline-flex;align-items:center;justify-content:center}.cb.on{background:#4F46E5;border-color:#4F46E5;color:#fff}
+tr.sel td{background:#F5F6FF}
+.bulk{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:8px 8px 8px 16px;border-radius:14px;background:#111827;color:#fff;box-shadow:0 20px 40px -12px rgba(0,0,0,.45);font-size:13px;z-index:5}
+.bulk .btn{background:#1F2937;border-color:#374151;color:#fff}
+.col5{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;align-items:start}
+.lane{background:#EEF0F6;border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:420px}
+.lane h4{margin:0 2px 2px;font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:#6B7280;display:flex;justify-content:space-between}
+.kc{background:#fff;border:1px solid #E5E7EF;border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.kc .act{display:flex;gap:6px}.kc .act span{flex:1;text-align:center;font-size:11.5px;font-weight:700;padding:5px 0;border-radius:7px;border:1px solid #E5E7EF}
+.kc .act span.p{background:#4F46E5;border-color:#4F46E5;color:#fff}
+.stepper{display:flex;gap:6px}.stepper div{flex:1;display:flex;flex-direction:column;gap:6px;font-size:11.5px;font-weight:700;color:#6B7280}.stepper div i{height:4px;border-radius:99px;background:#EEF0F5}.stepper div.on{color:#111827}.stepper div.on i{background:#4F46E5}.stepper div.done i{background:#059669}
+.tl2{display:flex;gap:12px;padding-bottom:14px;position:relative}.tl2::before{content:"";position:absolute;left:14px;top:30px;bottom:0;width:2px;background:#EEF0F5}.tl2:last-child::before{display:none}
+.tl2 .d{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none;border:2px solid #fff;box-shadow:0 0 0 1px #E5E7EF}
+.node{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 10px 10px;border-radius:14px;background:#fff;border:1px solid #E5E7EF;width:150px;box-shadow:0 4px 14px -8px rgba(17,24,39,.25);position:relative}
+.node .cnt{position:absolute;bottom:-11px;left:50%;transform:translateX(-50%);font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:99px;background:#111827;color:#fff}
+.node.focus{border-color:#4F46E5;box-shadow:0 0 0 4px #EEF0FF,0 10px 24px -12px rgba(79,70,229,.6)}
+.node .band{position:absolute;top:0;left:0;right:0;height:4px;border-radius:14px 14px 0 0}
+.canvas{position:relative;background-color:#F8F9FC;background-image:radial-gradient(#E3E6EE 1px,transparent 1px);background-size:18px 18px;border-radius:14px;border:1px solid #E5E7EF;overflow:hidden}
+.tools{position:absolute;right:12px;top:12px;display:flex;flex-direction:column;gap:4px;background:#fff;border:1px solid #E5E7EF;border-radius:10px;padding:4px}
+.tools span{width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:7px;color:#374151}
+</style>
+</helmet>
+<div class="app"><aside class="sb">
+<div class="sb-h"><span class="logo">AP</span><span><b>aakash-portal</b><span>HR workspace</span></span></div>
+<div class="sb-g">OVERVIEW</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Home</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M16 10h2M16 14h2"/><circle cx="9" cy="11" r="2"/><path d="M6 16.5a3.5 3.5 0 0 1 6 0"/></svg>My profile</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>Reports &amp; analytics</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v2M8 2v2"/><circle cx="12" cy="11" r="3"/><path d="M7 20a5 5 0 0 1 10 0"/></svg>People</div>
+<div class="sb-g">ORGANIZATION</div><div class="sb-i on"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Employees</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3M12 12V8"/></svg>Organisation</div>
+<div class="sb-g">ENGAGEMENT</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>Announcements</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>Kudos</div>
+<div class="sb-g">WORK</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9l-.8-1.2A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/><path d="M8 10v4M12 10v2M16 10v6"/></svg>Projects</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2h4M12 14l3-3"/><circle cx="12" cy="14" r="8"/></svg>Timesheets</div>
+<div class="sb-g">TIME</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg>Attendance</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>Leave</div>
+</aside><div class="col"><header class="hdr"><div class="crumb">People &nbsp;›&nbsp; <b>Employees</b></div><div class="row mut xs"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span style="width:34px;height:20px;border-radius:99px;background:#E5E7EF;display:inline-block"></span></div></header><main class="main">
+<div class="row" style="align-items:flex-end"><div style="flex:1"><div class="eyebrow">People</div><h1>Employees</h1><div class="sub">Everyone in the company — joiners, probation, notice and exits in one place</div></div><span class="seg" style="display:inline-flex"><span class="on"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg> Table</span><span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="5" height="14" rx="1"/><rect x="10" y="3" width="5" height="9" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg> Lifecycle</span></span><span class="btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>Import</span><span class="btn pri"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>Add employee</span></div>
+<div class="life"><span class="on">All<b>24</b></span><span class="">Joining soon<b>1</b></span><span class="">Probation<b>3</b></span><span class="">Active<b>18</b></span><span class="">Notice period<b>1</b></span><span class="">Left · 90 days<b>2</b></span></div>
+<div class="card sec"><h3><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>Needs your attention<span class="r">4 things</span></h3>
+  <div class="g2" style="gap:0 24px"><div class="att"><span class="ic" style="background:#FEF3E2;color:#D97706"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg></span><div style="flex:1;min-width:0"><b>2 probations end this month</b><div class="xs mut" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Rahul Das (18 Oct) and Neha Gupta (27 Oct) — confirm or extend</div></div><span class="btn sm">Review</span></div><div class="att"><span class="ic" style="background:#FDECEC;color:#DC2626"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"/></svg></span><div style="flex:1;min-width:0"><b>1 exit this month</b><div class="xs mut" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Sameer Gill — last day 29 Oct · exit checklist 2 of 6 done</div></div><span class="btn sm">Open checklist</span></div><div class="att"><span class="ic" style="background:#E5F4FB;color:#0284C7"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><div style="flex:1;min-width:0"><b>1 person has no manager</b><div class="xs mut" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Arjun Nair — his leave and timesheets have no approver</div></div><span class="btn sm">Assign</span></div><div class="att"><span class="ic" style="background:#EEF0FF;color:#4F46E5"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M16 10h2M16 14h2"/><circle cx="9" cy="11" r="2"/><path d="M6 16.5a3.5 3.5 0 0 1 6 0"/></svg></span><div style="flex:1;min-width:0"><b>5 profiles are incomplete</b><div class="xs mut" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Missing bank details, PAN or emergency contact</div></div><span class="btn sm">Send reminder</span></div></div>
+</div>
+<div class="card" style="overflow:hidden">
+  <div class="row" style="padding:12px 14px;border-bottom:1px solid #E5E7EF;gap:8px;flex-wrap:wrap"><div class="search" style="height:36px;flex:0 0 280px;font-size:13px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg> Search name, email, ID or title</div>
+    <span class="chip"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3M12 12V8"/></svg>Department ▾</span><span class="chip"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s7-7.5 7-13a7 7 0 0 0-14 0c0 5.5 7 13 7 13z"/><circle cx="12" cy="9" r="2.5"/></svg>Location ▾</span><span class="chip">Type ▾</span><span class="chip on">Manager: anyone ▾</span>
+    <span class="xs mut" style="margin-left:auto">Saved view: <b style="color:#4F46E5">All employees ▾</b></span><span class="btn sm"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18"/></svg>Columns</span></div>
+  <table><thead><tr><th style="width:18px"><span class="cb"></span></th><th>Employee</th><th>Title &amp; team</th><th>Manager</th><th>Type</th><th>Status</th><th>Tenure</th><th>Profile</th><th></th></tr></thead><tbody>
+  <tr class=""><td><span class="cb "></span></td>
+    <td><span class="row" style="gap:10px"><div class="ph" style="width:36px;height:36px;"><svg width="36" height="36" viewBox="0 0 36 36"><defs><linearGradient id="g0" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#C7D2FE"/><stop offset="1" stop-color="#EEF2FF"/></linearGradient></defs>
+  <rect width="36" height="36" fill="url(#g0)"/>
+  <circle cx="29.52" cy="6.4799999999999995" r="7.92" fill="#fff" opacity=".35"/>
+  <path d="M10.962,15.12 Q10.35,5.9399999999999995 18,7.469999999999999 Q25.65,5.9399999999999995 25.038,15.12 L25.344,24.912 L10.656,24.912Z" fill="#2B1D14"/>
+  <path d="M3.9240000000000013,36 Q4.535999999999998,24.606 18,23.994 Q31.464000000000002,24.606 32.076,36Z" fill="#4F46E5"/>
+  <rect x="15.6744" y="19.404" width="4.6512" height="5.508" fill="#F2C9A5"/>
+  <circle cx="18" cy="15.12" r="6.12" fill="#F2C9A5"/>
+  
+  </svg></div><span><b>Priya Sharma</b><div class="xs mut">EMP001</div></span></span></td>
+    <td>Engineering Lead<div class="xs mut">Engineering</div></td><td><span class="mut">Ravi Kumar</span></td><td class="mut">Full-time</td>
+    <td><span class="pill p-ok">Active</span></td><td class="mut">2.9 yrs</td>
+    <td><span class="row" style="gap:6px"><span class="comp"><i style="width:100%;background:#059669"></i></span><span class="xs mut">100%</span></span></td><td class="mut"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></td></tr><tr class="sel"><td><span class="cb on"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span></td>
+    <td><span class="row" style="gap:10px"><div class="ph" style="width:36px;height:36px;"><svg width="36" height="36" viewBox="0 0 36 36"><defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FBCFE8"/><stop offset="1" stop-color="#FDF2F8"/></linearGradient></defs>
+  <rect width="36" height="36" fill="url(#g1)"/>
+  <circle cx="29.52" cy="6.4799999999999995" r="7.92" fill="#fff" opacity=".35"/>
+  
+  <path d="M3.9240000000000013,36 Q4.535999999999998,24.606 18,23.994 Q31.464000000000002,24.606 32.076,36Z" fill="#7C3AED"/>
+  <rect x="15.6744" y="19.404" width="4.6512" height="5.508" fill="#8D5A3C"/>
+  <circle cx="18" cy="15.12" r="6.12" fill="#8D5A3C"/>
+  <path d="M11.7576,14.508 Q11.879999999999999,6.857999999999999 18,7.776 Q24.12,6.857999999999999 24.2424,14.508 Q18,10.53 11.7576,14.508Z" fill="#6B4423"/>
+  </svg></div><span><b>Rahul Das</b><div class="xs mut">EMP014</div></span></span></td>
+    <td>QA Engineer<div class="xs mut">Engineering</div></td><td><span class="mut">Priya Sharma</span></td><td class="mut">Full-time</td>
+    <td><span class="pill p-warn">Probation</span></td><td class="mut">5 mo</td>
+    <td><span class="row" style="gap:6px"><span class="comp"><i style="width:72%;background:#0D9488"></i></span><span class="xs mut">72%</span></span></td><td class="mut"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></td></tr><tr class="sel"><td><span class="cb on"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span></td>
+    <td><span class="row" style="gap:10px"><div class="ph" style="width:36px;height:36px;"><svg width="36" height="36" viewBox="0 0 36 36"><defs><linearGradient id="g2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#BAE6FD"/><stop offset="1" stop-color="#F0F9FF"/></linearGradient></defs>
+  <rect width="36" height="36" fill="url(#g2)"/>
+  <circle cx="29.52" cy="6.4799999999999995" r="7.92" fill="#fff" opacity=".35"/>
+  <path d="M10.962,15.12 Q10.35,5.9399999999999995 18,7.469999999999999 Q25.65,5.9399999999999995 25.038,15.12 L25.344,24.912 L10.656,24.912Z" fill="#1C1C1C"/>
+  <path d="M3.9240000000000013,36 Q4.535999999999998,24.606 18,23.994 Q31.464000000000002,24.606 32.076,36Z" fill="#0284C7"/>
+  <rect x="15.6744" y="19.404" width="4.6512" height="5.508" fill="#F2C9A5"/>
+  <circle cx="18" cy="15.12" r="6.12" fill="#F2C9A5"/>
+  
+  </svg></div><span><b>Neha Gupta</b><div class="xs mut">EMP011</div></span></span></td>
+    <td>Sales Associate<div class="xs mut">Sales</div></td><td><span class="mut">Meena Joshi</span></td><td class="mut">Full-time</td>
+    <td><span class="pill p-warn">Probation</span></td><td class="mut">5 mo</td>
+    <td><span class="row" style="gap:6px"><span class="comp"><i style="width:58%;background:#D97706"></i></span><span class="xs mut">58%</span></span></td><td class="mut"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></td></tr><tr class=""><td><span class="cb "></span></td>
+    <td><span class="row" style="gap:10px"><div class="ph" style="width:36px;height:36px;"><svg width="36" height="36" viewBox="0 0 36 36"><defs><linearGradient id="g3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#BBF7D0"/><stop offset="1" stop-color="#ECFDF5"/></linearGradient></defs>
+  <rect width="36" height="36" fill="url(#g3)"/>
+  <circle cx="29.52" cy="6.4799999999999995" r="7.92" fill="#fff" opacity=".35"/>
+  
+  <path d="M3.9240000000000013,36 Q4.535999999999998,24.606 18,23.994 Q31.464000000000002,24.606 32.076,36Z" fill="#059669"/>
+  <rect x="15.6744" y="19.404" width="4.6512" height="5.508" fill="#8D5A3C"/>
+  <circle cx="18" cy="15.12" r="6.12" fill="#8D5A3C"/>
+  <path d="M11.7576,14.508 Q11.879999999999999,6.857999999999999 18,7.776 Q24.12,6.857999999999999 24.2424,14.508 Q18,10.53 11.7576,14.508Z" fill="#151515"/>
+  </svg></div><span><b>Karan Mehta</b><div class="xs mut">EMP005</div></span></span></td>
+    <td>Engineering Lead<div class="xs mut">Engineering</div></td><td><span class="mut">Ravi Kumar</span></td><td class="mut">Full-time</td>
+    <td><span class="pill p-ok">Active</span></td><td class="mut">1.4 yrs</td>
+    <td><span class="row" style="gap:6px"><span class="comp"><i style="width:92%;background:#0D9488"></i></span><span class="xs mut">92%</span></span></td><td class="mut"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></td></tr><tr class=""><td><span class="cb "></span></td>
+    <td><span class="row" style="gap:10px"><div class="ph" style="width:36px;height:36px;"><svg width="36" height="36" viewBox="0 0 36 36"><defs><linearGradient id="g4" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#DDD6FE"/><stop offset="1" stop-color="#F5F3FF"/></linearGradient></defs>
+  <rect width="36" height="36" fill="url(#g4)"/>
+  <circle cx="29.52" cy="6.4799999999999995" r="7.92" fill="#fff" opacity=".35"/>
+  
+  <path d="M3.9240000000000013,36 Q4.535999999999998,24.606 18,23.994 Q31.464000000000002,24.606 32.076,36Z" fill="#DB2777"/>
+  <rect x="15.6744" y="19.404" width="4.6512" height="5.508" fill="#8D5A3C"/>
+  <circle cx="18" cy="15.12" r="6.12" fill="#8D5A3C"/>
+  <path d="M11.7576,14.508 Q11.879999999999999,6.857999999999999 18,7.776 Q24.12,6.857999999999999 24.2424,14.508 Q18,10.53 11.7576,14.508Z" fill="#4A3222"/>
+  </svg></div><span><b>Sameer Gill</b><div class="xs mut">EMP019</div></span></span></td>
+    <td>Quality Analyst<div class="xs mut">Quality</div></td><td><span class="mut">Vikram Rao</span></td><td class="mut">Contract</td>
+    <td><span class="pill p-bad">Notice period</span></td><td class="mut">1 yr</td>
+    <td><span class="row" style="gap:6px"><span class="comp"><i style="width:88%;background:#0D9488"></i></span><span class="xs mut">88%</span></span></td><td class="mut"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></td></tr><tr class=""><td><span class="cb "></span></td>
+    <td><span class="row" style="gap:10px"><div class="ph" style="width:36px;height:36px;"><svg width="36" height="36" viewBox="0 0 36 36"><defs><linearGradient id="g5" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#A7F3D0"/><stop offset="1" stop-color="#ECFDF5"/></linearGradient></defs>
+  <rect width="36" height="36" fill="url(#g5)"/>
+  <circle cx="29.52" cy="6.4799999999999995" r="7.92" fill="#fff" opacity=".35"/>
+  
+  <path d="M3.9240000000000013,36 Q4.535999999999998,24.606 18,23.994 Q31.464000000000002,24.606 32.076,36Z" fill="#0D9488"/>
+  <rect x="15.6744" y="19.404" width="4.6512" height="5.508" fill="#8D5A3C"/>
+  <circle cx="18" cy="15.12" r="6.12" fill="#8D5A3C"/>
+  <path d="M11.7576,14.508 Q11.879999999999999,6.857999999999999 18,7.776 Q24.12,6.857999999999999 24.2424,14.508 Q18,10.53 11.7576,14.508Z" fill="#151515"/>
+  </svg></div><span><b>Arjun Nair</b><div class="xs mut">EMP022</div></span></span></td>
+    <td>Product Designer<div class="xs mut">Design</div></td><td><span class="pill p-warn">No manager</span></td><td class="mut">Full-time</td>
+    <td><span class="pill p-ok">Active</span></td><td class="mut">3 wks</td>
+    <td><span class="row" style="gap:6px"><span class="comp"><i style="width:40%;background:#D97706"></i></span><span class="xs mut">40%</span></span></td><td class="mut"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></td></tr><tr class=""><td><span class="cb "></span></td>
+    <td><span class="row" style="gap:10px"><div class="ph" style="width:36px;height:36px;"><svg width="36" height="36" viewBox="0 0 36 36"><defs><linearGradient id="g6" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FDE68A"/><stop offset="1" stop-color="#FFFBEB"/></linearGradient></defs>
+  <rect width="36" height="36" fill="url(#g6)"/>
+  <circle cx="29.52" cy="6.4799999999999995" r="7.92" fill="#fff" opacity=".35"/>
+  <path d="M10.962,15.12 Q10.35,5.9399999999999995 18,7.469999999999999 Q25.65,5.9399999999999995 25.038,15.12 L25.344,24.912 L10.656,24.912Z" fill="#3B2A20"/>
+  <path d="M3.9240000000000013,36 Q4.535999999999998,24.606 18,23.994 Q31.464000000000002,24.606 32.076,36Z" fill="#374151"/>
+  <rect x="15.6744" y="19.404" width="4.6512" height="5.508" fill="#F2C9A5"/>
+  <circle cx="18" cy="15.12" r="6.12" fill="#F2C9A5"/>
+  
+  </svg></div><span><b>Hema Iyer</b><div class="xs mut">EMP003</div></span></span></td>
+    <td>HR Manager<div class="xs mut">Human Resources</div></td><td><span class="mut">Vikram Rao</span></td><td class="mut">Full-time</td>
+    <td><span class="pill p-ok">Active</span></td><td class="mut">2.1 yrs</td>
+    <td><span class="row" style="gap:6px"><span class="comp"><i style="width:100%;background:#059669"></i></span><span class="xs mut">100%</span></span></td><td class="mut"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></td></tr><tr class=""><td><span class="cb "></span></td>
+    <td><span class="row" style="gap:10px"><div class="ph" style="width:36px;height:36px;background:linear-gradient(135deg,#DB2777,#DB2777bb);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:10px">AB</div><span><b>Ananya Bose</b><div class="xs mut">EMP024</div></span></span></td>
+    <td>Marketing Associate<div class="xs mut">Marketing</div></td><td><span class="mut">Vikram Rao</span></td><td class="mut">Intern</td>
+    <td><span class="pill p-pri">Joining 12 Oct</span></td><td class="mut">—</td>
+    <td><span class="row" style="gap:6px"><span class="comp"><i style="width:20%;background:#D97706"></i></span><span class="xs mut">20%</span></span></td><td class="mut"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></td></tr>
+  </tbody></table>
+  <div class="row xs mut" style="padding:12px 16px;justify-content:space-between"><span>1–8 of 24</span><span>Rows 25 ▾ · ‹ ›</span></div>
+</div>
+</main></div>
+<div class="bulk"><b>2 selected</b><span class="btn sm">Change manager</span><span class="btn sm">Move team</span><span class="btn sm"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>Remind to finish profile</span><span class="btn sm"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Export</span><span class="btn sm" style="border:0;background:none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></span></div></div></x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

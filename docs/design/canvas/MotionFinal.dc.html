@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Final animation set</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0B0A08}
+.mb{font-family:Manrope,system-ui,sans-serif;color:#EDEDEF;padding:40px;background:radial-gradient(900px 400px at 80% 0%,#2E2210,transparent 60%),#0B0A08}
+.mb h1{margin:0 0 6px;font-size:30px;font-weight:800;letter-spacing:-.02em}
+.mb .lead{margin:0 0 24px;color:#A9A59C;max-width:920px}
+.g{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.demo{background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.015));border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.demo h2{margin:0;font-size:14.5px;font-weight:800}.where{font-size:11px;font-weight:700;color:#E8BD6E}
+.demo p{margin:0;color:#A9A59C;font-size:12.5px;line-height:1.5}
+.stage{height:140px;display:flex;align-items:center;justify-content:center;border-radius:12px;background:rgba(0,0,0,.3);position:relative;overflow:hidden}
+.pm{width:200px;height:10px;border-radius:99px;background:rgba(255,255,255,.08);position:relative}
+.pm i{position:absolute;inset:0 auto 0 0;border-radius:99px;background:linear-gradient(90deg,#8A5A12,#D69E3A);animation:pmf 3.4s ease infinite}
+.pm b{position:absolute;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:#15130F;border:2px solid rgba(255,255,255,.2);animation:pmb 3.4s ease infinite}
+@keyframes pmf{0%{width:0}70%,100%{width:86%}}@keyframes pmb{0%,40%{border-color:rgba(255,255,255,.2);background:#15130F}50%,100%{border-color:#D69E3A;background:#D69E3A}}
+.sw{width:220px;display:flex;flex-direction:column;gap:6px}.sw div{height:30px;border-radius:9px;background:rgba(255,255,255,.07);display:flex;align-items:center;padding:0 10px;font-size:12px}
+.sw .gone{animation:swp 3.2s cubic-bezier(.6,0,.2,1) infinite;background:rgba(95,211,155,.18);color:#5FD39B;overflow:hidden}
+@keyframes swp{0%,30%{transform:none;opacity:1;height:30px}55%{transform:translateX(120%);opacity:0;height:30px}75%,100%{transform:translateX(120%);opacity:0;height:0;margin-top:-6px}}
+.ck path{stroke-dasharray:60;stroke-dashoffset:60;animation:draw 2.6s ease infinite}.ck circle{stroke-dasharray:240;stroke-dashoffset:240;animation:drawc 2.6s ease infinite}
+@keyframes draw{30%{stroke-dashoffset:60}55%,100%{stroke-dashoffset:0}}@keyframes drawc{0%{stroke-dashoffset:240}35%,100%{stroke-dashoffset:0}}
+.win{position:absolute;inset:12px;border-radius:8px;border:1px solid rgba(255,255,255,.1)}
+.win::before{content:"";position:absolute;left:0;right:0;top:0;height:18px;border-bottom:1px solid rgba(255,255,255,.08)}
+.toast{position:absolute;top:26px;right:20px;width:150px;border-radius:8px;background:#1C1A16;border:1px solid rgba(255,255,255,.12);padding:7px 9px;font-size:10.5px;animation:tin 4s cubic-bezier(.2,.8,.2,1) infinite;overflow:hidden}
+.toast::after{content:"";position:absolute;left:0;bottom:0;height:2px;background:#5FD39B;animation:tbar 4s linear infinite}
+@keyframes tin{0%{transform:translateX(130%)}10%,80%{transform:none}90%,100%{transform:translateX(130%)}}@keyframes tbar{0%,10%{width:100%}80%,100%{width:0}}
+.hb{position:relative;color:#FF8A7A;animation:hbeat 2.4s ease infinite}@keyframes hbeat{0%,40%,100%{transform:scale(1)}45%{transform:scale(1.35)}55%{transform:scale(.95)}}
+.hb i{position:absolute;left:50%;top:50%;width:6px;height:6px;border-radius:50%;background:#FF8A7A;opacity:0;animation:hp 2.4s ease-out infinite}
+@keyframes hp{0%,44%{opacity:0;transform:translate(-50%,-50%)}50%{opacity:1}80%,100%{opacity:0;transform:translate(calc(-50% + var(--x)),calc(-50% + var(--y)))}}
+.bell{position:relative;width:46px;height:46px;border-radius:12px;background:rgba(255,255,255,.07);display:flex;align-items:center;justify-content:center;animation:ring 3s ease infinite;transform-origin:50% 10%}
+.bell b{position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;border-radius:99px;background:#D69E3A;color:#18181B;font-size:11px;display:flex;align-items:center;justify-content:center;animation:bpop 3s cubic-bezier(.3,1.8,.5,1) infinite}
+@keyframes ring{0%,60%,100%{transform:none}64%{transform:rotate(14deg)}68%{transform:rotate(-12deg)}72%{transform:rotate(8deg)}76%{transform:rotate(-4deg)}}@keyframes bpop{0%,58%{transform:scale(1)}62%{transform:scale(1.5)}70%,100%{transform:scale(1)}}
+.cal{display:grid;grid-template-columns:repeat(7,22px);gap:4px}.cal i{height:22px;border-radius:6px;background:rgba(255,255,255,.06)}.cal i.s{animation:sel 3.2s ease infinite}
+@keyframes sel{0%,10%{background:rgba(255,255,255,.06)}30%,85%{background:#D69E3A}100%{background:rgba(255,255,255,.06)}}
+.tr span{display:inline-block;opacity:0;animation:wr 3.6s ease infinite;font-size:20px;font-weight:800}@keyframes wr{0%{opacity:0;transform:translateY(10px)}15%,80%{opacity:1;transform:none}95%,100%{opacity:0}}
+.sp{width:190px;height:96px;border-radius:14px;background:#15130F;border:1px solid rgba(255,255,255,.08);position:relative;overflow:hidden}
+.sp::after{content:"";position:absolute;inset:0;background:radial-gradient(110px 80px at var(--x) 40%,rgba(214,158,58,.3),transparent 70%);animation:spx 3s ease-in-out infinite alternate}
+@property --x{syntax:'<percentage>';inherits:false;initial-value:0%}@keyframes spx{to{--x:100%}}
+.tg{width:76px;height:38px;border-radius:99px;background:#F3EEE4;position:relative;animation:tbg 4s ease-in-out infinite;overflow:hidden}
+.tg span{position:absolute;top:4px;left:4px;width:30px;height:30px;border-radius:50%;background:#F2B65A;box-shadow:0 0 12px #F2B65A;animation:tk 4s ease-in-out infinite}
+.tg span::after{content:"";position:absolute;width:22px;height:22px;border-radius:50%;top:-5px;right:-20px;animation:tm 4s ease-in-out infinite;background:#F3EEE4}
+@keyframes tk{0%,40%{transform:none;background:#F2B65A}50%,90%{transform:translateX(38px);background:#E9E3D6;box-shadow:0 0 8px #E9E3D655}100%{transform:none}}
+@keyframes tm{0%,40%{right:-20px;background:#F3EEE4}50%,90%{right:-6px;background:#1E1B16}100%{right:-20px}}
+@keyframes tbg{0%,40%{background:#F3EEE4}50%,90%{background:#1E1B16}}
+.hl{display:flex;gap:10px}.hl i{width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.07);animation:lift 2.4s ease infinite}.hl i:nth-child(2){animation-delay:.3s}.hl i:nth-child(3){animation-delay:.6s}
+@keyframes lift{0%,40%,100%{transform:none;box-shadow:none}20%{transform:translateY(-6px);box-shadow:0 12px 20px -10px #D69E3A;background:rgba(214,158,58,.25)}}
+.sec{margin:26px 0 12px;font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#E8BD6E}
+.perf{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.pc{background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.015));border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:18px}
+.pc .big{font-size:30px;font-weight:800;letter-spacing:-.02em;color:#5FD39B}
+.pc h3{margin:6px 0 6px;font-size:14px}.pc p{margin:0;font-size:12.5px;color:#A9A59C;line-height:1.55}
+.list{margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.list ul{margin:0;padding-left:18px;color:#C9C5BC;font-size:13px;line-height:1.75}.list b{color:#F0C985}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</helmet>
+<div class="mb"><h1>Final animation set</h1><p class="lead">The eleven you picked, live, plus the first-round ones already built into the screens (count-up numbers, ring and bar fills, check-in pulse, celebration confetti, 3D medal and badge, staggered entrance, shimmer loading). The 3D globe and the gold orb are gone.</p>
+<div class="g">
+<div class="demo"><div class="stage"><div class="pm"><i></i><b style="left:30%"></b><b style="left:60%"></b><b style="left:86%"></b></div></div><h2>Milestone progress</h2><span class="where">Profile completion, onboarding</span><p>The bar fills and each milestone lights up as it’s passed.</p></div>
+<div class="demo"><div class="stage"><div class="sw"><div>Leave · Priya · 2 days</div><div class="gone">✓ Approved · Kiran · WFH</div><div>Expense · Neha · ₹2,400</div></div></div><h2>Approve → swipe away</h2><span class="where">Approvals, Needs your action</span><p>The row slides out and the list closes up.</p></div>
+<div class="demo"><div class="stage"><svg class="ck" width="84" height="84" viewBox="0 0 90 90"><circle cx="45" cy="45" r="38" fill="none" stroke="#5FD39B" stroke-width="4"/><path d="M28 46 l12 12 l22 -24" fill="none" stroke="#5FD39B" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h2>Success tick draws</h2><span class="where">After every submit</span><p>Ring then tick, in dialogs and inside the toast.</p></div>
+<div class="demo"><div class="stage"><div class="win"></div><div class="toast"><b style="color:#5FD39B">Leave applied</b><div style="color:#A9A59C">Sent to Rohan</div></div></div><h2>Toast with timer · top right</h2><span class="where">All save / error messages</span><p>Slides in at the top-right under the top bar; the bar shows time left; hover keeps it.</p></div>
+<div class="demo"><div class="stage"><div class="hb"><svg width="44" height="44" viewBox="0 0 24 24" fill="currentColor"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg><i style="--x:34px;--y:0px"></i><i style="--x:24px;--y:24px"></i><i style="--x:0px;--y:34px"></i><i style="--x:-24px;--y:24px"></i><i style="--x:-34px;--y:0px"></i><i style="--x:-24px;--y:-24px"></i><i style="--x:0px;--y:-34px"></i><i style="--x:24px;--y:-24px"></i></div></div><h2>Kudos heart burst</h2><span class="where">Kudos, Celebrations</span><p>Liking or sending kudos.</p></div>
+<div class="demo"><div class="stage"><div class="bell"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><b>3</b></div></div><h2>Notification bell</h2><span class="where">Top bar</span><p>One ring and a count pop when something new arrives.</p></div>
+<div class="demo"><div class="stage"><div class="cal"><i class="" style="animation-delay:0s"></i><i class="" style="animation-delay:0s"></i><i class="" style="animation-delay:0s"></i><i class="" style="animation-delay:0s"></i><i class="" style="animation-delay:0s"></i><i class="" style="animation-delay:0s"></i><i class="" style="animation-delay:0s"></i><i class="" style="animation-delay:0s"></i><i class="" style="animation-delay:0s"></i><i class="s" style="animation-delay:0s"></i><i class="s" style="animation-delay:0.12s"></i><i class="s" style="animation-delay:0.24s"></i><i class="s" style="animation-delay:0.36s"></i><i class="" style="animation-delay:0.48s"></i><i class="" style="animation-delay:0.6s"></i><i class="" style="animation-delay:0.72s"></i><i class="" style="animation-delay:0.84s"></i><i class="" style="animation-delay:0.96s"></i><i class="" style="animation-delay:1.08s"></i><i class="" style="animation-delay:1.2s"></i><i class="" style="animation-delay:1.3199999999999998s"></i></div></div><h2>Date range sweep</h2><span class="where">Apply leave, WFH</span><p>Chosen days fill one after another.</p></div>
+<div class="demo"><div class="stage"><div class="tr"><span>Good</span> <span style="animation-delay:.12s">morning,</span> <span style="animation-delay:.24s;color:#E8BD6E">Amit</span></div></div><h2>Greeting reveal</h2><span class="where">Hero, first visit of the day</span><p>Once a day only — not on every page.</p></div>
+<div class="demo"><div class="stage"><div class="sp"></div></div><h2>Pointer spotlight</h2><span class="where">Hero (desktop)</span><p>A soft light follows the pointer across the hero.</p></div>
+<div class="demo"><div class="stage"><div class="tg"><span></span></div></div><h2>Light ↔ dark toggle</h2><span class="where">Top bar — only Light and Dark</span><p>One click switches; the sun turns into a moon while the page cross-fades. No “System” option.</p></div>
+<div class="demo"><div class="stage"><div class="hl"><i></i><i></i><i></i></div></div><h2>Hover lift</h2><span class="where">Tiles, quick actions, cards</span><p>Rises slightly with a theme-coloured glow.</p></div>
+<div class="demo"><div class="stage"><div style="display:flex;gap:4px;background:rgba(255,255,255,.06);padding:3px;border-radius:8px;font-size:11px;font-weight:700"><span style="padding:5px 9px;border-radius:6px;background:#2A2114;color:#F0C985">Bars</span><span style="padding:5px 9px;color:#A9A59C">Line</span><span style="padding:5px 9px;color:#A9A59C">Area</span><span style="padding:5px 9px;color:#A9A59C">Calendar</span></div></div><h2>Chart styles switch</h2><span class="where">Every chart card</span><p>Switching style redraws the same data with a short draw-in.</p></div>
+</div>
+
+<div class="sec">Effect on speed — your question</div>
+<div class="perf">
+<div class="pc"><div class="big">0 ms</div><h3>API response time</h3><p>Animations run only in the browser. The server does the same work and sends the same data. The only new data is today’s celebrations and the kudos list — both come from endpoints we already have.</p></div>
+<div class="pc"><div class="big">≈ 10 KB</div><h3>Extra download</h3><p>All effects are CSS (≈ 5 KB compressed). New chart styles are small SVG widgets (≈ 5 KB). No animation library and no 3D engine needed.</p></div>
+<div class="pc"><div class="big">± 0 s</div><h3>Page load time</h3><p>Content shows as soon as data arrives; animations play on top and never block clicks. First-load numbers finish within 0.6 s.</p></div>
+<div class="pc"><div class="big">&lt; 2%</div><h3>CPU while open</h3><p>Only transform and opacity are animated (graphics card, no re-layout). Loops (carousel, kudos, check-in pulse) pause when off-screen or the tab is hidden.</p></div>
+</div>
+<div class="list"><div class="pc"><h3>The real cost to watch: profile photos</h3><ul><li>Celebrations, kudos and presence show many photos at once</li><li>We’ll serve <b>small thumbnails</b> (64 px, ≈ 4 KB) instead of full uploads</li><li>Photos load lazily and are cached; initials show until they arrive</li></ul></div>
+<div class="pc"><h3>How we’ll keep it honest</h3><ul><li>Measure home load before and after (Lighthouse + our perf scripts)</li><li>Budget: no more than <b>+50 ms</b> to first content, <b>+15 KB</b> download</li><li>“Reduce motion” in Preferences turns every animation off</li><li>Phones get lighter motion (no pointer effects)</li></ul></div></div>
+</div></x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1500}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
