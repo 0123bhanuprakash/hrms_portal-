@@ -9,6 +9,8 @@ import { Field, Input, inputClass } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
 import { PersonAvatar } from '@/components/profile/person-avatar';
 import { tintFor } from '@/components/people/photo-card';
+import { ProductArt } from '@/components/assets/product-art';
+import { useKitPreview } from '@/lib/company/assets';
 import { useCreateEmployee, useDepartments, useDesignations, useLocations, useOrgChart } from '@/lib/company/org';
 import { useNextEmployeeId } from '@/lib/company/lifecycle';
 import { getApiErrorMessage } from '@/lib/errors';
@@ -67,6 +69,7 @@ export function AddEmployeeWizard({ open, onClose }: { open: boolean; onClose: (
   const nextId = useNextEmployeeId(open);
   const [step, setStep] = useState(0);
   const [d, setD] = useState<Draft>(blank());
+  const kit = useKitPreview({ designationId: d.designationId || undefined, departmentId: d.departmentId || undefined, roleKeys: 'employee' }, step === 3);
   const [error, setError] = useState<string | null>(null);
   const [restored, setRestored] = useState(false);
 
@@ -277,6 +280,19 @@ export function AddEmployeeWizard({ open, onClose }: { open: boolean; onClose: (
                     <dd className="min-w-0 flex-1 truncate font-medium">{v}</dd>
                   </div>
                 ))}
+                {(kit.data?.items.length ?? 0) > 0 && (
+                  <div className="flex gap-3 px-3 py-2">
+                    <dt className="w-28 shrink-0 text-muted-foreground">Starter kit</dt>
+                    <dd className="min-w-0 flex-1">
+                      <div className="flex flex-wrap gap-1.5">
+                        {kit.data!.items.map((i) => (
+                          <span key={i.typeId} className="flex items-center gap-1 rounded-md bg-subtle py-0.5 pl-0.5 pr-2 text-xs font-medium"><ProductArt icon={i.icon} size="xs" className="!h-6 !w-8" />{i.qty > 1 && `${i.qty} × `}{i.name}</span>
+                        ))}
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">IT gets these to hand over — no approvals needed.</p>
+                    </dd>
+                  </div>
+                )}
                 <div className="flex items-start gap-2 px-3 py-2 text-xs text-info">
                   <Mail className="mt-0.5 h-3.5 w-3.5 shrink-0" /> They’ll get a welcome email with a temporary password and choose their own when they first sign in.
                 </div>

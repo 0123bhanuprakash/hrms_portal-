@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Submit for approval</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F6F7FB}
+.app{display:flex;min-height:100vh;font-family:Manrope,system-ui,sans-serif;color:#111827;background:#F6F7FB;position:relative}
+.sb{flex:0 0 240px;background:#FFFFFF;border-right:1px solid #E5E7EF;display:flex;flex-direction:column}
+.sb-h{display:flex;gap:10px;align-items:center;padding:14px}
+.logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#E9416A,#7A2BD9);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px}
+.sb-h b{display:block;font-size:14px}.sb-h span{font-size:11px;color:#6B7280}
+.sb-g{padding:12px 14px 3px;font-size:10.5px;font-weight:700;letter-spacing:.07em;color:#9CA3AF}
+.sb-i{display:flex;align-items:center;gap:10px;height:34px;margin:0 10px;padding:0 10px;border-radius:7px;font-size:13.5px;color:#374151}
+.sb-i svg{color:#9CA3AF}.sb-i.on{background:#EEF0FF;color:#3730A3;font-weight:700}.sb-i.on svg{color:#4F46E5}
+.col{flex:1;min-width:0;display:flex;flex-direction:column}
+.hdr{height:56px;border-bottom:1px solid #E5E7EF;display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:rgba(255,255,255,.7)}
+.crumb{font-size:13.5px;color:#6B7280}.crumb b{color:#111827}
+.main{padding:24px 30px 40px;display:flex;flex-direction:column;gap:16px}
+.eyebrow{font-size:12.5px;color:#4F46E5;font-weight:700}
+h1{margin:2px 0 0;font-size:26px;font-weight:800;letter-spacing:-.02em}
+.sub{color:#6B7280;font-size:14px;margin-top:3px}
+.row{display:flex;align-items:center;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 14px;border-radius:9px;border:1px solid #E5E7EF;background:#fff;color:#111827;font-size:13px;font-weight:700;white-space:nowrap}
+.btn.pri{background:#4F46E5;border-color:#4F46E5;color:#fff}.btn.sm{height:30px;padding:0 10px;font-size:12px}
+.card{background:#fff;border:1px solid #E5E7EF;border-radius:14px;box-shadow:0 1px 2px rgba(17,24,39,.04)}
+.sec{padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.sec h3{margin:0;font-size:14.5px;display:flex;align-items:center;gap:8px}.sec h3 svg{color:#6B7280}
+.sec h3 .r{margin-left:auto;font-size:12px;font-weight:500;color:#6B7280}
+.mut{color:#6B7280}.xs{font-size:12px}
+.tabs{display:flex;gap:4px;background:#fff;border:1px solid #E5E7EF;border-radius:11px;padding:4px;width:max-content}
+.tabs span{display:flex;align-items:center;gap:7px;padding:7px 14px;border-radius:8px;font-size:13px;color:#6B7280;font-weight:600}
+.tabs span.on{background:#4F46E5;color:#fff}
+.fbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:9px;border:1px solid #E5E7EF;background:#fff;font-size:12.5px;font-weight:600;color:#374151}
+.chip.on{border-color:#C7C9F7;background:#EEF0FF;color:#3730A3}
+.seg{display:flex;border:1px solid #E5E7EF;border-radius:9px;overflow:hidden;background:#fff}.seg span{padding:7px 11px;font-size:12px;font-weight:600;color:#6B7280}.seg span.on{background:#111827;color:#fff}
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.kpi{padding:14px 16px;display:flex;flex-direction:column;gap:3px;position:relative;overflow:hidden}
+.kpi span.l{font-size:12px;color:#6B7280}.kpi b.v{font-size:25px;font-weight:800;letter-spacing:-.02em}
+.delta{font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;gap:2px}
+.d-up{color:#059669}.d-dn{color:#DC2626}.d-flat{color:#6B7280}
+.kpi svg.sp{position:absolute;right:12px;bottom:12px}
+.hl{display:flex;gap:12px;padding:12px 14px;border-radius:12px;border:1px solid #E5E7EF;background:#fff;align-items:flex-start}
+.hl .ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.g21{display:grid;grid-template-columns:1.5fr 1fr;gap:16px}.g12{display:grid;grid-template-columns:1fr 1.4fr;gap:16px}
+.lib{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid #EEF0F5;border-radius:12px;background:#F8F9FC}
+.lib .ic{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none}
+.bar{height:8px;border-radius:99px;background:#EEF0F5;overflow:hidden}.bar i{display:block;height:100%;border-radius:99px;transform-origin:left;animation:fw 1s cubic-bezier(.2,.8,.2,1) both}
+@keyframes fw{from{transform:scaleX(0)}}
+.chart polyline,.chart path.ln{stroke-dasharray:3000;animation:draw 1.6s ease both}@keyframes draw{from{stroke-dashoffset:3000}}
+.heat{display:grid;gap:3px}.heat i{display:block;border-radius:4px;aspect-ratio:1}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#6B7280;padding:8px 10px;border-bottom:1px solid #E5E7EF}
+td{padding:9px 10px;border-bottom:1px solid #EEF0F5}
+.av{width:28px;height:28px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;color:#fff;flex:none}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.p-ok{background:#E6F6F0;color:#059669}.p-warn{background:#FEF3E2;color:#D97706}.p-bad{background:#FDECEC;color:#DC2626}.p-pri{background:#EEF0FF;color:#3730A3}.p-neu{background:#EEF0F5;color:#6B7280}
+.dim{position:absolute;inset:0;background:rgba(17,24,39,.35);z-index:4}
+.drawer{position:absolute;top:0;right:0;bottom:0;width:440px;background:#fff;border-left:1px solid #E5E7EF;z-index:5;display:flex;flex-direction:column;box-shadow:-24px 0 50px -20px rgba(0,0,0,.35)}
+.modal{position:absolute;left:50%;top:150px;transform:translateX(-50%);width:480px;background:#fff;border:1px solid #E5E7EF;border-radius:16px;z-index:5;box-shadow:0 30px 60px -20px rgba(0,0,0,.4)}
+.fld{display:flex;flex-direction:column;gap:5px;font-size:12.5px}.fld label{font-weight:700}
+.inp{height:36px;border:1px solid #E5E7EF;border-radius:9px;padding:0 11px;display:flex;align-items:center;font-size:13px;gap:8px;background:#fff}
+
+.ph{position:relative;overflow:hidden;border-radius:14px;flex:none}
+.ph svg{display:block}
+.st{position:absolute;display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:800;padding:3px 8px;border-radius:99px;background:rgba(255,255,255,.92);box-shadow:0 2px 6px rgba(0,0,0,.12)}
+.st i{width:7px;height:7px;border-radius:50%;display:inline-block}
+.pc{display:flex;flex-direction:column;overflow:hidden;transition:transform .25s,box-shadow .25s}
+.pc:hover{transform:translateY(-4px);box-shadow:0 18px 36px -18px rgba(17,24,39,.35)}
+.pc .body{padding:12px 14px 14px;display:flex;flex-direction:column;gap:4px}
+.pc b.n{font-size:15px}.pc .role{font-size:12.5px;color:#6B7280}
+.tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:#F8F9FC;border:1px solid #EEF0F5;color:#374151}
+.acts{display:flex;gap:6px;padding:0 14px 14px}
+.acts span{flex:1;height:30px;border-radius:8px;border:1px solid #E5E7EF;display:flex;align-items:center;justify-content:center;gap:5px;font-size:12px;font-weight:700;color:#374151}
+.rail{display:flex;flex-direction:column;gap:2px;position:sticky;top:0;font-size:10.5px;font-weight:800;color:#9CA3AF;text-align:center}
+.rail span{padding:1px 0}.rail span.on{color:#4F46E5}
+.hlstrip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.hlc{padding:14px 16px;display:flex;align-items:center;gap:12px}
+.stack{display:flex}.stack .ph{border:2.5px solid #fff;margin-left:-10px;border-radius:50%}.stack .ph:first-child{margin-left:0}
+.search{display:flex;align-items:center;gap:8px;height:42px;padding:0 14px;border:1px solid #E5E7EF;border-radius:12px;background:#fff;flex:1;color:#6B7280;font-size:14px;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+.wall{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px}
+.grp{display:flex;flex-direction:column;gap:10px}
+.grp h3{margin:0;font-size:15px;display:flex;align-items:center;gap:10px}
+.mini{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid #EEF0F5;border-radius:12px;background:#fff}
+
+.kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.kpi .card{padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.seg2{display:inline-flex;border:1px solid #E5E7EF;border-radius:10px;background:#fff;padding:2px}.seg2 span{padding:5px 12px;border-radius:8px;font-size:12.5px;font-weight:700;color:#6B7280;display:inline-flex;gap:6px;align-items:center}.seg2 span.on{background:#EEF0FF;color:#3730A3}
+.cal{display:grid;grid-template-columns:56px repeat(5,1fr) .55fr .55fr;border:1px solid #E5E7EF;border-radius:14px;overflow:hidden;background:#fff}
+.cal .dh{padding:8px 10px;border-bottom:1px solid #E5E7EF;border-left:1px solid #EEF0F5;background:#F8F9FC;display:flex;flex-direction:column;gap:4px}
+.cal .col{position:relative;border-left:1px solid #EEF0F5}
+.cal .hr{position:absolute;left:0;right:0;border-top:1px dashed #EEF0F5}
+.cal .tl{position:relative}.cal .tl span{position:absolute;right:8px;font-size:10.5px;color:#6B7280;transform:translateY(-6px)}
+.blk{position:absolute;left:8px;right:5px;border-radius:9px;padding:5px 8px;font-size:11.5px;line-height:1.3;overflow:hidden;box-sizing:border-box;border-left:4px solid}
+.blk b{display:block;font-size:11.5px}.blk .d{color:#374151;display:block}.blk .t{font-size:10.5px;opacity:.8;font-weight:700}
+.att{position:absolute;left:0;width:4px;border-radius:0 4px 4px 0;background:#059669;opacity:.55}
+.ghost{position:absolute;left:8px;right:5px;border:2px dashed #4F46E5;border-radius:9px;background:#EEF0FFaa;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:800;color:#3730A3}
+.now{position:absolute;left:0;right:0;height:2px;background:#DC2626;z-index:3}.now:before{content:'';position:absolute;left:-4px;top:-3px;width:8px;height:8px;border-radius:50%;background:#DC2626}
+.tst{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:800;padding:1px 7px;border-radius:99px;width:max-content}
+.prj{display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid #E5E7EF;border-radius:12px;background:#fff}
+.prj .sw{width:10px;height:28px;border-radius:4px}
+.bar{height:6px;border-radius:99px;background:#EEF0F5;overflow:hidden;display:flex}.bar i{display:block;height:100%}
+.fld{display:flex;flex-direction:column;gap:5px}.fld label{font-size:12px;font-weight:700}.inp{border:1px solid #E5E7EF;border-radius:10px;padding:9px 11px;font-size:13px;background:#fff;display:flex;align-items:center;gap:8px}
+.tg{display:grid;grid-template-columns:200px repeat(7,1fr) 110px 120px;align-items:center;border-bottom:1px solid #EEF0F5}
+.tg>div{padding:9px 10px;font-size:12.5px}
+.cell{border-radius:8px;text-align:center;font-weight:800;font-size:12px;padding:7px 0}
+.sheet{position:fixed}
+.ov{position:relative;border-radius:18px;overflow:hidden}
+.kbd{display:inline-block;border:1px solid #E5E7EF;border-bottom-width:2px;border-radius:5px;padding:0 5px;font-size:10.5px;font-weight:700;background:#fff}
+.opt{border:1.5px solid #E5E7EF;border-radius:12px;padding:12px;display:flex;gap:10px;align-items:flex-start;background:#fff}.opt.on{border-color:#4F46E5;background:#EEF0FF66}
+.rad{width:16px;height:16px;border-radius:50%;border:2px solid #E5E7EF;flex:none;margin-top:2px}.opt.on .rad{border:5px solid #4F46E5}
+.tgl{width:34px;height:20px;border-radius:99px;background:#4F46E5;position:relative;flex:none}.tgl:after{content:'';position:absolute;right:3px;top:3px;width:14px;height:14px;border-radius:50%;background:#fff}.tgl.off{background:#D1D5DB}.tgl.off:after{right:auto;left:3px}
+</style>
+</helmet>
+<div class="app"><aside class="sb">
+<div class="sb-h"><span class="logo">AP</span><span><b>aakash-portal</b><span>HR workspace</span></span></div>
+<div class="sb-g">OVERVIEW</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Home</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M16 10h2M16 14h2"/><circle cx="9" cy="11" r="2"/><path d="M6 16.5a3.5 3.5 0 0 1 6 0"/></svg>My profile</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>Reports &amp; analytics</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v2M8 2v2"/><circle cx="12" cy="11" r="3"/><path d="M7 20a5 5 0 0 1 10 0"/></svg>People</div>
+<div class="sb-g">ORGANIZATION</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Employees</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3M12 12V8"/></svg>Organisation</div>
+<div class="sb-g">ENGAGEMENT</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>Announcements</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>Kudos</div>
+<div class="sb-g">WORK</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9l-.8-1.2A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/><path d="M8 10v4M12 10v2M16 10v6"/></svg>Projects</div><div class="sb-i on"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2h4M12 14l3-3"/><circle cx="12" cy="14" r="8"/></svg>Timesheets</div>
+<div class="sb-g">TIME</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg>Attendance</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>Leave</div>
+</aside><div class="col"><header class="hdr"><div class="crumb">Work &nbsp;›&nbsp; <b>Timesheets</b></div><div class="row mut xs"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span style="width:34px;height:20px;border-radius:99px;background:#E5E7EF;display:inline-block"></span></div></header><main class="main">
+<div class="row" style="align-items:flex-end"><div style="flex:1"><div class="eyebrow">Work</div><h1>My timesheet</h1><div class="sub">Press Submit whenever you like — Monday alone, then Tue–Fri together on Friday</div></div></div>
+<div style="display:grid;grid-template-columns:1fr 360px;gap:20px;align-items:start">
+  <div style="position:relative;border-radius:16px;overflow:hidden;background:rgba(17,24,39,.42);padding:30px;display:flex;justify-content:center"><div class="card" style="width:640px;padding:0;overflow:hidden;box-shadow:0 40px 80px -20px rgba(17,24,39,.45)">
+    <div style="padding:18px 20px;border-bottom:1px solid #EEF0F5"><b style="font-size:17px">Submit for approval</b><div class="xs mut">Sends every day you’ve logged but not sent yet, up to today</div></div>
+    <div style="padding:16px 20px;display:flex;flex-direction:column;gap:14px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="opt"><span class="rad"></span><div><b style="font-size:13px">Just today</b><div class="xs mut">Thu 8 Oct · 4h 30m</div></div></div>
+        <div class="opt on"><span class="rad"></span><div><b style="font-size:13px">Everything not sent yet</b><div class="xs mut">Wed 7 – Thu 8 · 7h 30m</div></div></div>
+      </div>
+      <div style="border:1px solid #E5E7EF;border-radius:12px;overflow:hidden">
+        <div class="row" style="gap:12px;padding:9px 12px;border-bottom:1px solid #EEF0F5;font-size:12.5px;opacity:.55"><b style="width:52px">Mon 5</b><span style="width:70px"><b>8h 15m</b></span><span class="mut" style="flex:1">in office 8h 54m</span><span class="tst" style="background:#E5F4FB;color:#0284C7">already sent</span></div><div class="row" style="gap:12px;padding:9px 12px;border-bottom:1px solid #EEF0F5;font-size:12.5px;opacity:.55"><b style="width:52px">Tue 6</b><span style="width:70px"><b>7h 30m</b></span><span class="mut" style="flex:1">in office 8h 24m</span><span class="tst" style="background:#E5F4FB;color:#0284C7">already sent</span></div><div class="row" style="gap:12px;padding:9px 12px;border-bottom:1px solid #EEF0F5;font-size:12.5px;"><b style="width:52px">Wed 7</b><span style="width:70px"><b>3h</b></span><span class="mut" style="flex:1">in office 8h 30m</span><span class="tst" style="background:#FEF3E2;color:#D97706">⚠ 5h 30m in office not logged</span></div><div class="row" style="gap:12px;padding:9px 12px;border-bottom:1px solid #EEF0F5;font-size:12.5px;"><b style="width:52px">Thu 8</b><span style="width:70px"><b>4h 30m</b></span><span class="mut" style="flex:1">in office still in</span><span class="tst" style="background:#E6F6F0;color:#059669">✓ looks right</span></div><div class="row" style="gap:12px;padding:9px 12px;border-bottom:1px solid #EEF0F5;font-size:12.5px;"><b style="width:52px">Fri 9</b><span style="width:70px"><b>—</b></span><span class="mut" style="flex:1">Casual leave</span><span class="tst" style="background:#F1EBFE;color:#7C3AED">on leave — skipped</span></div>
+      </div>
+      <div class="row xs" style="gap:8px;padding:10px 12px;border-radius:10px;background:#FEF3E2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg><span style="flex:1"><b>Wednesday looks short.</b> You can still submit — add a note so your manager knows why.</span><span class="btn sm">Fill the gap</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="row" style="gap:8px;padding:8px 10px;border:1px solid #E5E7EF;border-radius:10px"><span style="width:8px;height:22px;border-radius:3px;background:#4F46E5"></span><span class="xs" style="flex:1"><b>Atlas</b><div class="mut">Client · billable</div></span><b>6h</b></div><div class="row" style="gap:8px;padding:8px 10px;border:1px solid #E5E7EF;border-radius:10px"><span style="width:8px;height:22px;border-radius:3px;background:#0D9488"></span><span class="xs" style="flex:1"><b>Nova mobile app</b><div class="mut">Internal · investment</div></span><b>1h 30m</b></div></div>
+      <div class="fld"><label>Note for your manager <span class="mut" style="font-weight:500">(optional)</span></label><div class="inp" style="color:#6B7280">Wed afternoon: helped HR with interviews — logging under General</div></div>
+      <div style="border-radius:12px;background:#F8F9FC;padding:10px 12px;display:flex;flex-direction:column;gap:8px"><div class="xs mut" style="font-weight:700">Goes to the lead on each project</div>
+        <div class="row" style="gap:10px"><div class="ph" style="width:28px;height:28px;border-radius:50%"><svg width="28" height="28" viewBox="0 0 28 28"><defs><linearGradient id="g0" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FDE68A"/><stop offset="1" stop-color="#FFFBEB"/></linearGradient></defs>
+  <rect width="28" height="28" fill="url(#g0)"/>
+  <circle cx="22.959999999999997" cy="5.04" r="6.16" fill="#fff" opacity=".35"/>
+  
+  <path d="M3.0519999999999996,28 Q3.527999999999997,19.138 14,18.662 Q24.472,19.138 24.948,28Z" fill="#374151"/>
+  <rect x="12.1912" y="15.092" width="3.6176000000000004" height="4.284000000000001" fill="#F2C9A5"/>
+  <circle cx="14" cy="11.76" r="4.760000000000001" fill="#F2C9A5"/>
+  <path d="M9.1448,11.283999999999999 Q9.239999999999998,5.333999999999999 14,6.047999999999999 Q18.76,5.333999999999999 18.8552,11.283999999999999 Q14,8.19 9.1448,11.283999999999999Z" fill="#3B2A20"/>
+  </svg></div><div style="flex:1"><b style="font-size:12.5px">Sameer Khan</b> <span class="xs mut">· your Atlas lead</span></div><span class="xs" style="color:#4F46E5;font-weight:800">ATL · 6h</span></div><div class="row" style="gap:10px"><div class="ph" style="width:28px;height:28px;border-radius:50%"><svg width="28" height="28" viewBox="0 0 28 28"><defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#DDD6FE"/><stop offset="1" stop-color="#F5F3FF"/></linearGradient></defs>
+  <rect width="28" height="28" fill="url(#g1)"/>
+  <circle cx="22.959999999999997" cy="5.04" r="6.16" fill="#fff" opacity=".35"/>
+  
+  <path d="M3.0519999999999996,28 Q3.527999999999997,19.138 14,18.662 Q24.472,19.138 24.948,28Z" fill="#DB2777"/>
+  <rect x="12.1912" y="15.092" width="3.6176000000000004" height="4.284000000000001" fill="#8D5A3C"/>
+  <circle cx="14" cy="11.76" r="4.760000000000001" fill="#8D5A3C"/>
+  <path d="M9.1448,11.283999999999999 Q9.239999999999998,5.333999999999999 14,6.047999999999999 Q18.76,5.333999999999999 18.8552,11.283999999999999 Q14,8.19 9.1448,11.283999999999999Z" fill="#4A3222"/>
+  </svg></div><div style="flex:1"><b style="font-size:12.5px">Ravi Kumar</b> <span class="xs mut">· Nova PM — no lead set for you</span></div><span class="xs" style="color:#0D9488;font-weight:800">NOV · 1h 30m</span></div>
+        <div class="xs mut">General time goes to your line manager · each lead sees only their project’s blocks</div></div>
+    </div>
+    <div class="row" style="gap:8px;padding:14px 20px;border-top:1px solid #EEF0F5;background:#F8F9FC"><span class="xs mut" style="flex:1"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Approved days are locked</span><span class="btn">Cancel</span><span class="btn pri"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/></svg>Submit 2 days</span></div>
+  </div></div>
+  <div class="card" style="padding:16px;gap:12px"><b style="font-size:14px">What happens next</b>
+    <div class="row" style="gap:10px;align-items:flex-start"><span style="width:24px;height:24px;border-radius:50%;background:#0596691a;color:#059669;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px;flex:none">✓</span><div><b style="font-size:13px">Mon 5 approved</b><div class="xs mut">Sameer (Atlas) and Meena (Helios) · yesterday</div></div></div><div class="row" style="gap:10px;align-items:flex-start"><span style="width:24px;height:24px;border-radius:50%;background:#D977061a;color:#D97706;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px;flex:none">◐</span><div><b style="font-size:13px">Tue 6 partly approved</b><div class="xs mut">Atlas ✓ Sameer · Helios waiting on Meena</div></div></div><div class="row" style="gap:10px;align-items:flex-start"><span style="width:24px;height:24px;border-radius:50%;background:#0284C71a;color:#0284C7;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px;flex:none">●</span><div><b style="font-size:13px">Wed 7 – Thu 8 waiting</b><div class="xs mut">Sent today 6:40 pm</div></div></div><div class="row" style="gap:10px;align-items:flex-start"><span style="width:24px;height:24px;border-radius:50%;background:#DC26261a;color:#DC2626;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px;flex:none">↩</span><div><b style="font-size:13px">Last week: Thu 1 sent back</b><div class="xs mut">“Please split the Helios time by task” — fixed &amp; resent</div></div></div><div class="row" style="gap:10px;align-items:flex-start"><span style="width:24px;height:24px;border-radius:50%;background:#6B72801a;color:#6B7280;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px;flex:none">○</span><div><b style="font-size:13px">Fri 9</b><div class="xs mut">On leave — nothing to submit</div></div></div>
+    <div style="border-top:1px solid #EEF0F5;padding-top:10px;display:flex;flex-direction:column;gap:6px"><b class="xs">Sent back? It comes with a note on the exact block</b>
+      <div class="blk" style="position:relative;left:0;right:0;height:auto;background:#DB277714;border-color:#DB2777"><b style="color:#DB2777">Helios</b><span class="d">Schema mapping for ledger · 2h 30m</span></div>
+      <div class="row xs" style="gap:8px;padding:8px 10px;border-radius:10px;background:#FDECEC"><div class="ph" style="width:22px;height:22px;border-radius:50%"><svg width="22" height="22" viewBox="0 0 22 22"><defs><linearGradient id="g2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#C7D2FE"/><stop offset="1" stop-color="#EEF2FF"/></linearGradient></defs>
+  <rect width="22" height="22" fill="url(#g2)"/>
+  <circle cx="18.04" cy="3.96" r="4.84" fill="#fff" opacity=".35"/>
+  
+  <path d="M2.3979999999999997,22 Q2.7719999999999985,15.037 11,14.663 Q19.228,15.037 19.602,22Z" fill="#4F46E5"/>
+  <rect x="9.5788" y="11.858" width="2.8424" height="3.366" fill="#F2C9A5"/>
+  <circle cx="11" cy="9.24" r="3.74" fill="#F2C9A5"/>
+  <path d="M7.1852,8.866 Q7.26,4.191 11,4.752 Q14.74,4.191 14.8148,8.866 Q11,6.4350000000000005 7.1852,8.866Z" fill="#2B1D14"/>
+  </svg></div><span><b>Meena (Helios lead):</b> Split this — part of it was the Atlas tax bug?</span></div></div>
+    <div class="row" style="gap:8px"><span class="btn sm"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/></svg>Recall Wed–Thu</span><span class="xs mut">until someone acts on it</span></div>
+  </div>
+</div>
+</main></div></div></x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

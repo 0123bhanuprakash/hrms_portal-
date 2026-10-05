@@ -1523,7 +1523,7 @@ model Project {
   createdAt   DateTime      @default(now()) @map("created_at")
   updatedAt   DateTime      @updatedAt @map("updated_at")
 
-  company          Company          @relation(fields: [companyId], references: [id])
+  company          Company            @relation(fields: [companyId], references: [id])
   members          ProjectMember[]
   timesheetEntries TimesheetEntry[]
   milestones       ProjectMilestone[]
@@ -1640,61 +1640,61 @@ model ProjectEvent {
 
 /// Company / department / location news
 model Announcement {
-  id             String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId      String               @map("company_id") @db.Uuid
-  authorId       String?              @map("author_id") @db.Uuid
-  title          String
-  body           String
-  audience       AnnouncementAudience @default(COMPANY)
+  id                String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId         String               @map("company_id") @db.Uuid
+  authorId          String?              @map("author_id") @db.Uuid
+  title             String
+  body              String
+  audience          AnnouncementAudience @default(COMPANY)
   /// DEPARTMENTS: these departments and everything under them
-  departmentIds  String[]             @default([]) @map("department_ids") @db.Uuid
-  locationIds    String[]             @default([]) @map("location_ids") @db.Uuid
-  pinned         Boolean              @default(false)
+  departmentIds     String[]             @default([]) @map("department_ids") @db.Uuid
+  locationIds       String[]             @default([]) @map("location_ids") @db.Uuid
+  pinned            Boolean              @default(false)
   /// Readers confirm "I have read this"
-  requiresAck    Boolean              @default(false) @map("requires_ack")
+  requiresAck       Boolean              @default(false) @map("requires_ack")
   /// Chosen by the poster: also email the audience (in-app is always sent)
-  sendEmail      Boolean              @default(false) @map("send_email")
-  expiresAt      DateTime?            @map("expires_at")
-  attachmentName String?              @map("attachment_name")
-  attachmentMime String?              @map("attachment_mime")
-  attachmentSize Int?                 @map("attachment_size")
-  attachmentKey  String?              @map("attachment_key")
-  publishedAt    DateTime             @default(now()) @map("published_at")
+  sendEmail         Boolean              @default(false) @map("send_email")
+  expiresAt         DateTime?            @map("expires_at")
+  attachmentName    String?              @map("attachment_name")
+  attachmentMime    String?              @map("attachment_mime")
+  attachmentSize    Int?                 @map("attachment_size")
+  attachmentKey     String?              @map("attachment_key")
+  publishedAt       DateTime             @default(now()) @map("published_at")
   /// policy | event | celebrate | update | urgent
-  category       String               @default("update")
+  category          String               @default("update")
   /// Cover preset (indigo, teal, sunset, sky, rose, slate) and its emoji
-  cover          String?
-  coverEmoji     String?              @map("cover_emoji")
+  cover             String?
+  coverEmoji        String?              @map("cover_emoji")
   /// Animated scene: confetti | diyas | sparkles | aurora | snow | balloons | fireworks | rain
-  coverScene     String?              @map("cover_scene")
+  coverScene        String?              @map("cover_scene")
   /// 3D art piece key (megaphone, calendar, trophy…)
-  coverArt       String?              @map("cover_art")
+  coverArt          String?              @map("cover_art")
   /// off | gentle | lively (a one-time burst when opened)
-  coverMotion    String               @default("gentle") @map("cover_motion")
+  coverMotion       String               @default("gentle") @map("cover_motion")
   /// Uploaded cover: public URL, kind (image | video | lottie), focal point (0–100) and darkening (0–70)
-  coverMediaUrl  String?              @map("cover_media_url")
-  coverMediaKind String?              @map("cover_media_kind")
-  coverFocusX    Int                  @default(50) @map("cover_focus_x")
-  coverFocusY    Int                  @default(50) @map("cover_focus_y")
-  coverDim       Int                  @default(25) @map("cover_dim")
+  coverMediaUrl     String?              @map("cover_media_url")
+  coverMediaKind    String?              @map("cover_media_kind")
+  coverFocusX       Int                  @default(50) @map("cover_focus_x")
+  coverFocusY       Int                  @default(50) @map("cover_focus_y")
+  coverDim          Int                  @default(25) @map("cover_dim")
   /// draft | scheduled | published (scheduled ones go out at publishedAt)
-  status         String               @default("published")
+  status            String               @default("published")
   /// When the audience was told (null = not yet: draft or scheduled)
-  notifiedAt     DateTime?            @map("notified_at")
+  notifiedAt        DateTime?            @map("notified_at")
   /// TEAM audience: the manager whose reporting line receives it
-  teamManagerId  String?              @map("team_manager_id") @db.Uuid
+  teamManagerId     String?              @map("team_manager_id") @db.Uuid
   /// Confirm by this day; a reminder goes 2 days before
-  ackDueAt       DateTime?            @map("ack_due_at") @db.Date
-  ackReminderSentAt DateTime?         @map("ack_reminder_sent_at")
-  lastNudgedAt   DateTime?            @map("last_nudged_at")
-  allowReactions Boolean              @default(true) @map("allow_reactions")
+  ackDueAt          DateTime?            @map("ack_due_at") @db.Date
+  ackReminderSentAt DateTime?            @map("ack_reminder_sent_at")
+  lastNudgedAt      DateTime?            @map("last_nudged_at")
+  allowReactions    Boolean              @default(true) @map("allow_reactions")
   /// Events: when and where (RSVP going / maybe)
-  eventAt        DateTime?            @map("event_at")
-  eventPlace     String?              @map("event_place")
-  updatedAt      DateTime             @updatedAt @map("updated_at")
-  deletedAt      DateTime?            @map("deleted_at")
+  eventAt           DateTime?            @map("event_at")
+  eventPlace        String?              @map("event_place")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+  deletedAt         DateTime?            @map("deleted_at")
 
-  author User?              @relation("AnnouncementAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  author    User?                  @relation("AnnouncementAuthor", fields: [authorId], references: [id], onDelete: SetNull)
   reads     AnnouncementRead[]
   reactions AnnouncementReaction[]
   rsvps     AnnouncementRsvp[]
@@ -1873,23 +1873,23 @@ model ExpenseClaim {
 }
 
 model ExpenseItem {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  claimId       String   @map("claim_id") @db.Uuid
-  categoryId    String   @map("category_id") @db.Uuid
-  date          DateTime @db.Date
-  description   String
-  amountPaise   Int      @map("amount_paise")
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  claimId         String   @map("claim_id") @db.Uuid
+  categoryId      String   @map("category_id") @db.Uuid
+  date            DateTime @db.Date
+  description     String
+  amountPaise     Int      @map("amount_paise")
   /// Lowered by Finance / HR (null = the full amount); the lower decision wins
-  approvedPaise Int?     @map("approved_paise")
-  adjustReason  String?  @map("adjust_reason")
-  adjustedById  String?  @map("adjusted_by_id") @db.Uuid
+  approvedPaise   Int?     @map("approved_paise")
+  adjustReason    String?  @map("adjust_reason")
+  adjustedById    String?  @map("adjusted_by_id") @db.Uuid
   /// Why it goes over the category limit / monthly cap (allowed, flagged to approvers)
-  overLimitReason String? @map("over_limit_reason")
-  receiptKey    String?  @map("receipt_key")
-  receiptName   String?  @map("receipt_name")
-  receiptMime   String?  @map("receipt_mime")
-  receiptSize   Int?     @map("receipt_size")
-  createdAt     DateTime @default(now()) @map("created_at")
+  overLimitReason String?  @map("over_limit_reason")
+  receiptKey      String?  @map("receipt_key")
+  receiptName     String?  @map("receipt_name")
+  receiptMime     String?  @map("receipt_mime")
+  receiptSize     Int?     @map("receipt_size")
+  createdAt       DateTime @default(now()) @map("created_at")
 
   claim    ExpenseClaim    @relation(fields: [claimId], references: [id], onDelete: Cascade)
   category ExpenseCategory @relation(fields: [categoryId], references: [id])
@@ -1937,14 +1937,33 @@ model ExpenseApproval {
 
 /// Kinds of assets (Laptop, Monitor, ID card…), editable by IT
 model AssetType {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId String   @map("company_id") @db.Uuid
-  name      String
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId         String   @map("company_id") @db.Uuid
+  name              String
   /// Prefix for generated tags, e.g. LAP → LAP-0001
-  prefix    String
-  isActive  Boolean  @default(true) @map("is_active")
-  sortOrder Int      @default(100) @map("sort_order")
-  createdAt DateTime @default(now()) @map("created_at")
+  prefix            String
+  isActive          Boolean  @default(true) @map("is_active")
+  sortOrder         Int      @default(100) @map("sort_order")
+  createdAt         DateTime @default(now()) @map("created_at")
+  /// Picture / animation: laptop | monitor | phone | idcard | headset | keyboard | sim | box
+  icon              String   @default("box")
+  /// Shown in "Request something"
+  description       String?
+  /// Default warranty for new assets of this type
+  warrantyMonths    Int?     @map("warranty_months")
+  /// Flag assets older than this for a refresh
+  replaceAfterYears Int?     @map("replace_after_years")
+  /// Warn when fewer are available
+  minStock          Int      @default(0) @map("min_stock")
+  /// Employees can ask for it
+  requestable       Boolean  @default(true)
+  /// Can be lent for a while (with a return date)
+  loanable          Boolean  @default(false)
+  maxLoanDays       Int?     @map("max_loan_days")
+  /// Extra fields kept per asset (Processor, Memory…)
+  fields            String[] @default([])
+  /// Ticked by IT at hand-over (Charger, sticker…)
+  checklist         String[] @default([])
 
   assets   Asset[]
   requests AssetRequest[]
@@ -1971,11 +1990,15 @@ model Asset {
   status            AssetStatus    @default(AVAILABLE)
   locationId        String?        @map("location_id") @db.Uuid
   notes             String?
+  /// Values for the type's extra fields
+  specs             Json?
   createdAt         DateTime       @default(now()) @map("created_at")
   updatedAt         DateTime       @updatedAt @map("updated_at")
 
   type        AssetType         @relation(fields: [typeId], references: [id])
   assignments AssetAssignment[]
+  repairs     AssetRepair[]
+  documents   AssetDocument[]
 
   @@unique([companyId, tag])
   @@index([companyId, status])
@@ -2001,6 +2024,8 @@ model AssetAssignment {
   returnedToId   String?         @map("returned_to_id") @db.Uuid
   conditionIn    AssetCondition? @map("condition_in")
   returnNotes    String?         @map("return_notes")
+  /// Loans: when it has to come back
+  dueBack        DateTime?       @map("due_back") @db.Date
 
   asset    Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
@@ -2012,24 +2037,45 @@ model AssetAssignment {
 
 /// "I need a monitor" — the IT head and HR both approve, then IT hands one over
 model AssetRequest {
-  id         String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId  String              @map("company_id") @db.Uuid
-  employeeId String              @map("employee_id") @db.Uuid
-  typeId     String              @map("type_id") @db.Uuid
-  reason     String
-  status     AssetRequestStatus  @default(PENDING)
-  itStatus   LeaveApprovalStatus @default(PENDING) @map("it_status")
-  itById     String?             @map("it_by_id") @db.Uuid
-  itAt       DateTime?           @map("it_at")
-  itNote     String?             @map("it_note")
-  hrStatus   LeaveApprovalStatus @default(PENDING) @map("hr_status")
-  hrById     String?             @map("hr_by_id") @db.Uuid
-  hrAt       DateTime?           @map("hr_at")
-  hrNote     String?             @map("hr_note")
+  id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId         String              @map("company_id") @db.Uuid
+  employeeId        String              @map("employee_id") @db.Uuid
+  typeId            String              @map("type_id") @db.Uuid
+  reason            String
+  status            AssetRequestStatus  @default(PENDING)
+  itStatus          LeaveApprovalStatus @default(PENDING) @map("it_status")
+  itById            String?             @map("it_by_id") @db.Uuid
+  itAt              DateTime?           @map("it_at")
+  itNote            String?             @map("it_note")
+  hrStatus          LeaveApprovalStatus @default(PENDING) @map("hr_status")
+  hrById            String?             @map("hr_by_id") @db.Uuid
+  hrAt              DateTime?           @map("hr_at")
+  hrNote            String?             @map("hr_note")
   /// The asset handed over (when fulfilled)
-  assetId    String?             @map("asset_id") @db.Uuid
-  createdAt  DateTime            @default(now()) @map("created_at")
-  updatedAt  DateTime            @updatedAt @map("updated_at")
+  assetId           String?             @map("asset_id") @db.Uuid
+  /// Who asked (an employee id) — a manager for their team; null = the person themselves
+  requestedById     String?             @map("requested_by_id") @db.Uuid
+  /// REQUEST | KIT (starter kit / promotion — no approvals)
+  source            String              @default("REQUEST")
+  /// KEEP | LOAN
+  kind              String              @default("KEEP")
+  loanFrom          DateTime?           @map("loan_from") @db.Date
+  loanUntil         DateTime?           @map("loan_until") @db.Date
+  neededBy          DateTime?           @map("needed_by") @db.Date
+  /// The step waiting now: LEAD → MANAGER → HR → IT (null when decided)
+  stage             String?
+  leadApproverId    String?             @map("lead_approver_id") @db.Uuid
+  leadStatus        LeaveApprovalStatus @default(SKIPPED) @map("lead_status")
+  leadById          String?             @map("lead_by_id") @db.Uuid
+  leadAt            DateTime?           @map("lead_at")
+  leadNote          String?             @map("lead_note")
+  managerApproverId String?             @map("manager_approver_id") @db.Uuid
+  managerStatus     LeaveApprovalStatus @default(SKIPPED) @map("manager_status")
+  managerById       String?             @map("manager_by_id") @db.Uuid
+  managerAt         DateTime?           @map("manager_at")
+  managerNote       String?             @map("manager_note")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
 
   employee Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   type     AssetType @relation(fields: [typeId], references: [id])
@@ -2037,6 +2083,102 @@ model AssetRequest {
   @@index([companyId, status])
   @@index([companyId, employeeId])
   @@map("asset_requests")
+}
+
+/// A repair job (open while the asset is in repair)
+model AssetRepair {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId   String    @map("company_id") @db.Uuid
+  assetId     String    @map("asset_id") @db.Uuid
+  issue       String
+  vendor      String?
+  costPaise   Int?      @map("cost_paise")
+  startedAt   DateTime  @default(now()) @map("started_at")
+  endedAt     DateTime? @map("ended_at")
+  notes       String?
+  createdById String?   @map("created_by_id") @db.Uuid
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId])
+  @@index([companyId, endedAt])
+  @@map("asset_repairs")
+}
+
+/// Invoice, warranty card, repair bill… (private files)
+model AssetDocument {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId    String   @map("company_id") @db.Uuid
+  assetId      String   @map("asset_id") @db.Uuid
+  name         String
+  fileKey      String   @map("file_key")
+  mime         String
+  size         Int
+  uploadedById String?  @map("uploaded_by_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId])
+  @@map("asset_documents")
+}
+
+/// The yearly "do you still have it?" check
+model AssetCheck {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId   String    @map("company_id") @db.Uuid
+  name        String
+  dueOn       DateTime  @map("due_on") @db.Date
+  startedAt   DateTime  @default(now()) @map("started_at")
+  closedAt    DateTime? @map("closed_at")
+  startedById String?   @map("started_by_id") @db.Uuid
+
+  answers AssetCheckAnswer[]
+
+  @@index([companyId, closedAt])
+  @@map("asset_checks")
+}
+
+model AssetCheckAnswer {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  checkId      String   @map("check_id") @db.Uuid
+  assignmentId String   @map("assignment_id") @db.Uuid
+  assetId      String   @map("asset_id") @db.Uuid
+  employeeId   String   @map("employee_id") @db.Uuid
+  /// HAVE | PROBLEM | NOT_WITH_ME
+  answer       String
+  note         String?
+  answeredAt   DateTime @default(now()) @map("answered_at")
+
+  check AssetCheck @relation(fields: [checkId], references: [id], onDelete: Cascade)
+
+  @@unique([checkId, assignmentId])
+  @@index([checkId, employeeId])
+  @@map("asset_check_answers")
+}
+
+/// Who gets what when they join (rules add up)
+model StarterKitRule {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId           String   @map("company_id") @db.Uuid
+  name                String
+  /// Everyone gets it
+  isBase              Boolean  @default(false) @map("is_base")
+  /// Role keys (manager, team_lead…) — any match
+  roleKeys            String[] @default([]) @map("role_keys")
+  /// Designation contains this text (case-insensitive)
+  designationContains String?  @map("designation_contains")
+  departmentIds       String[] @default([]) @map("department_ids") @db.Uuid
+  /// [{ typeId, qty }]
+  items               Json
+  /// Also when someone moves into this group later (promotion)
+  onPromotion         Boolean  @default(true) @map("on_promotion")
+  isActive            Boolean  @default(true) @map("is_active")
+  sortOrder           Int      @default(100) @map("sort_order")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  @@index([companyId])
+  @@map("starter_kit_rules")
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -2067,6 +2209,8 @@ model Ticket {
   number             Int
   queue              TicketQueue
   categoryId         String?        @map("category_id") @db.Uuid
+  /// "Report a problem" from My assets
+  assetId            String?        @map("asset_id") @db.Uuid
   employeeId         String         @map("employee_id") @db.Uuid
   subject            String
   description        String
@@ -2161,18 +2305,18 @@ model Timesheet {
 
 /// Minutes on one day for one project (or internal work) and task.
 model TimesheetEntry {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId   String   @map("company_id") @db.Uuid
-  timesheetId String   @map("timesheet_id") @db.Uuid
-  employeeId  String   @map("employee_id") @db.Uuid
-  date        DateTime @db.Date
+  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId     String          @map("company_id") @db.Uuid
+  timesheetId   String          @map("timesheet_id") @db.Uuid
+  employeeId    String          @map("employee_id") @db.Uuid
+  date          DateTime        @db.Date
   /// null = internal / non-project work
-  projectId   String?  @map("project_id") @db.Uuid
-  task        String
-  billable    Boolean  @default(false)
-  minutes     Int
+  projectId     String?         @map("project_id") @db.Uuid
+  task          String
+  billable      Boolean         @default(false)
+  minutes       Int
   /// Row order in the week grid
-  line        Int      @default(0)
+  line          Int             @default(0)
   /// Time block: minutes from midnight of `date` (end may pass 1440 for night work). Null on old grid rows.
   startMin      Int?            @map("start_min")
   endMin        Int?            @map("end_min")

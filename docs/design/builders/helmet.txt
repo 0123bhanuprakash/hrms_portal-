@@ -1,0 +1,50 @@
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F5F7}
+a{color:#2F5BEA}a:hover{color:#1E44C4}
+.app{font-family:Figtree,system-ui,sans-serif;color:#141821;display:flex;flex-wrap:wrap;min-height:100vh;background:#F4F5F7}
+.side{flex:1 1 232px;max-width:248px;background:#FFFFFF;border-right:1px solid #E4E7EC;padding:20px 14px;box-sizing:border-box;display:flex;flex-direction:column;gap:4px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px;padding:4px 8px 18px}
+.logo{width:30px;height:30px;border-radius:8px;background:#2F5BEA;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px}
+.grp{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5B6472;padding:14px 10px 6px}
+.nav{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;font-size:14px;color:#2B3240;text-decoration:none}
+.nav.on{background:#EAF0FF;color:#1E44C4;font-weight:700}
+.nav .cnt{margin-left:auto;background:#2F5BEA;color:#fff;border-radius:99px;font-size:11px;font-weight:700;padding:1px 7px}
+.main{flex:999 1 560px;min-width:0;padding:24px 28px 40px;box-sizing:border-box;display:flex;flex-direction:column;gap:20px}
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.search{flex:1 1 280px;max-width:460px;display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #E4E7EC;border-radius:10px;padding:0 12px;height:42px;color:#5B6472;font-size:14px}
+.search input{border:0;outline:0;font:inherit;flex:1;background:transparent;color:#141821}
+.iconbtn{width:44px;height:44px;border-radius:10px;border:1px solid #E4E7EC;background:#fff;display:flex;align-items:center;justify-content:center;color:#2B3240;cursor:pointer;position:relative}
+.dot{position:absolute;top:9px;right:10px;width:8px;height:8px;border-radius:50%;background:#C2410C;border:2px solid #fff}
+.avatar{width:40px;height:40px;border-radius:50%;background:#DDE5FF;color:#1E44C4;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex:none}
+.av-s{width:32px;height:32px;font-size:12px}
+.hello h1{margin:0;font-size:28px;font-weight:800;letter-spacing:-.01em}
+.hello p{margin:4px 0 0;color:#5B6472;font-size:15px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.card{background:#fff;border:1px solid #E4E7EC;border-radius:14px;padding:20px;box-sizing:border-box;display:flex;flex-direction:column;gap:14px;min-width:0}
+.card h2{margin:0;font-size:16px;font-weight:700}
+.ch{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.muted{color:#5B6472}
+.small{font-size:13px}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:99px;font-size:12px;font-weight:700;padding:3px 10px}
+.ok{background:#E3F4EA;color:#157A4B}.warn{background:#FDF1DC;color:#8A5200}.bad{background:#FDE8E6;color:#B42318}.info{background:#EAF0FF;color:#1E44C4}.neu{background:#EEF0F3;color:#3A4250}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 18px;border-radius:10px;font:inherit;font-weight:700;font-size:14px;border:1px solid transparent;cursor:pointer;text-decoration:none}
+.primary{background:#2F5BEA;color:#fff}.ghost{background:#fff;border-color:#D6DBE3;color:#141821}
+.big{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1}
+.row{display:flex;align-items:center;gap:12px}
+.list{display:flex;flex-direction:column;gap:2px;margin:0;padding:0;list-style:none}
+.li{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid #EEF0F3}
+.li:first-child{border-top:0}
+.ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none}
+.qa{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.qa a{display:flex;flex-direction:column;gap:8px;padding:14px;border:1px solid #E4E7EC;border-radius:12px;background:#fff;text-decoration:none;color:#141821;font-weight:700;font-size:14px;min-height:44px}
+.qa a span{font-weight:500;font-size:12px;color:#5B6472}
+.bars{display:flex;align-items:flex-end;gap:10px;height:96px}
+.bar{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;color:#5B6472}
+.bar i{display:block;width:100%;max-width:34px;border-radius:6px 6px 3px 3px;background:#2F5BEA}
+.meter{height:8px;border-radius:99px;background:#EEF0F3;overflow:hidden}
+.meter b{display:block;height:100%;border-radius:99px}
+</style>
+</helmet>

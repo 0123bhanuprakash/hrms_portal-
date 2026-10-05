@@ -274,3 +274,97 @@ html[data-hidden] .m-balloon, html[data-hidden] .m-firework i, html[data-hidden]
 .sc-fireworks i.f { width: 0; height: 0; }
 .sc-fireworks i.f b { position: absolute; left: 0; top: 0; width: 5px; height: 5px; border-radius: 9999px; animation: sc-firework 2.4s ease-out infinite; }
 .sc-burst i { left: 50%; top: 45%; width: 8px; height: 12px; border-radius: 2px; animation: sc-burst 1.4s cubic-bezier(.2,.7,.3,1) forwards; }
+
+/* ── Asset product art (components/assets/product-art.tsx) ─────────────
+   Static by default (lid open, screen on). `.pa-play` runs the moment once;
+   `.pa-hover:hover` replays it. Reduced motion snaps to the last frame. */
+.pa { position: relative; width: 180px; height: 130px; display: flex; align-items: center; justify-content: center; }
+.pa-glow { background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.55) 55%, #db2777); }
+/* laptop */
+.pa-lap { position: relative; width: 180px; height: 120px; perspective: 520px; }
+.pa-lap .scr { position: absolute; left: 22px; bottom: 16px; width: 136px; height: 88px; background: #111827; border: 5px solid #374151; border-radius: 9px 9px 2px 2px; transform-origin: bottom; overflow: hidden; }
+.pa-lap .scr i { position: absolute; inset: 0; }
+.pa-lap .scr b { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 900; font-size: 14px; letter-spacing: .02em; }
+.pa-lap .base { position: absolute; left: 4px; bottom: 8px; width: 172px; height: 10px; background: linear-gradient(#d1d5db, #9ca3af); border-radius: 2px 2px 12px 12px; }
+.pa-lap .base::after { content: ""; position: absolute; left: 72px; top: 0; width: 28px; height: 4px; background: #6b7280; border-radius: 0 0 6px 6px; }
+.pa-play .pa-lap .scr, .pa-hover:hover .pa-lap .scr { animation: pa-lid 1.3s cubic-bezier(.2,.8,.3,1) both; }
+.pa-play .pa-lap .scr i, .pa-play .pa-lap .scr b, .pa-hover:hover .pa-lap .scr i, .pa-hover:hover .pa-lap .scr b { animation: pa-boot 1.3s ease-out both; }
+@keyframes pa-lid { 0% { transform: rotateX(-86deg); } 60%, 100% { transform: rotateX(0); } }
+@keyframes pa-boot { 0%, 55% { opacity: 0; } 100% { opacity: 1; } }
+/* monitor */
+.pa-mon { position: relative; width: 170px; height: 118px; }
+.pa-mon .scr { position: absolute; left: 0; top: 0; width: 170px; height: 96px; background: #111827; border: 5px solid #374151; border-radius: 8px; overflow: hidden; }
+.pa-mon .scr i { position: absolute; inset: 0; }
+.pa-mon .neck { position: absolute; left: 78px; top: 96px; width: 14px; height: 14px; background: #9ca3af; }
+.pa-mon .foot { position: absolute; left: 55px; top: 108px; width: 60px; height: 7px; border-radius: 6px; background: #9ca3af; }
+.pa-play .pa-mon .scr i, .pa-hover:hover .pa-mon .scr i { animation: pa-power 1.1s ease-out both; }
+@keyframes pa-power { 0% { transform: scaleX(0) scaleY(.03); } 35% { transform: scaleX(1) scaleY(.03); } 100% { transform: scaleX(1) scaleY(1); } }
+/* phone */
+.pa-ph { position: relative; width: 66px; height: 124px; border-radius: 16px; background: #111827; border: 4px solid #374151; overflow: hidden; }
+.pa-ph i { position: absolute; inset: 0; background: linear-gradient(160deg, #0ea5e9, hsl(var(--primary))); }
+.pa-ph::before { content: ""; position: absolute; top: 5px; left: 50%; width: 18px; height: 5px; margin-left: -9px; border-radius: 9px; background: #000; z-index: 2; }
+.pa-ph-note { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); background: #fff; color: #111827; border-radius: 10px; padding: 3px 8px; font-size: 9px; font-weight: 800; white-space: nowrap; opacity: 0; box-shadow: 0 4px 12px rgba(0,0,0,.15); }
+.pa-play .pa-ph, .pa-hover:hover .pa-ph { animation: pa-phup 1s cubic-bezier(.2,.8,.3,1) both; }
+.pa-play .pa-ph i, .pa-hover:hover .pa-ph i { animation: pa-boot 1s ease-out both; }
+.pa-play .pa-ph-note { animation: pa-note 2.2s ease-out both; }
+@keyframes pa-phup { 0% { transform: translateY(40px) rotate(-8deg); opacity: 0; } 100% { transform: none; opacity: 1; } }
+@keyframes pa-note { 0%, 45% { opacity: 0; transform: translate(-50%, -8px); } 60%, 85% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
+/* ID card */
+.pa-id { width: 150px; height: 96px; perspective: 700px; }
+.pa-id .in { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .6s ease; }
+.pa-id .f, .pa-id .bk { position: absolute; inset: 0; border-radius: 12px; backface-visibility: hidden; box-shadow: 0 10px 24px -10px rgba(0,0,0,.35); padding: 10px; display: flex; gap: 8px; }
+.pa-id .f { background: linear-gradient(135deg, hsl(var(--primary)), #7c3aed); color: #fff; }
+.pa-id .bk { background: #fff; transform: rotateY(180deg); flex-direction: column; justify-content: center; align-items: center; border: 1px solid #e5e7ef; }
+.pa-id .face { width: 36px; height: 44px; border-radius: 7px; background: rgba(255,255,255,.28); flex: none; }
+.pa-id .bars { width: 110px; height: 22px; background: repeating-linear-gradient(90deg, #111 0 2px, #fff 2px 4px, #111 4px 5px, #fff 5px 8px); }
+.pa-hover:hover .pa-id .in { transform: rotateY(180deg); }
+.pa-play .pa-id .in { animation: pa-flip 1.6s ease-in-out both; }
+@keyframes pa-flip { 0% { transform: rotateY(0); } 40%, 60% { transform: rotateY(180deg); } 100% { transform: rotateY(360deg); } }
+/* headset */
+.pa-hs { position: relative; font-size: 58px; line-height: 1; }
+.pa-hs .wave { position: absolute; top: 50%; width: 26px; height: 26px; margin-top: -13px; border: 3px solid hsl(var(--info)); border-radius: 50%; opacity: 0; }
+.pa-hs .wave.l { left: -18px; }
+.pa-hs .wave.r { right: -18px; }
+.pa-play .pa-hs .wave, .pa-hover:hover .pa-hs .wave { animation: pa-wave 1.1s ease-out 2 both; }
+.pa-play .pa-hs .wave.d, .pa-hover:hover .pa-hs .wave.d { animation-delay: .35s; }
+@keyframes pa-wave { 0% { transform: scale(.4); opacity: .9; } 100% { transform: scale(2.2); opacity: 0; } }
+/* keyboard & mouse */
+.pa-kb { display: flex; align-items: center; }
+.pa-kb .keys { display: grid; grid-template-columns: repeat(8, 14px); gap: 4px; padding: 7px; border-radius: 10px; background: #d1d5db; }
+.pa-kb .keys span { height: 12px; border-radius: 3px; background: #fff; box-shadow: 0 2px 0 #9ca3af; }
+.pa-kb .mouse { position: relative; width: 28px; height: 44px; border-radius: 14px; background: #fff; border: 2px solid #9ca3af; margin-left: 14px; }
+.pa-kb .mouse::before { content: ""; position: absolute; left: 12px; top: 6px; width: 2px; height: 10px; background: #9ca3af; border-radius: 2px; }
+.pa-play .pa-kb .keys span, .pa-hover:hover .pa-kb .keys span { animation: pa-key .9s ease-out both; }
+@keyframes pa-key { 0% { transform: translateY(0); } 30% { transform: translateY(2px); background: hsl(var(--primary-soft)); box-shadow: none; } 100% { transform: translateY(0); } }
+/* SIM / box */
+.pa-sim { width: 70px; height: 92px; background: linear-gradient(145deg, #fde68a, #f59e0b); clip-path: polygon(0 0, 72% 0, 100% 22%, 100% 100%, 0 100%); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+.pa-sim i { width: 34px; height: 28px; border-radius: 5px; background: linear-gradient(135deg, #e5e7eb, #9ca3af); box-shadow: inset 0 0 0 2px #6b7280; }
+.pa-box { position: relative; width: 110px; height: 96px; }
+.pa-box .bx { position: absolute; bottom: 0; left: 7px; width: 96px; height: 62px; background: #c8a27a; border-radius: 6px; box-shadow: inset 0 -8px 0 rgba(0,0,0,.08); }
+.pa-box .lid { position: absolute; bottom: 60px; left: 3px; width: 104px; height: 14px; background: #b88e63; border-radius: 4px; transform-origin: left bottom; }
+.pa-play .pa-box .lid, .pa-hover:hover .pa-box .lid { animation: pa-lidbox 1.2s ease-in-out both; }
+@keyframes pa-lidbox { 0% { transform: rotate(0); } 50% { transform: rotate(-60deg); } 100% { transform: rotate(0); } }
+/* states — small badges that keep moving: something is going on */
+.pa-state { position: absolute; right: 2px; top: 2px; font-size: 22px; }
+.pa-state.repair { animation: pa-wrench 1.2s ease-in-out infinite; transform-origin: 70% 70%; }
+.pa-state.loan { animation: pa-hourglass 3s ease-in-out infinite; }
+@keyframes pa-wrench { 0%, 100% { transform: rotate(-25deg); } 50% { transform: rotate(25deg); } }
+@keyframes pa-hourglass { 0%, 40% { transform: rotate(0); } 55%, 100% { transform: rotate(180deg); } }
+.pa-lost > :not(.pa-radar) { opacity: .35; filter: grayscale(1); }
+.pa-radar { position: absolute; inset: 10px 30px; border: 2px dashed hsl(var(--destructive)); border-radius: 50%; animation: pa-radar 2s ease-out infinite; }
+@keyframes pa-radar { 0% { transform: scale(.6); opacity: 1; } 100% { transform: scale(1.3); opacity: 0; } }
+/* "I got it" unboxing moment */
+.pa-unbox { position: relative; width: 220px; height: 210px; }
+.pa-unbox .bx { position: absolute; bottom: 10px; left: 50px; width: 120px; height: 70px; background: #c8a27a; border-radius: 8px; box-shadow: inset 0 -10px 0 rgba(0,0,0,.08); }
+.pa-unbox .lid { position: absolute; bottom: 78px; left: 46px; width: 128px; height: 16px; background: #b88e63; border-radius: 5px; transform-origin: left bottom; animation: pa-unlid 1.6s ease-in-out both; }
+.pa-unbox .item { position: absolute; left: 0; right: 0; bottom: 30px; display: flex; justify-content: center; animation: pa-rise 1.6s cubic-bezier(.2,.8,.3,1) both; }
+.pa-unbox .stamp { position: absolute; top: 4px; right: 4px; background: hsl(var(--success)); color: #fff; font-weight: 900; font-size: 13px; padding: 5px 12px; border-radius: 9999px; animation: pa-stamp 1.6s ease-out both; }
+@keyframes pa-unlid { 0%, 10% { transform: rotate(0); } 45%, 100% { transform: rotate(-75deg); } }
+@keyframes pa-rise { 0%, 25% { transform: translateY(40px) scale(.5); opacity: 0; } 70%, 100% { transform: translateY(-30px) scale(.8); opacity: 1; } }
+@keyframes pa-stamp { 0%, 60% { opacity: 0; transform: scale(2) rotate(-12deg); } 80%, 100% { opacity: 1; transform: scale(1) rotate(-12deg); } }
+/* loan countdown ring */
+.pa-ring { --pct: 100%; --ring: hsl(var(--success)); width: 46px; height: 46px; border-radius: 50%; background: conic-gradient(var(--ring) var(--pct), hsl(var(--muted)) 0); display: flex; align-items: center; justify-content: center; position: relative; flex: none; }
+.pa-ring::after { content: ""; position: absolute; inset: 5px; border-radius: 50%; background: hsl(var(--surface)); }
+.pa-ring b { position: relative; z-index: 1; font-size: 11px; font-weight: 800; }
+.pa-ring.overdue { animation: pa-shake .5s ease-in-out 2; }
+@keyframes pa-shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }

@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>People quick view</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F6F7FB}
+.app{display:flex;min-height:100vh;font-family:Manrope,system-ui,sans-serif;color:#111827;background:#F6F7FB;position:relative}
+.sb{flex:0 0 240px;background:#FFFFFF;border-right:1px solid #E5E7EF;display:flex;flex-direction:column}
+.sb-h{display:flex;gap:10px;align-items:center;padding:14px}
+.logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#E9416A,#7A2BD9);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px}
+.sb-h b{display:block;font-size:14px}.sb-h span{font-size:11px;color:#6B7280}
+.sb-g{padding:12px 14px 3px;font-size:10.5px;font-weight:700;letter-spacing:.07em;color:#9CA3AF}
+.sb-i{display:flex;align-items:center;gap:10px;height:34px;margin:0 10px;padding:0 10px;border-radius:7px;font-size:13.5px;color:#374151}
+.sb-i svg{color:#9CA3AF}.sb-i.on{background:#EEF0FF;color:#3730A3;font-weight:700}.sb-i.on svg{color:#4F46E5}
+.col{flex:1;min-width:0;display:flex;flex-direction:column}
+.hdr{height:56px;border-bottom:1px solid #E5E7EF;display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:rgba(255,255,255,.7)}
+.crumb{font-size:13.5px;color:#6B7280}.crumb b{color:#111827}
+.main{padding:24px 30px 40px;display:flex;flex-direction:column;gap:16px}
+.eyebrow{font-size:12.5px;color:#4F46E5;font-weight:700}
+h1{margin:2px 0 0;font-size:26px;font-weight:800;letter-spacing:-.02em}
+.sub{color:#6B7280;font-size:14px;margin-top:3px}
+.row{display:flex;align-items:center;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 14px;border-radius:9px;border:1px solid #E5E7EF;background:#fff;color:#111827;font-size:13px;font-weight:700;white-space:nowrap}
+.btn.pri{background:#4F46E5;border-color:#4F46E5;color:#fff}.btn.sm{height:30px;padding:0 10px;font-size:12px}
+.card{background:#fff;border:1px solid #E5E7EF;border-radius:14px;box-shadow:0 1px 2px rgba(17,24,39,.04)}
+.sec{padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.sec h3{margin:0;font-size:14.5px;display:flex;align-items:center;gap:8px}.sec h3 svg{color:#6B7280}
+.sec h3 .r{margin-left:auto;font-size:12px;font-weight:500;color:#6B7280}
+.mut{color:#6B7280}.xs{font-size:12px}
+.tabs{display:flex;gap:4px;background:#fff;border:1px solid #E5E7EF;border-radius:11px;padding:4px;width:max-content}
+.tabs span{display:flex;align-items:center;gap:7px;padding:7px 14px;border-radius:8px;font-size:13px;color:#6B7280;font-weight:600}
+.tabs span.on{background:#4F46E5;color:#fff}
+.fbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:9px;border:1px solid #E5E7EF;background:#fff;font-size:12.5px;font-weight:600;color:#374151}
+.chip.on{border-color:#C7C9F7;background:#EEF0FF;color:#3730A3}
+.seg{display:flex;border:1px solid #E5E7EF;border-radius:9px;overflow:hidden;background:#fff}.seg span{padding:7px 11px;font-size:12px;font-weight:600;color:#6B7280}.seg span.on{background:#111827;color:#fff}
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.kpi{padding:14px 16px;display:flex;flex-direction:column;gap:3px;position:relative;overflow:hidden}
+.kpi span.l{font-size:12px;color:#6B7280}.kpi b.v{font-size:25px;font-weight:800;letter-spacing:-.02em}
+.delta{font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;gap:2px}
+.d-up{color:#059669}.d-dn{color:#DC2626}.d-flat{color:#6B7280}
+.kpi svg.sp{position:absolute;right:12px;bottom:12px}
+.hl{display:flex;gap:12px;padding:12px 14px;border-radius:12px;border:1px solid #E5E7EF;background:#fff;align-items:flex-start}
+.hl .ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.g21{display:grid;grid-template-columns:1.5fr 1fr;gap:16px}.g12{display:grid;grid-template-columns:1fr 1.4fr;gap:16px}
+.lib{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid #EEF0F5;border-radius:12px;background:#F8F9FC}
+.lib .ic{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none}
+.bar{height:8px;border-radius:99px;background:#EEF0F5;overflow:hidden}.bar i{display:block;height:100%;border-radius:99px;transform-origin:left;animation:fw 1s cubic-bezier(.2,.8,.2,1) both}
+@keyframes fw{from{transform:scaleX(0)}}
+.chart polyline,.chart path.ln{stroke-dasharray:3000;animation:draw 1.6s ease both}@keyframes draw{from{stroke-dashoffset:3000}}
+.heat{display:grid;gap:3px}.heat i{display:block;border-radius:4px;aspect-ratio:1}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#6B7280;padding:8px 10px;border-bottom:1px solid #E5E7EF}
+td{padding:9px 10px;border-bottom:1px solid #EEF0F5}
+.av{width:28px;height:28px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;color:#fff;flex:none}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.p-ok{background:#E6F6F0;color:#059669}.p-warn{background:#FEF3E2;color:#D97706}.p-bad{background:#FDECEC;color:#DC2626}.p-pri{background:#EEF0FF;color:#3730A3}.p-neu{background:#EEF0F5;color:#6B7280}
+.dim{position:absolute;inset:0;background:rgba(17,24,39,.35);z-index:4}
+.drawer{position:absolute;top:0;right:0;bottom:0;width:440px;background:#fff;border-left:1px solid #E5E7EF;z-index:5;display:flex;flex-direction:column;box-shadow:-24px 0 50px -20px rgba(0,0,0,.35)}
+.modal{position:absolute;left:50%;top:150px;transform:translateX(-50%);width:480px;background:#fff;border:1px solid #E5E7EF;border-radius:16px;z-index:5;box-shadow:0 30px 60px -20px rgba(0,0,0,.4)}
+.fld{display:flex;flex-direction:column;gap:5px;font-size:12.5px}.fld label{font-weight:700}
+.inp{height:36px;border:1px solid #E5E7EF;border-radius:9px;padding:0 11px;display:flex;align-items:center;font-size:13px;gap:8px;background:#fff}
+
+.ph{position:relative;overflow:hidden;border-radius:14px;flex:none}
+.ph svg{display:block}
+.st{position:absolute;display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:800;padding:3px 8px;border-radius:99px;background:rgba(255,255,255,.92);box-shadow:0 2px 6px rgba(0,0,0,.12)}
+.st i{width:7px;height:7px;border-radius:50%;display:inline-block}
+.pc{display:flex;flex-direction:column;overflow:hidden;transition:transform .25s,box-shadow .25s}
+.pc:hover{transform:translateY(-4px);box-shadow:0 18px 36px -18px rgba(17,24,39,.35)}
+.pc .body{padding:12px 14px 14px;display:flex;flex-direction:column;gap:4px}
+.pc b.n{font-size:15px}.pc .role{font-size:12.5px;color:#6B7280}
+.tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:#F8F9FC;border:1px solid #EEF0F5;color:#374151}
+.acts{display:flex;gap:6px;padding:0 14px 14px}
+.acts span{flex:1;height:30px;border-radius:8px;border:1px solid #E5E7EF;display:flex;align-items:center;justify-content:center;gap:5px;font-size:12px;font-weight:700;color:#374151}
+.rail{display:flex;flex-direction:column;gap:2px;position:sticky;top:0;font-size:10.5px;font-weight:800;color:#9CA3AF;text-align:center}
+.rail span{padding:1px 0}.rail span.on{color:#4F46E5}
+.hlstrip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.hlc{padding:14px 16px;display:flex;align-items:center;gap:12px}
+.stack{display:flex}.stack .ph{border:2.5px solid #fff;margin-left:-10px;border-radius:50%}.stack .ph:first-child{margin-left:0}
+.search{display:flex;align-items:center;gap:8px;height:42px;padding:0 14px;border:1px solid #E5E7EF;border-radius:12px;background:#fff;flex:1;color:#6B7280;font-size:14px;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+.wall{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px}
+.grp{display:flex;flex-direction:column;gap:10px}
+.grp h3{margin:0;font-size:15px;display:flex;align-items:center;gap:10px}
+.mini{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid #EEF0F5;border-radius:12px;background:#fff}
+</style>
+</helmet>
+<div class="app"><aside class="sb">
+<div class="sb-h"><span class="logo">AP</span><span><b>aakash-portal</b><span>HR workspace</span></span></div>
+<div class="sb-g">OVERVIEW</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Home</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M16 10h2M16 14h2"/><circle cx="9" cy="11" r="2"/><path d="M6 16.5a3.5 3.5 0 0 1 6 0"/></svg>My profile</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>Reports &amp; analytics</div><div class="sb-i on"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v2M8 2v2"/><circle cx="12" cy="11" r="3"/><path d="M7 20a5 5 0 0 1 10 0"/></svg>People</div>
+<div class="sb-g">ORGANIZATION</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Employees</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3M12 12V8"/></svg>Organisation</div>
+<div class="sb-g">ENGAGEMENT</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>Announcements</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>Kudos</div>
+<div class="sb-g">WORK</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9l-.8-1.2A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/><path d="M8 10v4M12 10v2M16 10v6"/></svg>Projects</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2h4M12 14l3-3"/><circle cx="12" cy="14" r="8"/></svg>Timesheets</div>
+<div class="sb-g">TIME</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg>Attendance</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>Leave</div>
+</aside><div class="col"><header class="hdr"><div class="crumb">People &nbsp;›&nbsp; <b>Directory</b></div><div class="row mut xs"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span style="width:34px;height:20px;border-radius:99px;background:#E5E7EF;display:inline-block"></span></div></header><main class="main">
+<div class="row" style="align-items:flex-end"><div style="flex:1"><div class="eyebrow">People</div><h1>Directory</h1><div class="sub">Click anyone for a quick look — no page change</div></div></div>
+<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px"><div class="card pc">
+    <div style="position:relative"><div class="ph" style="width:236px;height:168px;"><svg width="236" height="168" viewBox="0 0 236 168"><defs><linearGradient id="g26" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#C7D2FE"/><stop offset="1" stop-color="#EEF2FF"/></linearGradient></defs>
+  <rect width="236" height="168" fill="url(#g26)"/>
+  <circle cx="193.51999999999998" cy="30.24" r="51.92" fill="#fff" opacity=".35"/>
+  <path d="M85.156,70.56 Q82.3,27.72 118,34.86 Q153.7,27.72 150.844,70.56 L152.272,116.256 L83.72800000000001,116.256Z" fill="#2B1D14"/>
+  <path d="M52.312,168 Q55.16799999999999,114.828 118,111.97200000000001 Q180.832,114.828 183.688,168Z" fill="#4F46E5"/>
+  <rect x="107.1472" y="90.552" width="21.7056" height="25.704000000000004" fill="#F2C9A5"/>
+  <circle cx="118" cy="70.56" r="28.560000000000002" fill="#F2C9A5"/>
+  
+  </svg></div>
+      <span class="st" style="left:10px;bottom:10px"><i style="background:#059669"></i>In office</span>
+      
+    </div>
+    <div class="body"><b class="n">Priya Sharma</b><span class="role">Engineering Lead</span>
+      <div class="row" style="gap:6px;margin-top:4px;flex-wrap:wrap"><span class="tag">Engineering</span><span class="tag"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s7-7.5 7-13a7 7 0 0 0-14 0c0 5.5 7 13 7 13z"/><circle cx="12" cy="9" r="2.5"/></svg>Bengaluru HQ</span></div></div>
+    
+  </div><div class="card pc">
+    <div style="position:relative"><div class="ph" style="width:236px;height:168px;"><svg width="236" height="168" viewBox="0 0 236 168"><defs><linearGradient id="g27" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#BBF7D0"/><stop offset="1" stop-color="#ECFDF5"/></linearGradient></defs>
+  <rect width="236" height="168" fill="url(#g27)"/>
+  <circle cx="193.51999999999998" cy="30.24" r="51.92" fill="#fff" opacity=".35"/>
+  
+  <path d="M52.312,168 Q55.16799999999999,114.828 118,111.97200000000001 Q180.832,114.828 183.688,168Z" fill="#059669"/>
+  <rect x="107.1472" y="90.552" width="21.7056" height="25.704000000000004" fill="#8D5A3C"/>
+  <circle cx="118" cy="70.56" r="28.560000000000002" fill="#8D5A3C"/>
+  <path d="M88.8688,67.70400000000001 Q89.44,32.004 118,36.288000000000004 Q146.56,32.004 147.1312,67.70400000000001 Q118,49.14 88.8688,67.70400000000001Z" fill="#151515"/>
+  </svg></div>
+      <span class="st" style="left:10px;bottom:10px"><i style="background:#0284C7"></i>Working from home</span>
+      
+    </div>
+    <div class="body"><b class="n">Karan Mehta</b><span class="role">Engineering Lead</span>
+      <div class="row" style="gap:6px;margin-top:4px;flex-wrap:wrap"><span class="tag">Engineering</span><span class="tag"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s7-7.5 7-13a7 7 0 0 0-14 0c0 5.5 7 13 7 13z"/><circle cx="12" cy="9" r="2.5"/></svg>Bengaluru HQ</span></div></div>
+    
+  </div><div class="card pc">
+    <div style="position:relative"><div class="ph" style="width:236px;height:168px;"><svg width="236" height="168" viewBox="0 0 236 168"><defs><linearGradient id="g28" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FDE68A"/><stop offset="1" stop-color="#FFFBEB"/></linearGradient></defs>
+  <rect width="236" height="168" fill="url(#g28)"/>
+  <circle cx="193.51999999999998" cy="30.24" r="51.92" fill="#fff" opacity=".35"/>
+  <path d="M85.156,70.56 Q82.3,27.72 118,34.86 Q153.7,27.72 150.844,70.56 L152.272,116.256 L83.72800000000001,116.256Z" fill="#3B2A20"/>
+  <path d="M52.312,168 Q55.16799999999999,114.828 118,111.97200000000001 Q180.832,114.828 183.688,168Z" fill="#374151"/>
+  <rect x="107.1472" y="90.552" width="21.7056" height="25.704000000000004" fill="#F2C9A5"/>
+  <circle cx="118" cy="70.56" r="28.560000000000002" fill="#F2C9A5"/>
+  
+  </svg></div>
+      <span class="st" style="left:10px;bottom:10px"><i style="background:#059669"></i>In office</span>
+      
+    </div>
+    <div class="body"><b class="n">Hema Iyer</b><span class="role">HR Manager</span>
+      <div class="row" style="gap:6px;margin-top:4px;flex-wrap:wrap"><span class="tag">Human Resources</span><span class="tag"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s7-7.5 7-13a7 7 0 0 0-14 0c0 5.5 7 13 7 13z"/><circle cx="12" cy="9" r="2.5"/></svg>Bengaluru HQ</span></div></div>
+    
+  </div><div class="card pc">
+    <div style="position:relative"><div class="ph" style="width:236px;height:168px;"><svg width="236" height="168" viewBox="0 0 236 168"><defs><linearGradient id="g29" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FBCFE8"/><stop offset="1" stop-color="#FDF2F8"/></linearGradient></defs>
+  <rect width="236" height="168" fill="url(#g29)"/>
+  <circle cx="193.51999999999998" cy="30.24" r="51.92" fill="#fff" opacity=".35"/>
+  
+  <path d="M52.312,168 Q55.16799999999999,114.828 118,111.97200000000001 Q180.832,114.828 183.688,168Z" fill="#7C3AED"/>
+  <rect x="107.1472" y="90.552" width="21.7056" height="25.704000000000004" fill="#8D5A3C"/>
+  <circle cx="118" cy="70.56" r="28.560000000000002" fill="#8D5A3C"/>
+  <path d="M88.8688,67.70400000000001 Q89.44,32.004 118,36.288000000000004 Q146.56,32.004 147.1312,67.70400000000001 Q118,49.14 88.8688,67.70400000000001Z" fill="#6B4423"/>
+  </svg></div>
+      <span class="st" style="left:10px;bottom:10px"><i style="background:#D97706"></i>Away today</span>
+      
+    </div>
+    <div class="body"><b class="n">Rahul Das</b><span class="role">Sales Executive</span>
+      <div class="row" style="gap:6px;margin-top:4px;flex-wrap:wrap"><span class="tag">Sales</span><span class="tag"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s7-7.5 7-13a7 7 0 0 0-14 0c0 5.5 7 13 7 13z"/><circle cx="12" cy="9" r="2.5"/></svg>Mumbai Office</span></div></div>
+    
+  </div><div class="card pc">
+    <div style="position:relative"><div class="ph" style="width:236px;height:168px;"><svg width="236" height="168" viewBox="0 0 236 168"><defs><linearGradient id="g30" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#BAE6FD"/><stop offset="1" stop-color="#F0F9FF"/></linearGradient></defs>
+  <rect width="236" height="168" fill="url(#g30)"/>
+  <circle cx="193.51999999999998" cy="30.24" r="51.92" fill="#fff" opacity=".35"/>
+  <path d="M85.156,70.56 Q82.3,27.72 118,34.86 Q153.7,27.72 150.844,70.56 L152.272,116.256 L83.72800000000001,116.256Z" fill="#1C1C1C"/>
+  <path d="M52.312,168 Q55.16799999999999,114.828 118,111.97200000000001 Q180.832,114.828 183.688,168Z" fill="#0284C7"/>
+  <rect x="107.1472" y="90.552" width="21.7056" height="25.704000000000004" fill="#F2C9A5"/>
+  <circle cx="118" cy="70.56" r="28.560000000000002" fill="#F2C9A5"/>
+  
+  </svg></div>
+      <span class="st" style="left:10px;bottom:10px"><i style="background:#059669"></i>In office</span>
+      
+    </div>
+    <div class="body"><b class="n">Neha Gupta</b><span class="role">Software Engineer</span>
+      <div class="row" style="gap:6px;margin-top:4px;flex-wrap:wrap"><span class="tag">Engineering</span><span class="tag"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s7-7.5 7-13a7 7 0 0 0-14 0c0 5.5 7 13 7 13z"/><circle cx="12" cy="9" r="2.5"/></svg>Bengaluru HQ</span></div></div>
+    
+  </div><div class="card pc">
+    <div style="position:relative"><div class="ph" style="width:236px;height:168px;"><svg width="236" height="168" viewBox="0 0 236 168"><defs><linearGradient id="g31" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#DDD6FE"/><stop offset="1" stop-color="#F5F3FF"/></linearGradient></defs>
+  <rect width="236" height="168" fill="url(#g31)"/>
+  <circle cx="193.51999999999998" cy="30.24" r="51.92" fill="#fff" opacity=".35"/>
+  
+  <path d="M52.312,168 Q55.16799999999999,114.828 118,111.97200000000001 Q180.832,114.828 183.688,168Z" fill="#DB2777"/>
+  <rect x="107.1472" y="90.552" width="21.7056" height="25.704000000000004" fill="#8D5A3C"/>
+  <circle cx="118" cy="70.56" r="28.560000000000002" fill="#8D5A3C"/>
+  <path d="M88.8688,67.70400000000001 Q89.44,32.004 118,36.288000000000004 Q146.56,32.004 147.1312,67.70400000000001 Q118,49.14 88.8688,67.70400000000001Z" fill="#4A3222"/>
+  </svg></div>
+      <span class="st" style="left:10px;bottom:10px"><i style="background:#059669"></i>In office</span>
+      <span class="st" style="right:10px;top:10px;color:#4F46E5">5 years today</span>
+    </div>
+    <div class="body"><b class="n">Vikram Rao</b><span class="role">Operations Head</span>
+      <div class="row" style="gap:6px;margin-top:4px;flex-wrap:wrap"><span class="tag">Operations</span><span class="tag"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s7-7.5 7-13a7 7 0 0 0-14 0c0 5.5 7 13 7 13z"/><circle cx="12" cy="9" r="2.5"/></svg>Bengaluru HQ</span></div></div>
+    
+  </div><div class="card pc">
+    <div style="position:relative"><div class="ph" style="width:236px;height:168px;background:linear-gradient(135deg,#DB2777,#DB2777bb);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:47px">AB</div>
+      <span class="st" style="left:10px;bottom:10px"><i style="background:#9CA3AF"></i>Not checked in</span>
+      <span class="st" style="right:10px;top:10px;color:#059669">✦ New · 2 weeks</span>
+    </div>
+    <div class="body"><b class="n">Ananya Bose</b><span class="role">Marketing Associate</span>
+      <div class="row" style="gap:6px;margin-top:4px;flex-wrap:wrap"><span class="tag">Marketing</span><span class="tag"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s7-7.5 7-13a7 7 0 0 0-14 0c0 5.5 7 13 7 13z"/><circle cx="12" cy="9" r="2.5"/></svg>Remote</span></div></div>
+    
+  </div><div class="card pc">
+    <div style="position:relative"><div class="ph" style="width:236px;height:168px;"><svg width="236" height="168" viewBox="0 0 236 168"><defs><linearGradient id="g32" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#A7F3D0"/><stop offset="1" stop-color="#ECFDF5"/></linearGradient></defs>
+  <rect width="236" height="168" fill="url(#g32)"/>
+  <circle cx="193.51999999999998" cy="30.24" r="51.92" fill="#fff" opacity=".35"/>
+  
+  <path d="M52.312,168 Q55.16799999999999,114.828 118,111.97200000000001 Q180.832,114.828 183.688,168Z" fill="#0D9488"/>
+  <rect x="107.1472" y="90.552" width="21.7056" height="25.704000000000004" fill="#8D5A3C"/>
+  <circle cx="118" cy="70.56" r="28.560000000000002" fill="#8D5A3C"/>
+  <path d="M88.8688,67.70400000000001 Q89.44,32.004 118,36.288000000000004 Q146.56,32.004 147.1312,67.70400000000001 Q118,49.14 88.8688,67.70400000000001Z" fill="#151515"/>
+  </svg></div>
+      <span class="st" style="left:10px;bottom:10px"><i style="background:#0284C7"></i>Working from home</span>
+      <span class="st" style="right:10px;top:10px">🎂 Birthday today</span>
+    </div>
+    <div class="body"><b class="n">Arjun Nair</b><span class="role">Product Designer</span>
+      <div class="row" style="gap:6px;margin-top:4px;flex-wrap:wrap"><span class="tag">Design</span><span class="tag"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s7-7.5 7-13a7 7 0 0 0-14 0c0 5.5 7 13 7 13z"/><circle cx="12" cy="9" r="2.5"/></svg>Bengaluru HQ</span></div></div>
+    
+  </div></div>
+</main></div>
+<div class="dim"></div>
+<aside class="drawer" style="width:470px">
+  <div style="position:relative;height:150px;background:linear-gradient(135deg,#4F46E5,#8B5CF6)"><span class="btn sm" style="position:absolute;right:12px;top:12px;background:rgba(255,255,255,.9);border:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></span>
+    <div style="position:absolute;left:22px;bottom:-56px;border:5px solid #fff;border-radius:22px;box-shadow:0 12px 24px -10px rgba(0,0,0,.35)"><div class="ph" style="width:120px;height:120px;"><svg width="120" height="120" viewBox="0 0 120 120"><defs><linearGradient id="g33" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#C7D2FE"/><stop offset="1" stop-color="#EEF2FF"/></linearGradient></defs>
+  <rect width="120" height="120" fill="url(#g33)"/>
+  <circle cx="98.39999999999999" cy="21.599999999999998" r="26.4" fill="#fff" opacity=".35"/>
+  <path d="M36.54,50.4 Q34.5,19.799999999999997 60,24.899999999999995 Q85.5,19.799999999999997 83.46000000000001,50.4 L84.48,83.04 L35.519999999999996,83.04Z" fill="#2B1D14"/>
+  <path d="M13.079999999999998,120 Q15.11999999999999,82.02000000000001 60,79.98 Q104.88000000000001,82.02000000000001 106.92,120Z" fill="#4F46E5"/>
+  <rect x="52.248" y="64.68" width="15.504000000000001" height="18.360000000000003" fill="#F2C9A5"/>
+  <circle cx="60" cy="50.4" r="20.400000000000002" fill="#F2C9A5"/>
+  
+  </svg></div></div></div>
+  <div style="padding:66px 22px 14px"><div class="row"><b style="font-size:21px;flex:1">Priya Sharma</b><span class="pill p-ok">● In office since 9:06</span></div>
+    <div class="mut" style="font-size:13.5px">Engineering Lead · Engineering</div>
+    <div class="row xs mut" style="gap:14px;margin-top:8px"><span class="row" style="gap:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s7-7.5 7-13a7 7 0 0 0-14 0c0 5.5 7 13 7 13z"/><circle cx="12" cy="9" r="2.5"/></svg>Bengaluru HQ</span><span class="row" style="gap:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>11:42 AM local</span><span>Joined Jan 2024 · 2 yrs 9 mo</span></div>
+    <div class="row" style="gap:8px;margin-top:14px"><span class="btn sm pri"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>Email</span><span class="btn sm"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>Send kudos</span><span class="btn sm"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy email</span><span class="btn sm">Full profile <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span></div></div>
+  <div style="padding:6px 22px 18px;display:flex;flex-direction:column;gap:14px;overflow:hidden">
+    <div><div class="xs mut" style="font-weight:800;letter-spacing:.06em;margin-bottom:8px">REPORTING LINE</div>
+      <div class="mini"><div class="ph" style="width:34px;height:34px;"><svg width="34" height="34" viewBox="0 0 34 34"><defs><linearGradient id="g34" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#BBF7D0"/><stop offset="1" stop-color="#ECFDF5"/></linearGradient></defs>
+  <rect width="34" height="34" fill="url(#g34)"/>
+  <circle cx="27.88" cy="6.12" r="7.48" fill="#fff" opacity=".35"/>
+  
+  <path d="M3.7060000000000013,34 Q4.283999999999999,23.239 17,22.661 Q29.716,23.239 30.293999999999997,34Z" fill="#059669"/>
+  <rect x="14.8036" y="18.326" width="4.3928" height="5.202" fill="#8D5A3C"/>
+  <circle cx="17" cy="14.28" r="5.78" fill="#8D5A3C"/>
+  <path d="M11.1044,13.702 Q11.219999999999999,6.4769999999999985 17,7.343999999999999 Q22.78,6.4769999999999985 22.8956,13.702 Q17,9.945 11.1044,13.702Z" fill="#6B4423"/>
+  </svg></div><div style="flex:1"><b style="font-size:13px">Ravi Kumar</b><div class="xs mut">Engineering Manager · manager</div></div></div>
+      <div style="width:2px;height:12px;background:#E5E7EF;margin-left:26px"></div>
+      <div class="mini" style="border-color:#C7C9F7;background:#EEF0FF"><div class="ph" style="width:34px;height:34px;"><svg width="34" height="34" viewBox="0 0 34 34"><defs><linearGradient id="g35" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#C7D2FE"/><stop offset="1" stop-color="#EEF2FF"/></linearGradient></defs>
+  <rect width="34" height="34" fill="url(#g35)"/>
+  <circle cx="27.88" cy="6.12" r="7.48" fill="#fff" opacity=".35"/>
+  <path d="M10.353000000000002,14.28 Q9.774999999999999,5.609999999999999 17,7.054999999999999 Q24.225,5.609999999999999 23.647,14.28 L23.936,23.528 L10.064,23.528Z" fill="#2B1D14"/>
+  <path d="M3.7060000000000013,34 Q4.283999999999999,23.239 17,22.661 Q29.716,23.239 30.293999999999997,34Z" fill="#4F46E5"/>
+  <rect x="14.8036" y="18.326" width="4.3928" height="5.202" fill="#F2C9A5"/>
+  <circle cx="17" cy="14.28" r="5.78" fill="#F2C9A5"/>
+  
+  </svg></div><div style="flex:1"><b style="font-size:13px">Priya Sharma</b><div class="xs mut">you’re looking at</div></div></div>
+      <div class="row" style="gap:6px;margin:8px 0 0 30px"><span class="xs mut">Leads</span><div class="stack"><div class="ph" style="width:30px;height:30px;border-radius:50%"><svg width="30" height="30" viewBox="0 0 30 30"><defs><linearGradient id="g36" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#BAE6FD"/><stop offset="1" stop-color="#F0F9FF"/></linearGradient></defs>
+  <rect width="30" height="30" fill="url(#g36)"/>
+  <circle cx="24.599999999999998" cy="5.3999999999999995" r="6.6" fill="#fff" opacity=".35"/>
+  
+  <path d="M3.2699999999999996,30 Q3.7799999999999976,20.505000000000003 15,19.995 Q26.220000000000002,20.505000000000003 26.73,30Z" fill="#0284C7"/>
+  <rect x="13.062" y="16.17" width="3.8760000000000003" height="4.590000000000001" fill="#F2C9A5"/>
+  <circle cx="15" cy="12.6" r="5.1000000000000005" fill="#F2C9A5"/>
+  <path d="M9.797999999999998,12.09 Q9.899999999999999,5.714999999999998 15,6.4799999999999995 Q20.1,5.714999999999998 20.202,12.09 Q15,8.774999999999999 9.797999999999998,12.09Z" fill="#1C1C1C"/>
+  </svg></div><div class="ph" style="width:30px;height:30px;border-radius:50%"><svg width="30" height="30" viewBox="0 0 30 30"><defs><linearGradient id="g37" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#BBF7D0"/><stop offset="1" stop-color="#ECFDF5"/></linearGradient></defs>
+  <rect width="30" height="30" fill="url(#g37)"/>
+  <circle cx="24.599999999999998" cy="5.3999999999999995" r="6.6" fill="#fff" opacity=".35"/>
+  
+  <path d="M3.2699999999999996,30 Q3.7799999999999976,20.505000000000003 15,19.995 Q26.220000000000002,20.505000000000003 26.73,30Z" fill="#059669"/>
+  <rect x="13.062" y="16.17" width="3.8760000000000003" height="4.590000000000001" fill="#8D5A3C"/>
+  <circle cx="15" cy="12.6" r="5.1000000000000005" fill="#8D5A3C"/>
+  <path d="M9.797999999999998,12.09 Q9.899999999999999,5.714999999999998 15,6.4799999999999995 Q20.1,5.714999999999998 20.202,12.09 Q15,8.774999999999999 9.797999999999998,12.09Z" fill="#151515"/>
+  </svg></div><div class="ph" style="width:30px;height:30px;border-radius:50%"><svg width="30" height="30" viewBox="0 0 30 30"><defs><linearGradient id="g38" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FBCFE8"/><stop offset="1" stop-color="#FDF2F8"/></linearGradient></defs>
+  <rect width="30" height="30" fill="url(#g38)"/>
+  <circle cx="24.599999999999998" cy="5.3999999999999995" r="6.6" fill="#fff" opacity=".35"/>
+  
+  <path d="M3.2699999999999996,30 Q3.7799999999999976,20.505000000000003 15,19.995 Q26.220000000000002,20.505000000000003 26.73,30Z" fill="#7C3AED"/>
+  <rect x="13.062" y="16.17" width="3.8760000000000003" height="4.590000000000001" fill="#8D5A3C"/>
+  <circle cx="15" cy="12.6" r="5.1000000000000005" fill="#8D5A3C"/>
+  <path d="M9.797999999999998,12.09 Q9.899999999999999,5.714999999999998 15,6.4799999999999995 Q20.1,5.714999999999998 20.202,12.09 Q15,8.774999999999999 9.797999999999998,12.09Z" fill="#4A3222"/>
+  </svg></div></div><span class="xs mut">Neha, Karan, Dev</span></div></div>
+    <div><div class="xs mut" style="font-weight:800;letter-spacing:.06em;margin-bottom:8px">TEAMMATES · ENGINEERING</div><div class="row" style="gap:8px"><div style="text-align:center"><div class="ph" style="width:52px;height:52px;"><svg width="52" height="52" viewBox="0 0 52 52"><defs><linearGradient id="g39" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#BBF7D0"/><stop offset="1" stop-color="#ECFDF5"/></linearGradient></defs>
+  <rect width="52" height="52" fill="url(#g39)"/>
+  <circle cx="42.64" cy="9.36" r="11.44" fill="#fff" opacity=".35"/>
+  
+  <path d="M5.668000000000003,52 Q6.552,35.542 26,34.658 Q45.448,35.542 46.331999999999994,52Z" fill="#059669"/>
+  <rect x="22.6408" y="28.028" width="6.7184" height="7.956" fill="#8D5A3C"/>
+  <circle cx="26" cy="21.84" r="8.84" fill="#8D5A3C"/>
+  <path d="M16.9832,20.956 Q17.16,9.905999999999999 26,11.232000000000001 Q34.84,9.905999999999999 35.0168,20.956 Q26,15.21 16.9832,20.956Z" fill="#151515"/>
+  </svg></div><div class="xs" style="margin-top:4px">Karan</div></div><div style="text-align:center"><div class="ph" style="width:52px;height:52px;"><svg width="52" height="52" viewBox="0 0 52 52"><defs><linearGradient id="g40" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#BAE6FD"/><stop offset="1" stop-color="#F0F9FF"/></linearGradient></defs>
+  <rect width="52" height="52" fill="url(#g40)"/>
+  <circle cx="42.64" cy="9.36" r="11.44" fill="#fff" opacity=".35"/>
+  
+  <path d="M5.668000000000003,52 Q6.552,35.542 26,34.658 Q45.448,35.542 46.331999999999994,52Z" fill="#0284C7"/>
+  <rect x="22.6408" y="28.028" width="6.7184" height="7.956" fill="#F2C9A5"/>
+  <circle cx="26" cy="21.84" r="8.84" fill="#F2C9A5"/>
+  <path d="M16.9832,20.956 Q17.16,9.905999999999999 26,11.232000000000001 Q34.84,9.905999999999999 35.0168,20.956 Q26,15.21 16.9832,20.956Z" fill="#1C1C1C"/>
+  </svg></div><div class="xs" style="margin-top:4px">Neha</div></div><div style="text-align:center"><div class="ph" style="width:52px;height:52px;"><svg width="52" height="52" viewBox="0 0 52 52"><defs><linearGradient id="g41" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#BBF7D0"/><stop offset="1" stop-color="#ECFDF5"/></linearGradient></defs>
+  <rect width="52" height="52" fill="url(#g41)"/>
+  <circle cx="42.64" cy="9.36" r="11.44" fill="#fff" opacity=".35"/>
+  
+  <path d="M5.668000000000003,52 Q6.552,35.542 26,34.658 Q45.448,35.542 46.331999999999994,52Z" fill="#059669"/>
+  <rect x="22.6408" y="28.028" width="6.7184" height="7.956" fill="#8D5A3C"/>
+  <circle cx="26" cy="21.84" r="8.84" fill="#8D5A3C"/>
+  <path d="M16.9832,20.956 Q17.16,9.905999999999999 26,11.232000000000001 Q34.84,9.905999999999999 35.0168,20.956 Q26,15.21 16.9832,20.956Z" fill="#6B4423"/>
+  </svg></div><div class="xs" style="margin-top:4px">Ravi</div></div><div style="text-align:center"><div class="ph" style="width:52px;height:52px;"><svg width="52" height="52" viewBox="0 0 52 52"><defs><linearGradient id="g42" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FBCFE8"/><stop offset="1" stop-color="#FDF2F8"/></linearGradient></defs>
+  <rect width="52" height="52" fill="url(#g42)"/>
+  <circle cx="42.64" cy="9.36" r="11.44" fill="#fff" opacity=".35"/>
+  
+  <path d="M5.668000000000003,52 Q6.552,35.542 26,34.658 Q45.448,35.542 46.331999999999994,52Z" fill="#7C3AED"/>
+  <rect x="22.6408" y="28.028" width="6.7184" height="7.956" fill="#8D5A3C"/>
+  <circle cx="26" cy="21.84" r="8.84" fill="#8D5A3C"/>
+  <path d="M16.9832,20.956 Q17.16,9.905999999999999 26,11.232000000000001 Q34.84,9.905999999999999 35.0168,20.956 Q26,15.21 16.9832,20.956Z" fill="#4A3222"/>
+  </svg></div><div class="xs" style="margin-top:4px">Dev</div></div><span class="xs mut">+2</span></div></div>
+    <div class="g2" style="gap:10px"><div style="border:1px solid #EEF0F5;border-radius:12px;padding:10px 12px;background:#F8F9FC"><div class="xs mut">🎂 Birthday</div><b style="font-size:13px">21 March</b></div><div style="border:1px solid #EEF0F5;border-radius:12px;padding:10px 12px;background:#F8F9FC"><div class="xs mut">🏆 Work anniversary</div><b style="font-size:13px">15 Jan · 3 years soon</b></div><div style="border:1px solid #EEF0F5;border-radius:12px;padding:10px 12px;background:#F8F9FC"><div class="xs mut">💛 Kudos received</div><b style="font-size:13px">14 · 3 this month</b></div><div style="border:1px solid #EEF0F5;border-radius:12px;padding:10px 12px;background:#F8F9FC"><div class="xs mut">🗓 This week</div><b style="font-size:13px">In Mon–Thu · leave Fri</b></div></div>
+    <div class="xs mut">Phone and personal details stay on the full profile, for people allowed to see them.</div>
+  </div>
+</aside></div></x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1300}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

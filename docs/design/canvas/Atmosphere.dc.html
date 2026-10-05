@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Atmosphere ideas</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#FAF8F4}
+.w{font-family:Manrope,system-ui,sans-serif;color:#18181B;padding:40px;background:#FAF8F4;box-sizing:border-box}
+.w h1{margin:0 0 6px;font-size:28px;font-weight:800;letter-spacing:-.02em}
+.w>p.lead{margin:0 0 24px;color:#6B6B73;max-width:980px;line-height:1.5}
+.card{background:#FFFFFF;border:1px solid #E7E1D6;border-radius:14px;box-shadow:0 1px 2px rgba(24,24,27,.04), 0 6px 18px -8px rgba(24,24,27,.12);padding:18px 20px;display:flex;flex-direction:column;gap:12px;box-sizing:border-box;min-width:0}
+.card h2{margin:0;font-size:15px;font-weight:800}
+.hd{display:flex;align-items:center;gap:10px}.hd h2{flex:1}
+.tag{font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px;background:#F6EBD6;color:#7A4E0E;white-space:nowrap}
+.tag.ok{background:#E4F3EA;color:#157A4B}.tag.neu{background:#F0EDE7;color:#4A4A52}
+.mut{color:#6B6B73}.xs{font-size:12px}.sm{font-size:13px}
+.why{font-size:12.5px;color:#6B6B73;line-height:1.5;border-top:1px solid #EFEAE0;padding-top:10px;margin-top:auto}
+.why b{color:#18181B}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}}
+@keyframes growy{from{transform:scaleY(0)}}
+@keyframes fillw{from{transform:scaleX(0)}}
+@keyframes pop{from{opacity:0;transform:scale(.7)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+body{background:#0B0A08}
+.w{background:#0B0A08;color:#EDEDEF}.w>p.lead{color:#A9A59C}
+.sc{border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.08);background:#12100C;display:flex;flex-direction:column}
+.stage{height:210px;position:relative;overflow:hidden}
+.tx{padding:14px 16px 16px}.tx h2{color:#FFF7E8}.tx p{margin:6px 0 0;font-size:13px;color:#A9A59C;line-height:1.5}
+.tag{background:#2E2414;color:#E8BD6E}
+/* birthday */
+.bday{background:linear-gradient(160deg,#2f5e8c,#6fa7d4 55%,#f3c784)}
+.bday i{position:absolute;bottom:-60px;width:34px;height:42px;border-radius:50% 50% 48% 48%;animation:balloon 7s ease-in infinite}
+.bday i::after{content:"";position:absolute;left:50%;top:100%;width:1px;height:40px;background:rgba(255,255,255,.6)}
+@keyframes balloon{0%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-150px) rotate(4deg)}100%{transform:translateY(-300px) rotate(-3deg)}}
+.label{position:absolute;left:16px;bottom:14px;color:#fff;font-weight:800;font-size:20px;text-shadow:0 2px 12px rgba(0,0,0,.4)}
+.label small{display:block;font-size:12px;font-weight:600;opacity:.85}
+/* anniversary fireworks */
+.anniv{background:linear-gradient(160deg,#070b1f,#141c3f 60%,#2a2f5e)}
+.fw{position:absolute;width:2px;height:2px}
+.fw i{position:absolute;width:5px;height:5px;border-radius:50%;opacity:0;animation:boom 2.4s ease-out infinite;animation-delay:inherit}
+@keyframes boom{0%{opacity:1;transform:rotate(var(--a)) translateX(0)}70%{opacity:1}100%{opacity:0;transform:rotate(var(--a)) translateX(60px)}}
+/* diwali */
+.diwali{background:linear-gradient(160deg,#1a0f2e,#3b1b3f 60%,#5c2a20)}
+.diwali .bulb i{position:absolute;width:8px;height:8px;border-radius:50%;box-shadow:0 0 12px currentColor;animation:twinkle 1s ease-in-out infinite alternate}
+@keyframes twinkle{to{opacity:.3}}
+.diya{position:absolute;bottom:22px;width:34px;height:14px;border-radius:0 0 20px 20px;background:#B7791F}
+.diya b{position:absolute;left:50%;top:-16px;width:10px;height:16px;margin-left:-5px;border-radius:50% 50% 30% 30%;background:radial-gradient(circle at 50% 70%,#FFF4C2,#FFB347 60%,transparent 70%);animation:flame .6s ease-in-out infinite alternate;transform-origin:bottom}
+@keyframes flame{to{transform:scaleY(1.2) rotate(3deg)}}
+/* holi */
+.holi{background:linear-gradient(160deg,#fff7ec,#ffe6f1)}
+.holi i{position:absolute;width:30px;height:30px;border-radius:50%;filter:blur(2px);opacity:0;animation:puff 3s ease-out infinite}
+@keyframes puff{0%{opacity:.9;transform:scale(.2)}100%{opacity:0;transform:scale(4)}}
+/* christmas snow */
+.snow{background:linear-gradient(160deg,#0f2233,#1c3d5a 60%,#3d6b8c)}
+.snow i{position:absolute;top:-10px;border-radius:50%;background:#fff;opacity:.9;animation:fall 7s linear infinite}
+@keyframes fall{to{transform:translateY(240px) translateX(20px)}}
+/* monsoon */
+.rain{background:linear-gradient(160deg,#2b3440,#46566a 60%,#6a7d90)}
+.rain i{position:absolute;top:-20px;width:1.5px;height:16px;background:rgba(220,235,255,.55);transform:rotate(12deg);animation:drop .9s linear infinite}
+@keyframes drop{to{transform:translate(-40px,240px) rotate(12deg)}}
+/* office lights */
+.office{background:linear-gradient(160deg,#0d1226,#1b2246)}
+.bld{position:absolute;left:50%;bottom:0;width:180px;height:170px;margin-left:-90px;background:#151a33;border:1px solid rgba(255,255,255,.08);display:grid;grid-template-columns:repeat(6,1fr);gap:8px;padding:14px;box-sizing:border-box}
+.bld i{background:#232a4d;border-radius:2px;animation:lit 6s ease infinite}
+@keyframes lit{0%,20%{background:#232a4d}30%,100%{background:#FFD27A;box-shadow:0 0 8px #FFD27A88}}
+.cnt{position:absolute;right:16px;top:14px;color:#FFE3A8;font-weight:800;font-size:13px}
+/* plant */
+.plant{background:linear-gradient(160deg,#f3faf3,#e3f1e4)}
+.pot{position:absolute;left:50%;bottom:16px;width:60px;height:40px;margin-left:-30px;background:#B7791F;border-radius:4px 4px 14px 14px}
+.stem{position:absolute;left:50%;bottom:56px;width:4px;margin-left:-2px;background:#2F8A4F;height:0;animation:grow 6s ease-in-out infinite;transform-origin:bottom}
+@keyframes grow{0%{height:0}60%,100%{height:110px}}
+.leaf{position:absolute;width:30px;height:16px;background:#3FA86A;border-radius:0 100% 0 100%;opacity:0;animation:leaf 6s ease infinite}
+@keyframes leaf{0%,30%{opacity:0;transform:scale(.2)}50%,100%{opacity:1;transform:none}}
+.streak{position:absolute;left:16px;top:14px;color:#157A4B;font-weight:800;font-size:13px}
+/* friday */
+.friday{background:linear-gradient(160deg,#2a2148,#8d3e5c 50%,#e3793f)}
+.friday .sun{position:absolute;left:70%;top:70%;width:60px;height:60px;border-radius:50%;background:radial-gradient(circle,#fff0c9,#ffb062);box-shadow:0 0 50px #ffb062;animation:set 8s ease-in-out infinite}
+@keyframes set{0%{transform:translateY(-40px)}100%{transform:translateY(40px)}}
+/* month tide */
+.tide{background:#0f2233}
+.water{position:absolute;left:0;right:0;bottom:0;height:13%;background:linear-gradient(#2F9BEA,#175a8f);animation:fillup 4s ease both}
+.water::before{content:"";position:absolute;left:-50%;top:-12px;width:200%;height:24px;background:radial-gradient(circle at 25% 100%,transparent 11px,#2F9BEA 12px) 0 0/48px 24px repeat-x;animation:wave 3s linear infinite}
+@keyframes wave{to{transform:translateX(48px)}}
+@keyframes fillup{from{height:0}}
+.rules{margin-top:24px;display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.rules .card{background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.015));border-color:rgba(255,255,255,.08);color:#EDEDEF;box-shadow:none}
+.rules ul{margin:0;padding-left:18px;font-size:13px;line-height:1.75;color:#C9C5BC}.rules b{color:#F0C985}
+</style>
+</helmet>
+<div class="w"><h1>Atmosphere — moments like the sky</h1><p class="lead">All live. Each one is triggered by something true (your birthday, a company holiday, the season, today’s attendance) and plays in the hero. One rule keeps it calm: <b>the biggest moment of the day wins, plays fully once, then settles into a quiet loop.</b> Reduce motion turns them all off.</p>
+<div class="g3">
+<section class="sc"><div class="stage bday"><i style="left:8%;background:#E9416A;animation-delay:0.0s;animation-duration:6s"></i><i style="left:21%;background:#F2B65A;animation-delay:0.7s;animation-duration:7s"></i><i style="left:34%;background:#5FD39B;animation-delay:1.4s;animation-duration:8s"></i><i style="left:47%;background:#5EB8B0;animation-delay:2.1s;animation-duration:6s"></i><i style="left:60%;background:#B07CF0;animation-delay:2.8s;animation-duration:7s"></i><i style="left:73%;background:#FF8A5C;animation-delay:3.5s;animation-duration:8s"></i><i style="left:86%;background:#E9416A;animation-delay:4.2s;animation-duration:6s"></i><div class="label">Happy birthday, Priya!<small>From everyone at aakash-portal</small></div></div><div class="tx"><div class="hd"><h2>Your birthday</h2><span class="tag">personal · that day</span></div><p>Balloons rise in your own hero only. Colleagues see you in Celebrations today.</p></div></section>
+<section class="sc"><div class="stage anniv"><span class="fw" style="left:20%;top:25%;animation-delay:0s"><i style="--a:0deg;background:#F2B65A"></i><i style="--a:30deg;background:#FFE3A8"></i><i style="--a:60deg;background:#FF8A5C"></i><i style="--a:90deg;background:#F2B65A"></i><i style="--a:120deg;background:#FFE3A8"></i><i style="--a:150deg;background:#FF8A5C"></i><i style="--a:180deg;background:#F2B65A"></i><i style="--a:210deg;background:#FFE3A8"></i><i style="--a:240deg;background:#FF8A5C"></i><i style="--a:270deg;background:#F2B65A"></i><i style="--a:300deg;background:#FFE3A8"></i><i style="--a:330deg;background:#FF8A5C"></i></span><span class="fw" style="left:50%;top:40%;animation-delay:0.8s"><i style="--a:0deg;background:#F2B65A"></i><i style="--a:30deg;background:#FFE3A8"></i><i style="--a:60deg;background:#FF8A5C"></i><i style="--a:90deg;background:#F2B65A"></i><i style="--a:120deg;background:#FFE3A8"></i><i style="--a:150deg;background:#FF8A5C"></i><i style="--a:180deg;background:#F2B65A"></i><i style="--a:210deg;background:#FFE3A8"></i><i style="--a:240deg;background:#FF8A5C"></i><i style="--a:270deg;background:#F2B65A"></i><i style="--a:300deg;background:#FFE3A8"></i><i style="--a:330deg;background:#FF8A5C"></i></span><span class="fw" style="left:80%;top:25%;animation-delay:1.6s"><i style="--a:0deg;background:#F2B65A"></i><i style="--a:30deg;background:#FFE3A8"></i><i style="--a:60deg;background:#FF8A5C"></i><i style="--a:90deg;background:#F2B65A"></i><i style="--a:120deg;background:#FFE3A8"></i><i style="--a:150deg;background:#FF8A5C"></i><i style="--a:180deg;background:#F2B65A"></i><i style="--a:210deg;background:#FFE3A8"></i><i style="--a:240deg;background:#FF8A5C"></i><i style="--a:270deg;background:#F2B65A"></i><i style="--a:300deg;background:#FFE3A8"></i><i style="--a:330deg;background:#FF8A5C"></i></span><div class="label">3 years with us<small>Thank you, Rohan</small></div></div><div class="tx"><div class="hd"><h2>Work anniversary</h2><span class="tag">personal · that day</span></div><p>Gentle fireworks for your anniversary, with the year count.</p></div></section>
+<section class="sc"><div class="stage diwali"><div class="bulb"><i style="left:0%;top:12%;animation-delay:0s;background:#FFD27A"></i><i style="left:6.4%;top:15.115346738469205%;animation-delay:0.25s;background:#FF8A5C"></i><i style="left:12.8%;top:17.73884872719618%;animation-delay:0.5s;background:#E9416A"></i><i style="left:19.200000000000003%;top:19.45631268773781%;animation-delay:0.75s;background:#5FD39B"></i><i style="left:25.6%;top:19.99658882433204%;animation-delay:0s;background:#FFD27A"></i><i style="left:32%;top:19.274379414605455%;animation-delay:0.25s;background:#FF8A5C"></i><i style="left:38.400000000000006%;top:17.40370544440921%;animation-delay:0.5s;background:#E9416A"></i><i style="left:44.800000000000004%;top:14.67990520124724%;animation-delay:0.75s;background:#5FD39B"></i><i style="left:51.2%;top:11.533006852579359%;animation-delay:0s;background:#FFD27A"></i><i style="left:57.6%;top:8.45983645364118%;animation-delay:0.25s;background:#FF8A5C"></i><i style="left:64%;top:5.945580037536574%;animation-delay:0.5s;background:#E9416A"></i><i style="left:70.4%;top:4.387183408883871%;animation-delay:0.75s;background:#5FD39B"></i><i style="left:76.80000000000001%;top:4.0306831293132745%;animation-delay:0s;background:#FFD27A"></i><i style="left:83.2%;top:4.932362754238775%;animation-delay:0.25s;background:#FF8A5C"></i><i style="left:89.60000000000001%;top:6.949866897021427%;animation-delay:0.5s;background:#E9416A"></i><i style="left:96%;top:9.764676014408593%;animation-delay:0.75s;background:#5FD39B"></i></div><span class="diya" style="left:8%;animation-delay:0s"><b></b></span><span class="diya" style="left:24%;animation-delay:0.3s"><b></b></span><span class="diya" style="left:40%;animation-delay:0.6s"><b></b></span><span class="diya" style="left:56%;animation-delay:0.8999999999999999s"><b></b></span><span class="diya" style="left:72%;animation-delay:1.2s"><b></b></span><span class="diya" style="left:88%;animation-delay:1.5s"><b></b></span><div class="label" style="bottom:auto;top:40%">Happy Diwali</div></div><div class="tx"><div class="hd"><h2>Diwali</h2><span class="tag">company holiday</span></div><p>String lights and flickering diyas around Diwali. Comes from the company’s holiday list, so each company gets its own festivals.</p></div></section>
+<section class="sc"><div class="stage holi"><i style="left:10%;top:30%;background:#E9416A;animation-delay:0s"></i><i style="left:28%;top:55%;background:#F2B65A;animation-delay:0.5s"></i><i style="left:46%;top:30%;background:#5FD39B;animation-delay:1s"></i><i style="left:64%;top:55%;background:#2F9BEA;animation-delay:1.5s"></i><i style="left:82%;top:30%;background:#B07CF0;animation-delay:2s"></i><div class="label" style="color:#7A2B5A;text-shadow:none">Happy Holi</div></div><div class="tx"><div class="hd"><h2>Holi</h2><span class="tag">company holiday</span></div><p>Soft colour clouds that bloom and fade.</p></div></section>
+<section class="sc"><div class="stage snow"><i style="left:0%;animation-delay:0.00s;animation-duration:5s;width:2px;height:2px"></i><i style="left:37%;animation-delay:0.41s;animation-duration:6s;width:3px;height:3px"></i><i style="left:74%;animation-delay:0.82s;animation-duration:7s;width:4px;height:4px"></i><i style="left:11%;animation-delay:1.23s;animation-duration:8s;width:2px;height:2px"></i><i style="left:48%;animation-delay:1.64s;animation-duration:9s;width:3px;height:3px"></i><i style="left:85%;animation-delay:2.05s;animation-duration:5s;width:4px;height:4px"></i><i style="left:22%;animation-delay:2.46s;animation-duration:6s;width:2px;height:2px"></i><i style="left:59%;animation-delay:2.87s;animation-duration:7s;width:3px;height:3px"></i><i style="left:96%;animation-delay:3.28s;animation-duration:8s;width:4px;height:4px"></i><i style="left:33%;animation-delay:3.69s;animation-duration:9s;width:2px;height:2px"></i><i style="left:70%;animation-delay:4.10s;animation-duration:5s;width:3px;height:3px"></i><i style="left:7%;animation-delay:4.51s;animation-duration:6s;width:4px;height:4px"></i><i style="left:44%;animation-delay:4.92s;animation-duration:7s;width:2px;height:2px"></i><i style="left:81%;animation-delay:5.33s;animation-duration:8s;width:3px;height:3px"></i><i style="left:18%;animation-delay:5.74s;animation-duration:9s;width:4px;height:4px"></i><i style="left:55%;animation-delay:0.15s;animation-duration:5s;width:2px;height:2px"></i><i style="left:92%;animation-delay:0.56s;animation-duration:6s;width:3px;height:3px"></i><i style="left:29%;animation-delay:0.97s;animation-duration:7s;width:4px;height:4px"></i><i style="left:66%;animation-delay:1.38s;animation-duration:8s;width:2px;height:2px"></i><i style="left:3%;animation-delay:1.79s;animation-duration:9s;width:3px;height:3px"></i><i style="left:40%;animation-delay:2.20s;animation-duration:5s;width:4px;height:4px"></i><i style="left:77%;animation-delay:2.61s;animation-duration:6s;width:2px;height:2px"></i><i style="left:14%;animation-delay:3.02s;animation-duration:7s;width:3px;height:3px"></i><i style="left:51%;animation-delay:3.43s;animation-duration:8s;width:4px;height:4px"></i><i style="left:88%;animation-delay:3.84s;animation-duration:9s;width:2px;height:2px"></i><i style="left:25%;animation-delay:4.25s;animation-duration:5s;width:3px;height:3px"></i><i style="left:62%;animation-delay:4.66s;animation-duration:6s;width:4px;height:4px"></i><i style="left:99%;animation-delay:5.07s;animation-duration:7s;width:2px;height:2px"></i><i style="left:36%;animation-delay:5.48s;animation-duration:8s;width:3px;height:3px"></i><i style="left:73%;animation-delay:5.89s;animation-duration:9s;width:4px;height:4px"></i><div class="label">Season’s greetings</div></div><div class="tx"><div class="hd"><h2>Christmas &amp; New Year</h2><span class="tag">company holiday</span></div><p>Light snowfall; fireworks at midnight on New Year’s Day.</p></div></section>
+<section class="sc"><div class="stage rain"><i style="left:0%;animation-delay:0.00s"></i><i style="left:29%;animation-delay:0.13s"></i><i style="left:58%;animation-delay:0.26s"></i><i style="left:87%;animation-delay:0.39s"></i><i style="left:16%;animation-delay:0.52s"></i><i style="left:45%;animation-delay:0.65s"></i><i style="left:74%;animation-delay:0.78s"></i><i style="left:3%;animation-delay:0.91s"></i><i style="left:32%;animation-delay:1.04s"></i><i style="left:61%;animation-delay:1.17s"></i><i style="left:90%;animation-delay:0.10s"></i><i style="left:19%;animation-delay:0.23s"></i><i style="left:48%;animation-delay:0.36s"></i><i style="left:77%;animation-delay:0.49s"></i><i style="left:6%;animation-delay:0.62s"></i><i style="left:35%;animation-delay:0.75s"></i><i style="left:64%;animation-delay:0.88s"></i><i style="left:93%;animation-delay:1.01s"></i><i style="left:22%;animation-delay:1.14s"></i><i style="left:51%;animation-delay:0.07s"></i><i style="left:80%;animation-delay:0.20s"></i><i style="left:9%;animation-delay:0.33s"></i><i style="left:38%;animation-delay:0.46s"></i><i style="left:67%;animation-delay:0.59s"></i><i style="left:96%;animation-delay:0.72s"></i><i style="left:25%;animation-delay:0.85s"></i><i style="left:54%;animation-delay:0.98s"></i><i style="left:83%;animation-delay:1.11s"></i><i style="left:12%;animation-delay:0.04s"></i><i style="left:41%;animation-delay:0.17s"></i><i style="left:70%;animation-delay:0.30s"></i><i style="left:99%;animation-delay:0.43s"></i><i style="left:28%;animation-delay:0.56s"></i><i style="left:57%;animation-delay:0.69s"></i><i style="left:86%;animation-delay:0.82s"></i><i style="left:15%;animation-delay:0.95s"></i><i style="left:44%;animation-delay:1.08s"></i><i style="left:73%;animation-delay:0.01s"></i><i style="left:2%;animation-delay:0.14s"></i><i style="left:31%;animation-delay:0.27s"></i><div class="label">Monsoon mode<small>Drive safe — 2 people are WFH today</small></div></div><div class="tx"><div class="hd"><h2>Monsoon</h2><span class="tag">season · Jun – Sep</span></div><p>Rain by season (and later by office location). No weather service needed.</p></div></section>
+<section class="sc"><div class="stage office"><div class="bld"><i style="animation-delay:0.00s"></i><i style="animation-delay:0.23s"></i><i style="animation-delay:0.46s"></i><i style="animation-delay:0.69s"></i><i style="animation-delay:0.92s"></i><i style="animation-delay:1.15s"></i><i style="animation-delay:1.38s"></i><i style="animation-delay:1.61s"></i><i style="animation-delay:1.84s"></i><i style="animation-delay:2.07s"></i><i style="animation-delay:2.30s"></i><i style="animation-delay:2.53s"></i><i style="animation-delay:2.76s"></i><i style="animation-delay:2.99s"></i><i style="animation-delay:3.22s"></i><i style="animation-delay:3.45s"></i><i style="animation-delay:3.68s"></i><i style="animation-delay:3.91s"></i><i style="animation-delay:4.14s"></i><i style="animation-delay:4.37s"></i><i style="animation-delay:4.60s"></i><i style="animation-delay:4.83s"></i><i style="animation-delay:5.06s"></i><i style="animation-delay:5.29s"></i></div><span class="cnt">9 of 13 in</span></div><div class="tx"><div class="hd"><h2>Office lights</h2><span class="tag">live · admins</span></div><p>A building whose windows light up as people check in. A friendly “who’s in” for HR.</p></div></section>
+<section class="sc"><div class="stage plant"><div class="streak">12-day on-time streak</div><div class="pot"></div><div class="stem"></div><span class="leaf" style="left:calc(50% + 2px);bottom:110px;animation-delay:.6s"></span><span class="leaf" style="left:calc(50% - 32px);bottom:130px;transform:scaleX(-1);animation-delay:1s"></span><span class="leaf" style="left:calc(50% + 2px);bottom:150px;animation-delay:1.4s"></span></div><div class="tx"><div class="hd"><h2>On-time streak</h2><span class="tag">personal · daily</span></div><p>A plant that grows with punctuality and wilts gently if the streak breaks. Optional per company.</p></div></section>
+<section class="sc"><div class="stage friday"><div class="sun"></div><div class="label">Weekend in 4h 20m<small>Your timesheet is ready to submit</small></div></div><div class="tx"><div class="hd"><h2>Friday wind-down</h2><span class="tag">weekly</span></div><p>A setting sun on Friday afternoon with a helpful nudge.</p></div></section>
+<section class="sc"><div class="stage tide"><div class="water" style="height:13%"></div><div class="label">Day 4 of 31<small>Payroll cut-off on 25 Oct</small></div></div><div class="tx"><div class="hd"><h2>Month tide</h2><span class="tag">monthly</span></div><p>Water rises as the month goes on — useful near payroll and timesheet deadlines.</p></div></section>
+</div>
+<div class="rules">
+<div class="card"><h2>Which one shows</h2><ul><li><b>1.</b> Your birthday / anniversary</li><li><b>2.</b> Company holiday or festival</li><li><b>3.</b> Season (monsoon, winter)</li><li><b>4.</b> Weekly (Friday) / monthly</li><li><b>5.</b> Default: sky by time of day</li></ul></div>
+<div class="card"><h2>Calm by design</h2><ul><li>Full animation once a day, then a quiet loop</li><li>Pauses when the tab is hidden</li><li>Off with Reduce motion; off on low-power phones</li><li>Text always stays readable on top</li></ul></div>
+<div class="card"><h2>Company control</h2><ul><li>Admins choose which moments are on</li><li>Festivals come from the holiday list</li><li>Streak plant optional (some teams dislike gamification)</li><li>All CSS — no extra download</li></ul></div>
+</div></div></x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1500}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

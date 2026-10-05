@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Announcement post & catch-up</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F6F7FB}
+.app{display:flex;min-height:100vh;font-family:Manrope,system-ui,sans-serif;color:#111827;background:#F6F7FB;position:relative}
+.sb{flex:0 0 240px;background:#FFFFFF;border-right:1px solid #E5E7EF;display:flex;flex-direction:column}
+.sb-h{display:flex;gap:10px;align-items:center;padding:14px}
+.logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#E9416A,#7A2BD9);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px}
+.sb-h b{display:block;font-size:14px}.sb-h span{font-size:11px;color:#6B7280}
+.sb-g{padding:12px 14px 3px;font-size:10.5px;font-weight:700;letter-spacing:.07em;color:#9CA3AF}
+.sb-i{display:flex;align-items:center;gap:10px;height:34px;margin:0 10px;padding:0 10px;border-radius:7px;font-size:13.5px;color:#374151}
+.sb-i svg{color:#9CA3AF}.sb-i.on{background:#EEF0FF;color:#3730A3;font-weight:700}.sb-i.on svg{color:#4F46E5}
+.col{flex:1;min-width:0;display:flex;flex-direction:column}
+.hdr{height:56px;border-bottom:1px solid #E5E7EF;display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:rgba(255,255,255,.7)}
+.crumb{font-size:13.5px;color:#6B7280}.crumb b{color:#111827}
+.main{padding:24px 30px 40px;display:flex;flex-direction:column;gap:16px}
+.eyebrow{font-size:12.5px;color:#4F46E5;font-weight:700}
+h1{margin:2px 0 0;font-size:26px;font-weight:800;letter-spacing:-.02em}
+.sub{color:#6B7280;font-size:14px;margin-top:3px}
+.row{display:flex;align-items:center;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 14px;border-radius:9px;border:1px solid #E5E7EF;background:#fff;color:#111827;font-size:13px;font-weight:700;white-space:nowrap}
+.btn.pri{background:#4F46E5;border-color:#4F46E5;color:#fff}.btn.sm{height:30px;padding:0 10px;font-size:12px}
+.card{background:#fff;border:1px solid #E5E7EF;border-radius:14px;box-shadow:0 1px 2px rgba(17,24,39,.04)}
+.sec{padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.sec h3{margin:0;font-size:14.5px;display:flex;align-items:center;gap:8px}.sec h3 svg{color:#6B7280}
+.sec h3 .r{margin-left:auto;font-size:12px;font-weight:500;color:#6B7280}
+.mut{color:#6B7280}.xs{font-size:12px}
+.tabs{display:flex;gap:4px;background:#fff;border:1px solid #E5E7EF;border-radius:11px;padding:4px;width:max-content}
+.tabs span{display:flex;align-items:center;gap:7px;padding:7px 14px;border-radius:8px;font-size:13px;color:#6B7280;font-weight:600}
+.tabs span.on{background:#4F46E5;color:#fff}
+.fbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:9px;border:1px solid #E5E7EF;background:#fff;font-size:12.5px;font-weight:600;color:#374151}
+.chip.on{border-color:#C7C9F7;background:#EEF0FF;color:#3730A3}
+.seg{display:flex;border:1px solid #E5E7EF;border-radius:9px;overflow:hidden;background:#fff}.seg span{padding:7px 11px;font-size:12px;font-weight:600;color:#6B7280}.seg span.on{background:#111827;color:#fff}
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.kpi{padding:14px 16px;display:flex;flex-direction:column;gap:3px;position:relative;overflow:hidden}
+.kpi span.l{font-size:12px;color:#6B7280}.kpi b.v{font-size:25px;font-weight:800;letter-spacing:-.02em}
+.delta{font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;gap:2px}
+.d-up{color:#059669}.d-dn{color:#DC2626}.d-flat{color:#6B7280}
+.kpi svg.sp{position:absolute;right:12px;bottom:12px}
+.hl{display:flex;gap:12px;padding:12px 14px;border-radius:12px;border:1px solid #E5E7EF;background:#fff;align-items:flex-start}
+.hl .ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.g21{display:grid;grid-template-columns:1.5fr 1fr;gap:16px}.g12{display:grid;grid-template-columns:1fr 1.4fr;gap:16px}
+.lib{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid #EEF0F5;border-radius:12px;background:#F8F9FC}
+.lib .ic{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none}
+.bar{height:8px;border-radius:99px;background:#EEF0F5;overflow:hidden}.bar i{display:block;height:100%;border-radius:99px;transform-origin:left;animation:fw 1s cubic-bezier(.2,.8,.2,1) both}
+@keyframes fw{from{transform:scaleX(0)}}
+.chart polyline,.chart path.ln{stroke-dasharray:3000;animation:draw 1.6s ease both}@keyframes draw{from{stroke-dashoffset:3000}}
+.heat{display:grid;gap:3px}.heat i{display:block;border-radius:4px;aspect-ratio:1}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#6B7280;padding:8px 10px;border-bottom:1px solid #E5E7EF}
+td{padding:9px 10px;border-bottom:1px solid #EEF0F5}
+.av{width:28px;height:28px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;color:#fff;flex:none}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.p-ok{background:#E6F6F0;color:#059669}.p-warn{background:#FEF3E2;color:#D97706}.p-bad{background:#FDECEC;color:#DC2626}.p-pri{background:#EEF0FF;color:#3730A3}.p-neu{background:#EEF0F5;color:#6B7280}
+.dim{position:absolute;inset:0;background:rgba(17,24,39,.35);z-index:4}
+.drawer{position:absolute;top:0;right:0;bottom:0;width:440px;background:#fff;border-left:1px solid #E5E7EF;z-index:5;display:flex;flex-direction:column;box-shadow:-24px 0 50px -20px rgba(0,0,0,.35)}
+.modal{position:absolute;left:50%;top:150px;transform:translateX(-50%);width:480px;background:#fff;border:1px solid #E5E7EF;border-radius:16px;z-index:5;box-shadow:0 30px 60px -20px rgba(0,0,0,.4)}
+.fld{display:flex;flex-direction:column;gap:5px;font-size:12.5px}.fld label{font-weight:700}
+.inp{height:36px;border:1px solid #E5E7EF;border-radius:9px;padding:0 11px;display:flex;align-items:center;font-size:13px;gap:8px;background:#fff}
+
+.ph{position:relative;overflow:hidden;border-radius:14px;flex:none}
+.ph svg{display:block}
+.st{position:absolute;display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:800;padding:3px 8px;border-radius:99px;background:rgba(255,255,255,.92);box-shadow:0 2px 6px rgba(0,0,0,.12)}
+.st i{width:7px;height:7px;border-radius:50%;display:inline-block}
+.pc{display:flex;flex-direction:column;overflow:hidden;transition:transform .25s,box-shadow .25s}
+.pc:hover{transform:translateY(-4px);box-shadow:0 18px 36px -18px rgba(17,24,39,.35)}
+.pc .body{padding:12px 14px 14px;display:flex;flex-direction:column;gap:4px}
+.pc b.n{font-size:15px}.pc .role{font-size:12.5px;color:#6B7280}
+.tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:#F8F9FC;border:1px solid #EEF0F5;color:#374151}
+.acts{display:flex;gap:6px;padding:0 14px 14px}
+.acts span{flex:1;height:30px;border-radius:8px;border:1px solid #E5E7EF;display:flex;align-items:center;justify-content:center;gap:5px;font-size:12px;font-weight:700;color:#374151}
+.rail{display:flex;flex-direction:column;gap:2px;position:sticky;top:0;font-size:10.5px;font-weight:800;color:#9CA3AF;text-align:center}
+.rail span{padding:1px 0}.rail span.on{color:#4F46E5}
+.hlstrip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.hlc{padding:14px 16px;display:flex;align-items:center;gap:12px}
+.stack{display:flex}.stack .ph{border:2.5px solid #fff;margin-left:-10px;border-radius:50%}.stack .ph:first-child{margin-left:0}
+.search{display:flex;align-items:center;gap:8px;height:42px;padding:0 14px;border:1px solid #E5E7EF;border-radius:12px;background:#fff;flex:1;color:#6B7280;font-size:14px;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+.wall{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px}
+.grp{display:flex;flex-direction:column;gap:10px}
+.grp h3{margin:0;font-size:15px;display:flex;align-items:center;gap:10px}
+.mini{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid #EEF0F5;border-radius:12px;background:#fff}
+
+.a3{position:relative;width:calc(110px*var(--s));height:calc(110px*var(--s));filter:drop-shadow(0 18px 18px rgba(0,0,0,.28));animation:float 4s ease-in-out infinite}
+@keyframes float{50%{transform:translateY(-8px) rotate(-3deg)}}
+.scene{position:relative;overflow:hidden;border-radius:14px}
+.cf{position:absolute;width:7px;height:11px;border-radius:2px;animation:fall 3.4s linear infinite}
+@keyframes fall{from{transform:translateY(-30px) rotate(0)}to{transform:translateY(240px) rotate(540deg)}}
+.diya{position:absolute;bottom:14px;width:26px;height:12px;border-radius:0 0 14px 14px;background:linear-gradient(#F59E0B,#B45309)}
+.diya::after{content:"";position:absolute;left:9px;top:-13px;width:8px;height:14px;border-radius:50% 50% 50% 50%/60% 60% 40% 40%;background:radial-gradient(circle at 50% 70%,#FEF3C7,#F59E0B 60%,transparent 70%);animation:flick .5s ease-in-out infinite alternate}
+@keyframes flick{to{transform:scaleY(1.25) rotate(4deg)}}
+.spark{position:absolute;width:4px;height:4px;border-radius:50%;background:#fff;box-shadow:0 0 8px #fff;animation:tw 2s ease-in-out infinite}
+@keyframes tw{50%{opacity:.15}}
+.aurora{position:absolute;inset:-40%;background:conic-gradient(from 0deg,#4F46E5,#06B6D4,#22C55E,#A855F7,#4F46E5);filter:blur(30px);animation:spin 12s linear infinite;opacity:.9}
+@keyframes spin{to{transform:rotate(360deg)}}
+.tabs2{display:flex;gap:4px;border-bottom:1px solid #EEF0F5}.tabs2 span{padding:8px 12px;font-size:12.5px;font-weight:700;color:#6B7280}.tabs2 span.on{color:#111827;box-shadow:inset 0 -2px 0 #4F46E5}
+.tile{border-radius:12px;border:1.5px solid #E5E7EF;overflow:hidden;display:flex;flex-direction:column}.tile.on{border-color:#4F46E5;box-shadow:0 0 0 3px #EEF0FF}
+.tile .t{height:74px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.tile .l{font-size:11.5px;font-weight:700;padding:6px 8px;display:flex;justify-content:space-between}
+.ring{width:84px;height:84px;border-radius:50%;background:conic-gradient(#4F46E5 0 62%,#EEF0F5 0);display:flex;align-items:center;justify-content:center}.ring div{width:66px;height:66px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.story{width:62px;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10.5px;font-weight:700;text-align:center}
+.story .o{width:58px;height:58px;border-radius:50%;padding:3px;background:conic-gradient(#F59E0B,#EC4899,#6366F1,#F59E0B)}.story .o.seen{background:#EEF0F5}
+.story .o div{width:100%;height:100%;border-radius:50%;border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-size:22px}
+.grp{font-size:11px;font-weight:800;letter-spacing:.08em;color:#6B7280;text-transform:uppercase;padding:10px 4px 2px}
+.ev{display:flex;gap:12px;padding:14px;border-radius:14px;border:1px solid #E5E7EF;background:#fff}
+.reac{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;padding:3px 9px;border-radius:99px;border:1px solid #E5E7EF;background:#fff}
+.reac.on{background:#EEF0FF;border-color:#C7C9F7;color:#3730A3}
+.burst{position:absolute;font-size:16px;animation:pop 1.6s ease-out infinite}
+@keyframes pop{0%{opacity:0;transform:translateY(0) scale(.6)}20%{opacity:1}100%{opacity:0;transform:translateY(-46px) scale(1.2)}}
+.prog{position:absolute;top:0;left:0;height:3px;background:linear-gradient(90deg,#4F46E5,#EC4899);border-radius:0 3px 3px 0}
+.dots span{display:inline-block;width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.45);margin-right:5px}.dots span.on{width:20px;border-radius:99px;background:#fff}
+</style>
+</helmet>
+<div class="app"><aside class="sb">
+<div class="sb-h"><span class="logo">AP</span><span><b>aakash-portal</b><span>HR workspace</span></span></div>
+<div class="sb-g">OVERVIEW</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Home</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M16 10h2M16 14h2"/><circle cx="9" cy="11" r="2"/><path d="M6 16.5a3.5 3.5 0 0 1 6 0"/></svg>My profile</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>Reports &amp; analytics</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v2M8 2v2"/><circle cx="12" cy="11" r="3"/><path d="M7 20a5 5 0 0 1 10 0"/></svg>People</div>
+<div class="sb-g">ORGANIZATION</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Employees</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3M12 12V8"/></svg>Organisation</div>
+<div class="sb-g">ENGAGEMENT</div><div class="sb-i on"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>Announcements</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>Kudos</div>
+<div class="sb-g">WORK</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9l-.8-1.2A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/><path d="M8 10v4M12 10v2M16 10v6"/></svg>Projects</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2h4M12 14l3-3"/><circle cx="12" cy="14" r="8"/></svg>Timesheets</div>
+<div class="sb-g">TIME</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg>Attendance</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>Leave</div>
+</aside><div class="col"><header class="hdr"><div class="crumb">Engagement &nbsp;›&nbsp; Announcements &nbsp;›&nbsp; <b>We hit 1,000 customers!</b></div><div class="row mut xs"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span style="width:34px;height:20px;border-radius:99px;background:#E5E7EF;display:inline-block"></span></div></header><main class="main" style="position:relative">
+<div class="prog" style="width:38%"></div>
+<div class="g21" style="grid-template-columns:1fr 330px">
+  <div class="card" style="overflow:hidden">
+    <div class="scene" style="height:250px;border-radius:0;background:linear-gradient(135deg,#7C3AED,#EC4899);display:flex;align-items:center;justify-content:center"><span class="cf" style="left:0%;top:-10px;background:#FDE047;animation-delay:0s"></span><span class="cf" style="left:53%;top:-22px;background:#F472B6;animation-delay:0.4s"></span><span class="cf" style="left:6%;top:-34px;background:#60A5FA;animation-delay:0.8s"></span><span class="cf" style="left:59%;top:-46px;background:#34D399;animation-delay:1.2000000000000002s"></span><span class="cf" style="left:12%;top:-58px;background:#F97316;animation-delay:1.6s"></span><span class="cf" style="left:65%;top:-10px;background:#A78BFA;animation-delay:2s"></span><span class="cf" style="left:18%;top:-22px;background:#FDE047;animation-delay:2.4000000000000004s"></span><span class="cf" style="left:71%;top:-34px;background:#F472B6;animation-delay:0s"></span><span class="cf" style="left:24%;top:-46px;background:#60A5FA;animation-delay:0.4s"></span><span class="cf" style="left:77%;top:-58px;background:#34D399;animation-delay:0.8s"></span><span class="cf" style="left:30%;top:-10px;background:#F97316;animation-delay:1.2000000000000002s"></span><span class="cf" style="left:83%;top:-22px;background:#A78BFA;animation-delay:1.6s"></span><span class="cf" style="left:36%;top:-34px;background:#FDE047;animation-delay:2s"></span><span class="cf" style="left:89%;top:-46px;background:#F472B6;animation-delay:2.4000000000000004s"></span><span class="cf" style="left:42%;top:-58px;background:#60A5FA;animation-delay:0s"></span><span class="cf" style="left:95%;top:-10px;background:#34D399;animation-delay:0.4s"></span><span class="cf" style="left:48%;top:-22px;background:#F97316;animation-delay:0.8s"></span><span class="cf" style="left:1%;top:-34px;background:#A78BFA;animation-delay:1.2000000000000002s"></span><span class="cf" style="left:54%;top:-46px;background:#FDE047;animation-delay:1.6s"></span><span class="cf" style="left:7%;top:-58px;background:#F472B6;animation-delay:2s"></span><span class="cf" style="left:60%;top:-10px;background:#60A5FA;animation-delay:2.4000000000000004s"></span><span class="cf" style="left:13%;top:-22px;background:#34D399;animation-delay:0s"></span><span class="cf" style="left:66%;top:-34px;background:#F97316;animation-delay:0.4s"></span><span class="cf" style="left:19%;top:-46px;background:#A78BFA;animation-delay:0.8s"></span><span class="cf" style="left:72%;top:-58px;background:#FDE047;animation-delay:1.2000000000000002s"></span><span class="cf" style="left:25%;top:-10px;background:#F472B6;animation-delay:1.6s"></span><div class="a3" style="--s:1.7"><div style="position:absolute;left:16%;top:34%;width:46%;height:54%;background:linear-gradient(135deg,#F472B6,#DB2777 60%,#9D174D);clip-path:polygon(0 100%,100% 0,100% 30%,30% 100%);"></div><span style="position:absolute;left:62%;top:16%;width:9%;height:9%;border-radius:3px;background:#FDE047;transform:rotate(25deg)"></span><span style="position:absolute;left:76%;top:30%;width:9%;height:9%;border-radius:3px;background:#60A5FA;transform:rotate(25deg)"></span><span style="position:absolute;left:56%;top:6%;width:9%;height:9%;border-radius:3px;background:#34D399;transform:rotate(25deg)"></span><span style="position:absolute;left:84%;top:12%;width:9%;height:9%;border-radius:3px;background:#F87171;transform:rotate(25deg)"></span><span style="position:absolute;left:70%;top:44%;width:9%;height:9%;border-radius:3px;background:#A78BFA;transform:rotate(25deg)"></span></div><span class="pill" style="position:absolute;left:16px;top:14px;background:rgba(255,255,255,.2);color:#fff"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 17v5M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg> Pinned</span></div>
+    <div style="padding:20px 26px;display:flex;flex-direction:column;gap:12px">
+      <div class="row" style="gap:6px"><span class="pill" style="background:#FDE8F1;color:#DB2777">🎉 Celebration</span><span class="xs mut">1 min read</span></div>
+      <b style="font-size:26px;line-height:1.2">We hit 1,000 customers!</b>
+      <div class="row xs mut" style="gap:8px"><div class="ph" style="width:28px;height:28px;border-radius:50%"><svg width="28" height="28" viewBox="0 0 28 28"><defs><linearGradient id="g12" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#DDD6FE"/><stop offset="1" stop-color="#F5F3FF"/></linearGradient></defs>
+  <rect width="28" height="28" fill="url(#g12)"/>
+  <circle cx="22.959999999999997" cy="5.04" r="6.16" fill="#fff" opacity=".35"/>
+  
+  <path d="M3.0519999999999996,28 Q3.527999999999997,19.138 14,18.662 Q24.472,19.138 24.948,28Z" fill="#DB2777"/>
+  <rect x="12.1912" y="15.092" width="3.6176000000000004" height="4.284000000000001" fill="#8D5A3C"/>
+  <circle cx="14" cy="11.76" r="4.760000000000001" fill="#8D5A3C"/>
+  <path d="M9.1448,11.283999999999999 Q9.239999999999998,5.333999999999999 14,6.047999999999999 Q18.76,5.333999999999999 18.8552,11.283999999999999 Q14,8.19 9.1448,11.283999999999999Z" fill="#4A3222"/>
+  </svg></div><span><b style="color:#111827">Vikram Rao</b> · Head of Operations · today 9:12</span></div>
+      <div style="font-size:14.5px;line-height:1.7">Thank you all — this one belongs to every team. 🙌<br>• <b>Cake</b> in the cafeteria at 4 pm Friday<br>• Team photo at 4:30 — wear something blue</div>
+      <div class="ev" style="background:#F8F9FC"><div style="width:52px;text-align:center"><div class="xs" style="color:#DC2626;font-weight:800;font-size:10px">FRI</div><b style="font-size:22px">9</b></div><div style="flex:1"><b style="font-size:13.5px">Fri 9 Oct · 4:00 pm · Cafeteria</b><div class="xs mut">Starts in 3 days 06 h</div></div><span class="btn sm pri">✓ Going</span><span class="btn sm"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg> .ics</span></div>
+      <div class="row" style="gap:6px;position:relative"><span class="reac on">🎉 41</span><span class="reac ">❤️ 9</span><span class="reac ">👏 6</span><span class="reac"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></svg></span><span class="burst" style="left:18px;top:-6px">🎉</span><span class="burst" style="left:30px;top:-2px;animation-delay:.4s">🎉</span>
+        <span class="xs mut row" style="margin-left:auto;gap:6px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg> Seen by <div class="stack"><div class="ph" style="width:20px;height:20px;border-radius:50%"><svg width="20" height="20" viewBox="0 0 20 20"><defs><linearGradient id="g13" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#C7D2FE"/><stop offset="1" stop-color="#EEF2FF"/></linearGradient></defs>
+  <rect width="20" height="20" fill="url(#g13)"/>
+  <circle cx="16.4" cy="3.5999999999999996" r="4.4" fill="#fff" opacity=".35"/>
+  
+  <path d="M2.1799999999999997,20 Q2.5199999999999987,13.670000000000002 10,13.330000000000002 Q17.48,13.670000000000002 17.82,20Z" fill="#4F46E5"/>
+  <rect x="8.708" y="10.780000000000001" width="2.5840000000000005" height="3.0600000000000005" fill="#F2C9A5"/>
+  <circle cx="10" cy="8.4" r="3.4000000000000004" fill="#F2C9A5"/>
+  <path d="M6.532,8.06 Q6.6,3.8099999999999996 10,4.32 Q13.4,3.8099999999999996 13.468,8.06 Q10,5.85 6.532,8.06Z" fill="#2B1D14"/>
+  </svg></div><div class="ph" style="width:20px;height:20px;border-radius:50%"><svg width="20" height="20" viewBox="0 0 20 20"><defs><linearGradient id="g14" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#BBF7D0"/><stop offset="1" stop-color="#ECFDF5"/></linearGradient></defs>
+  <rect width="20" height="20" fill="url(#g14)"/>
+  <circle cx="16.4" cy="3.5999999999999996" r="4.4" fill="#fff" opacity=".35"/>
+  
+  <path d="M2.1799999999999997,20 Q2.5199999999999987,13.670000000000002 10,13.330000000000002 Q17.48,13.670000000000002 17.82,20Z" fill="#059669"/>
+  <rect x="8.708" y="10.780000000000001" width="2.5840000000000005" height="3.0600000000000005" fill="#8D5A3C"/>
+  <circle cx="10" cy="8.4" r="3.4000000000000004" fill="#8D5A3C"/>
+  <path d="M6.532,8.06 Q6.6,3.8099999999999996 10,4.32 Q13.4,3.8099999999999996 13.468,8.06 Q10,5.85 6.532,8.06Z" fill="#151515"/>
+  </svg></div><div class="ph" style="width:20px;height:20px;border-radius:50%"><svg width="20" height="20" viewBox="0 0 20 20"><defs><linearGradient id="g15" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FBCFE8"/><stop offset="1" stop-color="#FDF2F8"/></linearGradient></defs>
+  <rect width="20" height="20" fill="url(#g15)"/>
+  <circle cx="16.4" cy="3.5999999999999996" r="4.4" fill="#fff" opacity=".35"/>
+  
+  <path d="M2.1799999999999997,20 Q2.5199999999999987,13.670000000000002 10,13.330000000000002 Q17.48,13.670000000000002 17.82,20Z" fill="#7C3AED"/>
+  <rect x="8.708" y="10.780000000000001" width="2.5840000000000005" height="3.0600000000000005" fill="#8D5A3C"/>
+  <circle cx="10" cy="8.4" r="3.4000000000000004" fill="#8D5A3C"/>
+  <path d="M6.532,8.06 Q6.6,3.8099999999999996 10,4.32 Q13.4,3.8099999999999996 13.468,8.06 Q10,5.85 6.532,8.06Z" fill="#6B4423"/>
+  </svg></div><div class="ph" style="width:20px;height:20px;border-radius:50%"><svg width="20" height="20" viewBox="0 0 20 20"><defs><linearGradient id="g16" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#BAE6FD"/><stop offset="1" stop-color="#F0F9FF"/></linearGradient></defs>
+  <rect width="20" height="20" fill="url(#g16)"/>
+  <circle cx="16.4" cy="3.5999999999999996" r="4.4" fill="#fff" opacity=".35"/>
+  
+  <path d="M2.1799999999999997,20 Q2.5199999999999987,13.670000000000002 10,13.330000000000002 Q17.48,13.670000000000002 17.82,20Z" fill="#0284C7"/>
+  <rect x="8.708" y="10.780000000000001" width="2.5840000000000005" height="3.0600000000000005" fill="#F2C9A5"/>
+  <circle cx="10" cy="8.4" r="3.4000000000000004" fill="#F2C9A5"/>
+  <path d="M6.532,8.06 Q6.6,3.8099999999999996 10,4.32 Q13.4,3.8099999999999996 13.468,8.06 Q10,5.85 6.532,8.06Z" fill="#1C1C1C"/>
+  </svg></div><div class="ph" style="width:20px;height:20px;border-radius:50%"><svg width="20" height="20" viewBox="0 0 20 20"><defs><linearGradient id="g17" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FECACA"/><stop offset="1" stop-color="#FEF2F2"/></linearGradient></defs>
+  <rect width="20" height="20" fill="url(#g17)"/>
+  <circle cx="16.4" cy="3.5999999999999996" r="4.4" fill="#fff" opacity=".35"/>
+  
+  <path d="M2.1799999999999997,20 Q2.5199999999999987,13.670000000000002 10,13.330000000000002 Q17.48,13.670000000000002 17.82,20Z" fill="#D97706"/>
+  <rect x="8.708" y="10.780000000000001" width="2.5840000000000005" height="3.0600000000000005" fill="#F2C9A5"/>
+  <circle cx="10" cy="8.4" r="3.4000000000000004" fill="#F2C9A5"/>
+  <path d="M6.532,8.06 Q6.6,3.8099999999999996 10,4.32 Q13.4,3.8099999999999996 13.468,8.06 Q10,5.85 6.532,8.06Z" fill="#2B1D14"/>
+  </svg></div></div> +118</span></div>
+      <div style="border-top:1px solid #EEF0F5;padding-top:12px;display:flex;flex-direction:column;gap:8px"><b class="xs mut" style="letter-spacing:.06em">MORE LIKE THIS</b>
+        <div class="row" style="gap:10px"><div class="row" style="gap:8px;flex:1;border:1px solid #E5E7EF;border-radius:12px;padding:8px"><span style="width:44px;height:36px;border-radius:9px;background:linear-gradient(135deg,#F59E0B,#DB2777);display:flex;align-items:center;justify-content:center">🏆</span><b class="xs">Q3 wins from Sales</b></div><div class="row" style="gap:8px;flex:1;border:1px solid #E5E7EF;border-radius:12px;padding:8px"><span style="width:44px;height:36px;border-radius:9px;background:linear-gradient(135deg,#0D9488,#22C55E);display:flex;align-items:center;justify-content:center">🌿</span><b class="xs">Green office week</b></div></div></div>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:12px;align-items:center">
+    <div class="xs mut" style="font-weight:800;letter-spacing:.06em;align-self:flex-start">CATCH-UP · STORY MODE (PHONE)</div>
+    <div style="width:270px;height:520px;border:8px solid #111827;border-radius:34px;overflow:hidden;position:relative;background:linear-gradient(180deg,#4F46E5,#7C3AED);color:#fff">
+      <div style="position:absolute;left:10px;right:10px;top:10px;display:flex;gap:4px"><span style="flex:1;height:3px;border-radius:3px;background:rgba(255,255,255,.35);overflow:hidden"><i style="display:block;height:100%;width:100%;background:#fff"></i></span><span style="flex:1;height:3px;border-radius:3px;background:rgba(255,255,255,.35);overflow:hidden"><i style="display:block;height:100%;width:40%;background:#fff"></i></span><span style="flex:1;height:3px;border-radius:3px;background:rgba(255,255,255,.35);overflow:hidden"><i style="display:block;height:100%;width:0%;background:#fff"></i></span><span style="flex:1;height:3px;border-radius:3px;background:rgba(255,255,255,.35);overflow:hidden"><i style="display:block;height:100%;width:0%;background:#fff"></i></span><span style="flex:1;height:3px;border-radius:3px;background:rgba(255,255,255,.35);overflow:hidden"><i style="display:block;height:100%;width:0%;background:#fff"></i></span></div>
+      <div class="row xs" style="position:absolute;left:12px;top:22px;gap:6px"><div class="ph" style="width:22px;height:22px;border-radius:50%"><svg width="22" height="22" viewBox="0 0 22 22"><defs><linearGradient id="g18" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FDE68A"/><stop offset="1" stop-color="#FFFBEB"/></linearGradient></defs>
+  <rect width="22" height="22" fill="url(#g18)"/>
+  <circle cx="18.04" cy="3.96" r="4.84" fill="#fff" opacity=".35"/>
+  
+  <path d="M2.3979999999999997,22 Q2.7719999999999985,15.037 11,14.663 Q19.228,15.037 19.602,22Z" fill="#374151"/>
+  <rect x="9.5788" y="11.858" width="2.8424" height="3.366" fill="#F2C9A5"/>
+  <circle cx="11" cy="9.24" r="3.74" fill="#F2C9A5"/>
+  <path d="M7.1852,8.866 Q7.26,4.191 11,4.752 Q14.74,4.191 14.8148,8.866 Q11,6.4350000000000005 7.1852,8.866Z" fill="#3B2A20"/>
+  </svg></div><b>Hema Iyer</b><span style="opacity:.75">2 h</span></div>
+      <div style="position:absolute;inset:60px 0 auto;display:flex;justify-content:center"><div class="a3" style="--s:1.2"><div style="position:absolute;left:22%;top:10%;width:56%;height:76%;background:linear-gradient(150deg,#6EE7B7,#10B981 55%,#047857);clip-path:polygon(50% 0,100% 18%,92% 64%,50% 100%,8% 64%,0 18%);box-shadow:inset -6px -8px 12px rgba(0,0,0,.2)"></div><div style="position:absolute;left:0;right:0;top:34%;text-align:center;color:#fff;font:900 calc(26px*var(--s)) system-ui">✓</div></div></div>
+      <div style="position:absolute;left:16px;right:16px;bottom:86px;display:flex;flex-direction:column;gap:8px"><span class="pill" style="background:rgba(255,255,255,.2);color:#fff;align-self:flex-start">📘 Policy · 2 of 5</span><b style="font-size:20px;line-height:1.2">Updated leave policy for 2027</b><span style="font-size:12px;opacity:.9">Earned leave now carries forward up to 10 days…</span></div>
+      <div style="position:absolute;left:14px;right:14px;bottom:18px;display:flex;gap:8px"><span class="btn sm" style="flex:1;justify-content:center;background:#fff;border:0">✓ I have read this</span><span class="btn sm" style="background:rgba(255,255,255,.18);border:0;color:#fff">🎉</span></div>
+      <span style="position:absolute;left:4px;top:50%;opacity:.6"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></span><span style="position:absolute;right:4px;top:50%;opacity:.6"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+    </div>
+    <div class="xs mut" style="text-align:center;max-width:270px">Tap through unread posts like stories — each one is marked read as you go; ones that need confirming stop and wait.</div>
+  </div>
+</div>
+</main></div></div></x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

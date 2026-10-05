@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Theme adaptive motion</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F6F4EF}
+.wrap{font-family:Manrope,system-ui,sans-serif;color:#18181B;padding:40px}
+.wrap h1{margin:0 0 6px;font-size:28px;font-weight:800;letter-spacing:-.02em}
+.wrap>p{margin:0 0 24px;color:#5B5B63;max-width:920px;line-height:1.5}
+.g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}
+.th{background:#fff;border:1px solid #E7E1D6;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.thh{display:flex;align-items:center;gap:8px;font-size:15px}.sw{width:16px;height:16px;border-radius:50%}
+.mini{display:flex;border-radius:12px;overflow:hidden;border:1px solid #EEE9DF;height:120px}
+.msb{width:44px;background:var(--side);display:flex;flex-direction:column;gap:6px;padding:10px 8px}
+.msb i{height:8px;border-radius:4px;background:rgba(255,255,255,.18)}.msb i.on{background:var(--acc)}
+.mhero{flex:1;padding:12px;display:flex;flex-direction:column;gap:6px;background:linear-gradient(135deg,var(--soft),#fff);position:relative;overflow:hidden}
+.mhero::before{content:"";position:absolute;inset:0;background:radial-gradient(120px 80px at var(--sx) 30%,rgba(255,255,255,.7),transparent 70%);animation:spot 6s ease-in-out infinite alternate}
+@property --sx{syntax:'<percentage>';inherits:false;initial-value:10%}
+@keyframes spot{to{--sx:90%}}
+.eb2{font-size:10px;font-weight:700;color:var(--atx)}
+.mhero b{font-size:16px;position:relative}
+.gr span{display:inline-block;animation:wr 4s cubic-bezier(.2,.8,.2,1) infinite}.gr span:nth-child(2){animation-delay:.12s}.gr span:nth-child(3){animation-delay:.24s;color:var(--acc)}
+@keyframes wr{0%{opacity:0;transform:translateY(8px)}15%,85%{opacity:1;transform:none}100%{opacity:0}}
+.pbtn{align-self:flex-start;margin-top:auto;font-size:11px;font-weight:800;padding:6px 10px;border-radius:7px;background:var(--acc);color:var(--on);text-decoration:none;position:relative;transition:transform .25s}
+.pbtn:hover{transform:translateY(-3px)}
+.row2{display:flex;align-items:center;justify-content:space-between}
+.rg .v{animation:ring 3s cubic-bezier(.2,.8,.2,1) infinite alternate}@keyframes ring{from{stroke-dasharray:0 176}}
+.bars2{display:flex;align-items:flex-end;gap:6px;height:56px}.bars2 i{width:14px;border-radius:4px 4px 1px 1px;background:var(--acc);animation:gy 3s ease infinite;transform-origin:bottom}
+@keyframes gy{0%{transform:scaleY(0)}30%,100%{transform:none}}
+.ms2{position:relative;height:6px;border-radius:99px;background:#EEE9DF;margin:4px 6px}
+.ms2 i{position:absolute;left:0;top:0;bottom:0;border-radius:99px;background:var(--acc);animation:mf 3.4s ease infinite}
+@keyframes mf{0%{width:0}60%,100%{width:86%}}
+.ms2 b{position:absolute;top:50%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:#fff;border:2px solid #D9D0BF}
+.ms2 b.on{background:var(--acc);border-color:var(--acc)}
+.cel2{display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;background:var(--soft)}
+.cel2 b{display:block;font-size:13px}.cel2 span{font-size:11.5px;color:#5B5B63}
+.medal2{width:34px;height:34px;perspective:300px}.medal2 div{width:100%;height:100%;border-radius:50%;background:var(--acc);color:var(--on);display:flex;align-items:center;justify-content:center;font-weight:800;animation:flip 4s ease-in-out infinite}
+@keyframes flip{0%,60%{transform:none}80%{transform:rotateY(180deg)}100%{transform:rotateY(360deg)}}
+.toast2{display:flex;gap:10px;align-items:center;padding:10px;border-radius:10px;border:1px solid #E7E1D6;position:relative;overflow:hidden;font-size:12px}
+.toast2 b{display:block}.toast2 span{color:#5B5B63}
+.toast2::after{content:"";position:absolute;left:0;bottom:0;height:3px;background:#157A4B;animation:tb 4s linear infinite}@keyframes tb{from{width:100%}to{width:0}}
+.tkd circle{stroke-dasharray:80;stroke-dashoffset:80;animation:tkc 4s ease infinite}.tkd path{stroke-dasharray:24;stroke-dashoffset:24;animation:tkp 4s ease infinite}
+@keyframes tkc{0%{stroke-dashoffset:80}25%,100%{stroke-dashoffset:0}}@keyframes tkp{0%,20%{stroke-dashoffset:24}35%,100%{stroke-dashoffset:0}}
+.row3{display:flex;align-items:center;gap:10px}
+.chip2{height:34px;padding:0 12px;border-radius:99px;border:1px solid var(--acc);background:#fff;color:var(--atx);font:inherit;font-size:12px;font-weight:800;transition:transform .25s,box-shadow .25s}
+.chip2:hover{transform:translateY(-3px);box-shadow:0 10px 18px -10px var(--acc)}
+.hb3{color:#B42318;animation:hbeat 2.4s ease infinite}@keyframes hbeat{0%,40%,100%{transform:scale(1)}45%{transform:scale(1.35)}55%{transform:scale(.95)}}
+.tg2{margin-left:auto;width:52px;height:28px;border-radius:99px;border:1px solid #E7E1D6;background:#F3EEE4;position:relative;padding:0}
+.tg2 span{position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;background:var(--acc);animation:tk 4s ease-in-out infinite}@keyframes tk{0%,40%{transform:none}50%,90%{transform:translateX(24px)}100%{transform:none}}
+.notes{margin-top:22px;display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.notes div{background:#fff;border:1px solid #E7E1D6;border-radius:14px;padding:16px;font-size:13px;line-height:1.6;color:#3A3A42}
+.notes b{display:block;font-size:14px;color:#18181B;margin-bottom:4px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</helmet>
+<div class="wrap"><h1>Animations follow the theme</h1><p>Yes — every animated element reads the active theme’s colours, so when a company or an employee switches theme, the buttons, rings, bars, milestones, celebration medals, toggles and hover glows all change with it. Below: the same pieces in four themes, all live.</p>
+<div class="g4"><section class="th" style="--acc:#B7791F;--soft:#F6EBD6;--atx:#7A4E0E;--on:#18181B;--side:#0F0F12">
+  <div class="thh"><span class="sw" style="background:#B7791F"></span><b>Obsidian Gold</b></div>
+  <div class="mini"><div class="msb"><i></i><i class="on"></i><i></i><i></i></div><div class="mhero"><span class="eb2">Sunday, 4 October</span><b class="gr"><span>Good</span> <span>morning,</span> <span>Amit</span></b><a class="pbtn" href="#">Apply leave</a></div></div>
+  <div class="row2"><svg class="rg" width="70" height="70" viewBox="0 0 70 70"><circle cx="35" cy="35" r="28" fill="none" stroke="#EEE9DF" stroke-width="7"/><circle class="v" cx="35" cy="35" r="28" fill="none" stroke="#B7791F" stroke-width="7" stroke-linecap="round" stroke-dasharray="120 176" transform="rotate(-90 35 35)"/></svg>
+    <div class="bars2"><i style="height:30px;animation-delay:0s"></i><i style="height:48px;animation-delay:0.07s"></i><i style="height:36px;animation-delay:0.14s"></i><i style="height:54px;animation-delay:0.21000000000000002s"></i><i style="height:42px;animation-delay:0.28s"></i></div></div>
+  <div class="ms2"><i></i><b class="on" style="left:33%"></b><b class="on" style="left:66%"></b><b style="left:100%"></b></div>
+  <div class="cel2"><svg class="pf" width="44" height="44" viewBox="0 0 64 64" role="img" aria-label="Hema Iyer" style="border-radius:50%;flex:none;"><defs><clipPath id="cp63"><circle cx="32" cy="32" r="32"/></clipPath></defs><g clip-path="url(#cp63)"><rect width="64" height="64" fill="#E8DDF5"/><path d="M15 34c0-14 7-22 17-22s17 8 17 22v16H15z" fill="#16100C"/><path d="M8 64c2-12 11-18 24-18s22 6 24 18z" fill="#7A4E9E"/><rect x="27" y="38" width="10" height="10" rx="4" fill="#B97B55"/><ellipse cx="32" cy="29" rx="11" ry="12.5" fill="#B97B55"/><path d="M20 27c0-9 5-14 12-14s12 5 12 14c-3-5-7-7-12-7s-9 2-12 7z" fill="#16100C"/><circle cx="28" cy="30" r="1.3" fill="#2A1A12"/><circle cx="36" cy="30" r="1.3" fill="#2A1A12"/><path d="M28.5 35.5q3.5 2.6 7 0" stroke="#7A3E2A" stroke-width="1.4" fill="none" stroke-linecap="round"/></g></svg><div class="medal2"><div>2</div></div><div><b>Hema · 2 years</b><span>Work anniversary</span></div></div>
+  <div class="toast2"><svg class="tkd" width="24" height="24" viewBox="0 0 28 28"><circle cx="14" cy="14" r="12" fill="none" stroke="#157A4B" stroke-width="2.5"/><path d="M9 14.5l3.5 3.5L19 11" fill="none" stroke="#157A4B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg><div><b>Leave applied</b><span>Sent to Rohan</span></div></div>
+  <div class="row3"><button class="chip2">Give kudos</button><span class="hb3"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg></span><button class="tg2" role="switch" aria-checked="false" aria-label="Dark mode"><span></span></button></div>
+</section><section class="th" style="--acc:#4F46E5;--soft:#E0E7FF;--atx:#3730A3;--on:#FFFFFF;--side:#1E1B4B">
+  <div class="thh"><span class="sw" style="background:#4F46E5"></span><b>Indigo Classic</b></div>
+  <div class="mini"><div class="msb"><i></i><i class="on"></i><i></i><i></i></div><div class="mhero"><span class="eb2">Sunday, 4 October</span><b class="gr"><span>Good</span> <span>morning,</span> <span>Amit</span></b><a class="pbtn" href="#">Apply leave</a></div></div>
+  <div class="row2"><svg class="rg" width="70" height="70" viewBox="0 0 70 70"><circle cx="35" cy="35" r="28" fill="none" stroke="#EEE9DF" stroke-width="7"/><circle class="v" cx="35" cy="35" r="28" fill="none" stroke="#4F46E5" stroke-width="7" stroke-linecap="round" stroke-dasharray="120 176" transform="rotate(-90 35 35)"/></svg>
+    <div class="bars2"><i style="height:30px;animation-delay:0s"></i><i style="height:48px;animation-delay:0.07s"></i><i style="height:36px;animation-delay:0.14s"></i><i style="height:54px;animation-delay:0.21000000000000002s"></i><i style="height:42px;animation-delay:0.28s"></i></div></div>
+  <div class="ms2"><i></i><b class="on" style="left:33%"></b><b class="on" style="left:66%"></b><b style="left:100%"></b></div>
+  <div class="cel2"><svg class="pf" width="44" height="44" viewBox="0 0 64 64" role="img" aria-label="Hema Iyer" style="border-radius:50%;flex:none;"><defs><clipPath id="cp64"><circle cx="32" cy="32" r="32"/></clipPath></defs><g clip-path="url(#cp64)"><rect width="64" height="64" fill="#E8DDF5"/><path d="M15 34c0-14 7-22 17-22s17 8 17 22v16H15z" fill="#16100C"/><path d="M8 64c2-12 11-18 24-18s22 6 24 18z" fill="#7A4E9E"/><rect x="27" y="38" width="10" height="10" rx="4" fill="#B97B55"/><ellipse cx="32" cy="29" rx="11" ry="12.5" fill="#B97B55"/><path d="M20 27c0-9 5-14 12-14s12 5 12 14c-3-5-7-7-12-7s-9 2-12 7z" fill="#16100C"/><circle cx="28" cy="30" r="1.3" fill="#2A1A12"/><circle cx="36" cy="30" r="1.3" fill="#2A1A12"/><path d="M28.5 35.5q3.5 2.6 7 0" stroke="#7A3E2A" stroke-width="1.4" fill="none" stroke-linecap="round"/></g></svg><div class="medal2"><div>2</div></div><div><b>Hema · 2 years</b><span>Work anniversary</span></div></div>
+  <div class="toast2"><svg class="tkd" width="24" height="24" viewBox="0 0 28 28"><circle cx="14" cy="14" r="12" fill="none" stroke="#157A4B" stroke-width="2.5"/><path d="M9 14.5l3.5 3.5L19 11" fill="none" stroke="#157A4B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg><div><b>Leave applied</b><span>Sent to Rohan</span></div></div>
+  <div class="row3"><button class="chip2">Give kudos</button><span class="hb3"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg></span><button class="tg2" role="switch" aria-checked="false" aria-label="Dark mode"><span></span></button></div>
+</section><section class="th" style="--acc:#047857;--soft:#D1FAE5;--atx:#065F46;--on:#FFFFFF;--side:#022C22">
+  <div class="thh"><span class="sw" style="background:#047857"></span><b>Emerald</b></div>
+  <div class="mini"><div class="msb"><i></i><i class="on"></i><i></i><i></i></div><div class="mhero"><span class="eb2">Sunday, 4 October</span><b class="gr"><span>Good</span> <span>morning,</span> <span>Amit</span></b><a class="pbtn" href="#">Apply leave</a></div></div>
+  <div class="row2"><svg class="rg" width="70" height="70" viewBox="0 0 70 70"><circle cx="35" cy="35" r="28" fill="none" stroke="#EEE9DF" stroke-width="7"/><circle class="v" cx="35" cy="35" r="28" fill="none" stroke="#047857" stroke-width="7" stroke-linecap="round" stroke-dasharray="120 176" transform="rotate(-90 35 35)"/></svg>
+    <div class="bars2"><i style="height:30px;animation-delay:0s"></i><i style="height:48px;animation-delay:0.07s"></i><i style="height:36px;animation-delay:0.14s"></i><i style="height:54px;animation-delay:0.21000000000000002s"></i><i style="height:42px;animation-delay:0.28s"></i></div></div>
+  <div class="ms2"><i></i><b class="on" style="left:33%"></b><b class="on" style="left:66%"></b><b style="left:100%"></b></div>
+  <div class="cel2"><svg class="pf" width="44" height="44" viewBox="0 0 64 64" role="img" aria-label="Hema Iyer" style="border-radius:50%;flex:none;"><defs><clipPath id="cp65"><circle cx="32" cy="32" r="32"/></clipPath></defs><g clip-path="url(#cp65)"><rect width="64" height="64" fill="#E8DDF5"/><path d="M15 34c0-14 7-22 17-22s17 8 17 22v16H15z" fill="#16100C"/><path d="M8 64c2-12 11-18 24-18s22 6 24 18z" fill="#7A4E9E"/><rect x="27" y="38" width="10" height="10" rx="4" fill="#B97B55"/><ellipse cx="32" cy="29" rx="11" ry="12.5" fill="#B97B55"/><path d="M20 27c0-9 5-14 12-14s12 5 12 14c-3-5-7-7-12-7s-9 2-12 7z" fill="#16100C"/><circle cx="28" cy="30" r="1.3" fill="#2A1A12"/><circle cx="36" cy="30" r="1.3" fill="#2A1A12"/><path d="M28.5 35.5q3.5 2.6 7 0" stroke="#7A3E2A" stroke-width="1.4" fill="none" stroke-linecap="round"/></g></svg><div class="medal2"><div>2</div></div><div><b>Hema · 2 years</b><span>Work anniversary</span></div></div>
+  <div class="toast2"><svg class="tkd" width="24" height="24" viewBox="0 0 28 28"><circle cx="14" cy="14" r="12" fill="none" stroke="#157A4B" stroke-width="2.5"/><path d="M9 14.5l3.5 3.5L19 11" fill="none" stroke="#157A4B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg><div><b>Leave applied</b><span>Sent to Rohan</span></div></div>
+  <div class="row3"><button class="chip2">Give kudos</button><span class="hb3"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg></span><button class="tg2" role="switch" aria-checked="false" aria-label="Dark mode"><span></span></button></div>
+</section><section class="th" style="--acc:#E11D48;--soft:#FFE4E6;--atx:#9F1239;--on:#FFFFFF;--side:#4C0519">
+  <div class="thh"><span class="sw" style="background:#E11D48"></span><b>Rose</b></div>
+  <div class="mini"><div class="msb"><i></i><i class="on"></i><i></i><i></i></div><div class="mhero"><span class="eb2">Sunday, 4 October</span><b class="gr"><span>Good</span> <span>morning,</span> <span>Amit</span></b><a class="pbtn" href="#">Apply leave</a></div></div>
+  <div class="row2"><svg class="rg" width="70" height="70" viewBox="0 0 70 70"><circle cx="35" cy="35" r="28" fill="none" stroke="#EEE9DF" stroke-width="7"/><circle class="v" cx="35" cy="35" r="28" fill="none" stroke="#E11D48" stroke-width="7" stroke-linecap="round" stroke-dasharray="120 176" transform="rotate(-90 35 35)"/></svg>
+    <div class="bars2"><i style="height:30px;animation-delay:0s"></i><i style="height:48px;animation-delay:0.07s"></i><i style="height:36px;animation-delay:0.14s"></i><i style="height:54px;animation-delay:0.21000000000000002s"></i><i style="height:42px;animation-delay:0.28s"></i></div></div>
+  <div class="ms2"><i></i><b class="on" style="left:33%"></b><b class="on" style="left:66%"></b><b style="left:100%"></b></div>
+  <div class="cel2"><svg class="pf" width="44" height="44" viewBox="0 0 64 64" role="img" aria-label="Hema Iyer" style="border-radius:50%;flex:none;"><defs><clipPath id="cp66"><circle cx="32" cy="32" r="32"/></clipPath></defs><g clip-path="url(#cp66)"><rect width="64" height="64" fill="#E8DDF5"/><path d="M15 34c0-14 7-22 17-22s17 8 17 22v16H15z" fill="#16100C"/><path d="M8 64c2-12 11-18 24-18s22 6 24 18z" fill="#7A4E9E"/><rect x="27" y="38" width="10" height="10" rx="4" fill="#B97B55"/><ellipse cx="32" cy="29" rx="11" ry="12.5" fill="#B97B55"/><path d="M20 27c0-9 5-14 12-14s12 5 12 14c-3-5-7-7-12-7s-9 2-12 7z" fill="#16100C"/><circle cx="28" cy="30" r="1.3" fill="#2A1A12"/><circle cx="36" cy="30" r="1.3" fill="#2A1A12"/><path d="M28.5 35.5q3.5 2.6 7 0" stroke="#7A3E2A" stroke-width="1.4" fill="none" stroke-linecap="round"/></g></svg><div class="medal2"><div>2</div></div><div><b>Hema · 2 years</b><span>Work anniversary</span></div></div>
+  <div class="toast2"><svg class="tkd" width="24" height="24" viewBox="0 0 28 28"><circle cx="14" cy="14" r="12" fill="none" stroke="#157A4B" stroke-width="2.5"/><path d="M9 14.5l3.5 3.5L19 11" fill="none" stroke="#157A4B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg><div><b>Leave applied</b><span>Sent to Rohan</span></div></div>
+  <div class="row3"><button class="chip2">Give kudos</button><span class="hb3"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg></span><button class="tg2" role="switch" aria-checked="false" aria-label="Dark mode"><span></span></button></div>
+</section></div>
+<div class="notes"><div><b>Changes with the theme</b>Accent colour, soft backgrounds, glows, chart colours, focus rings, the sidebar marker, hero art tint, confetti.</div><div><b>Stays the same on purpose</b>Green = success, red = problem, amber = waiting. They’re tuned per theme for contrast but keep their meaning — a red “approved” would confuse people.</div><div><b>Phase 2 ready</b>Speed and style of motion become theme settings too, so the 2–3 whole-UI themes in phase 2 can each feel different (calm, crisp, playful).</div></div></div></x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

@@ -5,6 +5,7 @@ import {
   Logger,
   BadRequestException,
   ForbiddenException,
+  Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
@@ -23,6 +24,7 @@ import { UserStatus, EmploymentStatus, Prisma } from '@prisma/client';
 import { generateTemporaryPassword, hashPassword } from '../auth/password.util';
 import { wordsWhere } from '../../common/word-search';
 import { EmployeeLifecycleService, type JobSnapshot } from './lifecycle.service';
+import { AssetKitsService } from '../assets/asset-kits.service';
 
 @Injectable()
 export class EmployeesService {
@@ -38,7 +40,13 @@ export class EmployeesService {
     private readonly entitlements: EntitlementService,
     private readonly notifications: NotificationsService,
     private readonly lifecycle: EmployeeLifecycleService,
+    @Optional() private readonly kits?: AssetKitsService,
   ) {}
+
+  /** Starter kit items for a new joiner / someone who moved into a kit group (best-effort). */
+  provisionKit(companyId: string, employeeId: string, why: 'joined' | 'promotion') {
+    void this.kits?.provision(companyId, employeeId, why);
+  }
 
   /** Next sequential employee ID (e.g. AAK014) — call inside the creating transaction. */
   private async nextEmployeeId(tx: Prisma.TransactionClient, companyId: string): Promise<string> {
@@ -265,6 +273,9 @@ export class EmployeesService {
 
       return { user, employee, generatedEmployeeId };
     });
+
+    // Starter kit: IT is asked to have their things ready by the joining date
+    this.provisionKit(companyId, result.employee.id, 'joined');
 
     // 5. Send Welcome Employee email (async). Bulk imports may skip it —
     //    the invite can be sent later from Users → Resend invite.
@@ -501,8 +512,11 @@ export class EmployeesService {
     if (leaving) void this.warnAboutAssets(companyId, id, dto.employmentStatus === 'TERMINATED');
     const before = await this.jobSnapshot(id);
 
+    // Moving into a kit group (new title / team) → the extra items
+    const moved = (dto.designationId !== undefined && dto.designationId !== existing.designationId) || (dto.departmentId !== undefined && dto.departmentId !== existing.departmentId);
+
     // Reporting line and closure table change together (loops are rejected)
-    return this.prisma.$transaction(async (tx) => {
+    const saved = await this.prisma.$transaction(async (tx) => {
       if (managerChanged)
         await this.hierarchy.setManager(tx, companyId, id, dto.reportingManagerId ?? null);
       const updated = await tx.employee.update({
@@ -545,6 +559,8 @@ export class EmployeesService {
       await this.lifecycle.recordChanges(tx, companyId, access.userId, before, await this.jobSnapshot(id, tx));
       return updated;
     });
+    if (moved) this.provisionKit(companyId, id, 'promotion');
+    return saved;
   }
 
   /** Manager / team / title / office / type / status as names, for the history. */

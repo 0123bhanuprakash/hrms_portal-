@@ -1,0 +1,73 @@
+<div class="app">
+  <nav class="side" aria-label="Main" style="background:#141821;border-right-color:#141821">
+    <div class="brand" style="color:#fff"><span class="logo">H</span>HRMS Platform</div>
+    <a class="nav on" href="#" style="background:#26304A;color:#fff">Overview</a>
+    <a class="nav" href="#" style="color:#C9CED6">Companies</a>
+    <a class="nav" href="#" style="color:#C9CED6">Plans</a>
+    <a class="nav" href="#" style="color:#C9CED6">Themes</a>
+    <a class="nav" href="#" style="color:#C9CED6">Audit log</a>
+    <a class="nav" href="#" style="color:#C9CED6">System</a>
+    <a class="nav" href="#" style="color:#C9CED6">My profile</a>
+  </nav>
+
+  <main class="main">
+    <div class="top">
+      <label class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input aria-label="Search companies" placeholder="Search companies…"></label>
+      <span class="avatar" style="margin-left:auto">SA</span>
+    </div>
+
+    <div class="hello row" style="justify-content:space-between;flex-wrap:wrap">
+      <div><h1>Platform overview</h1><p>All companies on HRMS Portal</p></div>
+      <div class="row" style="flex-wrap:wrap"><a class="btn ghost" href="#">Plans</a><a class="btn primary" href="#">New company</a></div>
+    </div>
+
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
+      <section class="card"><span class="small muted">Total companies</span><span class="big">4</span><span class="small muted">2 this quarter</span></section>
+      <section class="card"><span class="small muted">Active</span><span class="big" style="color:#157A4B">3</span><span class="small muted">using the portal</span></section>
+      <section class="card"><span class="small muted">Inactive</span><span class="big">0</span><span class="small muted">set up, not live</span></section>
+      <section class="card"><span class="small muted">Suspended</span><span class="big" style="color:#B42318">1</span><span class="small muted">access blocked</span></section>
+      <section class="card"><span class="small muted">Tenant users</span><span class="big">548</span><span class="small muted">portal accounts</span></section>
+    </div>
+
+    <section class="card" aria-labelledby="s-co">
+      <div class="ch"><h2 id="s-co">Companies</h2><a class="small" href="#">All companies</a></div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:14px;min-width:760px">
+          <thead><tr style="text-align:left;color:#5B6472;font-size:12px;text-transform:uppercase;letter-spacing:.05em">
+            <th style="padding:8px 10px">Company</th><th style="padding:8px 10px">Plan</th><th style="padding:8px 10px">Employees · plan limit</th><th style="padding:8px 10px">Users</th><th style="padding:8px 10px">Onboarded</th><th style="padding:8px 10px">Status</th>
+          </tr></thead>
+          <tbody>
+            <tr style="border-top:1px solid #EEF0F3"><td style="padding:12px 10px"><b>aakash-portal</b><div class="small muted">admin@aakash-portal.example</div></td><td style="padding:12px 10px"><span class="pill info">Enterprise</span></td><td style="padding:12px 10px;min-width:160px"><div class="small">13 · no limit</div><div class="meter"><b style="width:6%;background:#2F5BEA"></b></div></td><td style="padding:12px 10px">15</td><td style="padding:12px 10px">2 Jan 2026</td><td style="padding:12px 10px"><span class="pill ok">Active</span></td></tr>
+            <tr style="border-top:1px solid #EEF0F3"><td style="padding:12px 10px"><b>Northwind Retail</b><div class="small muted">hr@northwind.example</div></td><td style="padding:12px 10px"><span class="pill neu">Growth</span></td><td style="padding:12px 10px;min-width:160px"><div class="small">472 of 500</div><div class="meter"><b style="width:94%;background:#C2560C"></b></div></td><td style="padding:12px 10px">480</td><td style="padding:12px 10px">4 Aug 2026</td><td style="padding:12px 10px"><span class="pill ok">Active</span></td></tr>
+            <tr style="border-top:1px solid #EEF0F3"><td style="padding:12px 10px"><b>Bluepeak Labs</b><div class="small muted">admin@bluepeak.example</div></td><td style="padding:12px 10px"><span class="pill neu">Starter</span></td><td style="padding:12px 10px;min-width:160px"><div class="small">27 of 50</div><div class="meter"><b style="width:54%;background:#2F5BEA"></b></div></td><td style="padding:12px 10px">27</td><td style="padding:12px 10px">12 Sep 2026</td><td style="padding:12px 10px"><span class="pill ok">Active</span></td></tr>
+            <tr style="border-top:1px solid #EEF0F3"><td style="padding:12px 10px"><b>Orchid Foods</b><div class="small muted">people@orchid.example</div></td><td style="padding:12px 10px"><span class="pill neu">Growth</span></td><td style="padding:12px 10px;min-width:160px"><div class="small">0 of 500</div><div class="meter"><b style="width:0%;background:#2F5BEA"></b></div></td><td style="padding:12px 10px">26</td><td style="padding:12px 10px">9 Jun 2026</td><td style="padding:12px 10px"><span class="pill bad">Suspended</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(380px,1fr))">
+      <section class="card" aria-labelledby="s-sys">
+        <div class="ch"><h2 id="s-sys">System</h2><a class="small" href="#">Details</a></div>
+        <ul class="list small">
+          <li class="li"><span style="flex:1">PostgreSQL</span><span class="pill ok">Operational</span></li>
+          <li class="li"><span style="flex:1">Redis (email queue)</span><span class="pill neu">Not configured</span></li>
+          <li class="li"><span style="flex:1">Elasticsearch (search)</span><span class="pill neu">Not configured</span></li>
+          <li class="li"><span style="flex:1">Email delivery</span><span class="pill ok">Connected · Gmail</span></li>
+          <li class="li"><span style="flex:1">File storage</span><span class="pill ok">Local disk</span></li>
+          <li class="li"><span style="flex:1">API</span><b>v0.0.1 · up 2 d 4 h · Node 24</b></li>
+        </ul>
+      </section>
+
+      <section class="card" aria-labelledby="s-act">
+        <div class="ch"><h2 id="s-act">Recent activity</h2><a class="small" href="#">Audit log</a></div>
+        <ul class="list small">
+          <li class="li"><span class="pill info">Company</span><div style="flex:1"><b>Bluepeak Labs created</b><div class="muted">Starter plan · 12 Sep</div></div></li>
+          <li class="li"><span class="pill bad">Status</span><div style="flex:1"><b>Orchid Foods suspended</b><div class="muted">by you · 2 Sep</div></div></li>
+          <li class="li"><span class="pill neu">Plan</span><div style="flex:1"><b>Growth plan: Help desk added</b><div class="muted">by you · 3 Oct</div></div></li>
+          <li class="li"><span class="pill neu">Theme</span><div style="flex:1"><b>Default theme updated</b><div class="muted">by you · 28 Sep</div></div></li>
+        </ul>
+      </section>
+    </div>
+  </main>
+</div>

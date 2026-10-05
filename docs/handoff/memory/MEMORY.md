@@ -1,0 +1,13 @@
+- [Company test account](company-test-account.md) — aakash-portal Company Admin login for browser tests (password not stored)
+- [Next session plan](next-session-plan.md) — steps 1–4 done, Redis deferred; next API speed → UI → real-user readiness
+- [Aakash demo org](aakash-demo-org.md) — 12 seeded test accounts (<first>.aakash@yopmail.com), re-seed via db:seed-demo
+- [Roadmap decisions](roadmap-decisions.md) — PII encryption, local-disk docs, WFH as leave type, projects after payroll
+- [Project approval routing](project-approval-routing.md) — project-based leave/correction approvers, PMO role, allocation ≤100%
+- [Plan B decisions](plan-b-decisions.md) — announcements/kudos/expenses/assets/helpdesk choices + open questions
+- [UI roadmap phases](ui-roadmap-phases.md) — now mixed dashboards + celebrations/kudos motion (no globe); phase 2 module UI + whole-UI themes; phase 3 fonts
+- [Two-step sign-in later](two-step-sign-in-later.md) — Super Admin 2FA designed but deferred; ask mandatory vs optional when picked up
+- [Super Admin upcoming](super-admin-upcoming.md) — queued: What's new/announcements, Support inbox; other unchosen ideas
+- [Announcement permissions](announcement-permissions.md) — HR pins one; IT Admin posts to all; managers/leads post to own team
+- [Timesheet decisions](timesheet-decisions.md) — time ranges only, no overlaps, project lead approves, submit any unsent days
+- [Expense decisions](expense-decisions.md) — HR approves every claim, over-limit with reason, payments only upcoming
+- [Asset decisions](asset-decisions.md) — QR later, yearly check, temporary loans, manager approves + requests for team

@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Plans overview</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F7F5F0}
+.app{display:flex;min-height:100vh;font-family:Manrope,system-ui,sans-serif;color:#1C1917;background:#F7F5F0;position:relative}
+.sb{flex:0 0 250px;background:#FBFAF7;border-right:1px solid #EFEBE3;display:flex;flex-direction:column}
+.sb-h{display:flex;gap:10px;align-items:center;padding:16px 14px}
+.sb-logo{width:34px;height:34px;border-radius:8px;background:#B7791F;color:#fff;display:flex;align-items:center;justify-content:center}
+.sb-h b{display:block;font-size:15px}.sb-h span{font-size:11.5px;color:#78716C}
+.sb-s{margin:0 14px 10px;height:36px;border:1px solid #E8E3D9;border-radius:8px;display:flex;align-items:center;gap:8px;padding:0 8px;color:#78716C;font-size:13px;background:#fff}
+.kbd{border:1px solid #E8E3D9;border-radius:4px;padding:0 5px;font-size:11px;font-family:monospace}
+.sb-g{padding:10px 14px 2px;font-size:11px;font-weight:700;letter-spacing:.06em;color:#A8A29E}
+.sb-i{display:flex;align-items:center;gap:10px;height:36px;margin:0 14px;padding:0 10px;border-radius:6px;font-size:14px;color:#44403C}
+.sb-i svg{color:#A8A29E}
+.sb-i.on{background:#FBF1DF;color:#1C1917;font-weight:700;position:relative}.sb-i.on svg{color:#B7791F}
+.sb-i.on::before{content:"";position:absolute;left:-14px;top:7px;bottom:7px;width:3px;border-radius:0 3px 3px 0;background:#B7791F}
+.sb-f{margin-top:auto;border-top:1px solid #EFEBE3;padding:10px 14px;display:flex;gap:10px;align-items:center}
+.av{width:34px;height:34px;border-radius:8px;background:#FBF1DF;color:#8A5A12;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex:none}
+.col{flex:1;min-width:0;display:flex;flex-direction:column}
+.hdr{height:60px;border-bottom:1px solid #EFEBE3;display:flex;align-items:center;justify-content:space-between;padding:0 30px;background:#F7F5F0}
+.crumb{font-size:14px;color:#78716C}.crumb b{color:#1C1917;font-weight:600}
+.op{display:flex;align-items:center;gap:16px;font-size:13px;color:#78716C}
+.dot{width:8px;height:8px;border-radius:50%;background:#22C55E;display:inline-block}
+.tg{width:56px;height:30px;border-radius:99px;background:#F1EEE8;position:relative;border:1px solid #E8E3D9}.tg::after{content:"";position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#F5B342}
+.main{padding:26px 34px 40px;display:flex;flex-direction:column;gap:18px;width:100%;box-sizing:border-box}
+.eyebrow{font-size:13px;color:#B7791F;font-weight:600}
+h1{margin:2px 0 0;font-size:30px;font-weight:800;letter-spacing:-.02em}
+.sub{color:#78716C;font-size:14.5px;margin-top:4px;max-width:760px}
+.row{display:flex;align-items:center;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px;border-radius:9px;border:1px solid #E8E3D9;background:#fff;color:#1C1917;font:inherit;font-size:13.5px;font-weight:700;white-space:nowrap}
+.btn.pri{background:#B7791F;border-color:#B7791F;color:#fff}
+.btn.sm{height:32px;padding:0 11px;font-size:12.5px}
+.btn.ghost{border-color:transparent;background:none}
+.card{background:#FFFFFF;border:1px solid #E8E3D9;border-radius:14px;box-shadow:0 1px 2px rgba(28,25,23,.04)}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.kpi{padding:14px 16px;display:flex;flex-direction:column;gap:4px;position:relative;overflow:hidden}
+.kpi span{font-size:12px;color:#78716C}.kpi b{font-size:26px;font-weight:800;letter-spacing:-.02em}
+.kpi small{font-size:12px;color:#78716C}
+.dist{display:flex;height:8px;border-radius:99px;overflow:hidden;background:#EFEBE3;margin-top:6px}.dist i{display:block;height:100%}
+.seg{display:flex;border:1px solid #E8E3D9;border-radius:9px;overflow:hidden;background:#fff}.seg span{height:36px;padding:0 12px;display:flex;align-items:center;gap:6px;color:#78716C;font-size:13px;font-weight:600}.seg span.on{background:#FBF1DF;color:#8A5A12}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.chip{display:inline-flex;align-items:center;font-size:12.5px;padding:4px 10px;border-radius:99px;background:#FBF1DF;color:#8A5A12;border:1px solid #F3E2C2}
+.chip.new{background:#E7F6EC;color:#15803D;border-color:#CBEBD6;font-weight:700}
+.mut{color:#78716C}.xs{font-size:12px}
+/* tier cards */
+.tiers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;align-items:stretch}
+.tier{position:relative;display:flex;flex-direction:column;overflow:hidden;transition:transform .25s,box-shadow .25s}
+.tier:hover{transform:translateY(-4px);box-shadow:0 18px 40px -18px rgba(28,25,23,.25)}
+.tier .band{height:96px;position:relative;overflow:hidden}
+.tier .band::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.45) 50%,transparent 70%);transform:translateX(-100%);animation:shine 4.5s ease-in-out infinite}
+@keyframes shine{0%,60%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+.steps{position:absolute;left:22px;bottom:-1px;display:flex;align-items:flex-end;gap:5px}.steps i{display:block;width:18px;border-radius:4px 4px 0 0;background:rgba(255,255,255,.55)}.steps i.on{background:#fff}
+.tier .body{padding:18px 22px 20px;display:flex;flex-direction:column;gap:14px;flex:1}
+.tier h2{margin:0;font-size:21px;font-weight:800;display:flex;align-items:center;gap:8px}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.stats div{background:#FAF8F4;border:1px solid #EFEBE3;border-radius:10px;padding:10px 12px}
+.stats b{display:block;font-size:18px;font-weight:800}.stats span{font-size:11.5px;color:#78716C}
+.ringw{display:flex;align-items:center;gap:12px}
+.inc{font-size:12.5px;color:#78716C;font-weight:600}
+.faces{display:flex}.faces span{width:26px;height:26px;border-radius:7px;border:2px solid #fff;margin-left:-6px;display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:800;color:#fff}.faces span:first-child{margin-left:0}
+.badge-pop{position:absolute;top:14px;right:14px;background:#fff;color:#8A5A12;font-size:11px;font-weight:800;padding:4px 10px;border-radius:99px;box-shadow:0 4px 12px rgba(0,0,0,.12)}
+.tfoot{border-top:1px solid #EFEBE3;padding:12px 22px;display:flex;align-items:center;gap:8px}
+.side2{display:grid;grid-template-columns:1.2fr 1fr;gap:18px}
+.sec{padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.sec h3{margin:0;font-size:15px;display:flex;align-items:center;gap:8px}
+.li{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid #EFEBE3;border-radius:10px;background:#FAF8F4;font-size:13px}
+.lg{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11.5px;color:#fff;flex:none}
+.meter{height:6px;border-radius:99px;background:#EFEBE3;overflow:hidden}.meter i{display:block;height:100%;border-radius:99px;transform-origin:left;animation:fillw 1s cubic-bezier(.2,.8,.2,1) both}
+@keyframes fillw{from{transform:scaleX(0)}}
+/* compare */
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:13.5px}
+th,td{padding:11px 14px;border-bottom:1px solid #EFEBE3;text-align:center}
+th:first-child,td:first-child{text-align:left}
+thead th{position:sticky;top:0;background:#fff;vertical-align:bottom;padding:16px 14px}
+.grp td{background:#FAF8F4;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#78716C;padding:8px 14px}
+.yes{display:inline-flex;width:24px;height:24px;border-radius:50%;align-items:center;justify-content:center;color:#fff}
+.no{display:inline-block;width:14px;height:2px;border-radius:2px;background:#D6D3D1}
+.use{display:block;font-size:10.5px;color:#78716C;margin-top:3px}
+.col-hi{background:linear-gradient(#FBF1DF,#FBF1DF) padding-box}
+td.col-hi,th.col-hi{background:#FFFBF3}
+.diff td{background:#FFFDF8}
+/* editor */
+.ed{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:18px;align-items:start}
+.tabs{display:flex;gap:22px;border-bottom:1px solid #E8E3D9;font-size:14px;color:#78716C;padding:0 4px}
+.tabs span{padding:10px 0;display:flex;align-items:center;gap:6px}.tabs span.on{color:#1C1917;font-weight:700;box-shadow:inset 0 -2px 0 #B7791F}
+.tabs i{font-style:normal;font-size:11px;background:#EFEBE3;border-radius:99px;padding:1px 7px;font-weight:700}
+.fg{padding:14px 16px;display:flex;flex-direction:column;gap:2px}
+.fg h4{margin:0 0 6px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#78716C;display:flex;justify-content:space-between}
+.fr{display:flex;align-items:center;gap:12px;padding:9px 8px;border-radius:9px}
+.fr:hover{background:#FAF8F4}
+.fr .nm{flex:1;font-size:14px;font-weight:600}.fr .nm small{display:block;font-size:12px;color:#78716C;font-weight:500}
+.sw{width:38px;height:22px;border-radius:99px;background:#D6D3D1;position:relative;flex:none;transition:background .2s}.sw::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:left .2s}
+.sw.on{background:#B7791F}.sw.on::after{left:19px}.sw.lock{opacity:.55}
+.fr.chg{background:#FFF8EC;outline:1px dashed #E9C98D}
+.fr.chg.off{background:#FFF3EF;outline-color:#F2B8A2}
+.tag{font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:99px}
+.save{position:sticky;bottom:0;margin-top:4px;display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:14px;background:#1C1917;color:#F5F5F4;box-shadow:0 18px 40px -16px rgba(0,0,0,.45);font-size:13.5px}
+.save .btn{height:34px}
+.impact{border:1px solid #F2C9B8;background:#FFF6F2}
+.tl{display:flex;gap:10px;font-size:12.5px}.tl .d{width:8px;height:8px;border-radius:50%;margin-top:5px;flex:none}
+</style>
+</helmet>
+<div class="app"><aside class="sb">
+<div class="sb-h"><span class="sb-logo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg></span><span><b>HRMS Platform</b><span>Super Admin console</span></span></div>
+<div class="sb-s"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><span style="flex:1">Search…</span><span class="kbd">Ctrl</span><span class="kbd">K</span></div>
+<div class="sb-g">OVERVIEW</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Dashboard</div>
+<div class="sb-g">TENANTS</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2M10 6h4M10 10h4M10 14h4M10 18h4"/></svg>Companies</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg>Onboard company</div>
+<div class="sb-g">GOVERNANCE</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M10 9H8M16 13H8M16 17H8"/></svg>Audit logs</div>
+<div class="sb-g">PLATFORM</div><div class="sb-i on"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65M22 12.65l-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg>Plans</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.65-.75 1.65-1.69 0-.44-.18-.84-.44-1.13-.29-.29-.44-.65-.44-1.13a1.64 1.64 0 0 1 1.67-1.67h2c3.05 0 5.56-2.5 5.56-5.55C21.97 6.01 17.46 2 12 2z"/></svg>Themes</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/></svg>System</div>
+<div class="sb-f"><span class="av">SA</span><span style="flex:1"><b style="display:block;font-size:14px">Super Admin</b><span class="xs mut">Super Admin</span></span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></svg></div>
+</aside><div class="col"><header class="hdr"><div class="crumb">Platform &nbsp;›&nbsp; <b>Plans</b></div><div class="op"><span><span class="dot"></span>&nbsp; Operational</span><span class="tg"></span></div></header><main class="main">
+<div class="row" style="align-items:flex-end"><div style="flex:1"><div class="eyebrow">Platform</div><h1>Plans</h1><div class="sub">Bundles of features and limits. Each company is on one plan; switch individual features per company on its Plan &amp; features tab.</div></div>
+<span class="seg"><span class="on"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Cards</span><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>Compare</span></span><span class="btn pri"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg>New plan</span></div>
+<div class="kpis">
+  <div class="card kpi"><span>Plans</span><b>3 <small style="font-size:13px;font-weight:600">active · 0 archived</small></b><small>19 features in the catalog · 2 coming soon</small></div>
+  <div class="card kpi"><span>Companies by plan</span><b>4</b><div class="dist"><i style="width:2%;background:#0F766E"></i><i style="width:2%;background:#1D4ED8"></i><i style="width:96%;background:#B7791F"></i></div><small><span style="color:#0F766E">●</span> Starter 0 &nbsp; <span style="color:#1D4ED8">●</span> Growth 0 &nbsp; <span style="color:#B7791F">●</span> Enterprise 4</small></div>
+  <div class="card kpi"><span>Custom switches</span><b>2</b><small>companies with a feature turned on/off outside their plan</small></div>
+  <div class="card kpi" style="border-color:#F3E2C2"><span>Trials ending soon</span><b style="color:#B45309">1</b><small>Payroll for Beta Test Co · ends in 4 days</small></div>
+</div>
+<div class="tiers"><div class="card tier">
+  <div class="band" style="background:linear-gradient(135deg,#0F766E,#0F766Ecc)">
+    
+    <div class="steps"><i class="on" style="height:18px"></i><i class="" style="height:32px"></i><i class="" style="height:46px"></i></div>
+    <div style="position:absolute;right:20px;bottom:14px;color:#fff;text-align:right"><div style="font-size:11px;opacity:.85;font-weight:700;letter-spacing:.08em">TIER 1</div><div style="font-size:22px;font-weight:800">up to 50</div><div style="font-size:11.5px;opacity:.85">employees</div></div>
+  </div>
+  <div class="body">
+    <div><h2>Starter</h2><div class="mut" style="font-size:14px;margin-top:4px">Core HR for small teams.</div></div>
+    <div class="ringw"><span style="position:relative;width:56px;height:56px;display:inline-block;flex:none"><svg width="56" height="56"><circle cx="28" cy="28" r="24.5" fill="none" stroke="#EFEBE3" stroke-width="5"/><circle cx="28" cy="28" r="24.5" fill="none" stroke="#0F766E" stroke-width="5" stroke-linecap="round" stroke-dasharray="49.260172808287955 153.93804002589985" transform="rotate(-90 28 28)"/></svg><b style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px">6</b></span><div style="flex:1"><b style="font-size:14px">6 of 19 features</b><div class="meter" style="margin-top:6px"><i style="width:32%;background:#0F766E"></i></div></div></div>
+    <div><div class="inc">Includes</div><div class="row" style="flex-wrap:wrap;gap:6px;margin-top:8px"><span class="chip ">Employee directory</span><span class="chip ">Organisation structure</span><span class="chip ">Attendance</span><span class="chip ">Leave</span><span class="chip ">Users & roles</span><span class="chip ">Settings & branding</span></div></div>
+    <div class="stats"><div><b>0</b><span>companies</span></div><div><b>0</b><span>employees</span></div><div><b>—</b><span>near limit</span></div></div>
+  </div>
+  <div class="tfoot"><span class="xs mut" style="flex:1">No companies yet</span><span class="btn sm"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Duplicate</span><span class="btn sm pri">Edit</span></div>
+</div><div class="card tier">
+  <div class="band" style="background:linear-gradient(135deg,#1D4ED8,#1D4ED8cc)">
+    
+    <div class="steps"><i class="on" style="height:18px"></i><i class="on" style="height:32px"></i><i class="" style="height:46px"></i></div>
+    <div style="position:absolute;right:20px;bottom:14px;color:#fff;text-align:right"><div style="font-size:11px;opacity:.85;font-weight:700;letter-spacing:.08em">TIER 2</div><div style="font-size:22px;font-weight:800">up to 500</div><div style="font-size:11.5px;opacity:.85">employees</div></div>
+  </div>
+  <div class="body">
+    <div><h2>Growth</h2><div class="mut" style="font-size:14px;margin-top:4px">Payroll, documents and reports for growing companies.</div></div>
+    <div class="ringw"><span style="position:relative;width:56px;height:56px;display:inline-block;flex:none"><svg width="56" height="56"><circle cx="28" cy="28" r="24.5" fill="none" stroke="#EFEBE3" stroke-width="5"/><circle cx="28" cy="28" r="24.5" fill="none" stroke="#1D4ED8" stroke-width="5" stroke-linecap="round" stroke-dasharray="89.2840632150219 153.93804002589985" transform="rotate(-90 28 28)"/></svg><b style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px">11</b></span><div style="flex:1"><b style="font-size:14px">11 of 19 features</b><div class="meter" style="margin-top:6px"><i style="width:58%;background:#1D4ED8"></i></div></div></div>
+    <div><div class="inc">Everything in Starter, plus</div><div class="row" style="flex-wrap:wrap;gap:6px;margin-top:8px"><span class="chip new">+ Employee documents</span><span class="chip new">+ Payroll</span><span class="chip new">+ Salary & compensation</span><span class="chip new">+ Reports</span><span class="chip new">+ Audit log</span></div></div>
+    <div class="stats"><div><b>0</b><span>companies</span></div><div><b>0</b><span>employees</span></div><div><b>—</b><span>near limit</span></div></div>
+  </div>
+  <div class="tfoot"><span class="xs mut" style="flex:1">No companies yet</span><span class="btn sm"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Duplicate</span><span class="btn sm pri">Edit</span></div>
+</div><div class="card tier">
+  <div class="band" style="background:linear-gradient(135deg,#B7791F,#B7791Fcc)">
+    <span class="badge-pop">★ Most used</span>
+    <div class="steps"><i class="on" style="height:18px"></i><i class="on" style="height:32px"></i><i class="on" style="height:46px"></i></div>
+    <div style="position:absolute;right:20px;bottom:14px;color:#fff;text-align:right"><div style="font-size:11px;opacity:.85;font-weight:700;letter-spacing:.08em">TIER 3</div><div style="font-size:22px;font-weight:800">Unlimited</div><div style="font-size:11.5px;opacity:.85">employees</div></div>
+  </div>
+  <div class="body">
+    <div><h2>Enterprise<span class="pill" style="background:#F1EAFE;color:#6D28D9">incl. beta</span></h2><div class="mut" style="font-size:14px;margin-top:4px">Everything, including beta features.</div></div>
+    <div class="ringw"><span style="position:relative;width:56px;height:56px;display:inline-block;flex:none"><svg width="56" height="56"><circle cx="28" cy="28" r="24.5" fill="none" stroke="#EFEBE3" stroke-width="5"/><circle cx="28" cy="28" r="24.5" fill="none" stroke="#B7791F" stroke-width="5" stroke-linecap="round" stroke-dasharray="153.93804002589985 153.93804002589985" transform="rotate(-90 28 28)"/></svg><b style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px">19</b></span><div style="flex:1"><b style="font-size:14px">19 of 19 features</b><div class="meter" style="margin-top:6px"><i style="width:100%;background:#B7791F"></i></div></div></div>
+    <div><div class="inc">Everything in Growth, plus</div><div class="row" style="flex-wrap:wrap;gap:6px;margin-top:8px"><span class="chip new">+ Shifts & rosters</span><span class="chip new">+ Announcements</span><span class="chip new">+ Kudos</span><span class="chip new">+ Assets</span><span class="chip new">+ Helpdesk</span><span class="chip new">+ Projects</span><span class="chip new">+ Timesheets</span><span class="chip" style="background:#fff">+1 more</span></div></div>
+    <div class="stats"><div><b>4</b><span>companies</span></div><div><b>517</b><span>employees</span></div><div><b>0</b><span>near limit</span></div></div>
+  </div>
+  <div class="tfoot"><span class="faces"><span style="background:#5B5BF0">PB</span><span style="background:linear-gradient(135deg,#E9416A,#7A2BD9)">AP</span><span style="background:#2F5BEA">BT</span><span style="background:#C2410C">AT</span></span><span class="xs mut" style="flex:1">4 companies</span><span class="btn sm"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Duplicate</span><span class="btn sm pri">Edit</span></div>
+</div></div>
+<div class="side2">
+  <div class="card sec"><h3><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 7-7 7 7M12 19V5"/></svg>Upgrade candidates<span class="xs mut" style="margin-left:auto;font-weight:500">companies outgrowing their plan</span></h3>
+    <div class="li"><span class="lg" style="width:34px;height:34px;background:linear-gradient(135deg,#E9416A,#7A2BD9)">AP</span><div style="flex:1;min-width:0"><b style="display:block">aakash-portal <span class="mut xs" style="font-weight:600">· Growth → Enterprise</span></b><span class="xs mut">Using 3 features not in Growth (Kudos, Assets, Helpdesk) via custom switches</span><div class="meter" style="margin-top:6px;width:70%"><i style="width:82%;background:#B45309"></i></div></div><span class="btn sm"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>Move plan</span></div><div class="li"><span class="lg" style="width:34px;height:34px;background:#5B5BF0">PB</span><div style="flex:1;min-width:0"><b style="display:block">Perf Bench <span class="mut xs" style="font-weight:600">· at 493 of 500 employees</span></b><span class="xs mut">Would hit the Growth limit — Enterprise has no limit</span><div class="meter" style="margin-top:6px;width:70%"><i style="width:99%;background:#C2410C"></i></div></div><span class="btn sm"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>Move plan</span></div>
+    <div class="xs mut">Example data — today every company is on Enterprise, so this list would be empty.</div>
+  </div>
+  <div class="card sec"><h3><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg>Custom switches &amp; trials</h3>
+    <div class="li"><span class="lg" style="width:30px;height:30px;background:#2F5BEA">BT</span><div style="flex:1"><b style="display:block">Beta Test Co</b><span class="xs mut">trial · ends 8 Oct</span></div><span class="pill" style="background:#E7F6EC;color:#15803D">Payroll ON</span><span class="dot" style="background:#B45309"></span></div><div class="li"><span class="lg" style="width:30px;height:30px;background:#C2410C">AT</span><div style="flex:1"><b style="display:block">Acme Test Company</b><span class="xs mut">turned off · “billing hold”</span></div><span class="pill" style="background:#FDECE5;color:#C2410C">Kudos OFF</span><span class="dot" style="background:#C2410C"></span></div><div class="li"><span class="lg" style="width:30px;height:30px;background:linear-gradient(135deg,#E9416A,#7A2BD9)">AP</span><div style="flex:1"><b style="display:block">aakash-portal</b><span class="xs mut">beta access · no end date</span></div><span class="pill" style="background:#E7F6EC;color:#15803D">Shifts & rosters ON</span><span class="dot" style="background:#6D28D9"></span></div>
+  </div>
+</div>
+</main></div></div></x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1500}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
