@@ -29,6 +29,8 @@ export interface ChartEmployee {
   designation: { id: string; name: string; orgLevel: OrgLevel | null } | null;
   location: { id: string; name: string } | null;
   directReports: number;
+  /** Not joined yet (only shown to org managers) */
+  joinsOn?: string | null;
 }
 
 export interface OrgChart {
@@ -95,11 +97,22 @@ export interface Employee {
   designation: Designation | null;
   location: OfficeLocation | null;
   reportingManager: { id: string; firstName: string; lastName: string; email: string } | null;
+  userId?: string;
+  confirmationDate?: string | null;
+  terminationDate?: string | null;
+  exitReason?: string | null;
+  /** Lifecycle stage as this viewer may see it */
+  stage?: EmployeeStage;
+  /** Profile completeness — null when the viewer may not see private details */
+  profilePercent?: number | null;
+  checklist?: { kind: 'joining' | 'exit'; done: number; total: number } | null;
 }
+
+export type EmployeeStage = 'joining' | 'probation' | 'active' | 'notice' | 'left';
 
 export interface EmployeesPage {
   data: Employee[];
-  meta: { total: number; page: number; limit: number; totalPages: number };
+  meta: { total: number; page: number; limit: number; totalPages: number; seesExits?: boolean };
 }
 
 // ─── Keys ───────────────────────────────────────────────────
@@ -178,7 +191,13 @@ export const useDeleteLocation = () => useOrgMutation(async (id: string) => unwr
 export interface EmployeesQuery {
   search?: string;
   departmentId?: string;
+  locationId?: string;
+  employmentType?: string;
   status?: string;
+  stage?: EmployeeStage | 'current' | 'all';
+  /** Direct reports of / "none" */
+  managerId?: string;
+  sort?: 'recent' | 'name' | 'joined' | 'joined_desc' | 'probation' | 'last_day';
   page?: number;
   limit?: number;
 }
@@ -207,6 +226,8 @@ export type EmployeeInput = {
   designationId?: string | null;
   locationId?: string | null;
   reportingManagerId?: string | null;
+  employmentStatus?: string;
+  confirmationDate?: string;
 };
 
 export const useCreateEmployee = () => useOrgMutation(async (body: EmployeeInput) => unwrap<Employee>(await api.post('/employees', body)));

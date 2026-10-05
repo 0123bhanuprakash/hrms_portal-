@@ -63,7 +63,7 @@ export function ProfileHeader({ person, canEditPhoto, action }: { person: Header
 }
 
 /** A small 3D ID card: employee ID on the front, years with the company on the back. */
-function IdBadge({ person }: { person: HeaderPerson }) {
+export function IdBadge({ person }: { person: HeaderPerson }) {
   const joined = new Date(person.joiningDate);
   const years = Math.max(0, Math.floor((Date.now() - joined.getTime()) / (365.25 * 86_400_000)));
   return (

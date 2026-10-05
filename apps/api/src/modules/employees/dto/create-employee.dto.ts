@@ -61,4 +61,9 @@ export class CreateEmployeeDto {
   @IsDateString()
   @IsNotEmpty()
   joiningDate!: string;
+
+  /** Probation end (when employmentStatus is PROBATION) */
+  @IsOptional()
+  @IsDateString()
+  confirmationDate?: string;
 }

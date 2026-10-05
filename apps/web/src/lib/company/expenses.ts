@@ -19,6 +19,8 @@ export interface ExpenseCategory {
   description: string | null;
   maxPerItemPaise: number | null;
   receiptRequiredAbovePaise: number | null;
+  /** Per person per calendar month */
+  maxPerMonthPaise: number | null;
   isActive: boolean;
   sortOrder: number;
 }
@@ -36,6 +38,11 @@ export interface ExpenseItem {
   amountPaise: number;
   approvedPaise: number | null;
   adjustReason: string | null;
+  /** Why it goes over the limit / monthly cap */
+  overLimitReason: string | null;
+  overLimit: boolean;
+  /** Not paid at all (an approver rejected this item) */
+  rejected: boolean;
   receiptName: string | null;
   hasReceipt: boolean;
   category: { id: string; name: string };
@@ -65,6 +72,41 @@ export interface Claim {
   decideStage: Stage | null;
   canAdjust: boolean;
   canPay: boolean;
+  flags: ClaimFlag[];
+  questionOpen: boolean;
+  questionByMe: boolean;
+  /** Detail only */
+  comments?: ClaimComment[];
+  canAsk?: boolean;
+  canReply?: boolean;
+}
+
+export type ClaimFlag = 'over_limit' | 'duplicate' | 'late' | 'weekend';
+export const FLAG_LABEL: Record<ClaimFlag, { label: string; tone: 'danger' | 'warning' | 'primary' | 'neutral' }> = {
+  over_limit: { label: 'Over limit', tone: 'danger' },
+  duplicate: { label: 'Possible duplicate', tone: 'primary' },
+  late: { label: '60+ days old', tone: 'warning' },
+  weekend: { label: 'Weekend', tone: 'neutral' },
+};
+
+export interface ClaimComment {
+  id: string;
+  kind: 'QUESTION' | 'REPLY';
+  body: string;
+  createdAt: string;
+  author: { id: string; firstName: string; lastName: string; avatarUrl: string | null } | null;
+  mine: boolean;
+}
+
+export interface ExpenseSummary {
+  today: string;
+  thisMonth: { paise: number; items: number };
+  waiting: { paise: number; claims: number; oldestSince: string | null };
+  toBePaid: { paise: number; claims: number };
+  paidThisYear: { paise: number; claims: number };
+  needsMe: number;
+  drafts: number;
+  limits: Array<{ category: { id: string; name: string }; capPaise: number; usedPaise: number }>;
 }
 
 export interface ExpenseReport {
@@ -74,6 +116,12 @@ export interface ExpenseReport {
   byCategory: ReportRow[];
   byEmployee: ReportRow[];
   byProject: ReportRow[];
+  byDepartment: ReportRow[];
+  byMonth: Array<{ month: string; approvedPaise: number; rebillablePaise: number }>;
+  rebillablePaise: number;
+  exceptions: { overLimit: { items: number; paise: number }; reduced: { items: number; paise: number }; rejectedItems: { items: number; paise: number } };
+  timing: { avgDaysToApprove: number | null; avgDaysToPay: number | null };
+  pipeline: { waitingPaise: number; toBePaidPaise: number };
 }
 interface ReportRow {
   key: string;
@@ -103,6 +151,7 @@ export const expenseKeys = {
   claims: (q: object) => ['expenses', 'claims', q] as const,
   claim: (id: string) => ['expenses', 'claim', id] as const,
   pending: ['expenses', 'pending'] as const,
+  summary: ['expenses', 'summary'] as const,
   report: (q: object) => ['expenses', 'report', q] as const,
 };
 
@@ -113,7 +162,7 @@ export function useExpenseCategories(all = false, enabled = true) {
   return useQuery({ queryKey: expenseKeys.categories(all), queryFn: async () => unwrap<ExpenseCategory[]>(await api.get('/expenses/categories', { params: all ? { all: true } : {} })), enabled, staleTime: 60_000 });
 }
 
-export function useClaims(q: { view: 'mine' | 'review' | 'all' | 'payable'; status?: ClaimStatus; page?: number; limit?: number }, enabled = true) {
+export function useClaims(q: { view: 'mine' | 'review' | 'all' | 'payable'; status?: ClaimStatus; filter?: 'needs_me' | 'asked'; page?: number; limit?: number }, enabled = true) {
   const { hasFeature } = useAccess();
   return useQuery({
     queryKey: expenseKeys.claims(q),
@@ -128,6 +177,11 @@ export function useClaims(q: { view: 'mine' | 'review' | 'all' | 'payable'; stat
 
 export function useClaim(id: string | undefined) {
   return useQuery({ queryKey: expenseKeys.claim(id ?? ''), queryFn: async () => unwrap<Claim>(await api.get(`/expenses/claims/${id}`)), enabled: Boolean(id), retry: false });
+}
+
+/** My numbers for the My expenses page. */
+export function useExpenseSummary(enabled = true) {
+  return useQuery({ queryKey: expenseKeys.summary, queryFn: async () => unwrap<ExpenseSummary>(await api.get('/expenses/claims/summary')), enabled });
 }
 
 /** Claims waiting for me (manager step / Finance / HR) — nav badge. */
@@ -161,7 +215,7 @@ export const useSaveClaim = () =>
     unwrap<Claim>(id ? await api.patch(`/expenses/claims/${id}`, body) : await api.post('/expenses/claims', body)),
   );
 
-export type ItemInput = { categoryId: string; date: string; description: string; amount: string; receipt?: File | null; removeReceipt?: boolean };
+export type ItemInput = { categoryId: string; date: string; description: string; amount: string; overLimitReason?: string; receipt?: File | null; removeReceipt?: boolean };
 export const useSaveItem = (claimId: string) =>
   useExpenseMutation(async ({ id, receipt, ...fields }: ItemInput & { id?: string }) => {
     const form = new FormData();
@@ -175,15 +229,19 @@ export const useRemoveItem = (claimId: string) => useExpenseMutation(async (item
 export const useSubmitClaim = () => useExpenseMutation(async (id: string) => unwrap<Claim>(await api.post(`/expenses/claims/${id}/submit`)));
 export const useCancelClaim = () => useExpenseMutation(async (id: string) => unwrap<Claim>(await api.post(`/expenses/claims/${id}/cancel`)));
 export const useApproveClaim = () =>
-  useExpenseMutation(async ({ id, ...body }: { id: string; note?: string | null; adjustments?: Array<{ itemId: string; approvedAmount: number; reason: string }> }) =>
+  useExpenseMutation(async ({ id, ...body }: { id: string; note?: string | null; adjustments?: Array<{ itemId: string; approvedAmount: number; reason: string }>; rejectItems?: Array<{ itemId: string; reason: string }> }) =>
     unwrap<Claim>(await api.post(`/expenses/claims/${id}/approve`, body)),
   );
 export const useRejectClaim = () => useExpenseMutation(async ({ id, reason }: { id: string; reason: string }) => unwrap<Claim>(await api.post(`/expenses/claims/${id}/reject`, { reason })));
+export const useBulkApprove = () => useExpenseMutation(async (ids: string[]) => unwrap<{ approved: number; skipped: Array<{ id: string; reason: string }> }>(await api.post('/expenses/claims/approve-bulk', { ids })));
+export const useAskQuestion = () => useExpenseMutation(async ({ id, body }: { id: string; body: string }) => unwrap<Claim>(await api.post(`/expenses/claims/${id}/questions`, { body })));
+export const useReplyQuestion = () => useExpenseMutation(async ({ id, body }: { id: string; body: string }) => unwrap<Claim>(await api.post(`/expenses/claims/${id}/replies`, { body })));
+export const useCopyClaim = () => useExpenseMutation(async (id: string) => unwrap<Claim>(await api.post(`/expenses/claims/${id}/copy`)));
 export const usePayClaim = () =>
   useExpenseMutation(async ({ id, ...body }: { id: string; paymentDate: string; reference: string }) => unwrap<Claim>(await api.post(`/expenses/claims/${id}/pay`, body)));
 
 export const useSaveCategory = () =>
-  useExpenseMutation(async ({ id, ...body }: { id?: string; name: string; description?: string | null; maxPerItem?: number | null; receiptRequiredAbove?: number | null; isActive?: boolean; sortOrder?: number }) =>
+  useExpenseMutation(async ({ id, ...body }: { id?: string; name: string; description?: string | null; maxPerItem?: number | null; maxPerMonth?: number | null; receiptRequiredAbove?: number | null; isActive?: boolean; sortOrder?: number }) =>
     unwrap<ExpenseCategory>(id ? await api.patch(`/expenses/categories/${id}`, body) : await api.post('/expenses/categories', body)),
   );
 

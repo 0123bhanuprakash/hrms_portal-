@@ -21,6 +21,8 @@ import { QueryEmployeesDto } from './dto/query-employee.dto';
 import { CreateEmployeeProfileDto } from './dto/create-employee-profile.dto';
 import { UserStatus, EmploymentStatus, Prisma } from '@prisma/client';
 import { generateTemporaryPassword, hashPassword } from '../auth/password.util';
+import { wordsWhere } from '../../common/word-search';
+import { EmployeeLifecycleService, type JobSnapshot } from './lifecycle.service';
 
 @Injectable()
 export class EmployeesService {
@@ -35,6 +37,7 @@ export class EmployeesService {
     private readonly hierarchy: HierarchyService,
     private readonly entitlements: EntitlementService,
     private readonly notifications: NotificationsService,
+    private readonly lifecycle: EmployeeLifecycleService,
   ) {}
 
   /** Next sequential employee ID (e.g. AAK014) — call inside the creating transaction. */
@@ -87,6 +90,14 @@ export class EmployeesService {
         include: { department: true, designation: true, location: true, reportingManager: true },
       });
       await this.hierarchy.addEmployee(tx, companyId, employee.id, employee.reportingManagerId);
+      await this.lifecycle.record(tx, {
+        companyId,
+        employeeId: employee.id,
+        actor: null,
+        kind: 'joined',
+        to: employee.designation?.name ?? null,
+        effectiveOn: employee.joiningDate,
+      });
       return employee;
     });
   }
@@ -166,8 +177,14 @@ export class EmployeesService {
    * 3. Create Employee profile
    * 4. Send welcome email with login credentials
    */
-  async create(companyId: string, dto: CreateEmployeeDto, opts: { sendWelcome?: boolean } = {}) {
+  async create(companyId: string, dto: CreateEmployeeDto, opts: { sendWelcome?: boolean; actorUserId?: string } = {}) {
     const emailLower = dto.email.toLowerCase().trim();
+    if (dto.employmentStatus && !(['ACTIVE', 'PROBATION'] as string[]).includes(dto.employmentStatus)) {
+      throw new BadRequestException('A new employee starts as Active or on Probation');
+    }
+    if (dto.confirmationDate && dto.confirmationDate <= dto.joiningDate.slice(0, 10)) {
+      throw new BadRequestException('Probation must end after the joining date');
+    }
 
     // Check user email uniqueness
     const existingUser = await this.prisma.user.findUnique({
@@ -232,6 +249,7 @@ export class EmployeesService {
           locationId: dto.locationId || null,
           reportingManagerId: dto.reportingManagerId || null,
           joiningDate: new Date(dto.joiningDate),
+          confirmationDate: dto.confirmationDate ? new Date(dto.confirmationDate) : null,
         },
         include: {
           department: true,
@@ -243,6 +261,7 @@ export class EmployeesService {
 
       // 5. Place them in the reporting hierarchy (closure table)
       await this.hierarchy.addEmployee(tx, companyId, employee.id, employee.reportingManagerId);
+      await this.lifecycle.record(tx, { companyId, employeeId: employee.id, actor: opts.actorUserId ?? null, kind: 'joined', to: employee.designation?.name ?? null, effectiveOn: employee.joiningDate });
 
       return { user, employee, generatedEmployeeId };
     });
@@ -283,6 +302,10 @@ export class EmployeesService {
     const skip = (page - 1) * limit;
 
     const filters: Prisma.EmployeeWhereInput = {};
+    const today = await this.lifecycle.today(companyId);
+    const seesExits = this.lifecycle.seesExits(access);
+
+    if (query.managerId) filters.reportingManagerId = query.managerId === 'none' ? null : query.managerId;
 
     if (query.status) {
       filters.employmentStatus = query.status;
@@ -304,22 +327,34 @@ export class EmployeesService {
       filters.locationId = query.locationId;
     }
 
-    if (query.search) {
-      filters.OR = [
-        { firstName: { contains: query.search, mode: 'insensitive' } },
-        { lastName: { contains: query.search, mode: 'insensitive' } },
-        { email: { contains: query.search, mode: 'insensitive' } },
-        { employeeId: { contains: query.search, mode: 'insensitive' } },
-      ];
-    }
+    // Every word must match a field: "aadhya bose" finds Aadhya Bose
+    const search = wordsWhere(query.search, (w): Prisma.EmployeeWhereInput[] => [
+      { firstName: { contains: w, mode: 'insensitive' as const } },
+      { lastName: { contains: w, mode: 'insensitive' as const } },
+      { email: { contains: w, mode: 'insensitive' as const } },
+      { employeeId: { contains: w, mode: 'insensitive' as const } },
+    ]);
+    if (search) filters.AND = search.AND;
 
-    // Tenant + permission scope (own / reports / department / company) + filters
+    // Tenant + permission scope (own / reports / department / company) + lifecycle stage + filters.
+    // A status filter for notice / left needs exit access (otherwise nothing matches).
+    const hiddenStatus = !seesExits && (query.status === 'NOTICE_PERIOD' || query.status === 'TERMINATED');
     const where: Prisma.EmployeeWhereInput = {
       AND: [
         { companyId },
         this.accessService.requireEmployeeScope(access, 'employee.view'),
+        this.lifecycle.stageWhere(query.stage ?? 'current', today.date, seesExits),
+        hiddenStatus ? { id: { in: [] } } : {},
         filters,
       ],
+    };
+    const ORDER: Record<string, Prisma.EmployeeOrderByWithRelationInput[]> = {
+      recent: [{ createdAt: 'desc' }],
+      name: [{ firstName: 'asc' }, { lastName: 'asc' }],
+      joined: [{ joiningDate: 'asc' }],
+      joined_desc: [{ joiningDate: 'desc' }],
+      probation: [{ confirmationDate: { sort: 'asc', nulls: 'last' } }],
+      last_day: [{ terminationDate: { sort: 'asc', nulls: 'last' } }],
     };
 
     const [items, total] = await Promise.all([
@@ -327,7 +362,7 @@ export class EmployeesService {
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: [...(ORDER[query.sort ?? 'recent'] ?? ORDER.recent!), { id: 'asc' }],
         include: {
           department: true,
           designation: true,
@@ -347,12 +382,13 @@ export class EmployeesService {
     ]);
 
     return {
-      data: items,
+      data: await this.lifecycle.enrich(companyId, items, access, today.date),
       meta: {
         total,
         page,
         limit,
         totalPages: Math.ceil(total / limit),
+        seesExits,
       },
     };
   }
@@ -409,8 +445,12 @@ export class EmployeesService {
     if (!employee) {
       throw new NotFoundException(`Employee with ID '${id}' not found`);
     }
+    // People who left are only visible to HR (and themselves)
+    if (employee.employmentStatus === EmploymentStatus.TERMINATED && !this.lifecycle.seesExits(access) && employee.userId !== access.userId) {
+      throw new NotFoundException(`Employee with ID '${id}' not found`);
+    }
 
-    return employee;
+    return this.lifecycle.mask(employee, access);
   }
 
   /**
@@ -436,6 +476,10 @@ export class EmployeesService {
       throw new BadRequestException('An employee cannot be their own reporting manager');
     }
     await this.assertLinksInCompany(companyId, dto);
+    const exitStatus = (s?: string) => s === EmploymentStatus.NOTICE_PERIOD || s === EmploymentStatus.TERMINATED;
+    if (dto.employmentStatus && dto.employmentStatus !== existing.employmentStatus && (exitStatus(dto.employmentStatus) || exitStatus(existing.employmentStatus)) && !this.lifecycle.seesExits(access)) {
+      throw new ForbiddenException('Only HR can start or end a notice period');
+    }
     const managerChanged =
       dto.reportingManagerId !== undefined &&
       (dto.reportingManagerId ?? null) !== existing.reportingManagerId;
@@ -455,12 +499,13 @@ export class EmployeesService {
     // Leaving (notice period / terminated) while holding company assets → tell IT
     const leaving = dto.employmentStatus && dto.employmentStatus !== existing.employmentStatus && (['NOTICE_PERIOD', 'TERMINATED'] as string[]).includes(dto.employmentStatus);
     if (leaving) void this.warnAboutAssets(companyId, id, dto.employmentStatus === 'TERMINATED');
+    const before = await this.jobSnapshot(id);
 
     // Reporting line and closure table change together (loops are rejected)
     return this.prisma.$transaction(async (tx) => {
       if (managerChanged)
         await this.hierarchy.setManager(tx, companyId, id, dto.reportingManagerId ?? null);
-      return tx.employee.update({
+      const updated = await tx.employee.update({
         where: { id },
         data: {
           ...(dto.firstName && { firstName: dto.firstName.trim() }),
@@ -497,7 +542,69 @@ export class EmployeesService {
           reportingManager: true,
         },
       });
+      await this.lifecycle.recordChanges(tx, companyId, access.userId, before, await this.jobSnapshot(id, tx));
+      return updated;
     });
+  }
+
+  /** Manager / team / title / office / type / status as names, for the history. */
+  private async jobSnapshot(id: string, db: Prisma.TransactionClient = this.prisma): Promise<JobSnapshot> {
+    const e = await db.employee.findUniqueOrThrow({
+      where: { id },
+      select: {
+        id: true,
+        employmentType: true,
+        employmentStatus: true,
+        terminationDate: true,
+        reportingManager: { select: { firstName: true, lastName: true } },
+        department: { select: { name: true } },
+        designation: { select: { name: true } },
+        location: { select: { name: true } },
+      },
+    });
+    return {
+      id: e.id,
+      manager: e.reportingManager ? `${e.reportingManager.firstName} ${e.reportingManager.lastName}` : null,
+      department: e.department?.name ?? null,
+      title: e.designation?.name ?? null,
+      location: e.location?.name ?? null,
+      type: e.employmentType,
+      status: e.employmentStatus,
+      terminationDate: e.terminationDate,
+    };
+  }
+
+  /** The ID the next new employee will get (preview only — nothing is reserved). */
+  async nextId(companyId: string) {
+    const s = await this.prisma.companySettings.findUnique({ where: { companyId }, select: { employeeIdPrefix: true, employeeIdSequence: true } });
+    const prefix = s?.employeeIdPrefix || 'EMP';
+    return { employeeId: `${prefix}${String((s?.employeeIdSequence ?? 0) + 1).padStart(3, '0')}` };
+  }
+
+  /** CSV of the list as filtered (same scope and stage rules as the list). */
+  async exportCsv(companyId: string, query: QueryEmployeesDto, access: AccessContext): Promise<string> {
+    const rows: Array<Record<string, unknown>> = [];
+    for (let page = 1; page <= 50; page++) {
+      const res = await this.findAll(companyId, { ...query, page, limit: 100 }, access);
+      rows.push(...(res.data as Array<Record<string, unknown>>));
+      if (page >= res.meta.totalPages) break;
+    }
+    const sees = this.lifecycle.seesExits(access);
+    const head = ['Employee ID', 'First name', 'Last name', 'Email', 'Job title', 'Department', 'Location', 'Manager', 'Type', 'Status', 'Joined', 'Probation ends', ...(sees ? ['Last day', 'Exit reason'] : []), 'Profile %'];
+    const d = (v: unknown) => (v instanceof Date ? v.toISOString().slice(0, 10) : typeof v === 'string' ? v.slice(0, 10) : '');
+    const lines = rows.map((r: any) => [
+      r.employeeId, r.firstName, r.lastName, r.email, r.designation?.name, r.department?.name, r.location?.name,
+      r.reportingManager ? `${r.reportingManager.firstName} ${r.reportingManager.lastName}` : '',
+      r.employmentType, r.employmentStatus, d(r.joiningDate), r.employmentStatus === 'PROBATION' ? d(r.confirmationDate) : '',
+      ...(sees ? [d(r.terminationDate), r.exitReason ?? ''] : []),
+      r.profilePercent ?? '',
+    ]);
+    const cell = (v: unknown) => {
+      const s = v === null || v === undefined ? '' : String(v);
+      const safe = /^[=+\-@]/.test(s) ? `'${s}` : s; // no spreadsheet formulas
+      return /[",\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+    };
+    return [head, ...lines].map((l) => l.map(cell).join(',')).join('\n') + '\n';
   }
 
   private async warnAboutAssets(companyId: string, employeeId: string, left: boolean) {

@@ -16,7 +16,7 @@ const DEFAULTS: Array<Omit<Prisma.ExpenseCategoryUncheckedCreateInput, 'companyI
   { name: 'Other', description: 'Anything else — explain in the description.', receiptRequiredAbovePaise: 0, sortOrder: 90 },
 ];
 
-const SELECT = { id: true, name: true, description: true, maxPerItemPaise: true, receiptRequiredAbovePaise: true, isActive: true, sortOrder: true } satisfies Prisma.ExpenseCategorySelect;
+const SELECT = { id: true, name: true, description: true, maxPerItemPaise: true, receiptRequiredAbovePaise: true, maxPerMonthPaise: true, isActive: true, sortOrder: true } satisfies Prisma.ExpenseCategorySelect;
 export type CategoryRow = Prisma.ExpenseCategoryGetPayload<{ select: typeof SELECT }>;
 
 @Injectable()
@@ -47,6 +47,7 @@ export class ExpenseCategoriesService {
       description: dto.description ?? null,
       maxPerItemPaise: dto.maxPerItem == null ? null : toPaise(dto.maxPerItem),
       receiptRequiredAbovePaise: dto.receiptRequiredAbove == null ? null : toPaise(dto.receiptRequiredAbove),
+      maxPerMonthPaise: dto.maxPerMonth == null ? null : toPaise(dto.maxPerMonth),
       isActive: dto.isActive ?? true,
       sortOrder: dto.sortOrder ?? 100,
     };

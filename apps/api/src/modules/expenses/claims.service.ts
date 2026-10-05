@@ -10,13 +10,16 @@ import { PrivateFilesService } from '../employee-profile/private-files.service';
 import { detectFileType, DOCUMENT_TYPES } from '../employee-profile/file-types';
 import { addDays, dateFromKey, isValidTimeZone, keyFromDate, localDateKey } from '../attendance/time-zone';
 import { ExpenseCategoriesService, toPaise } from './categories.service';
-import type { ClaimQueryDto, DecideClaimDto, PayClaimDto, RejectClaimDto, ReportQueryDto, SaveClaimDto, SaveItemDto } from './dto';
+import type { ClaimQueryDto, CommentDto, DecideClaimDto, PayClaimDto, RejectClaimDto, ReportQueryDto, SaveClaimDto, SaveItemDto } from './dto';
 
 const RECEIPT_MAX_BYTES = 10 * 1024 * 1024;
 /** Items older than this can't be claimed */
 const MAX_AGE_DAYS = 90;
 const MAX_ITEMS = 50;
+/** Flag items claimed this long after they happened */
+const LATE_DAYS = 60;
 const FINANCE = 'expense.finance';
+const rupees = (paise: number) => `₹${(paise / 100).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 const HR = 'expense.hr';
 
 const PERSON = { id: true, userId: true, employeeId: true, firstName: true, lastName: true, avatarUrl: true, designation: { select: { name: true } }, department: { select: { name: true } } } satisfies Prisma.EmployeeSelect;
@@ -32,6 +35,7 @@ const SELECT = {
   paidAt: true,
   paymentDate: true,
   paymentReference: true,
+  questionOpenById: true,
   createdAt: true,
   updatedAt: true,
   employee: { select: PERSON },
@@ -44,6 +48,7 @@ const SELECT = {
       amountPaise: true,
       approvedPaise: true,
       adjustReason: true,
+      overLimitReason: true,
       receiptName: true,
       receiptMime: true,
       receiptSize: true,
@@ -92,21 +97,21 @@ export class ExpenseClaimsService {
   }
 
   async addItem(companyId: string, access: AccessContext, claimId: string, dto: SaveItemDto, file?: Express.Multer.File) {
-    await this.editable(companyId, access, claimId);
+    const claim = await this.editable(companyId, access, claimId);
     if ((await this.prisma.expenseItem.count({ where: { claimId } })) >= MAX_ITEMS) throw new BadRequestException(`A claim can have at most ${MAX_ITEMS} items`);
-    await this.checkItem(companyId, dto);
+    const { overLimitReason } = await this.checkItem(companyId, claim.employeeId, dto, null);
     const receipt = file ? await this.storeReceipt(companyId, claimId, file) : null;
     await this.prisma.expenseItem.create({
-      data: { claimId, categoryId: dto.categoryId, date: dateFromKey(dto.date), description: dto.description, amountPaise: toPaise(dto.amount), ...(receipt ?? {}) },
+      data: { claimId, categoryId: dto.categoryId, date: dateFromKey(dto.date), description: dto.description, amountPaise: toPaise(dto.amount), overLimitReason, ...(receipt ?? {}) },
     });
     return this.get(companyId, access, claimId);
   }
 
   async updateItem(companyId: string, access: AccessContext, claimId: string, itemId: string, dto: SaveItemDto, file?: Express.Multer.File) {
-    await this.editable(companyId, access, claimId);
+    const claim = await this.editable(companyId, access, claimId);
     const item = await this.prisma.expenseItem.findFirst({ where: { id: itemId, claimId }, select: { receiptKey: true } });
     if (!item) throw new NotFoundException('Item not found');
-    await this.checkItem(companyId, dto);
+    const { overLimitReason } = await this.checkItem(companyId, claim.employeeId, dto, itemId);
     const receipt = file ? await this.storeReceipt(companyId, claimId, file) : null;
     const dropOld = Boolean(receipt) || dto.removeReceipt;
     await this.prisma.expenseItem.update({
@@ -116,6 +121,7 @@ export class ExpenseClaimsService {
         date: dateFromKey(dto.date),
         description: dto.description,
         amountPaise: toPaise(dto.amount),
+        overLimitReason,
         ...(receipt ?? (dto.removeReceipt ? { receiptKey: null, receiptName: null, receiptMime: null, receiptSize: null } : {})),
       },
     });
@@ -185,6 +191,9 @@ export class ExpenseClaimsService {
     const { claim, step, onBehalfOf } = await this.decidable(companyId, access, id);
     if (dto.adjustments?.length && step.stage === ExpenseStage.MANAGER) throw new BadRequestException('Only Finance and HR can change amounts');
     const items = new Map(claim.items.map((i) => [i.id, i]));
+    for (const r of dto.rejectItems ?? []) if (!items.has(r.itemId)) throw new NotFoundException('Item not found');
+    const dropped = new Set([...(dto.rejectItems ?? []).map((r) => r.itemId), ...claim.items.filter((i) => i.approvedPaise === 0).map((i) => i.id)]);
+    if (dropped.size >= claim.items.length) throw new BadRequestException('Nothing would be paid — send the claim back instead');
     for (const a of dto.adjustments ?? []) {
       const it = items.get(a.itemId);
       if (!it) throw new NotFoundException('Item not found');
@@ -197,7 +206,12 @@ export class ExpenseClaimsService {
         data: { status: LeaveApprovalStatus.APPROVED, actedById: access.userId, onBehalfOfId: onBehalfOf, comments: dto.note ?? null, actedAt: new Date() },
       });
       if (!count) throw new ConflictException('This step has already been decided');
+      for (const r of dto.rejectItems ?? []) {
+        await tx.expenseItem.update({ where: { id: r.itemId }, data: { approvedPaise: 0, adjustReason: r.reason, adjustedById: access.userId } });
+      }
+      if (claim.questionOpenById === access.userId) await tx.expenseClaim.update({ where: { id }, data: { questionOpenById: null } });
       for (const a of dto.adjustments ?? []) {
+        if (dto.rejectItems?.some((r) => r.itemId === a.itemId)) continue;
         const it = items.get(a.itemId)!;
         // The lower decision wins — a higher one changes nothing (and keeps the other step's reason)
         if (toPaise(a.approvedAmount) >= (it.approvedPaise ?? it.amountPaise)) continue;
@@ -240,7 +254,7 @@ export class ExpenseClaimsService {
       });
       if (!count) throw new ConflictException('This step has already been decided');
       await tx.expenseApproval.updateMany({ where: { claimId: id, round: claim.round, status: LeaveApprovalStatus.PENDING }, data: { status: LeaveApprovalStatus.SKIPPED } });
-      await tx.expenseClaim.update({ where: { id }, data: { status: ExpenseClaimStatus.REJECTED, rejectionReason: dto.reason } });
+      await tx.expenseClaim.update({ where: { id }, data: { status: ExpenseClaimStatus.REJECTED, rejectionReason: dto.reason, questionOpenById: null } });
     });
     void this.notifications.notify({
       companyId,
@@ -264,6 +278,139 @@ export class ExpenseClaimsService {
       this.prisma.expenseApproval.updateMany({ where: { claimId: id, round: claim.round, status: LeaveApprovalStatus.PENDING }, data: { status: LeaveApprovalStatus.SKIPPED } }),
     ]);
     return this.get(companyId, access, id, true);
+  }
+
+  /** Approve several claims at my step (the clean ones from the queue). */
+  async bulkApprove(companyId: string, access: AccessContext, ids: string[]) {
+    let approved = 0;
+    const skipped: Array<{ id: string; reason: string }> = [];
+    for (const id of [...new Set(ids)]) {
+      try {
+        await this.approve(companyId, access, id, {});
+        approved++;
+      } catch (err) {
+        skipped.push({ id, reason: err instanceof Error ? err.message : 'Could not approve' });
+      }
+    }
+    return { approved, skipped };
+  }
+
+  /** An approver asks something — the claim stays with them (not sent back). */
+  async ask(companyId: string, access: AccessContext, id: string, dto: CommentDto) {
+    const { claim } = await this.decidable(companyId, access, id);
+    await this.prisma.$transaction([
+      this.prisma.expenseComment.create({ data: { claimId: id, authorId: access.userId, kind: 'QUESTION', body: dto.body } }),
+      this.prisma.expenseClaim.update({ where: { id }, data: { questionOpenById: access.userId } }),
+    ]);
+    const me = await this.prisma.user.findUnique({ where: { id: access.userId }, select: { firstName: true, lastName: true } });
+    void this.notifications.notify({
+      companyId,
+      userIds: [claim.employee.userId],
+      type: 'expense.question',
+      title: `${me ? `${me.firstName} ${me.lastName}` : 'An approver'} asked about “${claim.title}”`,
+      body: dto.body,
+      link: `/app/expenses/${id}`,
+      actionLabel: 'Reply',
+    });
+    return this.get(companyId, access, id);
+  }
+
+  /** The employee answers — the approver can then decide. */
+  async reply(companyId: string, access: AccessContext, id: string, dto: CommentDto) {
+    const claim = await this.prisma.expenseClaim.findFirst({ where: { id, companyId }, select: { employeeId: true, status: true, title: true, questionOpenById: true } });
+    if (!claim || claim.employeeId !== access.employee?.id) throw new NotFoundException('Claim not found');
+    if (claim.status !== ExpenseClaimStatus.PENDING) throw new BadRequestException('Only a claim waiting for approval can be answered');
+    const lastAsker = claim.questionOpenById ?? (await this.prisma.expenseComment.findFirst({ where: { claimId: id, kind: 'QUESTION' }, orderBy: { createdAt: 'desc' }, select: { authorId: true } }))?.authorId;
+    if (!lastAsker) throw new BadRequestException('Nobody has asked a question on this claim');
+    await this.prisma.$transaction([
+      this.prisma.expenseComment.create({ data: { claimId: id, authorId: access.userId, kind: 'REPLY', body: dto.body } }),
+      this.prisma.expenseClaim.update({ where: { id }, data: { questionOpenById: null } }),
+    ]);
+    const me = await this.prisma.user.findUnique({ where: { id: access.userId }, select: { firstName: true, lastName: true } });
+    void this.notifications.notify({
+      companyId,
+      userIds: [lastAsker],
+      type: 'expense.reply',
+      title: `${me ? `${me.firstName} ${me.lastName}` : 'The employee'} answered your question on “${claim.title}”`,
+      body: dto.body,
+      link: `/app/expenses/${id}`,
+      actionLabel: 'Review claim',
+      email: false,
+    });
+    return this.get(companyId, access, id);
+  }
+
+  /** Start a new draft from one of my claims (monthly bills): same items, moved to this month, no receipts. */
+  async copy(companyId: string, access: AccessContext, id: string) {
+    const employeeId = this.myEmployee(access);
+    const src = await this.prisma.expenseClaim.findFirst({
+      where: { id, companyId, employeeId },
+      select: { title: true, projectId: true, items: { select: { categoryId: true, date: true, description: true, amountPaise: true, overLimitReason: true, category: { select: { isActive: true } } } } },
+    });
+    if (!src) throw new NotFoundException('Claim not found');
+    const today = await this.todayKey(companyId);
+    const latest = src.items.map((i) => keyFromDate(i.date)).sort().pop() ?? today;
+    const shift = (Number(today.slice(0, 4)) - Number(latest.slice(0, 4))) * 12 + (Number(today.slice(5, 7)) - Number(latest.slice(5, 7)));
+    const moved = (key: string) => {
+      const d = new Date(`${key}T00:00:00Z`);
+      const day = d.getUTCDate();
+      d.setUTCDate(1);
+      d.setUTCMonth(d.getUTCMonth() + shift);
+      const last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+      d.setUTCDate(Math.min(day, last));
+      const k = d.toISOString().slice(0, 10);
+      return k > today ? today : k;
+    };
+    const items = src.items.filter((i) => i.category.isActive);
+    const c = await this.prisma.expenseClaim.create({
+      data: {
+        companyId,
+        employeeId,
+        title: src.title.length > 112 ? src.title.slice(0, 112) : `${src.title}${shift ? '' : ' (copy)'}`,
+        projectId: src.projectId,
+        items: { create: items.map((i) => ({ categoryId: i.categoryId, date: dateFromKey(moved(keyFromDate(i.date))), description: i.description, amountPaise: i.amountPaise, overLimitReason: i.overLimitReason })) },
+      },
+      select: { id: true },
+    });
+    return this.get(companyId, access, c.id);
+  }
+
+  /** My numbers: this month, waiting, to be paid, paid this year, and monthly caps used. */
+  async summary(companyId: string, access: AccessContext) {
+    const employeeId = this.myEmployee(access);
+    const today = await this.todayKey(companyId);
+    const monthStart = `${today.slice(0, 7)}-01`;
+    const yearStart = `${today.slice(0, 4)}-01-01`;
+    const [claims, cats] = await Promise.all([
+      this.prisma.expenseClaim.findMany({
+        where: { companyId, employeeId, status: { not: ExpenseClaimStatus.CANCELLED } },
+        select: { status: true, questionOpenById: true, submittedAt: true, paymentDate: true, items: { select: { date: true, amountPaise: true, approvedPaise: true, categoryId: true } } },
+      }),
+      this.categories.list(companyId),
+    ]);
+    const claimed = (c: (typeof claims)[number]) => c.items.reduce((n, i) => n + i.amountPaise, 0);
+    const approved = (c: (typeof claims)[number]) => c.items.reduce((n, i) => n + (i.approvedPaise ?? i.amountPaise), 0);
+    const of = (st: ExpenseClaimStatus) => claims.filter((c) => c.status === st);
+    const thisMonth = claims.filter((c) => c.status !== ExpenseClaimStatus.DRAFT).flatMap((c) => c.items).filter((i) => keyFromDate(i.date) >= monthStart);
+    const waiting = of(ExpenseClaimStatus.PENDING);
+    const paid = of(ExpenseClaimStatus.PAID).filter((c) => c.paymentDate && keyFromDate(c.paymentDate) >= yearStart);
+    const oldest = waiting.map((c) => c.submittedAt).filter((d): d is Date => Boolean(d)).sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
+    return {
+      today,
+      thisMonth: { paise: thisMonth.reduce((n, i) => n + i.amountPaise, 0), items: thisMonth.length },
+      waiting: { paise: waiting.reduce((n, c) => n + claimed(c), 0), claims: waiting.length, oldestSince: oldest },
+      toBePaid: { paise: of(ExpenseClaimStatus.APPROVED).reduce((n, c) => n + approved(c), 0), claims: of(ExpenseClaimStatus.APPROVED).length },
+      paidThisYear: { paise: paid.reduce((n, c) => n + approved(c), 0), claims: paid.length },
+      needsMe: claims.filter((c) => c.status === ExpenseClaimStatus.REJECTED || (c.status === ExpenseClaimStatus.PENDING && c.questionOpenById)).length,
+      drafts: of(ExpenseClaimStatus.DRAFT).length,
+      limits: cats
+        .filter((c) => c.maxPerMonthPaise !== null)
+        .map((c) => ({
+          category: { id: c.id, name: c.name },
+          capPaise: c.maxPerMonthPaise!,
+          usedPaise: claims.flatMap((x) => x.items).filter((i) => i.categoryId === c.id && keyFromDate(i.date) >= monthStart).reduce((n, i) => n + i.amountPaise, 0),
+        })),
+    };
   }
 
   async pay(companyId: string, access: AccessContext, id: string, dto: PayClaimDto) {
@@ -304,6 +451,7 @@ export class ExpenseClaimsService {
     if (q.view === 'mine') {
       if (!access.employee) return this.page(companyId, [], 0, page, limit, access);
       where = { ...filters, employeeId: access.employee.id };
+      if (q.filter === 'needs_me') where.OR = [{ status: ExpenseClaimStatus.REJECTED }, { status: ExpenseClaimStatus.PENDING, questionOpenById: { not: null } }];
     } else if (q.view === 'payable') {
       if (!holds(access, FINANCE)) throw new ForbiddenException('You do not have permission to perform this action. Required: expense.finance');
       where = { ...filters, status: ExpenseClaimStatus.APPROVED };
@@ -331,7 +479,7 @@ export class ExpenseClaimsService {
         select: SELECT,
         orderBy: { submittedAt: 'asc' },
       });
-      const mine = pending.filter((c) => this.stepFor(access, c));
+      const mine = pending.filter((c) => this.stepFor(access, c) && (q.filter !== 'asked' || c.questionOpenById === access.userId));
       return this.page(companyId, mine.slice((page - 1) * limit, page * limit), mine.length, page, limit, access);
     }
     const [rows, total] = await Promise.all([
@@ -358,8 +506,13 @@ export class ExpenseClaimsService {
       },
       select: { date: true, amountPaise: true, categoryId: true, claim: { select: { id: true, title: true } } },
     });
+    const comments = await this.prisma.expenseComment.findMany({ where: { claimId: id }, orderBy: { createdAt: 'asc' }, select: { id: true, kind: true, body: true, createdAt: true, authorId: true } });
+    const authors = new Map((await this.prisma.user.findMany({ where: { id: { in: [...new Set(comments.map((c) => c.authorId))] } }, select: { id: true, firstName: true, lastName: true, avatarUrl: true } })).map((u) => [u.id, u]));
     return {
       ...presented!,
+      comments: comments.map(({ authorId, ...c }) => ({ ...c, author: authors.get(authorId) ?? null, mine: authorId === access.userId })),
+      canAsk: presented!.canDecide,
+      canReply: row.employee.userId === access.userId && row.status === ExpenseClaimStatus.PENDING && comments.some((c) => c.kind === 'QUESTION'),
       items: presented!.items.map((i) => {
         const d = duplicates.find((x) => keyFromDate(x.date) === i.date && x.amountPaise === i.amountPaise && x.categoryId === i.category.id);
         return { ...i, possibleDuplicate: d ? { claimId: d.claim.id, title: d.claim.title } : null };
@@ -383,10 +536,52 @@ export class ExpenseClaimsService {
       }
       return [...m.values()].sort((a, b) => b.approvedPaise - a.approvedPaise);
     };
-    const projects = new Map((await this.prisma.project.findMany({ where: { companyId }, select: { id: true, name: true } })).map((p) => [p.id, p.name]));
+    const projectRows = await this.prisma.project.findMany({ where: { companyId }, select: { id: true, name: true, type: true } });
+    const projects = new Map(projectRows.map((p) => [p.id, p.name]));
+    const clientProjects = new Set(projectRows.filter((p) => p.type === 'CLIENT').map((p) => p.id));
+    const paidOut = (i: (typeof items)[number]) => i.approvedPaise ?? i.amountPaise;
+    // Claims in the range, once each, for the timings
+    const claimsSeen = new Map<string, (typeof items)[number]['claim']>();
+    for (const i of items) claimsSeen.set(i.claim.id, i.claim);
+    const days = (a: Date | null, b: Date | null) => (a && b ? (b.getTime() - a.getTime()) / 86_400_000 : null);
+    const avg = (xs: Array<number | null>) => {
+      const v = xs.filter((x): x is number => x !== null);
+      return v.length ? Math.round((v.reduce((n, x) => n + x, 0) / v.length) * 10) / 10 : null;
+    };
+    const [pending, payable] = await Promise.all([
+      this.prisma.expenseItem.aggregate({ where: { claim: { companyId, status: ExpenseClaimStatus.PENDING } }, _sum: { amountPaise: true }, _count: true }),
+      this.prisma.expenseClaim.findMany({ where: { companyId, status: ExpenseClaimStatus.APPROVED }, select: { items: { select: { amountPaise: true, approvedPaise: true } } } }),
+    ]);
+    const months = new Map<string, { month: string; approvedPaise: number; rebillablePaise: number }>();
+    for (const i of items) {
+      const m = keyFromDate(i.date).slice(0, 7);
+      const e = months.get(m) ?? { month: m, approvedPaise: 0, rebillablePaise: 0 };
+      e.approvedPaise += paidOut(i);
+      if (i.claim.projectId && clientProjects.has(i.claim.projectId)) e.rebillablePaise += paidOut(i);
+      months.set(m, e);
+    }
+    const over = items.filter((i) => i.overLimitReason);
+    const reduced = items.filter((i) => i.approvedPaise !== null && i.approvedPaise > 0 && i.approvedPaise < i.amountPaise);
+    const rejected = items.filter((i) => i.approvedPaise === 0);
     return {
       from: q.from,
       to: q.to,
+      byMonth: [...months.values()].sort((a, b) => a.month.localeCompare(b.month)),
+      byDepartment: sum((i) => i.claim.employee.department?.name ?? 'none', (i) => i.claim.employee.department?.name ?? 'No department'),
+      rebillablePaise: items.filter((i) => i.claim.projectId && clientProjects.has(i.claim.projectId)).reduce((n, i) => n + paidOut(i), 0),
+      exceptions: {
+        overLimit: { items: over.length, paise: over.reduce((n, i) => n + paidOut(i), 0) },
+        reduced: { items: reduced.length, paise: reduced.reduce((n, i) => n + (i.amountPaise - i.approvedPaise!), 0) },
+        rejectedItems: { items: rejected.length, paise: rejected.reduce((n, i) => n + i.amountPaise, 0) },
+      },
+      timing: {
+        avgDaysToApprove: avg([...claimsSeen.values()].map((c) => days(c.submittedAt, c.approvedAt))),
+        avgDaysToPay: avg([...claimsSeen.values()].map((c) => days(c.approvedAt, c.paidAt))),
+      },
+      pipeline: {
+        waitingPaise: pending._sum.amountPaise ?? 0,
+        toBePaidPaise: payable.flatMap((c) => c.items).reduce((n, i) => n + (i.approvedPaise ?? i.amountPaise), 0),
+      },
       totals: {
         claimedPaise: items.reduce((s, i) => s + i.amountPaise, 0),
         approvedPaise: items.reduce((s, i) => s + (i.approvedPaise ?? i.amountPaise), 0),
@@ -408,7 +603,7 @@ export class ExpenseClaimsService {
       if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
       return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const lines = [['Employee ID', 'Name', 'Claim', 'Status', 'Project', 'Date', 'Category', 'Description', 'Claimed (INR)', 'Approved (INR)', 'Reduction reason', 'Paid on', 'Payment ref'].join(',')];
+    const lines = [['Employee ID', 'Name', 'Claim', 'Status', 'Project', 'Date', 'Category', 'Description', 'Claimed (INR)', 'Approved (INR)', 'Over-limit reason', 'Reduction reason', 'Paid on', 'Payment ref'].join(',')];
     for (const i of items) {
       lines.push(
         [
@@ -422,6 +617,7 @@ export class ExpenseClaimsService {
           i.description,
           (i.amountPaise / 100).toFixed(2),
           ((i.approvedPaise ?? i.amountPaise) / 100).toFixed(2),
+          i.overLimitReason ?? '',
           i.adjustReason ?? '',
           i.claim.paymentDate ? keyFromDate(i.claim.paymentDate) : '',
           i.claim.paymentReference ?? '',
@@ -444,8 +640,22 @@ export class ExpenseClaimsService {
         amountPaise: true,
         approvedPaise: true,
         adjustReason: true,
+        overLimitReason: true,
         category: { select: { id: true, name: true } },
-        claim: { select: { title: true, status: true, projectId: true, paymentDate: true, paymentReference: true, employee: { select: { id: true, employeeId: true, firstName: true, lastName: true } } } },
+        claim: {
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            projectId: true,
+            submittedAt: true,
+            approvedAt: true,
+            paidAt: true,
+            paymentDate: true,
+            paymentReference: true,
+            employee: { select: { id: true, employeeId: true, firstName: true, lastName: true, department: { select: { name: true } } } },
+          },
+        },
       },
     });
   }
@@ -489,14 +699,32 @@ export class ExpenseClaimsService {
     return claim;
   }
 
-  private async checkItem(companyId: string, dto: SaveItemDto) {
+  /**
+   * Validates an item. Going over the category's per-item limit or monthly cap is
+   * allowed with a reason (shown to approvers as a flag).
+   */
+  private async checkItem(companyId: string, employeeId: string, dto: SaveItemDto, itemId: string | null): Promise<{ overLimitReason: string | null }> {
     const c = await this.categories.get(companyId, dto.categoryId);
     if (!c.isActive) throw new BadRequestException(`"${c.name}" can no longer be claimed`);
     const paise = toPaise(dto.amount);
-    if (c.maxPerItemPaise !== null && paise > c.maxPerItemPaise) throw new BadRequestException(`${c.name} is limited to ₹${(c.maxPerItemPaise / 100).toFixed(2)} per item`);
     const today = await this.todayKey(companyId);
     if (dto.date > today) throw new BadRequestException('The expense date can’t be in the future');
     if (dto.date < addDays(today, -MAX_AGE_DAYS)) throw new BadRequestException(`Expenses older than ${MAX_AGE_DAYS} days can’t be claimed`);
+    const over: string[] = [];
+    if (c.maxPerItemPaise !== null && paise > c.maxPerItemPaise) over.push(`${c.name} is limited to ${rupees(c.maxPerItemPaise)} per item`);
+    if (c.maxPerMonthPaise !== null) {
+      const start = `${dto.date.slice(0, 7)}-01`;
+      const d = new Date(`${start}T00:00:00Z`);
+      const end = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).toISOString().slice(0, 10);
+      const used = await this.prisma.expenseItem.aggregate({
+        where: { categoryId: c.id, date: { gte: dateFromKey(start), lte: dateFromKey(end) }, ...(itemId && { id: { not: itemId } }), claim: { employeeId, status: { not: ExpenseClaimStatus.CANCELLED } } },
+        _sum: { amountPaise: true },
+      });
+      const already = used._sum.amountPaise ?? 0;
+      if (already + paise > c.maxPerMonthPaise) over.push(`${c.name} is capped at ${rupees(c.maxPerMonthPaise)} a month (${rupees(already)} already claimed)`);
+    }
+    if (over.length && !dto.overLimitReason) throw new BadRequestException(`${over.join('; ')} — add a reason to claim more`);
+    return { overLimitReason: over.length ? dto.overLimitReason! : null };
   }
 
   private async storeReceipt(companyId: string, claimId: string, file: Express.Multer.File) {
@@ -527,6 +755,18 @@ export class ExpenseClaimsService {
     const projectIds = [...new Set(rows.map((r) => r.projectId).filter((x): x is string => Boolean(x)))];
     const projects = new Map((await this.prisma.project.findMany({ where: { id: { in: projectIds } }, select: { id: true, name: true, code: true } })).map((p) => [p.id, p]));
     const finance = holds(access, FINANCE);
+    // Possible duplicates for claims being decided: same person, day, category and amount in another claim
+    const deciding = rows.filter((r) => r.status === ExpenseClaimStatus.PENDING && r.items.length);
+    const dupRows = deciding.length
+      ? await this.prisma.expenseItem.findMany({
+          where: {
+            OR: deciding.flatMap((r) => r.items.map((i) => ({ date: i.date, amountPaise: i.amountPaise, categoryId: i.category.id, claimId: { not: r.id }, claim: { employeeId: r.employee.id, status: { not: ExpenseClaimStatus.CANCELLED } } }))),
+          },
+          select: { date: true, amountPaise: true, categoryId: true, claim: { select: { employeeId: true } } },
+        })
+      : [];
+    const dupKey = (emp: string, d: Date | string, a: number, c: string) => `${emp}|${typeof d === 'string' ? d : keyFromDate(d)}|${a}|${c}`;
+    const dups = new Set(dupRows.map((x) => dupKey(x.claim.employeeId, x.date, x.amountPaise, x.categoryId)));
     return {
       data: rows.map((r) => {
         const step = this.stepFor(access, r);
@@ -561,7 +801,15 @@ export class ExpenseClaimsService {
           paymentReference: r.paymentReference,
           createdAt: r.createdAt,
           employee,
-          items: r.items.map((i) => ({ ...i, date: keyFromDate(i.date), hasReceipt: Boolean(i.receiptName) })),
+          items: r.items.map((i) => ({ ...i, date: keyFromDate(i.date), hasReceipt: Boolean(i.receiptName), overLimit: Boolean(i.overLimitReason), rejected: i.approvedPaise === 0 })),
+          flags: [
+            ...(r.items.some((i) => i.overLimitReason) ? ['over_limit'] : []),
+            ...(r.items.some((i) => dups.has(dupKey(r.employee.id, i.date, i.amountPaise, i.category.id))) ? ['duplicate'] : []),
+            ...(r.items.some((i) => keyFromDate(i.date) < addDays(keyFromDate(r.submittedAt ?? r.createdAt), -LATE_DAYS)) ? ['late'] : []),
+            ...(r.items.some((i) => [0, 6].includes(i.date.getUTCDay())) ? ['weekend'] : []),
+          ],
+          questionOpen: Boolean(r.questionOpenById),
+          questionByMe: r.questionOpenById === access.userId,
           totals: { claimedPaise, approvedPaise, items: r.items.length },
           steps,
           canEdit: own && (r.status === ExpenseClaimStatus.DRAFT || r.status === ExpenseClaimStatus.REJECTED),

@@ -75,7 +75,12 @@ const json = { 'content-type': 'application/json' };
     check('Turn maintenance on', r.status === 200 && r.data.enabled === true);
     r = await call(a.sessions.admin, 'GET', '/users/me');
     check('Company users are paused → 503 maintenance', r.status === 503 && r.body.code === 'maintenance' && r.body.detail === 'Back soon (e2e)', JSON.stringify(r.body));
-    r = await fetch(B + '/auth/login', { method: 'POST', headers: json, body: JSON.stringify({ email: adminEmail, password: 'E2E-Test-2026!' }) });
+    // Sign-in is rate limited per IP; earlier suites may have used it up
+    for (let i = 0; i < 6; i++) {
+      r = await fetch(B + '/auth/login', { method: 'POST', headers: json, body: JSON.stringify({ email: adminEmail, password: 'E2E-Test-2026!' }) });
+      if (r.status !== 429) break;
+      await new Promise((res) => setTimeout(res, 15000));
+    }
     check('Company sign-in is paused too', r.status === 503, String(r.status));
     check('Super Admin carries on', (await call(SA, 'GET', '/admin/system/readiness')).status === 200);
     r = await fetch(B + '/platform/status');

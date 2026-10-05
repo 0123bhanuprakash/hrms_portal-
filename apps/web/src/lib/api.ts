@@ -69,6 +69,19 @@ api.interceptors.response.use((response) => {
   return response;
 });
 
+/** Asks the person for their password (dialog) and returns a confirm-password token, or null if they cancel. */
+type ReauthHandler = () => Promise<{ token: string; expiresAt: string } | null>;
+let reauthHandler: ReauthHandler | null = null;
+let reauth: { token: string; expires: number } | null = null;
+export function setReauthHandler(fn: ReauthHandler | null) {
+  reauthHandler = fn;
+}
+
+api.interceptors.request.use((config) => {
+  if (reauth && reauth.expires > Date.now() + 5_000) config.headers.set('x-reauth', reauth.token);
+  return config;
+});
+
 /** Fired when the platform is paused for maintenance (company users). */
 export const MAINTENANCE_EVENT = 'hrms:maintenance';
 
@@ -76,6 +89,16 @@ api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const problem = error.response?.data as { code?: string; detail?: string } | undefined;
+    const retryConfig = error.config as (InternalAxiosRequestConfig & { _reauth?: boolean }) | undefined;
+    if (error.response?.status === 403 && problem?.code === 'reauth_required' && reauthHandler && retryConfig && !retryConfig._reauth) {
+      const result = await reauthHandler();
+      if (result) {
+        reauth = { token: result.token, expires: new Date(result.expiresAt).getTime() };
+        retryConfig._reauth = true;
+        retryConfig.headers.set('x-reauth', result.token);
+        return api(retryConfig);
+      }
+    }
     if (error.response?.status === 503 && problem?.code === 'maintenance' && typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent(MAINTENANCE_EVENT, { detail: problem.detail ?? '' }));
     }

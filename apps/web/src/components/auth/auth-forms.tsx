@@ -321,7 +321,7 @@ export function ResetPasswordForm({ token, loginHref, forgotHref }: { token: str
 
 // ─── Verify email ───────────────────────────────────────────
 
-export function VerifyEmailStatus({ token, loginHref }: { token: string; loginHref: string }) {
+export function VerifyEmailStatus({ token, loginHref, change = false }: { token: string; loginHref: string; change?: boolean }) {
   const [state, setState] = useState<'loading' | 'success' | 'error'>(token ? 'loading' : 'error');
   const [message, setMessage] = useState(token ? '' : 'This verification link is incomplete.');
   const started = useRef(false);
@@ -331,8 +331,12 @@ export function VerifyEmailStatus({ token, loginHref }: { token: string; loginHr
     if (!token || started.current) return;
     started.current = true;
     api
-      .post('/auth/verify-email', { token })
-      .then(() => setState('success'))
+      .post(change ? '/account/email/confirm' : '/auth/verify-email', { token })
+      .then(() => {
+        // An email change signs out every device
+        if (change) useAuthStore.getState().logout();
+        setState('success');
+      })
       .catch((err) => {
         setMessage(getApiErrorMessage(err, 'This verification link is invalid or has expired.'));
         setState('error');
@@ -343,7 +347,7 @@ export function VerifyEmailStatus({ token, loginHref }: { token: string; loginHr
     return (
       <div className="space-y-3 py-6 text-center">
         <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
-        <p className="text-sm text-muted-foreground">Verifying your email…</p>
+        <p className="text-sm text-muted-foreground">{change ? 'Confirming your new email…' : 'Verifying your email…'}</p>
       </div>
     );
   }
@@ -355,8 +359,8 @@ export function VerifyEmailStatus({ token, loginHref }: { token: string; loginHr
   );
 
   return state === 'success' ? (
-    <StatusPanel tone="success" title="Email verified" action={signInButton}>
-      Thanks — your email address is confirmed.
+    <StatusPanel tone="success" title={change ? 'Email changed' : 'Email verified'} action={signInButton}>
+      {change ? 'Your new email is confirmed. Sign in with it — every device was signed out to be safe.' : 'Thanks — your email address is confirmed.'}
     </StatusPanel>
   ) : (
     <StatusPanel tone="error" title="Verification failed" action={signInButton}>

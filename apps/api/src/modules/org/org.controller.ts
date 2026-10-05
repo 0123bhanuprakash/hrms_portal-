@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Put } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { Audit, RequireFeature, RequirePermission, TenantCtx } from '../../common';
+import { Audit, CurrentAccess, RequireFeature, RequirePermission, TenantCtx } from '../../common';
+import type { AccessContext } from '../access/access.types';
 import type { TenantContext } from '../../common/types/request.types';
 import { companyOf } from '../user-management/company-context';
 import { ReorderOrgLevelsDto, ReportingLineDto, SaveOrgLevelDto } from './dto';
@@ -72,8 +73,15 @@ export class OrgController {
   @Get('chart')
   @RequirePermission('org.view')
   @ApiOperation({ summary: 'Org chart data: employees with their managers, departments, titles and levels' })
-  chart(@TenantCtx() ctx: TenantContext) {
-    return this.org.chart(companyOf(ctx));
+  chart(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext) {
+    return this.org.chart(companyOf(ctx), access);
+  }
+
+  @Get('health')
+  @RequirePermission('org.manage')
+  @ApiOperation({ summary: 'Org health: wide spans, missing managers, departments without a head' })
+  health(@TenantCtx() ctx: TenantContext) {
+    return this.org.health(companyOf(ctx));
   }
 
   @Post('reporting-line/preview')
@@ -87,7 +95,7 @@ export class OrgController {
   @Put('reporting-line')
   @RequirePermission('org.manage')
   @Audit('org:reporting-line:update', 'employee')
-  setReportingLine(@TenantCtx() ctx: TenantContext, @Body() dto: ReportingLineDto) {
-    return this.org.setReportingLine(companyOf(ctx), dto);
+  setReportingLine(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Body() dto: ReportingLineDto) {
+    return this.org.setReportingLine(companyOf(ctx), dto, access);
   }
 }

@@ -2,6 +2,7 @@
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { LIVE } from '@/lib/live';
 import { useAccess } from '@/lib/access/use-access';
 
 // ============================================================
@@ -246,7 +247,7 @@ const unwrap = <T,>(r: { data: { data: T } }) => r.data.data;
 // ─── Queries ────────────────────────────────────────────────
 
 export function useToday(enabled = true) {
-  return useQuery({ queryKey: attendanceKeys.today, queryFn: async () => unwrap<TodayAttendance>(await api.get('/attendance/today')), enabled, refetchInterval: 5 * 60_000 });
+  return useQuery({ queryKey: attendanceKeys.today, queryFn: async () => unwrap<TodayAttendance>(await api.get('/attendance/today')), enabled, ...LIVE });
 }
 
 export function useCalendar(month: string, employeeId?: string) {
@@ -267,6 +268,7 @@ export function useTeamAttendance(q: { date?: string; search?: string; departmen
     },
     placeholderData: keepPreviousData,
     enabled,
+    ...LIVE,
   });
 }
 
@@ -307,6 +309,7 @@ function useAttendanceMutation<V, R>(fn: (v: V) => Promise<R>, extra: ReadonlyAr
     mutationFn: fn,
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: attendanceKeys.all });
+      void qc.invalidateQueries({ queryKey: ['people'] });
       for (const key of extra) void qc.invalidateQueries({ queryKey: key });
     },
   });

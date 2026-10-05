@@ -101,7 +101,7 @@ async function cleanup() {
     const c1 = (await call(S.mem, 'POST', '/expenses/claims', { title: 'Client visit — Mumbai', projectId: proj.id })).data;
     check('Create a draft claim with project', c1?.status === 'DRAFT' && c1.project?.code === 'APL', JSON.stringify(c1));
     const y = addDays(today, -2);
-    check('Over the category limit → 400', (await call(S.mem, 'POST', `/expenses/claims/${c1.id}/items`, itemForm({ categoryId: cats.Food.id, date: y, description: 'Dinner', amount: 2000 }))).status === 400);
+    check('Over the category limit without a reason → 400', (await call(S.mem, 'POST', `/expenses/claims/${c1.id}/items`, itemForm({ categoryId: cats.Food.id, date: y, description: 'Dinner', amount: 2000 }))).status === 400);
     check('Future date → 400', (await call(S.mem, 'POST', `/expenses/claims/${c1.id}/items`, itemForm({ categoryId: cats.Food.id, date: addDays(today, 1), description: 'Dinner', amount: 400 }))).status === 400);
     check('Older than 90 days → 400', (await call(S.mem, 'POST', `/expenses/claims/${c1.id}/items`, itemForm({ categoryId: cats.Food.id, date: addDays(today, -100), description: 'Dinner', amount: 400 }))).status === 400);
     const food = await call(S.mem, 'POST', `/expenses/claims/${c1.id}/items`, itemForm({ categoryId: cats.Food.id, date: y, description: 'Dinner with client', amount: '400.50' }));

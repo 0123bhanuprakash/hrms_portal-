@@ -144,7 +144,9 @@ export const CATALOG: CatalogModule[] = [
         stage: 'ga',
         permissions: [
           p('announcement.view', 'Read announcements'),
-          p('announcement.post', 'Post announcements', [], { requires: ['announcement.view'], description: 'Post, edit and remove announcements; see who has read them.' }),
+          p('announcement.post', 'Post announcements', [], { requires: ['announcement.view'], description: 'Post to everyone, departments or locations; edit and remove their own posts and see who has read them.' }),
+          p('announcement.manage', 'Manage all announcements', [], { requires: ['announcement.post'], description: 'Pin one announcement for everyone, edit or remove anyone’s posts and see every read report.' }),
+          p('announcement.post_team', 'Post to my team', [], { requires: ['announcement.view'], description: 'Post announcements to the people who report to them (directly or further down), and see who has read them.' }),
         ],
       },
       {
@@ -437,7 +439,7 @@ export const ROLE_TEMPLATES: Array<{ key: string; name: string; description: str
       ['document.view', 'company'], ['document.upload', 'company'], ['document.delete', 'company'],
       ['attendance.view', 'company'], ['attendance.edit', 'company'], ['attendance.approve', 'company'], ['attendance.export', 'company'],
       ['holiday.manage'], ['attendance.policy'],
-      ['announcement.post'], ['kudos.manage'],
+      ['announcement.post'], ['announcement.manage'], ['kudos.manage'],
       ['expense.view', 'company'], ['expense.hr'], ['expense.manage'],
       ['asset.view', 'company'], ['asset.approve_hr'], ['ticket.handle_hr'],
       ['timesheet.view', 'company'], ['timesheet.approve', 'company'],
@@ -463,6 +465,7 @@ export const ROLE_TEMPLATES: Array<{ key: string; name: string; description: str
       ['expense.view', 'all_reports'], ['expense.approve', 'direct_reports'],
       ['asset.view', 'all_reports'],
       ['timesheet.view', 'all_reports'], ['timesheet.approve', 'direct_reports'],
+      ['announcement.post_team'],
     ],
   },
   {
@@ -477,13 +480,14 @@ export const ROLE_TEMPLATES: Array<{ key: string; name: string; description: str
       ['shift.view', 'direct_reports'],
       ['expense.view', 'direct_reports'], ['expense.approve', 'direct_reports'],
       ['timesheet.view', 'direct_reports'], ['timesheet.approve', 'direct_reports'],
+      ['announcement.post_team'],
     ],
   },
   {
     key: 'it_admin',
     name: 'IT Admin',
     description: 'Runs the asset register, approves asset requests as IT head and works the IT helpdesk queue.',
-    grants: [...SELF_SERVICE, ['asset.view', 'company'], ['asset.manage'], ['asset.approve_it'], ['ticket.handle_it'], ['employee.view', 'company']],
+    grants: [...SELF_SERVICE, ['asset.view', 'company'], ['asset.manage'], ['asset.approve_it'], ['ticket.handle_it'], ['employee.view', 'company'], ['announcement.post']],
   },
   {
     key: 'finance',

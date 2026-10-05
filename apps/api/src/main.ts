@@ -57,8 +57,10 @@ async function bootstrap(): Promise<void> {
       prefix: '/uploads/',
       index: false,
       dotfiles: 'deny',
-      setHeaders: (res) => {
+      setHeaders: (res, filePath) => {
         res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        // Lottie covers (.json) are read with fetch() by the web app
+        if (filePath.endsWith('.json')) res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('X-Content-Type-Options', 'nosniff');
         res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox");
       },
@@ -75,6 +77,7 @@ async function bootstrap(): Promise<void> {
       'Authorization',
       'X-Request-ID',
       'X-Tenant-ID',
+      'X-Reauth',
     ],
     exposedHeaders: ['X-Request-ID', 'X-Access-Version', 'Retry-After', ...(dbTraceEnabled() ? ['Server-Timing', 'X-DB-Queries'] : [])],
   });

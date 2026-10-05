@@ -17,6 +17,7 @@ import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { hashPassword } from './password.util';
 import { MaintenanceService } from '../system/maintenance.service';
+import { EmailService } from '../email/email.service';
 import type { JwtPayload } from '@hrms/types';
 import type {
   LoginResponse,
@@ -75,6 +76,7 @@ export class AuthService {
     private readonly emailProducerService: EmailProducerService,
     private readonly accessService: AccessService,
     private readonly maintenance: MaintenanceService,
+    private readonly emailService: EmailService,
   ) {}
 
   // ─── Login ─────────────────────────────────────────────────
@@ -96,7 +98,7 @@ export class AuthService {
     if (!user) {
       // Timing-safe: still run bcrypt to prevent timing attacks
       await bcrypt.compare(password, '$2a$12$invalidhashtopreventtimingattack');
-      this.recordSignIn(false, null, null);
+      this.recordSignIn(false, null, null, device);
       throw new UnauthorizedException('Invalid email or password');
     }
 
@@ -120,7 +122,7 @@ export class AuthService {
     const passwordValid = await bcrypt.compare(password, user.passwordHash);
 
     if (!passwordValid) {
-      this.recordSignIn(false, user.id, user.companyId);
+      this.recordSignIn(false, user.id, user.companyId, device);
       const newAttempts = user.loginAttempts + 1;
       const shouldLock = newAttempts >= MAX_LOGIN_ATTEMPTS;
 
@@ -179,7 +181,8 @@ export class AuthService {
       },
     });
     this.markActive(user.id, user.companyId);
-    this.recordSignIn(true, user.id, user.companyId);
+    if (user.isSuperAdmin) void this.newDeviceCheck(user, device, new Date()).catch((err: Error) => this.logger.warn(`New-device check failed: ${err.message}`));
+    this.recordSignIn(true, user.id, user.companyId, device);
 
     // 7. Effective access (roles ∪ grants ∩ enabled features) — for the response only;
     //    tokens carry no permissions, they're resolved fresh on every request
@@ -394,7 +397,7 @@ export class AuthService {
       }),
       this.prisma.user.update({
         where: { id: record.userId },
-        data: { passwordHash, mustChangePassword: false, loginAttempts: 0, lockedUntil: null },
+        data: { passwordHash, mustChangePassword: false, loginAttempts: 0, lockedUntil: null, passwordChangedAt: new Date() },
       }),
       // Revoke ALL refresh tokens — forces logout on all devices
       this.prisma.refreshToken.updateMany({
@@ -538,6 +541,7 @@ export class AuthService {
     currentPassword: string,
     newPassword: string,
     currentSid?: string,
+    signOutOthers = true,
   ): Promise<{ revokedSessions: number }> {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
 
@@ -550,10 +554,10 @@ export class AuthService {
 
     await this.prisma.user.update({
       where: { id: userId },
-      data: { passwordHash: await hashPassword(newPassword), mustChangePassword: false, loginAttempts: 0, lockedUntil: null },
+      data: { passwordHash: await hashPassword(newPassword), mustChangePassword: false, loginAttempts: 0, lockedUntil: null, passwordChangedAt: new Date() },
     });
 
-    const revokedSessions = await this.revokeOtherSessions(userId, currentSid);
+    const revokedSessions = signOutOthers ? await this.revokeOtherSessions(userId, currentSid) : 0;
     this.logger.log(`Password changed for user ${user.email} (${revokedSessions} other session(s) signed out)`);
 
     return { revokedSessions };
@@ -617,10 +621,42 @@ export class AuthService {
   }
 
   /** Sign-in attempts for Super Admin → System (sign-in safety). Never blocks sign-in. */
-  private recordSignIn(success: boolean, userId: string | null, companyId: string | null): void {
+  private recordSignIn(success: boolean, userId: string | null, companyId: string | null, device: SessionDevice = {}): void {
     this.prisma.signInAttempt
-      .create({ data: { success, userId, companyId } })
+      .create({ data: { success, userId, companyId, ipAddress: device.ipAddress?.slice(0, 64) ?? null, userAgent: device.userAgent?.slice(0, 400) ?? null } })
       .catch((err: Error) => this.logger.warn(`Could not record sign-in: ${err.message}`));
+  }
+
+  /**
+   * Super Admins: email them when a sign-in comes from a device + network
+   * not seen in the last 90 days (they can switch it off on Profile & security).
+   * Runs before the current sign-in is recorded.
+   */
+  private async newDeviceCheck(user: { id: string; email: string; firstName: string }, device: SessionDevice, before: Date): Promise<void> {
+    const prefs = await this.prisma.userPreferences.findUnique({ where: { userId: user.id }, select: { notifyNewDevice: true } });
+    if (prefs && !prefs.notifyNewDevice) return;
+    const since = new Date(Date.now() - 90 * 86_400_000);
+    const seen = await this.prisma.signInAttempt.findMany({
+      where: { userId: user.id, success: true, at: { gte: since, lt: before } },
+      select: { ipAddress: true, userAgent: true },
+      take: 500,
+    });
+    if (!seen.length) return; // the very first sign-in isn't "new"
+    const net = networkOf(device.ipAddress);
+    const fam = deviceFamily(device.userAgent);
+    if (seen.some((s) => networkOf(s.ipAddress) === net && deviceFamily(s.userAgent) === fam)) return;
+    const when = new Date().toUTCString();
+    await this.emailService.send({
+      to: user.email,
+      subject: 'New sign-in to your HRMS Super Admin account',
+      html: `<div style="font-family:system-ui,sans-serif;font-size:14px;line-height:1.6;color:#1c1917">
+        <p>Hi ${escapeHtml(user.firstName)},</p>
+        <p>Your Super Admin account was just used to sign in from a device we haven’t seen before:</p>
+        <p style="background:#faf8f4;border:1px solid #e8e3d9;border-radius:10px;padding:12px">
+          <b>${escapeHtml(fam)}</b><br/>IP ${escapeHtml(device.ipAddress ?? 'unknown')}<br/>${when}</p>
+        <p>If this was you, there’s nothing to do. If it wasn’t, change your password now and sign out every device from <b>Profile &amp; security</b>.</p>
+      </div>`,
+    });
   }
 
   /** Users of an INACTIVE / SUSPENDED company cannot log in or refresh. */
@@ -664,4 +700,24 @@ export class AuthService {
   private hashToken(raw: string): string {
     return crypto.createHash('sha256').update(raw).digest('hex');
   }
+}
+
+/** "49.36.x.x" → "49.36" (IPv4 /16), IPv6 → first 3 groups; used to spot a new network. */
+export function networkOf(ip: string | null | undefined): string {
+  if (!ip) return '?';
+  const v4 = ip.replace(/^::ffff:/, '');
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(v4)) return v4.split('.').slice(0, 2).join('.');
+  return ip.split(':').slice(0, 3).join(':');
+}
+
+/** "Chrome on Windows" from a user agent (rough, for people to read). */
+export function deviceFamily(ua: string | null | undefined): string {
+  if (!ua) return 'Unknown device';
+  const browser = /Edg\//.test(ua) ? 'Edge' : /OPR\//.test(ua) ? 'Opera' : /Firefox\//.test(ua) ? 'Firefox' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : /curl|node|undici|axios/i.test(ua) ? 'Script' : 'Browser';
+  const os = /iPhone|iPad/.test(ua) ? 'iPhone' : /Android/.test(ua) ? 'Android' : /Windows/.test(ua) ? 'Windows' : /Mac OS X/.test(ua) ? 'Mac' : /Linux/.test(ua) ? 'Linux' : 'unknown system';
+  return `${browser} on ${os}`;
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 }

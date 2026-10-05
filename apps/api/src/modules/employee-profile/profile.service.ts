@@ -7,6 +7,7 @@ import { StorageService } from '../storage/storage.service';
 import type { AccessContext } from '../access/access.types';
 import { PiiCryptoService, maskTail } from './pii-crypto.service';
 import { detectFileType, IMAGE_TYPES } from './file-types';
+import { COMPLETION_SELECT, completionOf } from './profile-completion';
 import type { UpdateBankDto, UpdatePersonalDto, UpdateStatutoryDto } from './dto';
 
 const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
@@ -185,29 +186,9 @@ export class ProfileService {
   // ─── Profile completion (self-service checklist) ───────────
 
   async completion(employeeId: string) {
-    const e = await this.prisma.employee.findUnique({
-      where: { id: employeeId },
-      select: {
-        avatarUrl: true,
-        phone: true,
-        dateOfBirth: true,
-        personal: { select: { currentAddress: true, emergencyContactName: true, emergencyContactPhone: true } },
-        bankDetails: { select: { id: true } },
-        statutoryInfo: { select: { pan: true } },
-      },
-    });
+    const e = await this.prisma.employee.findUnique({ where: { id: employeeId }, select: COMPLETION_SELECT });
     if (!e) throw new NotFoundException('Employee not found');
-    const address = e.personal?.currentAddress as { line1?: string; city?: string } | null | undefined;
-    const items = [
-      { key: 'photo', label: 'Profile photo', done: Boolean(e.avatarUrl) },
-      { key: 'phone', label: 'Phone number', done: Boolean(e.phone) },
-      { key: 'dateOfBirth', label: 'Date of birth', done: Boolean(e.dateOfBirth) },
-      { key: 'address', label: 'Current address', done: Boolean(address?.line1 && address?.city) },
-      { key: 'emergency', label: 'Emergency contact', done: Boolean(e.personal?.emergencyContactName && e.personal?.emergencyContactPhone) },
-      { key: 'bank', label: 'Bank account', done: Boolean(e.bankDetails) },
-      { key: 'pan', label: 'PAN', done: Boolean(e.statutoryInfo?.pan) },
-    ];
-    return { percent: Math.round((items.filter((i) => i.done).length / items.length) * 100), items };
+    return completionOf(e);
   }
 
   // ─── Helpers ───────────────────────────────────────────────

@@ -14,8 +14,9 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 1000 * 60 * 5, // 5 minutes
-            refetchOnWindowFocus: false,
+            // Data older than a minute is re-fetched when a screen opens or you come back to the tab
+            staleTime: 60_000,
+            refetchOnWindowFocus: true,
             retry: 1,
           },
         },

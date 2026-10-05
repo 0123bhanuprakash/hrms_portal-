@@ -5,7 +5,7 @@ import type { TenantContext } from '../../common/types/request.types';
 import { holds, type AccessContext } from '../access/access.types';
 import { ExpenseCategoriesService } from './categories.service';
 import { ExpenseClaimsService } from './claims.service';
-import { ClaimQueryDto, DecideClaimDto, PayClaimDto, RejectClaimDto, ReportQueryDto, SaveCategoryDto, SaveClaimDto, SaveItemDto } from './dto';
+import { BulkApproveDto, ClaimQueryDto, CommentDto, DecideClaimDto, PayClaimDto, RejectClaimDto, ReportQueryDto, SaveCategoryDto, SaveClaimDto, SaveItemDto } from './dto';
 
 const receipt = FileInterceptor('receipt', { limits: { fileSize: 10 * 1024 * 1024, files: 1 } });
 
@@ -67,6 +67,21 @@ export class ExpensesController {
   @Get('claims/pending-count')
   async pendingCount(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext) {
     return { count: await this.claims.pendingCount(ctx.companyId!, access) };
+  }
+
+  /** My numbers for the My expenses page */
+  @RequirePermission('expense.submit')
+  @Get('claims/summary')
+  summary(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext) {
+    return this.claims.summary(ctx.companyId!, access);
+  }
+
+  /** Approve several claims at my step — checked per claim. */
+  @Audit('expense:claim:approve', 'expense_claim')
+  @Post('claims/approve-bulk')
+  @HttpCode(HttpStatus.OK)
+  bulkApprove(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Body() dto: BulkApproveDto) {
+    return this.claims.bulkApprove(ctx.companyId!, access, dto.ids);
   }
 
   @RequirePermission('expense.submit')
@@ -141,6 +156,27 @@ export class ExpensesController {
   @HttpCode(HttpStatus.OK)
   reject(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Param('id', ParseUUIDPipe) id: string, @Body() dto: RejectClaimDto) {
     return this.claims.reject(ctx.companyId!, access, id, dto);
+  }
+
+  /** Whoever can decide the current step asks a question (claim stays with them). */
+  @Post('claims/:id/questions')
+  @HttpCode(HttpStatus.OK)
+  ask(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Param('id', ParseUUIDPipe) id: string, @Body() dto: CommentDto) {
+    return this.claims.ask(ctx.companyId!, access, id, dto);
+  }
+
+  @RequirePermission('expense.submit')
+  @Post('claims/:id/replies')
+  @HttpCode(HttpStatus.OK)
+  reply(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Param('id', ParseUUIDPipe) id: string, @Body() dto: CommentDto) {
+    return this.claims.reply(ctx.companyId!, access, id, dto);
+  }
+
+  @RequirePermission('expense.submit')
+  @Audit('expense:claim:create', 'expense_claim')
+  @Post('claims/:id/copy')
+  copy(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Param('id', ParseUUIDPipe) id: string) {
+    return this.claims.copy(ctx.companyId!, access, id);
   }
 
   @Audit('expense:claim:cancel', 'expense_claim')

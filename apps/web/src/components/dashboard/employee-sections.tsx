@@ -187,7 +187,7 @@ export function useNeedsAction(me: MyCard | undefined) {
   const cal = useCalendar(month);
 
   const rows: React.ReactNode[] = [];
-  for (const s of sheets.data?.data ?? []) rows.push(<ActionRow key={`ts-${s.id}`} tone="danger" icon={<Timer />} title="Timesheet sent back" detail={`Week of ${formatDate(s.weekStart)}${s.decisionNote ? ` · “${s.decisionNote}”` : ''}`} href={`/app/timesheets?week=${s.weekStart}`} cta="Fix" />);
+  for (const s of sheets.data?.data ?? []) rows.push(<ActionRow key={`ts-${s.id}`} tone="danger" icon={<Timer />} title="Time sent back" detail={`Week of ${formatDate(s.weekStart)}${s.decisionNote ? ` · “${s.decisionNote}”` : ''}`} href={`/app/timesheets?week=${s.weekStart}`} cta="Fix" />);
   for (const c of claims.data?.data ?? []) rows.push(<ActionRow key={`ex-${c.id}`} tone="danger" icon={<Receipt />} title="Expense claim sent back" detail={c.title} href={`/app/expenses/${c.id}`} cta="Fix" />);
   for (const t of tickets.data?.data ?? []) rows.push(<ActionRow key={`tk-${t.id}`} tone="warning" icon={<LifeBuoy />} title={`${t.queue === 'FINANCE' ? 'Finance' : t.queue} needs more information`} detail={`#${t.number} · ${t.subject}`} href={`/app/helpdesk/${t.id}`} cta="Reply" />);
   for (const a of (assets.data?.current ?? []).filter((x) => !x.acknowledgedAt)) rows.push(<ActionRow key={`as-${a.id}`} tone="info" icon={<PackageCheck />} title={`Confirm you received ${a.asset.tag}`} detail={a.asset.name} href="/app/assets/mine" cta="Confirm" />);

@@ -10,7 +10,9 @@ import { useAuthStore } from '@/store/useAuthStore';
 
 function PlatformLogin() {
   const router = useRouter();
-  const next = useSearchParams().get('next');
+  const params = useSearchParams();
+  const next = params.get('next');
+  const idle = params.get('reason') === 'idle';
   const hydrated = useAuthHydrated();
   const { isAuthenticated, user } = useAuthStore();
 
@@ -22,6 +24,11 @@ function PlatformLogin() {
   return (
     <PlatformAuthShell>
       <FormHeading title="Platform sign in" description="Manage companies, themes and platform settings." />
+      {idle && (
+        <p className="mb-4 rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground" role="status">
+          You were signed out after a while without activity. Sign in again to continue.
+        </p>
+      )}
       <LoginForm
         portal="platform"
         forgotHref="/platform/forgot-password"

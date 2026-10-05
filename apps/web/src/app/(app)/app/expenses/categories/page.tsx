@@ -16,7 +16,8 @@ import { cn } from '@/lib/cn';
 
 const rule = (c: ExpenseCategory) =>
   [
-    c.maxPerItemPaise !== null ? `max ${money(c.maxPerItemPaise)} per item` : 'no limit',
+    c.maxPerItemPaise !== null ? `max ${money(c.maxPerItemPaise)} per item` : 'no item limit',
+    ...(c.maxPerMonthPaise !== null ? [`${money(c.maxPerMonthPaise)} a month per person`] : []),
     c.receiptRequiredAbovePaise === null ? 'receipt optional' : c.receiptRequiredAbovePaise === 0 ? 'receipt always' : `receipt above ${money(c.receiptRequiredAbovePaise)}`,
   ].join(' · ');
 
@@ -29,7 +30,7 @@ export default function ExpenseCategoriesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Expenses" title="Expense categories" description="What people can claim, the limit per item and when a receipt is needed." action={<Button onClick={() => setEditing('new')}><Plus /> Add category</Button>} />
+      <PageHeader eyebrow="Expenses" title="Expense categories" description="What people can claim, the limits and when a receipt is needed. Going over a limit is allowed with a reason (flagged to approvers). Every claim goes to the manager, then Finance and HR." action={<Button onClick={() => setEditing('new')}><Plus /> Add category</Button>} />
       <Card className="overflow-hidden">
         {cats.isLoading ? (
           <div className="space-y-2 p-5">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
@@ -55,14 +56,15 @@ export default function ExpenseCategoriesPage() {
 
 function CategoryDialog({ value, onClose }: { value: ExpenseCategory | 'new' | null; onClose: () => void }) {
   const save = useSaveCategory();
-  const [f, setF] = useState({ name: '', description: '', max: '', receiptMode: 'above' as 'always' | 'above' | 'never', receiptAbove: '', isActive: true });
+  const [f, setF] = useState({ name: '', description: '', max: '', month: '', receiptMode: 'above' as 'always' | 'above' | 'never', receiptAbove: '', isActive: true });
   useEffect(() => {
     if (!value) return;
-    if (value === 'new') return setF({ name: '', description: '', max: '', receiptMode: 'always', receiptAbove: '', isActive: true });
+    if (value === 'new') return setF({ name: '', description: '', max: '', month: '', receiptMode: 'always', receiptAbove: '', isActive: true });
     setF({
       name: value.name,
       description: value.description ?? '',
       max: value.maxPerItemPaise !== null ? String(value.maxPerItemPaise / 100) : '',
+      month: value.maxPerMonthPaise !== null ? String(value.maxPerMonthPaise / 100) : '',
       receiptMode: value.receiptRequiredAbovePaise === null ? 'never' : value.receiptRequiredAbovePaise === 0 ? 'always' : 'above',
       receiptAbove: value.receiptRequiredAbovePaise ? String(value.receiptRequiredAbovePaise / 100) : '',
       isActive: value.isActive,
@@ -78,6 +80,7 @@ function CategoryDialog({ value, onClose }: { value: ExpenseCategory | 'new' | n
         name: f.name,
         description: f.description || null,
         maxPerItem: f.max ? Number(f.max) : null,
+        maxPerMonth: f.month ? Number(f.month) : null,
         receiptRequiredAbove: f.receiptMode === 'never' ? null : f.receiptMode === 'always' ? 0 : Number(f.receiptAbove || 0),
         isActive: f.isActive,
       });
@@ -94,7 +97,11 @@ function CategoryDialog({ value, onClose }: { value: ExpenseCategory | 'new' | n
       <form id="cat-form" onSubmit={submit} className="space-y-3">
         <Field label="Name" htmlFor="cat-name" required><Input id="cat-name" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required minLength={2} maxLength={60} /></Field>
         <Field label="Description" htmlFor="cat-desc"><Input id="cat-desc" value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} maxLength={200} /></Field>
-        <Field label="Max per item (₹)" htmlFor="cat-max" hint="Blank = no limit"><Input id="cat-max" type="number" min={1} step="0.01" value={f.max} onChange={(e) => setF({ ...f, max: e.target.value })} /></Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Max per item (₹)" htmlFor="cat-max" hint="Blank = no limit"><Input id="cat-max" type="number" min={1} step="0.01" value={f.max} onChange={(e) => setF({ ...f, max: e.target.value })} /></Field>
+          <Field label="Max per month (₹)" htmlFor="cat-month" hint="Per person · blank = none"><Input id="cat-month" type="number" min={1} step="0.01" value={f.month} onChange={(e) => setF({ ...f, month: e.target.value })} /></Field>
+        </div>
+        <p className="text-xs text-muted-foreground">Over a limit: people can still claim with a reason — approvers see it flagged.</p>
         <Field label="Receipt">
           <div className="space-y-2 text-sm">
             {(['always', 'above', 'never'] as const).map((m) => (

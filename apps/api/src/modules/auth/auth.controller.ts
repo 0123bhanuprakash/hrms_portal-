@@ -212,6 +212,7 @@ export class AuthController {
       dto.current_password,
       dto.new_password,
       user.sid,
+      dto.sign_out_others ?? true,
     );
     return { id: user.sub, message: 'Password changed successfully', revokedSessions };
   }

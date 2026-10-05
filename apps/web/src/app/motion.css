@@ -247,3 +247,30 @@ html[data-hidden] .m-ticker > ul, html[data-hidden] .m-pulse::before, html[data-
 @keyframes m-lit { from { background: rgb(255 255 255 / 0.08); } to { background: #ffd27a; box-shadow: 0 0 8px #ffd27a88; } }
 @media (max-width: 640px) { .m-building { display: none; } }
 html[data-hidden] .m-balloon, html[data-hidden] .m-firework i, html[data-hidden] .m-bulb, html[data-hidden] .m-diya b, html[data-hidden] .m-puff, html[data-hidden] .m-snow, html[data-hidden] .m-rain { animation-play-state: paused; }
+
+/* ── Announcement covers: 3D art bob + animated scenes ───────── */
+@keyframes a3-float { 50% { transform: translateY(-7px) rotate(-3deg); } }
+.sc { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.sc i { position: absolute; display: block; }
+.sc-still i { animation-play-state: paused !important; }
+@keyframes sc-fall { from { transform: translateY(-24px) rotate(0); } to { transform: translateY(var(--h, 320px)) rotate(var(--r, 540deg)); } }
+@keyframes sc-drift { from { transform: translate(0, -12px); } to { transform: translate(var(--dx, 26px), var(--h, 320px)); } }
+@keyframes sc-rise { 0% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(calc(var(--h, 320px) * -0.5)) rotate(4deg); } 100% { transform: translateY(calc(var(--h, 320px) * -1.1)) rotate(-3deg); } }
+@keyframes sc-twinkle { 0%, 100% { opacity: 0.15; transform: scale(0.6); } 50% { opacity: 1; transform: scale(1); } }
+@keyframes sc-flame { to { transform: scaleY(1.25) rotate(4deg); } }
+@keyframes sc-spin { to { transform: rotate(360deg); } }
+@keyframes sc-rain { from { transform: translate(0, -20px) rotate(14deg); } to { transform: translate(calc(var(--h, 320px) * -0.25), var(--h, 320px)) rotate(14deg); } }
+@keyframes sc-firework { 0% { opacity: 0; transform: rotate(var(--a)) translateX(0) scale(0.4); } 10% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; transform: rotate(var(--a)) translateX(var(--d, 46px)) scale(1); } }
+@keyframes sc-burst { 0% { opacity: 1; transform: translate(-50%, -50%) rotate(0) scale(0.6); } 100% { opacity: 0; transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) rotate(560deg) scale(1); } }
+.sc-confetti i { top: 0; width: 7px; height: 11px; border-radius: 2px; animation: sc-fall linear infinite; }
+.sc-snow i { top: 0; border-radius: 9999px; background: #fff; opacity: 0.9; animation: sc-drift linear infinite; }
+.sc-rain i { top: 0; width: 2px; height: 16px; border-radius: 2px; background: rgb(255 255 255 / 0.55); animation: sc-rain linear infinite; }
+.sc-sparkles i { width: 5px; height: 5px; border-radius: 9999px; background: #fff; box-shadow: 0 0 10px 2px rgb(255 255 255 / 0.7); animation: sc-twinkle ease-in-out infinite; }
+.sc-balloons i { bottom: -60px; width: 30px; height: 38px; border-radius: 50% 50% 48% 48%; animation: sc-rise ease-in-out infinite; box-shadow: inset -6px -6px 10px rgb(0 0 0 / 0.15); }
+.sc-balloons i::after { content: ''; position: absolute; left: 50%; top: 100%; width: 1px; height: 26px; background: rgb(255 255 255 / 0.6); }
+.sc-aurora i { inset: -45%; background: conic-gradient(from 0deg, #6366f1, #06b6d4, #22c55e, #a855f7, #ec4899, #6366f1); filter: blur(34px); opacity: 0.85; animation: sc-spin 14s linear infinite; }
+.sc-diyas i.d { bottom: 10%; width: 34px; height: 15px; border-radius: 0 0 18px 18px; background: linear-gradient(#f59e0b, #9a3412); }
+.sc-diyas i.d::after { content: ''; position: absolute; left: 12px; top: -17px; width: 10px; height: 18px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: radial-gradient(circle at 50% 70%, #fffbeb, #f59e0b 60%, transparent 72%); transform-origin: 50% 100%; animation: sc-flame 0.5s ease-in-out infinite alternate; }
+.sc-fireworks i.f { width: 0; height: 0; }
+.sc-fireworks i.f b { position: absolute; left: 0; top: 0; width: 5px; height: 5px; border-radius: 9999px; animation: sc-firework 2.4s ease-out infinite; }
+.sc-burst i { left: 50%; top: 45%; width: 8px; height: 12px; border-radius: 2px; animation: sc-burst 1.4s cubic-bezier(.2,.7,.3,1) forwards; }
