@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common';
 import { CurrentAccess, RequireFeature, RequirePermission, TenantCtx } from '../../common';
 import type { TenantContext } from '../../common/types/request.types';
 import type { AccessContext } from '../access/access.types';
@@ -19,8 +19,24 @@ export class PeopleController {
   @RequireFeature('people.directory')
   @RequirePermission('org.view')
   @Get()
-  directory(@TenantCtx() ctx: TenantContext, @Query() query: DirectoryQueryDto) {
-    return this.people.directory(ctx.companyId!, query);
+  directory(@TenantCtx() ctx: TenantContext, @Query() query: DirectoryQueryDto, @CurrentAccess() access: AccessContext) {
+    return this.people.directory(ctx.companyId!, query, access);
+  }
+
+  /** New this month, birthdays this week, and who's in today. */
+  @RequireFeature('people.directory')
+  @RequirePermission('org.view')
+  @Get('highlights')
+  highlights(@TenantCtx() ctx: TenantContext) {
+    return this.people.highlights(ctx.companyId!);
+  }
+
+  /** Quick look at one colleague (basic details only, never personal data). */
+  @RequireFeature('people.directory')
+  @RequirePermission('org.view')
+  @Get(':id/card')
+  card(@TenantCtx() ctx: TenantContext, @Param('id', ParseUUIDPipe) id: string) {
+    return this.people.card(ctx.companyId!, id);
   }
 
   @RequirePermission('org.view')

@@ -5,6 +5,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AccessService } from '../access/access.service';
 import { HierarchyService } from '../access/hierarchy.service';
 import type { ReportingLineDto, SaveOrgLevelDto } from './dto';
+import { holds, type AccessContext } from '../access/access.types';
+import { EmployeeLifecycleService, WIDE_SPAN } from '../employees/lifecycle.service';
 
 const SUGGESTED_LEVELS: Array<{ name: string; color: string }> = [
   { name: 'Executive', color: '#7C3AED' },
@@ -30,6 +32,7 @@ export class OrgService {
     private readonly prisma: PrismaService,
     private readonly access: AccessService,
     private readonly hierarchy: HierarchyService,
+    private readonly lifecycle: EmployeeLifecycleService,
   ) {}
 
   // ─── Org levels ───────────────────────────────────────────
@@ -93,11 +96,17 @@ export class OrgService {
 
   // ─── Org chart ────────────────────────────────────────────
 
-  /** Flat list of current employees with their manager; the web builds the tree. */
-  async chart(companyId: string) {
+  /**
+   * Flat list of current employees with their manager; the web builds the tree.
+   * People who haven't joined yet only show for org managers (flagged joinsOn);
+   * a notice period shows as Active unless the viewer handles exits.
+   */
+  async chart(companyId: string, access: AccessContext) {
+    const today = (await this.lifecycle.today(companyId)).date;
+    const planners = holds(access, 'org.manage');
     const [employees, levels] = await Promise.all([
       this.prisma.employee.findMany({
-        where: { companyId, employmentStatus: { not: EmploymentStatus.TERMINATED } },
+        where: { companyId, employmentStatus: { not: EmploymentStatus.TERMINATED }, ...(planners ? {} : { joiningDate: { lte: today } }) },
         orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
         select: {
           id: true,
@@ -112,14 +121,79 @@ export class OrgService {
           department: { select: { id: true, name: true } },
           designation: { select: { id: true, name: true, orgLevel: { select: LEVEL_SELECT } } },
           location: { select: { id: true, name: true } },
-          _count: { select: { subordinates: true } },
+          joiningDate: true,
+          _count: { select: { subordinates: { where: { employmentStatus: { not: EmploymentStatus.TERMINATED } } } } },
         },
       }),
       this.listLevels(companyId),
     ]);
     return {
-      employees: employees.map(({ _count, ...e }) => ({ ...e, directReports: _count.subordinates })),
+      employees: employees.map(({ _count, joiningDate, ...e }) => ({
+        ...this.lifecycle.mask(e, access),
+        directReports: _count.subordinates,
+        joinsOn: joiningDate > today ? joiningDate.toISOString().slice(0, 10) : null,
+      })),
       levels,
+    };
+  }
+
+  /** Things worth fixing in the structure: wide spans, missing managers, departments without a head. */
+  async health(companyId: string) {
+    const today = (await this.lifecycle.today(companyId)).date;
+    const current = { companyId, employmentStatus: { not: EmploymentStatus.TERMINATED }, joiningDate: { lte: today } };
+    const PERSON = { id: true, firstName: true, lastName: true, avatarUrl: true } as const;
+    const [people, departments, depth] = await Promise.all([
+      this.prisma.employee.findMany({
+        where: current,
+        select: { ...PERSON, departmentId: true, reportingManagerId: true, reportingManager: { select: { employmentStatus: true, firstName: true, lastName: true } } },
+      }),
+      this.prisma.department.findMany({ where: { companyId }, select: { id: true, name: true, headEmployeeId: true }, orderBy: { name: 'asc' } }),
+      this.prisma.employeeHierarchy.aggregate({ where: { ancestor: { companyId } }, _max: { depth: true } }),
+    ]);
+    const person = (p: { id: string; firstName: string; lastName: string; avatarUrl: string | null }) => ({ id: p.id, name: `${p.firstName} ${p.lastName}`, avatarUrl: p.avatarUrl });
+    const reports = new Map<string, number>();
+    for (const p of people) if (p.reportingManagerId) reports.set(p.reportingManagerId, (reports.get(p.reportingManagerId) ?? 0) + 1);
+    const byId = new Map(people.map((p) => [p.id, p]));
+    const items: Array<{ key: string; tone: 'warning' | 'info' | 'neutral' | 'danger'; title: string; detail: string; people?: ReturnType<typeof person>[]; departments?: Array<{ id: string; name: string }>; fix: 'reporting' | 'departments' | 'employees' }> = [];
+
+    const wide = [...reports.entries()].filter(([, n]) => n > WIDE_SPAN).sort((a, b) => b[1] - a[1]);
+    for (const [id, n] of wide) {
+      const m = byId.get(id);
+      if (m) items.push({ key: `wide:${id}`, tone: 'warning', title: `${m.firstName} has ${n} direct reports`, detail: `More than ${WIDE_SPAN} can be hard to manage well — consider a team lead in between`, people: [person(m)], fix: 'reporting' });
+    }
+    const leftManager = people.filter((p) => p.reportingManager && p.reportingManager.employmentStatus === EmploymentStatus.TERMINATED);
+    if (leftManager.length) {
+      items.push({ key: 'manager-left', tone: 'danger', title: `${leftManager.length} ${leftManager.length === 1 ? 'person reports' : 'people report'} to someone who has left`, detail: leftManager.slice(0, 3).map((p) => p.firstName).join(', ') + ' — pick a new manager so approvals keep working', people: leftManager.map(person), fix: 'reporting' });
+    }
+    const alone = people.filter((p) => !p.reportingManagerId && !reports.has(p.id));
+    if (alone.length && people.length > 1) {
+      items.push({ key: 'no-manager', tone: 'info', title: `${alone.length} ${alone.length === 1 ? 'person has' : 'people have'} no manager`, detail: alone.slice(0, 3).map((p) => p.firstName).join(', ') + ' — their leave and timesheets have nowhere to go', people: alone.map(person), fix: 'reporting' });
+    }
+    const roots = people.filter((p) => !p.reportingManagerId && reports.has(p.id));
+    if (roots.length > 1) {
+      items.push({ key: 'many-tops', tone: 'neutral', title: `${roots.length} people are at the top of the chart`, detail: `${roots.map((p) => p.firstName).join(', ')} — usually one person (the CEO or founder) is at the top`, people: roots.map(person), fix: 'reporting' });
+    }
+    const counts = new Map<string, number>();
+    for (const p of people) if (p.departmentId) counts.set(p.departmentId, (counts.get(p.departmentId) ?? 0) + 1);
+    const headless = departments.filter((d) => counts.get(d.id) && (!d.headEmployeeId || !byId.has(d.headEmployeeId)));
+    if (headless.length) {
+      items.push({ key: 'no-head', tone: 'neutral', title: `${headless.length} ${headless.length === 1 ? 'department has' : 'departments have'} no head`, detail: headless.slice(0, 3).map((d) => d.name).join(', ') + ' — set one in Departments', departments: headless.map((d) => ({ id: d.id, name: d.name })), fix: 'departments' });
+    }
+    const noDept = people.filter((p) => !p.departmentId);
+    if (noDept.length && departments.length) {
+      items.push({ key: 'no-department', tone: 'neutral', title: `${noDept.length} ${noDept.length === 1 ? 'person isn’t' : 'people aren’t'} in a department`, detail: noDept.slice(0, 3).map((p) => p.firstName).join(', '), people: noDept.map(person), fix: 'employees' });
+    }
+    const managers = reports.size;
+    return {
+      items,
+      stats: {
+        headcount: people.length,
+        managers,
+        avgSpan: managers ? Math.round((people.filter((p) => p.reportingManagerId && byId.has(p.reportingManagerId)).length / managers) * 10) / 10 : 0,
+        widestSpan: Math.max(0, ...reports.values()),
+        levels: (depth._max.depth ?? 0) + 1,
+        departments: departments.length,
+      },
     };
   }
 
@@ -211,18 +285,23 @@ export class OrgService {
   }
 
   /** Change a reporting line (closure table + employee row together; loops rejected). */
-  async setReportingLine(companyId: string, dto: ReportingLineDto) {
+  async setReportingLine(companyId: string, dto: ReportingLineDto, access: AccessContext) {
     const employee = await this.findEmployee(companyId, dto.employeeId);
-    if ((employee.reportingManagerId ?? null) === (dto.managerId ?? null)) return this.chart(companyId);
+    if ((employee.reportingManagerId ?? null) === (dto.managerId ?? null)) return this.chart(companyId, access);
+    const [from, to] = await Promise.all([
+      employee.reportingManagerId ? this.nameOf(employee.reportingManagerId) : Promise.resolve('None'),
+      dto.managerId ? this.nameOf(dto.managerId) : Promise.resolve('None'),
+    ]);
     await this.prisma.$transaction(async (tx) => {
       await this.hierarchy.setManager(tx, companyId, dto.employeeId, dto.managerId ?? null);
       await tx.employee.update({ where: { id: dto.employeeId }, data: { reportingManagerId: dto.managerId ?? null } });
+      await this.lifecycle.record(tx, { companyId, employeeId: dto.employeeId, actor: access.userId, kind: 'manager', from, to });
     });
     return {
       employeeId: dto.employeeId,
       from: employee.reportingManagerId,
       to: dto.managerId ?? null,
-      ...(await this.chart(companyId)),
+      ...(await this.chart(companyId, access)),
     };
   }
 

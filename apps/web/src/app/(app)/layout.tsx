@@ -46,7 +46,6 @@ import {
   LifeBuoy,
   Headset,
   Timer,
-  BarChart3,
   LineChart,
 } from 'lucide-react';
 import type { MenuStyle, ThemeTokens } from '@hrms/types';
@@ -129,7 +128,6 @@ const NAV_GROUPS: Array<{ label: string; icon: React.ElementType; items: NavItem
       { name: 'Projects', href: '/app/projects', icon: FolderKanban, permission: 'project.view', feature: 'work.projects' },
       { name: 'My timesheet', href: '/app/timesheets', icon: Timer, exact: true, permission: 'timesheet.submit', feature: 'work.timesheets' },
       { name: 'Timesheet approvals', href: '/app/timesheets/approvals', icon: ClipboardCheck, permission: 'timesheet.approve', feature: 'work.timesheets', orDelegated: true, badge: 'timesheetApprovals' },
-      { name: 'Hours by project', href: '/app/timesheets/report', icon: BarChart3, permission: 'timesheet.view', feature: 'work.timesheets', beyondOwn: true },
     ],
   },
   {
@@ -226,7 +224,6 @@ const SEGMENT_LABELS: Record<string, string> = {
   helpdesk: 'Helpdesk',
   queue: 'Queue',
   timesheets: 'Timesheets',
-  report: 'Hours by project',
   reports: 'Reports & analytics',
   org: 'Organisation',
   'access-explorer': 'Access explorer',
@@ -234,7 +231,10 @@ const SEGMENT_LABELS: Record<string, string> = {
   import: 'Import',
   users: 'Users',
   roles: 'Roles & permissions',
-  new: 'New role',
+  new: 'New',
+  edit: 'Edit',
+  insights: 'Insights',
+  planner: 'Resource planner',
 };
 
 

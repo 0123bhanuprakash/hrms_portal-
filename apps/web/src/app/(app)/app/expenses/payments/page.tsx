@@ -2,9 +2,10 @@
 
 import React, { useState } from 'react';
 import { toast } from 'sonner';
-import { BarChart3, Download, ShieldCheck, Wallet } from 'lucide-react';
+import { BarChart3, Clock, Download, ShieldCheck, Wallet } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, EmptyState, Skeleton, Tabs } from '@/components/ui/feedback';
 import { Input } from '@/components/ui/field';
 import { StatCard } from '@/components/ui/stat-card';
@@ -26,7 +27,7 @@ export default function ExpensePaymentsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Expenses" title="Payments & reports" description="Approved claims waiting to be paid, and spend by category, person and project." />
+      <PageHeader eyebrow="Expenses" title="Payments & reports" description="Approved claims to mark paid, and where the money goes." />
       <Tabs
         tabs={[
           ...(finance ? [{ id: 'pay' as const, label: 'To pay', icon: <Wallet /> }] : []),
@@ -47,6 +48,13 @@ function ToPay() {
   const total = list.data?.data.reduce((s, c) => s + c.totals.approvedPaise, 0) ?? 0;
   return (
     <div className="space-y-3">
+      <Card className="flex flex-wrap items-start gap-3 border-primary/30 bg-primary-soft/30 p-4">
+        <Clock className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+        <div className="min-w-0 flex-1">
+          <p className="flex flex-wrap items-center gap-2 text-sm font-semibold">Payment batches <Badge tone="primary">Coming soon</Badge></p>
+          <p className="text-xs text-muted-foreground">Soon you’ll pay everyone’s approved claims in one batch, download the bank file and mark the whole batch paid. For now, pay each claim from your bank and mark it paid here with the reference.</p>
+        </div>
+      </Card>
       {Boolean(list.data?.data.length) && <p className="text-sm text-muted-foreground">{list.data!.meta.total} claim{list.data!.meta.total === 1 ? '' : 's'} · {money(total)} on this page</p>}
       <ClaimList
         query={list}
@@ -122,13 +130,57 @@ function Report() {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <StatCard title="Claimed" value={money(r.totals.claimedPaise)} icon={<BarChart3 />} tone="neutral" />
             <StatCard title="Approved" value={money(r.totals.approvedPaise)} icon={<BarChart3 />} tone="info" />
-            <StatCard title="Paid" value={money(r.totals.paidPaise)} icon={<Wallet />} tone="success" />
-            <StatCard title="Items" value={r.totals.items} icon={<BarChart3 />} tone="primary" />
+            <StatCard title="Re-billable to clients" value={money(r.rebillablePaise)} icon={<BarChart3 />} tone="success" />
+            <StatCard title="Waiting in approvals" value={money(r.pipeline.waitingPaise)} icon={<Clock />} tone="warning" />
+            <StatCard title="Approved, not paid" value={money(r.pipeline.toBePaidPaise)} icon={<Wallet />} tone="primary" />
           </div>
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+            <Card>
+              <CardHeader title="By month" description="Approved spend · green part is re-billable to clients" />
+              {!r.byMonth.length ? (
+                <p className="px-5 pb-5 text-sm text-muted-foreground">No spend in this period.</p>
+              ) : (
+                <div className="flex h-44 items-end gap-2 px-5 pb-5">
+                  {r.byMonth.map((m) => {
+                    const max = Math.max(...r.byMonth.map((x) => x.approvedPaise), 1);
+                    const h = (m.approvedPaise / max) * 100;
+                    const reb = m.approvedPaise ? (m.rebillablePaise / m.approvedPaise) * 100 : 0;
+                    const label = new Date(`${m.month}-01T00:00:00Z`).toLocaleString('en-IN', { month: 'short', timeZone: 'UTC' });
+                    return (
+                      <div key={m.month} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1" title={`${label}: ${money(m.approvedPaise)} (${money(m.rebillablePaise)} re-billable)`}>
+                        <div className="flex w-full max-w-[44px] flex-col overflow-hidden rounded-t-md" style={{ height: `${Math.max(h, 2)}%` }}>
+                          <span className="block bg-success" style={{ height: `${reb}%` }} />
+                          <span className="block flex-1 bg-primary" />
+                        </div>
+                        <span className="text-[11px] text-muted-foreground">{label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </Card>
+            <Card className="space-y-3 p-5">
+              <p className="text-sm font-semibold">Exceptions to look at</p>
+              {[
+                ['Approved over the limit', r.exceptions.overLimit.items, r.exceptions.overLimit.paise, 'danger'],
+                ['Amounts lowered', r.exceptions.reduced.items, r.exceptions.reduced.paise, 'warning'],
+                ['Items not paid', r.exceptions.rejectedItems.items, r.exceptions.rejectedItems.paise, 'neutral'],
+              ].map(([l, n, p, tone]) => (
+                <div key={l as string} className="flex items-center gap-2 text-sm">
+                  <Badge tone={tone as 'danger' | 'warning' | 'neutral'}>{n as number}</Badge>
+                  <span className="flex-1">{l as string}</span>
+                  <b className="tabular-nums">{money(p as number)}</b>
+                </div>
+              ))}
+              <div className="border-t border-border pt-3 text-xs text-muted-foreground">
+                Sent → approved in <b className="text-foreground">{r.timing.avgDaysToApprove !== null ? `${r.timing.avgDaysToApprove} days` : '—'}</b> on average · approved → paid in <b className="text-foreground">{r.timing.avgDaysToPay !== null ? `${r.timing.avgDaysToPay} days` : '—'}</b>
+              </div>
+            </Card>
+          </div>
+          <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
             {table('By category', r.byCategory)}
+            {table('By team', r.byDepartment)}
             {table('By person', r.byEmployee)}
             {table('By project', r.byProject)}
           </div>

@@ -51,6 +51,12 @@ export interface UserPreferences {
   menuStyle?: MenuStyle | null;
   /** View settings that follow the person (see lib/preferences/ui-state) */
   uiState?: Record<string, unknown>;
+  /** Super Admins: email when a new device signs in */
+  notifyNewDevice?: boolean;
+  /** Sign out after this many idle minutes (null = never) */
+  idleTimeoutMinutes?: number | null;
+  /** Super Admins: confirm the password before risky changes */
+  reauthForRisky?: boolean;
 }
 
 export const companyKeys = {

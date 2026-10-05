@@ -4,7 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AccessService } from '../access/access.service';
 import { holds, type AccessContext } from '../access/access.types';
 import { addDays, dateFromKey, isValidTimeZone, keyFromDate, localDateKey } from '../attendance/time-zone';
-import type { MonthQueryDto, RangeQueryDto } from './dto';
+import type { DayQueryDto, DrillQueryDto, FilterQueryDto, MonthQueryDto, RangeQueryDto } from './dto';
 
 const VIEW = 'report.view';
 const EXPORT = 'report.export';
@@ -34,8 +34,8 @@ export class ReportsService {
 
   // ─── People ────────────────────────────────────────────────
 
-  async people(companyId: string, access: AccessContext) {
-    const scope = this.access.requireEmployeeScope(access, VIEW);
+  async people(companyId: string, access: AccessContext, q: FilterQueryDto = {}) {
+    const scope = this.narrow(this.access.requireEmployeeScope(access, VIEW), q);
     const today = await this.todayKey(companyId);
     const now = dateFromKey(today);
 
@@ -124,6 +124,36 @@ export class ReportsService {
       .slice(0, 40);
     const avgTenureMonths = headcount ? Math.round(current.reduce((n, e) => n + (nowT - e.joiningDate.getTime()), 0) / headcount / (30.44 * 86_400_000)) : 0;
 
+    // Leavers per department per month (12 months); rate = share of the department (still here + left) who left
+    const leaversByDepartment = [...new Set(rows.map((e) => e.departmentId))]
+      .map((id) => {
+        const inDept = rows.filter((e) => e.departmentId === id);
+        const perMonth = months.map((m) => {
+          const s = dateFromKey(`${m}-01`).getTime();
+          const e2 = dateFromKey(this.monthEnd(m)).getTime();
+          return inDept.filter((e) => left(e) && (t(e.terminationDate) ?? -1) >= s && (t(e.terminationDate) ?? Infinity) <= e2).length;
+        });
+        const size = inDept.filter((e) => !left(e) && e.joiningDate.getTime() <= nowT).length;
+        const total = perMonth.reduce((n, x) => n + x, 0);
+        return { key: id ?? 'none', label: name(depts, id), headcount: size, months: perMonth, leavers: total, ratePct: size + total ? Math.round((total / (size + total)) * 100) : 0 };
+      })
+      .filter((d) => d.headcount > 0 || d.leavers > 0)
+      .sort((a, b) => b.leavers - a.leavers || b.headcount - a.headcount);
+
+    // Work anniversaries in the next 30 days (1+ years)
+    const in30 = addDays(today, 30);
+    const anniversaries = current
+      .map((e) => {
+        const j = keyFromDate(e.joiningDate);
+        let next = `${today.slice(0, 4)}${j.slice(4)}`;
+        if (next < today) next = `${Number(today.slice(0, 4)) + 1}${j.slice(4)}`;
+        return { e, next, years: Number(next.slice(0, 4)) - Number(j.slice(0, 4)) };
+      })
+      .filter((a) => a.years >= 1 && a.next <= in30)
+      .sort((a, b) => a.next.localeCompare(b.next))
+      .slice(0, 10)
+      .map((a) => ({ ...person(a.e), date: a.next, years: a.years }));
+
     return {
       asOf: today,
       headcount,
@@ -135,21 +165,25 @@ export class ReportsService {
       startHeadcount: startCount,
       avgTenureMonths,
       movements,
-      byDepartment: sorted(countBy((e) => e.departmentId).map(([id, count]) => ({ label: name(depts, id), count }))),
-      byLocation: sorted(countBy((e) => e.locationId).map(([id, count]) => ({ label: name(locs, id), count }))),
-      byType: sorted(countBy((e) => e.employmentType).map(([label, count]) => ({ label, count }))),
-      byStatus: sorted(countBy((e) => e.employmentStatus).map(([label, count]) => ({ label, count }))),
-      byGender: sorted(countBy((e) => e.gender ?? 'NOT_SET').map(([label, count]) => ({ label, count }))),
-      byLevel: [...levels.values()].sort((a, b) => b.rank - a.rank).map(({ name: label, count }) => ({ label, count })),
+      // `key` is what "see who" (GET /reports/people/list) takes for that slice
+      byDepartment: sorted(countBy((e) => e.departmentId).map(([id, count]) => ({ key: id ?? 'none', label: name(depts, id), count }))),
+      byLocation: sorted(countBy((e) => e.locationId).map(([id, count]) => ({ key: id ?? 'none', label: name(locs, id), count }))),
+      byType: sorted(countBy((e) => e.employmentType).map(([label, count]) => ({ key: label, label, count }))),
+      byStatus: sorted(countBy((e) => e.employmentStatus).map(([label, count]) => ({ key: label, label, count }))),
+      byGender: sorted(countBy((e) => e.gender ?? 'NOT_SET').map(([label, count]) => ({ key: label, label, count }))),
+      byLevel: [...levels.entries()].sort((a, b) => b[1].rank - a[1].rank).map(([key, { name: label, count }]) => ({ key: key === '-' ? 'none' : key, label, count })),
       tenure: [
-        { label: 'Under 1 year', count: tenure[0]! },
-        { label: '1–3 years', count: tenure[1]! },
-        { label: '3–5 years', count: tenure[2]! },
-        { label: '5+ years', count: tenure[3]! },
+        { key: '0-1', label: 'Under 1 year', count: tenure[0]! },
+        { key: '1-3', label: '1–3 years', count: tenure[1]! },
+        { key: '3-5', label: '3–5 years', count: tenure[2]! },
+        { key: '5+', label: '5+ years', count: tenure[3]! },
       ],
+      leaversByDepartment,
+      anniversaries,
       trend,
       probation: probation.map((e) => ({ ...person(e), joiningDate: keyFromDate(e.joiningDate), confirmationDate: e.confirmationDate ? keyFromDate(e.confirmationDate) : null })),
-      notice: notice.map((e) => ({ ...person(e), terminationDate: e.terminationDate ? keyFromDate(e.terminationDate) : null })),
+      // Who is leaving stays with HR (employee.terminate); everyone else sees the counts only
+      notice: (holds(access, 'employee.terminate') ? notice : []).map((e) => ({ ...person(e), terminationDate: e.terminationDate ? keyFromDate(e.terminationDate) : null })),
     };
   }
 
@@ -178,26 +212,85 @@ export class ReportsService {
     ]);
   }
 
+  /** The people behind one number on the People report (same scope and filters). */
+  async peopleList(companyId: string, access: AccessContext, q: DrillQueryDto) {
+    const scope = this.narrow(this.access.requireEmployeeScope(access, VIEW), q);
+    const today = await this.todayKey(companyId);
+    const now = dateFromKey(today);
+    const v = q.value === 'none' ? null : q.value;
+    let where: Prisma.EmployeeWhereInput;
+    if (q.dimension === 'joined' || q.dimension === 'left') {
+      if (!/^\d{4}-\d{2}$/.test(q.value)) throw new BadRequestException('value must be YYYY-MM');
+      const range = { gte: dateFromKey(`${q.value}-01`), lte: dateFromKey(this.monthEnd(q.value)) };
+      where = q.dimension === 'joined' ? { joiningDate: range } : { employmentStatus: EmploymentStatus.TERMINATED, terminationDate: range };
+    } else {
+      const current: Prisma.EmployeeWhereInput = { joiningDate: { lte: now }, employmentStatus: { not: EmploymentStatus.TERMINATED } };
+      const slice: Prisma.EmployeeWhereInput = (() => {
+        switch (q.dimension) {
+          case 'all':
+            return {};
+          case 'department':
+            return { departmentId: v };
+          case 'location':
+            return { locationId: v };
+          case 'level':
+            return v ? { designation: { orgLevelId: v } } : { OR: [{ designationId: null }, { designation: { orgLevelId: null } }] };
+          case 'type':
+            return { employmentType: v as Prisma.EmployeeWhereInput['employmentType'] as never };
+          case 'status':
+            return { employmentStatus: v as never };
+          case 'gender':
+            return q.value === 'NOT_SET' ? { gender: null } : { gender: v as never };
+          case 'tenure': {
+            const band = { '0-1': [0, 1], '1-3': [1, 3], '3-5': [3, 5], '5+': [5, null] }[q.value] as [number, number | null] | undefined;
+            if (!band) throw new BadRequestException('Unknown tenure band');
+            return { joiningDate: { lte: dateFromKey(this.yearsAgo(today, band[0])), ...(band[1] !== null && { gt: dateFromKey(this.yearsAgo(today, band[1])) }) } };
+          }
+          default:
+            throw new BadRequestException('Unknown dimension');
+        }
+      })();
+      where = { AND: [current, slice] };
+    }
+    const rows = await this.prisma.employee.findMany({
+      where: { AND: [scope, { companyId }, where] },
+      orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
+      take: 300,
+      select: {
+        id: true, employeeId: true, firstName: true, lastName: true, avatarUrl: true, joiningDate: true, terminationDate: true, employmentStatus: true,
+        department: { select: { name: true } }, designation: { select: { name: true } }, location: { select: { name: true } },
+      },
+    });
+    return rows.map((e) => ({
+      id: e.id,
+      employeeId: e.employeeId,
+      firstName: e.firstName,
+      lastName: e.lastName,
+      avatarUrl: e.avatarUrl,
+      department: e.department?.name ?? null,
+      designation: e.designation?.name ?? null,
+      location: e.location?.name ?? null,
+      status: e.employmentStatus,
+      joiningDate: keyFromDate(e.joiningDate),
+      terminationDate: e.terminationDate ? keyFromDate(e.terminationDate) : null,
+      tenureMonths: Math.max(0, Math.round((now.getTime() - e.joiningDate.getTime()) / (30.44 * 86_400_000))),
+    }));
+  }
+
   // ─── Attendance & leave ───────────────────────────────────
 
   async attendance(companyId: string, access: AccessContext, q: MonthQueryDto) {
-    const scope = this.access.requireEmployeeScope(access, VIEW);
+    const scope = this.narrow(this.access.requireEmployeeScope(access, VIEW), q);
     const today = await this.todayKey(companyId);
-    const month = q.month ?? today.slice(0, 7);
-    if (month > today.slice(0, 7)) throw new BadRequestException('Pick this month or an earlier one');
-    const fromKey = `${month}-01`;
-    const toKey = this.monthEnd(month) < today ? this.monthEnd(month) : today;
+    const { fromKey, toKey, month } = this.period(today, q);
     const from = dateFromKey(fromKey);
     const to = dateFromKey(toKey);
     const inScope: Prisma.AttendanceRecordWhereInput = { companyId, date: { gte: from, lte: to }, employee: scope };
-
-    const holidays = await this.prisma.publicHoliday.findMany({ where: { companyId, isOptional: false, date: { gte: from, lte: to } }, select: { date: true } });
-    const holidayKeys = new Set(holidays.map((h) => keyFromDate(h.date)));
-    const workdays: string[] = [];
-    for (let d = fromKey; d <= toKey; d = addDays(d, 1)) {
-      const wd = new Date(`${d}T00:00:00Z`).getUTCDay();
-      if (wd !== 0 && wd !== 6 && !holidayKeys.has(d)) workdays.push(d);
-    }
+    const workdays = await this.workdays(companyId, fromKey, toKey);
+    // The same number of days just before, for "vs previous"
+    const span = Math.round((to.getTime() - from.getTime()) / 86_400_000);
+    const prevTo = addDays(fromKey, -1);
+    const prevFrom = addDays(prevTo, -span);
 
     const leaveWhere: Prisma.LeaveRequestWhereInput = { companyId, status: LeaveStatus.APPROVED, startDate: { lte: to }, endDate: { gte: from }, employee: scope };
     const [headcount, byStatus, late, worked, daily, topLate, leaveByType, topLeave, types] = await Promise.all([
@@ -210,6 +303,11 @@ export class ReportsService {
       this.prisma.leaveRequest.groupBy({ by: ['leaveTypeId'], where: leaveWhere, _sum: { totalDays: true }, _count: { _all: true } }),
       this.prisma.leaveRequest.groupBy({ by: ['employeeId'], where: leaveWhere, _sum: { totalDays: true }, orderBy: { _sum: { totalDays: 'desc' } }, take: 5 }),
       this.prisma.leaveType.findMany({ where: { companyId }, select: { id: true, name: true, code: true } }),
+    ]);
+    const [lateNow, latePrev, balances] = await Promise.all([
+      this.lateByWeekday(companyId, scope, fromKey, toKey),
+      this.lateByWeekday(companyId, scope, prevFrom, prevTo),
+      this.leaveBalances(companyId, scope, Number(today.slice(0, 4))),
     ]);
     const names = await this.names([...topLate.map((r) => r.employeeId), ...topLeave.map((r) => r.employeeId)]);
 
@@ -243,7 +341,44 @@ export class ReportsService {
         .map((r) => ({ type: types.find((t) => t.id === r.leaveTypeId) ?? { id: r.leaveTypeId, name: 'Unknown', code: '?' }, days: r._sum.totalDays ?? 0, requests: r._count._all }))
         .sort((a, b) => b.days - a.days),
       topLeave: topLeave.map((r) => ({ employee: names.get(r.employeeId) ?? null, days: r._sum.totalDays ?? 0 })),
+      /** Mon … Fri late check-ins, this period and the same length just before */
+      lateByWeekday: lateNow,
+      lateByWeekdayPrevious: latePrev,
+      previous: { from: prevFrom, to: prevTo },
+      leaveBalances: balances,
     };
+  }
+
+  /** Who was in, on leave, absent or not recorded on one day (attendance calendar click). */
+  async attendanceDay(companyId: string, access: AccessContext, q: DayQueryDto) {
+    const scope = this.narrow(this.access.requireEmployeeScope(access, VIEW), q);
+    const today = await this.todayKey(companyId);
+    if (q.date > today) throw new BadRequestException('Pick today or an earlier day');
+    const day = dateFromKey(q.date);
+    const [people, records, holiday] = await Promise.all([
+      this.prisma.employee.findMany({
+        where: { AND: [scope, this.employedOn(companyId, day)] },
+        select: { id: true, employeeId: true, firstName: true, lastName: true, avatarUrl: true, department: { select: { name: true } } },
+        orderBy: { firstName: 'asc' },
+      }),
+      this.prisma.attendanceRecord.findMany({ where: { companyId, date: day, employee: scope }, select: { employeeId: true, status: true, checkIn: true, lateMinutes: true } }),
+      this.prisma.publicHoliday.findFirst({ where: { companyId, date: day, isOptional: false }, select: { name: true } }),
+    ]);
+    const byId = new Map(records.map((r) => [r.employeeId, r]));
+    const wd = new Date(`${q.date}T00:00:00Z`).getUTCDay();
+    const groups = { present: [] as unknown[], late: [] as unknown[], wfh: [] as unknown[], leave: [] as unknown[], absent: [] as unknown[], notRecorded: [] as unknown[] };
+    for (const p of people) {
+      const r = byId.get(p.id);
+      const person = { id: p.id, employeeId: p.employeeId, firstName: p.firstName, lastName: p.lastName, avatarUrl: p.avatarUrl, department: p.department?.name ?? null, checkIn: r?.checkIn ?? null, lateMinutes: r?.lateMinutes ?? 0 };
+      if (!r) groups.notRecorded.push(person);
+      else if (r.status === AttendanceStatus.ON_LEAVE) groups.leave.push(person);
+      else if (r.status === AttendanceStatus.ABSENT) groups.absent.push(person);
+      else if (r.status === AttendanceStatus.WORK_FROM_HOME) groups.wfh.push(person);
+      else if ((r.lateMinutes ?? 0) > 0) groups.late.push(person);
+      else if (PRESENTISH.includes(r.status)) groups.present.push(person);
+      else groups.notRecorded.push(person);
+    }
+    return { date: q.date, workingDay: wd !== 0 && wd !== 6 && !holiday, holiday: holiday?.name ?? null, headcount: people.length, ...groups };
   }
 
   // ─── Utilisation (PMO) ────────────────────────────────────
@@ -265,18 +400,32 @@ export class ReportsService {
       employeeId: { in: ids },
       date: { gte: dateFromKey(from), lte: dateFromKey(to) },
       minutes: { gt: 0 },
-      timesheet: { status: { in: [TimesheetStatus.SUBMITTED, TimesheetStatus.APPROVED] } },
+      status: { in: [TimesheetStatus.SUBMITTED, TimesheetStatus.APPROVED] },
     };
-    const [members, byPerson, byProject] = await Promise.all([
+    const [members, byPerson, byProject, byDay] = await Promise.all([
       this.prisma.projectMember.findMany({
         where: { companyId, employeeId: { in: ids }, startDate: { lte: asOfDate }, OR: [{ endDate: null }, { endDate: { gte: asOfDate } }], project: live },
         select: { employeeId: true, allocation: true, role: true, project: { select: { id: true, code: true, name: true, clientName: true, status: true } } },
       }),
       timesheetsOn ? this.prisma.timesheetEntry.groupBy({ by: ['employeeId', 'billable'], where: entryWhere, _sum: { minutes: true } }) : [],
       timesheetsOn ? this.prisma.timesheetEntry.groupBy({ by: ['projectId', 'billable'], where: entryWhere, _sum: { minutes: true } }) : [],
+      timesheetsOn ? this.prisma.timesheetEntry.groupBy({ by: ['employeeId', 'billable', 'date'], where: entryWhere, _sum: { minutes: true } }) : [],
     ]);
 
     const capacity = workdays.length * DAY_HOURS * 60;
+    // Weeks (Monday-first) inside the range, each with its own capacity
+    const weekOf = (k: string) => addDays(k, -((new Date(`${k}T00:00:00Z`).getUTCDay() + 6) % 7));
+    const weekStarts = [...new Set([from, ...workdays].map(weekOf))].sort();
+    const weeks = weekStarts.map((w) => ({ start: w, end: addDays(w, 6), capacityMinutes: workdays.filter((d) => weekOf(d) === w).length * DAY_HOURS * 60 }));
+    const weekly = new Map<string, Array<{ loggedMinutes: number; billableMinutes: number }>>();
+    for (const r of byDay) {
+      const i = weekStarts.indexOf(weekOf(keyFromDate(r.date)));
+      if (i < 0) continue;
+      const list = weekly.get(r.employeeId) ?? weekStarts.map(() => ({ loggedMinutes: 0, billableMinutes: 0 }));
+      list[i]!.loggedMinutes += r._sum.minutes ?? 0;
+      if (r.billable) list[i]!.billableMinutes += r._sum.minutes ?? 0;
+      weekly.set(r.employeeId, list);
+    }
     const logged = new Map<string, { minutes: number; billable: number }>();
     for (const r of byPerson) {
       const cur = logged.get(r.employeeId) ?? { minutes: 0, billable: 0 };
@@ -296,6 +445,8 @@ export class ReportsService {
         billableMinutes: timesheetsOn ? l.billable : null,
         utilisationPct: timesheetsOn && capacity ? Math.round((l.minutes / capacity) * 100) : null,
         billablePct: timesheetsOn && capacity ? Math.round((l.billable / capacity) * 100) : null,
+        /** Per week of `weeks` (null without timesheets) */
+        weekly: timesheetsOn ? weekly.get(p.id) ?? weekStarts.map(() => ({ loggedMinutes: 0, billableMinutes: 0 })) : null,
       };
     });
 
@@ -331,6 +482,7 @@ export class ReportsService {
       asOf,
       workingDays: workdays.length,
       hoursPerDay: DAY_HOURS,
+      weeks,
       timesheets: timesheetsOn,
       people: rows.length,
       bench: rows.filter((r) => r.allocation === 0).length,
@@ -365,24 +517,92 @@ export class ReportsService {
 
   private async utilisationContext(companyId: string, access: AccessContext, q: RangeQueryDto) {
     if (!access.features.has('work.projects')) throw new ForbiddenException('Projects are not enabled for your company');
-    const scope: Prisma.EmployeeWhereInput = holds(access, PMO) ? {} : this.access.requireEmployeeScope(access, VIEW);
+    const scope = this.narrow(holds(access, PMO) ? {} : this.access.requireEmployeeScope(access, VIEW), q);
     const today = await this.todayKey(companyId);
     const to = q.to ?? addDays(today, -1);
     const from = q.from ?? addDays(to, -27);
     if (from > to) throw new BadRequestException('“From” must be before “to”');
     if (to > addDays(from, 366)) throw new BadRequestException('Pick at most a year');
-    const holidays = await this.prisma.publicHoliday.findMany({ where: { companyId, isOptional: false, date: { gte: dateFromKey(from), lte: dateFromKey(to) } }, select: { date: true } });
+    return { scope, range: { from, to, asOf: to < today ? to : today, workdays: await this.workdays(companyId, from, to) } };
+  }
+
+  /** Weekdays that aren't (mandatory) public holidays. */
+  async workdays(companyId: string, fromKey: string, toKey: string): Promise<string[]> {
+    const holidays = await this.prisma.publicHoliday.findMany({ where: { companyId, isOptional: false, date: { gte: dateFromKey(fromKey), lte: dateFromKey(toKey) } }, select: { date: true } });
     const hk = new Set(holidays.map((h) => keyFromDate(h.date)));
-    const workdays: string[] = [];
-    for (let d = from; d <= to; d = addDays(d, 1)) {
+    const out: string[] = [];
+    for (let d = fromKey; d <= toKey; d = addDays(d, 1)) {
       const wd = new Date(`${d}T00:00:00Z`).getUTCDay();
-      if (wd !== 0 && wd !== 6 && !hk.has(d)) workdays.push(d);
+      if (wd !== 0 && wd !== 6 && !hk.has(d)) out.push(d);
     }
-    return { scope, range: { from, to, asOf: to < today ? to : today, workdays } };
+    return out;
+  }
+
+  /** The caller's scope, narrowed to a department and / or location. */
+  narrow(scope: Prisma.EmployeeWhereInput, q: FilterQueryDto = {}): Prisma.EmployeeWhereInput {
+    const parts: Prisma.EmployeeWhereInput[] = [scope];
+    if (q.departmentId) parts.push({ departmentId: q.departmentId });
+    if (q.locationId) parts.push({ locationId: q.locationId });
+    return parts.length === 1 ? scope : { AND: parts };
+  }
+
+  /** A month (default this one) or an explicit from / to, never past today, at most a year. */
+  period(today: string, q: { month?: string; from?: string; to?: string }): { fromKey: string; toKey: string; month: string | null } {
+    if (q.from || q.to) {
+      const fromKey = q.from ?? `${today.slice(0, 7)}-01`;
+      const toKey = q.to && q.to < today ? q.to : today;
+      if (fromKey > toKey) throw new BadRequestException('“From” must be before “to”');
+      if (toKey > addDays(fromKey, 366)) throw new BadRequestException('Pick at most a year');
+      return { fromKey, toKey, month: null };
+    }
+    const month = q.month ?? today.slice(0, 7);
+    if (month > today.slice(0, 7)) throw new BadRequestException('Pick this month or an earlier one');
+    return { fromKey: `${month}-01`, toKey: this.monthEnd(month) < today ? this.monthEnd(month) : today, month };
+  }
+
+  /** Late check-ins per weekday, Monday … Friday. */
+  async lateByWeekday(companyId: string, scope: Prisma.EmployeeWhereInput, fromKey: string, toKey: string): Promise<number[]> {
+    const rows = await this.prisma.attendanceRecord.groupBy({
+      by: ['date'],
+      where: { companyId, date: { gte: dateFromKey(fromKey), lte: dateFromKey(toKey) }, lateMinutes: { gt: 0 }, employee: scope },
+      _count: { _all: true },
+    });
+    const out = [0, 0, 0, 0, 0];
+    for (const r of rows) {
+      const wd = r.date.getUTCDay();
+      if (wd >= 1 && wd <= 5) out[wd - 1]! += r._count._all;
+    }
+    return out;
+  }
+
+  /** Days left this year per leave type, and who has a lot left (15+ days of one type). */
+  async leaveBalances(companyId: string, scope: Prisma.EmployeeWhereInput, year: number) {
+    const rows = await this.prisma.leaveBalance.findMany({
+      where: { companyId, year, employee: { AND: [scope, { employmentStatus: { not: EmploymentStatus.TERMINATED } }] } },
+      select: { employeeId: true, allocated: true, carriedForward: true, adjusted: true, usedDays: true, pendingDays: true, leaveType: { select: { id: true, name: true, code: true, isPaid: true } } },
+    });
+    const byType = new Map<string, { type: { id: string; name: string; code: string }; entitledDays: number; leftDays: number }>();
+    const plenty = new Map<string, { employeeId: string; days: number; type: string }>();
+    for (const r of rows) {
+      const entitled = r.allocated + r.carriedForward + r.adjusted;
+      const left = Math.max(0, entitled - r.usedDays - r.pendingDays);
+      const cur = byType.get(r.leaveType.id) ?? { type: { id: r.leaveType.id, name: r.leaveType.name, code: r.leaveType.code }, entitledDays: 0, leftDays: 0 };
+      cur.entitledDays += entitled;
+      cur.leftDays += left;
+      byType.set(r.leaveType.id, cur);
+      if (left >= 15 && (plenty.get(r.employeeId)?.days ?? 0) < left) plenty.set(r.employeeId, { employeeId: r.employeeId, days: left, type: r.leaveType.name });
+    }
+    const names = await this.names([...plenty.keys()]);
+    const round = (n: number) => Math.round(n * 10) / 10;
+    return {
+      year,
+      byType: [...byType.values()].filter((t) => t.entitledDays > 0).map((t) => ({ ...t, entitledDays: round(t.entitledDays), leftDays: round(t.leftDays) })).sort((a, b) => b.entitledDays - a.entitledDays),
+      plentyLeft: [...plenty.values()].sort((a, b) => b.days - a.days).slice(0, 20).map((p) => ({ employee: names.get(p.employeeId) ?? null, days: round(p.days), type: p.type })),
+    };
   }
 
   /** On the payroll on a date: joined by then, and not yet left. */
-  private employedOn(companyId: string, date: Date): Prisma.EmployeeWhereInput {
+  employedOn(companyId: string, date: Date): Prisma.EmployeeWhereInput {
     return {
       companyId,
       joiningDate: { lte: date },
@@ -390,7 +610,7 @@ export class ReportsService {
     };
   }
 
-  private async names(ids: string[]) {
+  async names(ids: string[]) {
     const rows = await this.prisma.employee.findMany({ where: { id: { in: [...new Set(ids)] } }, select: { id: true, employeeId: true, firstName: true, lastName: true, avatarUrl: true } });
     return new Map(rows.map((r) => [r.id, r]));
   }
@@ -399,13 +619,13 @@ export class ReportsService {
     return `${Number(key.slice(0, 4)) - years}${key.slice(4)}`;
   }
 
-  private addMonths(ym: string, n: number) {
+  addMonths(ym: string, n: number) {
     const d = new Date(`${ym}-01T00:00:00Z`);
     d.setUTCMonth(d.getUTCMonth() + n);
     return d.toISOString().slice(0, 7);
   }
 
-  private monthEnd(ym: string) {
+  monthEnd(ym: string) {
     return addDays(`${this.addMonths(ym, 1)}-01`, -1);
   }
 

@@ -8,6 +8,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { MaintenanceService } from './maintenance.service';
 import { SystemService } from './system.service';
+import { Risky } from '../account/reauth.guard';
 
 // ============================================================
 // Super Admin → System
@@ -172,6 +173,7 @@ export class SystemController {
     return this.system.getMaintenance();
   }
 
+  @Risky()
   @Put('maintenance')
   @Audit('system:maintenance:update', 'platform')
   setMaintenance(@Body() dto: MaintenanceDto, @CurrentUser() user: JwtPayload) {

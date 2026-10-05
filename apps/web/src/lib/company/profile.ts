@@ -2,6 +2,7 @@
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { LIVE } from '@/lib/live';
 import { orgKeys } from '@/lib/company/org';
 
 // ============================================================
@@ -105,9 +106,58 @@ export interface Spotlight {
   holidays: Array<{ id: string; name: string; date: string; isOptional: boolean }>;
 }
 
+/** Today, as everyone sees it (never the leave type or reason). */
+export type TodayStatus = 'in' | 'wfh' | 'away' | 'out' | 'not_in' | 'off';
+export interface Today {
+  status: TodayStatus;
+  since: string | null;
+}
+
+export interface DirectoryPerson extends PersonBasic {
+  reportingManager: { id: string; firstName: string; lastName: string } | null;
+  joiningDate?: string;
+  today?: Today;
+  flags?: { birthdayToday: boolean; newJoinerDays: number | null; anniversaryYears: number | null };
+}
+
 export interface DirectoryPage {
-  data: Array<PersonBasic & { reportingManager: { id: string; firstName: string; lastName: string } | null }>;
-  meta: { total: number; page: number; limit: number; totalPages: number };
+  data: DirectoryPerson[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    /** Quick-chip counts (whole match, before the status / group filter) */
+    counts?: Record<TodayStatus | 'everyone' | 'new' | 'mine', number>;
+    /** First letters that have someone (A–Z rail) */
+    letters?: string[];
+  };
+}
+
+export interface PeopleHighlights {
+  date: string;
+  workingDay: boolean;
+  holiday: string | null;
+  total: number;
+  counts: Record<TodayStatus, number>;
+  away: PersonBasic[];
+  newJoiners: Array<PersonBasic & { joiningDate: string }>;
+  birthdays: Array<PersonBasic & { date: string; inDays: number }>;
+}
+
+export interface PersonCard extends PersonBasic {
+  joiningDate: string;
+  today: Today;
+  reportingManager: PersonBasic | null;
+  subordinates: PersonBasic[];
+  directReportCount: number;
+  teammates: PersonBasic[];
+  teammateCount: number;
+  /** MM-DD (never the year) */
+  birthday: string | null;
+  anniversary: { date: string; years: number };
+  kudos: { total: number; thisMonth: number };
+  thisWeek: Array<{ date: string; day: 'in' | 'wfh' | 'away' | 'off' | 'none' | 'later' }>;
 }
 
 export const DOCUMENT_CATEGORIES: Record<string, string> = {
@@ -161,7 +211,7 @@ export function useSpotlight(enabled = true) {
   return useQuery({ queryKey: profileKeys.spotlight, queryFn: async () => unwrap<Spotlight>(await api.get('/people/spotlight')), enabled, staleTime: 5 * 60_000 });
 }
 
-export function useDirectory(q: { search?: string; departmentId?: string; page?: number; limit?: number }, enabled = true) {
+export function useDirectory(q: { search?: string; departmentId?: string; locationId?: string; status?: TodayStatus; group?: 'new' | 'mine'; sort?: 'name' | 'joined'; letter?: string; page?: number; limit?: number }, enabled = true) {
   return useQuery({
     queryKey: profileKeys.directory(q),
     queryFn: async () => {
@@ -170,7 +220,17 @@ export function useDirectory(q: { search?: string; departmentId?: string; page?:
     },
     placeholderData: keepPreviousData,
     enabled,
+    ...LIVE,
   });
+}
+
+export function usePeopleHighlights(enabled = true) {
+  // Who's in changes through the day
+  return useQuery({ queryKey: ['people', 'highlights'], queryFn: async () => (await api.get('/people/highlights')).data.data as PeopleHighlights, enabled, ...LIVE });
+}
+
+export function usePersonCard(id: string | null) {
+  return useQuery({ queryKey: ['people', 'card', id], queryFn: async () => (await api.get(`/people/${id}/card`)).data.data as PersonCard, enabled: Boolean(id), ...LIVE });
 }
 
 // ─── Mutations ──────────────────────────────────────────────

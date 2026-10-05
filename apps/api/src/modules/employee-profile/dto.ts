@@ -103,6 +103,14 @@ export class UploadDocumentDto {
 export class DirectoryQueryDto {
   @IsOptional() @Transform(blankToNull) @IsString() @MaxLength(100) search?: string;
   @IsOptional() @IsUUID() departmentId?: string;
+  @IsOptional() @IsUUID() locationId?: string;
+  /** Today: in · wfh · away · out · not_in · off */
+  @IsOptional() @IsIn(['in', 'wfh', 'away', 'out', 'not_in', 'off']) status?: 'in' | 'wfh' | 'away' | 'out' | 'not_in' | 'off';
+  /** new = joined in the last 30 days · mine = your manager, teammates and the people you lead */
+  @IsOptional() @IsIn(['new', 'mine']) group?: 'new' | 'mine';
+  @IsOptional() @IsIn(['name', 'joined']) sort?: 'name' | 'joined';
+  /** First letter of the first name (A–Z rail) */
+  @IsOptional() @Matches(/^[A-Za-z]$/) letter?: string;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
-  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(200) limit?: number;
 }

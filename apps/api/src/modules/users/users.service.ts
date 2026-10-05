@@ -132,6 +132,9 @@ export class UsersService {
         ...(dto.density && { density: dto.density }),
         ...(dto.textSize && { textSize: dto.textSize }),
         ...(dto.reduceMotion !== undefined && { reduceMotion: dto.reduceMotion }),
+        ...(dto.notifyNewDevice !== undefined && { notifyNewDevice: dto.notifyNewDevice }),
+        ...(dto.idleTimeoutMinutes !== undefined && { idleTimeoutMinutes: dto.idleTimeoutMinutes }),
+        ...(dto.reauthForRisky !== undefined && { reauthForRisky: dto.reauthForRisky }),
         ...personal,
       },
       create: {
@@ -151,6 +154,9 @@ export class UsersService {
         density: dto.density || 'theme',
         textSize: dto.textSize || 'theme',
         reduceMotion: dto.reduceMotion ?? false,
+        notifyNewDevice: dto.notifyNewDevice ?? true,
+        idleTimeoutMinutes: dto.idleTimeoutMinutes ?? null,
+        reauthForRisky: dto.reauthForRisky ?? false,
       },
     });
   }

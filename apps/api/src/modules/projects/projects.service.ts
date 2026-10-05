@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { EmploymentStatus, Prisma, ProjectRole, ProjectStatus } from '@prisma/client';
+import { EmploymentStatus, Prisma, ProjectRole, ProjectStatus, ProjectType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { dateFromKey, isValidTimeZone, keyFromDate, localDateKey } from '../attendance/time-zone';
 import { allocationOn, peakAllocation, type Span } from './allocation';
@@ -18,6 +18,7 @@ const MEMBER_SELECT = {
   id: true,
   role: true,
   allocation: true,
+  billed: true,
   nightShift: true,
   startDate: true,
   endDate: true,
@@ -122,16 +123,17 @@ export class ProjectsService {
     try {
       const p = await this.prisma.project.create({
         data: { ...this.projectData(dto), companyId, createdById: userId },
-        select: { id: true },
+        select: { id: true, type: true },
       });
+      await this.event(companyId, p.id, userId, 'created', `created the project (${p.type === ProjectType.CLIENT ? 'client — billable' : 'internal — investment'})`);
       return this.get(companyId, p.id);
     } catch (err) {
       throw this.duplicateCode(err, dto.code);
     }
   }
 
-  async update(companyId: string, id: string, dto: SaveProjectDto) {
-    await this.exists(companyId, id);
+  async update(companyId: string, id: string, dto: SaveProjectDto, actorUserId: string | null = null) {
+    const before = await this.exists(companyId, id);
     this.assertDates(dto.startDate, dto.endDate ?? null, 'The project');
     // Assignments must still fit inside the project's dates
     const outside = await this.prisma.projectMember.count({
@@ -149,6 +151,13 @@ export class ProjectsService {
     } catch (err) {
       throw this.duplicateCode(err, dto.code);
     }
+    // Type changes are kept: past months keep the type they had (billable reports)
+    if (dto.type && dto.type !== before.type) {
+      await this.event(companyId, id, actorUserId, 'type', `changed the project to ${dto.type === ProjectType.CLIENT ? 'client (billable)' : 'internal (investment)'}`, dto.type);
+    }
+    if (dto.status && dto.status !== before.status) {
+      await this.event(companyId, id, actorUserId, 'status', `set the status to ${dto.status.toLowerCase().replace('_', ' ')}`);
+    }
     return this.get(companyId, id);
   }
 
@@ -158,6 +167,8 @@ export class ProjectsService {
       code: dto.code,
       description: dto.description ?? null,
       clientName: dto.clientName ?? null,
+      ...(dto.type && { type: dto.type }),
+      ...(dto.color !== undefined && { color: dto.color }),
       status: dto.status ?? ProjectStatus.ACTIVE,
       startDate: dateFromKey(dto.startDate),
       endDate: dto.endDate ? dateFromKey(dto.endDate) : null,
@@ -166,15 +177,27 @@ export class ProjectsService {
 
   // ─── Members ───────────────────────────────────────────────
 
-  async addMember(companyId: string, projectId: string, dto: SaveMemberDto) {
-    return this.saveMember(companyId, projectId, null, dto);
+  async addMember(companyId: string, projectId: string, dto: SaveMemberDto, actorUserId: string | null = null) {
+    return this.saveMember(companyId, projectId, null, dto, actorUserId);
   }
 
-  async updateMember(companyId: string, projectId: string, memberId: string, dto: SaveMemberDto) {
-    return this.saveMember(companyId, projectId, memberId, dto);
+  async updateMember(companyId: string, projectId: string, memberId: string, dto: SaveMemberDto, actorUserId: string | null = null) {
+    return this.saveMember(companyId, projectId, memberId, dto, actorUserId);
   }
 
-  private async saveMember(companyId: string, projectId: string, memberId: string | null, dto: SaveMemberDto) {
+  /** PMO: does the client pay for this person on this project? */
+  async setBilled(companyId: string, projectId: string, memberId: string, billed: boolean, actorUserId: string | null) {
+    await this.exists(companyId, projectId);
+    const m = await this.prisma.projectMember.findFirst({ where: { id: memberId, projectId }, select: { id: true, billed: true, employee: { select: { firstName: true, lastName: true } } } });
+    if (!m) throw new NotFoundException('Assignment not found');
+    if (m.billed !== billed) {
+      await this.prisma.projectMember.update({ where: { id: memberId }, data: { billed } });
+      await this.event(companyId, projectId, actorUserId, 'member_updated', `marked ${m.employee.firstName} ${m.employee.lastName} as ${billed ? 'billed to the client' : 'not billed (shadow / trainee)'}`);
+    }
+    return { id: memberId, billed };
+  }
+
+  private async saveMember(companyId: string, projectId: string, memberId: string | null, dto: SaveMemberDto, actorUserId: string | null = null) {
     const project = await this.exists(companyId, projectId);
     const existing = memberId ? await this.prisma.projectMember.findFirst({ where: { id: memberId, projectId }, select: { id: true, employeeId: true, role: true } }) : null;
     if (memberId && !existing) throw new NotFoundException('Assignment not found');
@@ -227,6 +250,7 @@ export class ProjectsService {
         role: dto.role,
         leadEmployeeId: lead,
         allocation: dto.allocation,
+        ...(dto.billed !== undefined && { billed: dto.billed }),
         ...(dto.nightShift !== undefined && { nightShift: dto.nightShift }),
         startDate: dateFromKey(dto.startDate),
         endDate: end ? dateFromKey(end) : null,
@@ -241,11 +265,20 @@ export class ProjectsService {
         unassigned = (await tx.projectMember.updateMany({ where: { projectId, leadEmployeeId: dto.employeeId }, data: { leadEmployeeId: null } })).count;
       }
       const row = await tx.projectMember.findUniqueOrThrow({ where: { id: saved.id }, select: MEMBER_SELECT });
+      await tx.projectEvent.create({
+        data: {
+          companyId, projectId, actorUserId,
+          kind: memberId ? 'member_updated' : 'member_added',
+          text: memberId
+            ? `updated ${row.employee.firstName} ${row.employee.lastName}: ${ROLE_LABEL[row.role]} · ${row.allocation}%`
+            : `added ${row.employee.firstName} ${row.employee.lastName} as ${ROLE_LABEL[row.role]} · ${row.allocation}%`,
+        },
+      });
       return { ...this.presentMember(row, await this.todayKey(companyId)), projectId, unassignedMembers: unassigned };
     });
   }
 
-  async removeMember(companyId: string, projectId: string, memberId: string) {
+  async removeMember(companyId: string, projectId: string, memberId: string, actorUserId: string | null = null) {
     await this.exists(companyId, projectId);
     const m = await this.prisma.projectMember.findFirst({ where: { id: memberId, projectId }, select: { id: true, employeeId: true, role: true, employee: { select: { firstName: true, lastName: true } } } });
     if (!m) throw new NotFoundException('Assignment not found');
@@ -256,6 +289,7 @@ export class ProjectsService {
         if (!stillLeads) unassigned = (await tx.projectMember.updateMany({ where: { projectId, leadEmployeeId: m.employeeId }, data: { leadEmployeeId: null } })).count;
       }
       await tx.projectMember.delete({ where: { id: m.id } });
+      await tx.projectEvent.create({ data: { companyId, projectId, actorUserId, kind: 'member_removed', text: `removed ${m.employee.firstName} ${m.employee.lastName}` } });
       return { id: m.id, projectId, employee: m.employee, unassignedMembers: unassigned };
     });
   }
@@ -332,9 +366,13 @@ export class ProjectsService {
   }
 
   private async exists(companyId: string, id: string) {
-    const p = await this.prisma.project.findFirst({ where: { id, companyId }, select: { id: true, startDate: true, endDate: true, status: true } });
+    const p = await this.prisma.project.findFirst({ where: { id, companyId }, select: { id: true, startDate: true, endDate: true, status: true, type: true } });
     if (!p) throw new NotFoundException('Project not found');
     return p;
+  }
+
+  private async event(companyId: string, projectId: string, actorUserId: string | null, kind: string, text: string, value?: string) {
+    await this.prisma.projectEvent.create({ data: { companyId, projectId, actorUserId, kind, text, value: value ?? null } });
   }
 
   private duplicateCode(err: unknown, code: string): unknown {

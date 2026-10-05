@@ -1,10 +1,12 @@
-import { Injectable } from '@nestjs/common';
-import { EmploymentStatus, Prisma } from '@prisma/client';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { EmploymentStatus, LeaveStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import type { AccessContext } from '../access/access.types';
 import { ProfileService } from './profile.service';
 import type { DirectoryQueryDto } from './dto';
-import { dateFromKey, isValidTimeZone, localDateKey } from '../attendance/time-zone';
+import { addDays, dateFromKey, isValidTimeZone, keyFromDate, localDateKey } from '../attendance/time-zone';
+import { dayContext, statusesOn, weekKeys } from './people-today';
+import { wordsWhere } from '../../common/word-search';
 
 /** What any colleague may see about anyone — no personal data. */
 const BASIC = {
@@ -20,6 +22,8 @@ const BASIC = {
 } satisfies Prisma.EmployeeSelect;
 
 const SPOTLIGHT_DAYS = 30;
+/** "New" in the directory: joined in the last 30 days */
+const NEW_JOINER_DAYS = 30;
 const DAY = 86_400_000;
 
 @Injectable()
@@ -54,35 +58,195 @@ export class PeopleService {
     return { employee: { ...rest, directReportCount: _count.subordinates }, completion: await this.profile.completion(employee.id) };
   }
 
-  /** Company directory: everyone current, basic details only. */
-  async directory(companyId: string, query: DirectoryQueryDto) {
+  /** The caller's team: their manager, people with the same manager, and the people they lead. */
+  private async myTeam(companyId: string, access: AccessContext): Promise<Set<string>> {
+    const me = access.employee?.id;
+    if (!me) return new Set();
+    const self = await this.prisma.employee.findFirst({ where: { id: me, companyId }, select: { reportingManagerId: true } });
+    const rows = await this.prisma.employee.findMany({
+      where: {
+        companyId,
+        employmentStatus: { not: EmploymentStatus.TERMINATED },
+        OR: [{ reportingManagerId: me }, ...(self?.reportingManagerId ? [{ reportingManagerId: self.reportingManagerId }, { id: self.reportingManagerId }] : [])],
+      },
+      select: { id: true },
+    });
+    return new Set(rows.map((r) => r.id).filter((id) => id !== me));
+  }
+
+  /**
+   * Company directory: everyone current, basic details only — plus today's
+   * status (in / from home / away / checked out / not in yet / off) and small
+   * celebrations. Quick-chip counts come back with every page.
+   */
+  async directory(companyId: string, query: DirectoryQueryDto, access?: AccessContext) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 24;
+    const ctx = await dayContext(this.prisma, companyId);
     const where: Prisma.EmployeeWhereInput = {
       companyId,
       employmentStatus: { not: EmploymentStatus.TERMINATED },
+      joiningDate: { lte: ctx.today },
       ...(query.departmentId && { departmentId: query.departmentId }),
-      ...(query.search && {
-        OR: [
-          { firstName: { contains: query.search, mode: 'insensitive' } },
-          { lastName: { contains: query.search, mode: 'insensitive' } },
-          { email: { contains: query.search, mode: 'insensitive' } },
-          { employeeId: { contains: query.search, mode: 'insensitive' } },
-          { designation: { name: { contains: query.search, mode: 'insensitive' } } },
-        ],
-      }),
+      ...(query.locationId && { locationId: query.locationId }),
+      // Every word must match a field: "aadhya bose", "bose aadhya", "aadhya engineering"
+      ...wordsWhere(query.search, (w): Prisma.EmployeeWhereInput[] => [
+        { firstName: { contains: w, mode: 'insensitive' as const } },
+        { lastName: { contains: w, mode: 'insensitive' as const } },
+        { email: { contains: w, mode: 'insensitive' as const } },
+        { employeeId: { contains: w, mode: 'insensitive' as const } },
+        { designation: { name: { contains: w, mode: 'insensitive' as const } } },
+        { department: { name: { contains: w, mode: 'insensitive' as const } } },
+      ]),
     };
-    const [data, total] = await Promise.all([
-      this.prisma.employee.findMany({
-        where,
-        select: { ...BASIC, reportingManager: { select: { id: true, firstName: true, lastName: true } } },
-        orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      this.prisma.employee.count({ where }),
+    // Everyone matching the search / team / location, light — chips and filters work on this
+    const base = await this.prisma.employee.findMany({ where, select: { id: true, firstName: true, lastName: true, joiningDate: true, dateOfBirth: true } });
+    const ids = base.map((b) => b.id);
+    const [statuses, team] = await Promise.all([statusesOn(this.prisma, companyId, ids, ctx), access ? this.myTeam(companyId, access) : Promise.resolve(new Set<string>())]);
+    const newSince = addDays(ctx.todayKey, -NEW_JOINER_DAYS);
+    const isNew = (b: (typeof base)[number]) => keyFromDate(b.joiningDate) >= newSince;
+
+    const counts = {
+      everyone: base.length,
+      in: 0,
+      wfh: 0,
+      away: 0,
+      out: 0,
+      not_in: 0,
+      off: 0,
+      new: base.filter(isNew).length,
+      mine: base.filter((b) => team.has(b.id)).length,
+    };
+    for (const t of statuses.values()) counts[t.status]++;
+
+    let list = base;
+    if (query.group === 'new') list = list.filter(isNew);
+    if (query.group === 'mine') list = list.filter((b) => team.has(b.id));
+    if (query.status) list = list.filter((b) => statuses.get(b.id)?.status === query.status);
+    list = [...list].sort((a, b) =>
+      query.sort === 'joined'
+        ? b.joiningDate.getTime() - a.joiningDate.getTime()
+        : a.firstName.localeCompare(b.firstName) || a.lastName.localeCompare(b.lastName),
+    );
+    // Letters that have someone (A–Z rail) — before the letter itself is applied
+    const letters = [...new Set(list.map((b) => b.firstName.charAt(0).toUpperCase()))].sort();
+    if (query.letter) list = list.filter((b) => b.firstName.charAt(0).toUpperCase() === query.letter!.toUpperCase());
+    const total = list.length;
+    const pageIds = list.slice((page - 1) * limit, page * limit).map((b) => b.id);
+    const rows = pageIds.length
+      ? await this.prisma.employee.findMany({ where: { id: { in: pageIds } }, select: { ...BASIC, joiningDate: true, dateOfBirth: true, reportingManager: { select: { id: true, firstName: true, lastName: true } } } })
+      : [];
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    const md = ctx.todayKey.slice(5);
+    const data = pageIds
+      .map((id) => byId.get(id)!)
+      .filter(Boolean)
+      .map(({ dateOfBirth, joiningDate, ...p }) => {
+        const joined = keyFromDate(joiningDate);
+        const years = Number(ctx.todayKey.slice(0, 4)) - Number(joined.slice(0, 4));
+        const today = statuses.get(p.id) ?? { status: 'not_in' as const, since: null };
+        return {
+          ...p,
+          joiningDate: joined,
+          today,
+          flags: {
+            birthdayToday: Boolean(dateOfBirth && monthDay(dateOfBirth) === md),
+            newJoinerDays: joined >= newSince ? Math.round((ctx.today.getTime() - joiningDate.getTime()) / DAY) : null,
+            anniversaryYears: joined.slice(5) === md && years >= 1 ? years : null,
+          },
+        };
+      });
+    // Chip counts and letters ride in meta, so the response stays the usual { data, meta } list
+    return { data, meta: { total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)), counts, letters } };
+  }
+
+  /** The strip above the directory: new this month, birthdays, who's in today. */
+  async highlights(companyId: string) {
+    const ctx = await dayContext(this.prisma, companyId);
+    const people = await this.prisma.employee.findMany({
+      where: { companyId, employmentStatus: { not: EmploymentStatus.TERMINATED }, joiningDate: { lte: ctx.today } },
+      select: { ...BASIC, joiningDate: true, dateOfBirth: true },
+    });
+    const statuses = await statusesOn(this.prisma, companyId, people.map((p) => p.id), ctx);
+    const counts = { in: 0, wfh: 0, away: 0, out: 0, not_in: 0, off: 0 };
+    for (const t of statuses.values()) counts[t.status]++;
+    const newSince = addDays(ctx.todayKey, -NEW_JOINER_DAYS);
+    const strip = ({ joiningDate: _j, dateOfBirth: _d, ...p }: (typeof people)[number]) => p;
+    const week = Array.from({ length: 7 }, (_, i) => addDays(ctx.todayKey, i).slice(5));
+    const birthdays = people
+      .filter((p) => p.dateOfBirth && week.includes(monthDay(p.dateOfBirth)))
+      .map((p) => ({ ...strip(p), date: monthDay(p.dateOfBirth!), inDays: week.indexOf(monthDay(p.dateOfBirth!)) }))
+      .sort((a, b) => a.inDays - b.inDays);
+    return {
+      date: ctx.todayKey,
+      workingDay: ctx.workingDay,
+      holiday: ctx.holiday,
+      total: people.length,
+      counts,
+      away: people.filter((p) => statuses.get(p.id)?.status === 'away').slice(0, 8).map(strip),
+      newJoiners: people
+        .filter((p) => keyFromDate(p.joiningDate) >= newSince)
+        .sort((a, b) => b.joiningDate.getTime() - a.joiningDate.getTime())
+        .slice(0, 8)
+        .map((p) => ({ ...strip(p), joiningDate: keyFromDate(p.joiningDate) })),
+      birthdays,
+    };
+  }
+
+  /** Quick look: today, reporting line, people they lead, teammates, birthday, anniversary, kudos, this week. */
+  async card(companyId: string, employeeId: string) {
+    const ctx = await dayContext(this.prisma, companyId);
+    const e = await this.prisma.employee.findFirst({
+      where: { id: employeeId, companyId, employmentStatus: { not: EmploymentStatus.TERMINATED } },
+      select: {
+        ...BASIC,
+        joiningDate: true,
+        dateOfBirth: true,
+        departmentId: true,
+        reportingManager: { select: BASIC },
+        subordinates: { where: { employmentStatus: { not: EmploymentStatus.TERMINATED } }, select: BASIC, orderBy: { firstName: 'asc' }, take: 12 },
+        _count: { select: { subordinates: { where: { employmentStatus: { not: EmploymentStatus.TERMINATED } } } } },
+      },
+    });
+    if (!e) throw new NotFoundException('Person not found');
+    const monthStart = dateFromKey(`${ctx.todayKey.slice(0, 7)}-01`);
+    const week = weekKeys(ctx.todayKey);
+    const [teammates, teammateCount, kudosTotal, kudosMonth, statuses, weekRecords, weekLeave, weekHolidays] = await Promise.all([
+      e.departmentId
+        ? this.prisma.employee.findMany({ where: { companyId, departmentId: e.departmentId, id: { not: e.id }, employmentStatus: { not: EmploymentStatus.TERMINATED }, joiningDate: { lte: ctx.today } }, select: BASIC, orderBy: { firstName: 'asc' }, take: 8 })
+        : Promise.resolve([]),
+      e.departmentId ? this.prisma.employee.count({ where: { companyId, departmentId: e.departmentId, id: { not: e.id }, employmentStatus: { not: EmploymentStatus.TERMINATED }, joiningDate: { lte: ctx.today } } }) : Promise.resolve(0),
+      this.prisma.kudosRecipient.count({ where: { employeeId: e.id, kudos: { deletedAt: null } } }),
+      this.prisma.kudosRecipient.count({ where: { employeeId: e.id, kudos: { deletedAt: null, createdAt: { gte: monthStart } } } }),
+      statusesOn(this.prisma, companyId, [e.id], ctx),
+      this.prisma.attendanceRecord.findMany({ where: { companyId, employeeId: e.id, date: { gte: dateFromKey(week[0]!), lte: dateFromKey(week[4]!) } }, select: { date: true, status: true, checkIn: true } }),
+      this.prisma.leaveRequest.findMany({ where: { companyId, employeeId: e.id, status: LeaveStatus.APPROVED, startDate: { lte: dateFromKey(week[4]!) }, endDate: { gte: dateFromKey(week[0]!) } }, select: { startDate: true, endDate: true, leaveType: { select: { category: true } } } }),
+      this.prisma.publicHoliday.findMany({ where: { companyId, isOptional: false, date: { gte: dateFromKey(week[0]!), lte: dateFromKey(week[4]!) } }, select: { date: true } }),
     ]);
-    return { data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
+    const holidayKeys = new Set(weekHolidays.map((h) => keyFromDate(h.date)));
+    // Each weekday: in / wfh / away / off (holiday) / none (no record yet) / later (future)
+    const thisWeek = week.map((k) => {
+      const d = dateFromKey(k);
+      const l = weekLeave.find((x) => x.startDate <= d && x.endDate >= d);
+      const r = weekRecords.find((x) => keyFromDate(x.date) === k);
+      const day = holidayKeys.has(k) ? 'off' : l ? (l.leaveType.category === 'WORK_FROM_HOME' ? 'wfh' : 'away') : r?.status === 'WORK_FROM_HOME' ? 'wfh' : r?.checkIn ? 'in' : k > ctx.todayKey ? 'later' : 'none';
+      return { date: k, day };
+    });
+    const joined = keyFromDate(e.joiningDate);
+    const nextAnniv = nextOccurrence(e.joiningDate, ctx.today);
+    const { _count, dateOfBirth, joiningDate: _j, departmentId: _dep, ...rest } = e;
+    return {
+      ...rest,
+      joiningDate: joined,
+      today: statuses.get(e.id) ?? { status: 'not_in', since: null },
+      directReportCount: _count.subordinates,
+      teammates,
+      teammateCount,
+      birthday: dateOfBirth ? monthDay(dateOfBirth) : null,
+      anniversary: { date: keyFromDate(nextAnniv), years: nextAnniv.getUTCFullYear() - e.joiningDate.getUTCFullYear() },
+      kudos: { total: kudosTotal, thisMonth: kudosMonth },
+      thisWeek,
+    };
   }
 
   /**

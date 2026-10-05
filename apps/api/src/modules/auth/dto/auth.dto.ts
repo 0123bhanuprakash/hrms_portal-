@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsIn, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 
 /** Same rules as the web forms (@hrms/types strongPassword). */
 function IsStrongPassword(): PropertyDecorator {
@@ -113,4 +113,9 @@ export class ChangePasswordDto {
   @IsString()
   @IsStrongPassword()
   new_password!: string;
+
+  @ApiPropertyOptional({ description: 'Sign out the other devices (default true)' })
+  @IsOptional()
+  @IsBoolean()
+  sign_out_others?: boolean;
 }

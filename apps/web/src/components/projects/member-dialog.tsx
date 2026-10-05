@@ -16,15 +16,17 @@ interface Form {
   leadEmployeeId: string;
   allocation: number;
   nightShift: boolean;
+  billed: boolean;
   startDate: string;
   endDate: string;
 }
 
 /** Assign someone (or edit an assignment): role, team lead, allocation % with live free capacity. */
-export function MemberDialog({ project, value, onClose }: { project: ProjectDetail; value: Assignment | 'new' | null; onClose: () => void }) {
+export function MemberDialog({ project, value, onClose, preset }: { project: ProjectDetail; value: Assignment | 'new' | null; onClose: () => void; preset?: { employeeId: string; allocation?: number; startDate?: string } }) {
   const save = useSaveMember(project.id);
   const chart = useOrgChart();
-  const [f, setF] = useState<Form>({ employeeId: '', role: 'MEMBER', leadEmployeeId: '', allocation: 100, nightShift: false, startDate: project.startDate, endDate: project.endDate ?? '' });
+  const [f, setF] = useState<Form>({ employeeId: '', role: 'MEMBER', leadEmployeeId: '', allocation: 100, nightShift: false, billed: true, startDate: project.startDate, endDate: project.endDate ?? '' });
+  const client = (project as ProjectDetail & { type?: string }).type === 'CLIENT';
   const [error, setError] = useState<string | null>(null);
   const editing = value && value !== 'new' ? value : null;
 
@@ -34,10 +36,13 @@ export function MemberDialog({ project, value, onClose }: { project: ProjectDeta
     const start = project.today > project.startDate ? project.today : project.startDate;
     setF(
       editing
-        ? { employeeId: editing.employee.id, role: editing.role, leadEmployeeId: editing.lead?.id ?? '', allocation: editing.allocation, nightShift: Boolean(editing.nightShift), startDate: editing.startDate, endDate: editing.endDate ?? '' }
-        : { employeeId: '', role: 'MEMBER', leadEmployeeId: '', allocation: 100, nightShift: false, startDate: start, endDate: project.endDate ?? '' },
+        ? { employeeId: editing.employee.id, role: editing.role, leadEmployeeId: editing.lead?.id ?? '', allocation: editing.allocation, nightShift: Boolean(editing.nightShift), billed: editing.billed ?? true, startDate: editing.startDate, endDate: editing.endDate ?? '' }
+        : {
+            employeeId: preset?.employeeId ?? '', role: 'MEMBER', leadEmployeeId: '', allocation: preset?.allocation ?? 100, nightShift: false, billed: true,
+            startDate: preset?.startDate && preset.startDate > start ? preset.startDate : start, endDate: project.endDate ?? '',
+          },
     );
-  }, [value, editing, project]);
+  }, [value, editing, project, preset]);
 
   // Free capacity for the chosen dates (this assignment excluded when editing)
   const capacity = useCapacity(f.employeeId || undefined, { from: f.startDate, to: f.endDate || null, excludeMemberId: editing?.id }, Boolean(value && f.employeeId && f.startDate));
@@ -66,6 +71,7 @@ export function MemberDialog({ project, value, onClose }: { project: ProjectDeta
         leadEmployeeId: f.role === 'MEMBER' ? f.leadEmployeeId || null : null,
         allocation: Number(f.allocation),
         nightShift: f.nightShift,
+        ...(client && { billed: f.billed }),
         startDate: f.startDate,
         endDate: f.endDate || null,
       });
@@ -126,6 +132,12 @@ export function MemberDialog({ project, value, onClose }: { project: ProjectDeta
             <span className="text-sm text-muted-foreground">%</span>
           </div>
         </Field>
+        {client && (
+          <label className="flex items-start gap-2 text-sm sm:col-span-2">
+            <input type="checkbox" className="mt-0.5 accent-[hsl(var(--primary))]" checked={f.billed} onChange={(e) => set('billed', e.target.checked)} />
+            <span><span className="font-medium">Billed to the client</span><span className="block text-xs text-muted-foreground">Untick for shadows, trainees or backups the client doesn’t pay for — their time counts as investment.</span></span>
+          </label>
+        )}
         <label className="flex items-start gap-2 text-sm sm:col-span-2">
           <input type="checkbox" className="mt-0.5 accent-[hsl(var(--primary))]" checked={f.nightShift} onChange={(e) => set('nightShift', e.target.checked)} />
           <span>

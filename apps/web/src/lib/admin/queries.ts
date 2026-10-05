@@ -204,7 +204,7 @@ export function useSendAdminPasswordReset(companyId: string) {
 export function useChangePassword() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { current_password: string; new_password: string }) =>
+    mutationFn: (input: { current_password: string; new_password: string; sign_out_others?: boolean }) =>
       unwrap<{ message: string; revokedSessions: number }>(api.post('/auth/change-password', input)),
     onSuccess: () => qc.invalidateQueries({ queryKey: adminKeys.sessions() }),
   });

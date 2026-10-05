@@ -10,8 +10,11 @@ import { mondayOf } from './timesheets.service';
 const EVERY_MS = 60 * 60_000;
 /** Local hour on Monday from which last week's reminder goes out */
 const REMIND_FROM_HOUR = 10;
+/** Local hour from which "you haven't logged today" goes out */
+const DAILY_FROM_HOUR = 18;
 
 /**
+ * Evenings: people on a project who checked in today but logged nothing yet.
  * On Monday mornings (company time zone) reminds people who were on a
  * project last week but haven't submitted that week's timesheet. Once per
  * person and week; in-app only.
@@ -51,6 +54,7 @@ export class TimesheetRemindersService implements OnApplicationBootstrap, OnModu
         const tz = c.settings?.timezone && isValidTimeZone(c.settings.timezone) ? c.settings.timezone : 'Asia/Kolkata';
         const today = localDateKey(now, tz);
         const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', hourCycle: 'h23' }).format(now));
+        if (hour >= DAILY_FROM_HOUR) sent += await this.daily(c.id, today);
         if (mondayOf(today) !== today || hour < REMIND_FROM_HOUR) continue;
         const week = addDays(today, -7);
         const weekEnd = addDays(week, 6);
@@ -70,7 +74,7 @@ export class TimesheetRemindersService implements OnApplicationBootstrap, OnModu
           userIds: people.map((p) => p.userId),
           type: 'timesheet.reminder',
           title: `Submit your timesheet for ${dateRange(week, weekEnd)}`,
-          body: 'Log your hours per project and submit the week for approval.',
+          body: 'Log what you worked on and send it for approval.',
           link: `/app/timesheets?week=${week}`,
           actionLabel: 'Fill timesheet',
           email: false,
@@ -81,5 +85,33 @@ export class TimesheetRemindersService implements OnApplicationBootstrap, OnModu
       this.logger.error('Timesheet reminders failed', err as Error);
     }
     return sent;
+  }
+
+  /** Checked in today, on a project, nothing logged for today. Once a day. */
+  private async daily(companyId: string, today: string): Promise<number> {
+    const day = dateFromKey(today);
+    const people = await this.prisma.employee.findMany({
+      where: {
+        companyId,
+        employmentStatus: { not: EmploymentStatus.TERMINATED },
+        user: { status: UserStatus.ACTIVE },
+        attendanceRecords: { some: { date: day, checkIn: { not: null } } },
+        projectMembers: { some: { startDate: { lte: day }, OR: [{ endDate: null }, { endDate: { gte: day } }] } },
+        timesheets: { none: { entries: { some: { date: day, minutes: { gt: 0 } } } } },
+      },
+      select: { userId: true },
+    });
+    if (!people.length) return 0;
+    return this.notifications.notify({
+      companyId,
+      userIds: people.map((p) => p.userId),
+      type: 'timesheet.reminder',
+      title: 'Log today’s work before you go',
+      body: 'Drag on your timesheet to add what you worked on today.',
+      link: '/app/timesheets',
+      actionLabel: 'Log time',
+      email: false,
+      dedupeKey: `timesheet-today:${today}`,
+    });
   }
 }

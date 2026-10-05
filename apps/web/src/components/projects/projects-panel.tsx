@@ -5,13 +5,15 @@ import Link from 'next/link';
 import { FolderKanban } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader } from '@/components/ui/feedback';
-import { PROJECT_STATUS, type Capacity } from '@/lib/company/projects';
+import { PROJECT_STATUS, useBilling, type Capacity } from '@/lib/company/projects';
+import { BillingBar } from '@/components/projects/project-ui';
 import { formatDate } from '@/lib/format';
 
 /** Someone's projects: allocation bar + each assignment (role, lead, %). */
 export function ProjectsPanel({ capacity }: { capacity: Capacity }) {
   const current = capacity.assignments.filter((a) => a.active || a.upcoming);
   const pct = Math.min(100, capacity.allocatedToday);
+  const billing = useBilling(capacity.employeeId);
   return (
     <Card>
       <CardHeader icon={<FolderKanban />} title="Projects" description={`${capacity.allocatedToday}% allocated today · ${Math.max(0, 100 - capacity.allocatedToday)}% free`} />
@@ -19,6 +21,7 @@ export function ProjectsPanel({ capacity }: { capacity: Capacity }) {
         <div className="h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Allocation today">
           <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
         </div>
+        {billing.data && <BillingBar {...billing.data} className="mt-3" />}
       </div>
       {current.length ? (
         <ul className="divide-y divide-border px-5 py-2">

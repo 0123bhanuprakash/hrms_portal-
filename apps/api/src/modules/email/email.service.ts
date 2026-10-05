@@ -45,6 +45,8 @@ export interface SendEmailOptions {
   from?: string;
   /** Internal: re-sending a logged failure (the log row is updated instead of adding one) */
   retryOf?: string;
+  /** Small files (e.g. a report CSV) */
+  attachments?: Array<{ filename: string; content: string; contentType?: string }>;
 }
 
 type EmailProvider = 'console' | 'smtp' | 'resend';
@@ -186,6 +188,7 @@ export class EmailService implements OnModuleInit {
           to: opts.to,
           subject: opts.subject,
           html: opts.html,
+          ...(opts.attachments?.length && { attachments: opts.attachments.map((a) => ({ filename: a.filename, content: Buffer.from(a.content, 'utf8') })) }),
         });
       } else if (this.nodemailerTransport) {
         await this.nodemailerTransport.sendMail({
@@ -193,6 +196,7 @@ export class EmailService implements OnModuleInit {
           to: opts.to,
           subject: opts.subject,
           html: opts.html,
+          ...(opts.attachments?.length && { attachments: opts.attachments.map((a) => ({ filename: a.filename, content: a.content, contentType: a.contentType })) }),
         });
         this.lastCheck = { state: 'ok', detail: `Last email delivered via ${this.smtpLabel}`, checkedAt: new Date() };
       }
@@ -258,6 +262,9 @@ export class EmailService implements OnModuleInit {
     const slug = opts.subject.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 50);
     const file = path.join(this.outputDir, `${stamp}_${slug}.html`);
     await fs.writeFile(file, opts.html, 'utf8');
+    for (const att of opts.attachments ?? []) {
+      await fs.writeFile(path.join(this.outputDir, `${stamp}_${slug}_${att.filename.replace(/[^a-zA-Z0-9._-]/g, '_')}`), att.content, 'utf8');
+    }
 
     const links = [...opts.html.matchAll(/href="(https?:\/\/[^"]+)"/g)]
       .map((m) => m[1]!.replace(/&amp;/g, '&'))

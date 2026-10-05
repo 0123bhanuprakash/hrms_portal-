@@ -15,10 +15,13 @@ export function AvatarEditor({
   employeeId,
   person,
   canEdit,
+  avatarClassName,
 }: {
   employeeId: string;
   person: { firstName: string; lastName: string; avatarUrl: string | null };
   canEdit: boolean;
+  /** Size / shape override for the photo */
+  avatarClassName?: string;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const upload = useUploadAvatar(employeeId);
@@ -60,7 +63,7 @@ export function AvatarEditor({
 
   return (
     <div className="relative shrink-0">
-      <PersonAvatar person={person} size="xl" />
+      <PersonAvatar person={person} size="xl" className={avatarClassName} />
       {canEdit && (
         <>
           <input

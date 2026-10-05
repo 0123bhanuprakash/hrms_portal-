@@ -39,6 +39,7 @@ import { ThemeStyle } from '@/components/theme/theme-style';
 import { DisplayPreferences } from '@/components/preferences/display-preferences';
 import { ClassicNav, CollapsibleNav, FloatingNav, RailNav, type SidebarGroup } from '@/components/layout/sidebar-nav';
 import { usePreferences, type UserPreferences } from '@/lib/company/queries';
+import { ReauthDialog, useIdleSignOut } from '@/components/super-admin/account-guards';
 import { resolveTheme } from '@/lib/theme/presets';
 import type { MenuStyle, ThemeTokens } from '@hrms/types';
 import { getApiErrorMessage } from '@/lib/errors';
@@ -227,6 +228,11 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
     onGo: (href: string) => router.push(href),
   }).current;
   useShortcuts(shortcutHandlers);
+  // Profile & security → Sign me out after inactivity
+  useIdleSignOut(allowed ? prefs.data?.idleTimeoutMinutes : null, () => {
+    logout();
+    router.replace('/platform/login?reason=idle');
+  });
 
   if (!allowed) {
     return (
@@ -416,6 +422,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
         </main>
       </div>
 
+      <ReauthDialog />
       <CommandMenu open={commandOpen} onOpenChange={setCommandOpen} onLogout={handleLogout} onShowShortcuts={() => setHelpOpen(true)} />
       <ShortcutsDialog open={helpOpen} onOpenChange={setHelpOpen} />
     </div>

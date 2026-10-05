@@ -6,6 +6,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { CompanyLimitsDto, FeatureOverrideDto, PlanImpactDto, SavePlanDto, SetCompanyPlanDto } from './dto';
 import { PlanInsightsService } from './plan-insights.service';
 import { PlansService } from './plans.service';
+import { Risky } from '../account/reauth.guard';
 
 // ============================================================
 // Super Admin — plans and per-company features
@@ -74,12 +75,14 @@ export class PlansController {
     return this.plans.create(dto);
   }
 
+  @Risky()
   @Put('plans/:id')
   @Audit('plan:update', 'plan')
   update(@Param('id', uuid) id: string, @Body() dto: SavePlanDto) {
     return this.plans.update(id, dto);
   }
 
+  @Risky()
   @Delete('plans/:id')
   @HttpCode(HttpStatus.OK)
   @Audit('plan:delete', 'plan')
@@ -93,12 +96,14 @@ export class PlansController {
     return this.plans.describeCompany(id);
   }
 
+  @Risky()
   @Put('companies/:id/plan')
   @Audit('company:plan:update', 'company', { companyIdParam: 'id' })
   setPlan(@Param('id', uuid) id: string, @Body() dto: SetCompanyPlanDto) {
     return this.plans.setCompanyPlan(id, dto.planId);
   }
 
+  @Risky()
   @Put('companies/:id/features/:feature')
   @Audit('company:feature:update', 'company', { companyIdParam: 'id' })
   setOverride(
@@ -110,6 +115,7 @@ export class PlansController {
     return this.plans.setOverride(id, feature, user.sub, dto);
   }
 
+  @Risky()
   @Delete('companies/:id/features/:feature')
   @HttpCode(HttpStatus.OK)
   @Audit('company:feature:reset', 'company', { companyIdParam: 'id' })
@@ -117,6 +123,7 @@ export class PlansController {
     return this.plans.clearOverride(id, feature);
   }
 
+  @Risky()
   @Put('companies/:id/limits')
   @Audit('company:limits:update', 'company', { companyIdParam: 'id' })
   setLimits(@Param('id', uuid) id: string, @Body() dto: CompanyLimitsDto) {

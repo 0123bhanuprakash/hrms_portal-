@@ -1,13 +1,17 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ArrowLeft, Briefcase, SearchX, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, EmptyState, ErrorState, Skeleton } from '@/components/ui/feedback';
 import { PersonRow } from '@/components/profile/person-avatar';
-import { ProfileHeader, prettyEnum } from '@/components/profile/profile-header';
+import { prettyEnum } from '@/components/profile/profile-header';
+import { EmployeeHero, EmploymentHistory, ProfileChecklist } from '@/components/employees/employee-hero';
+import { ChecklistDrawer, LifecycleDialog, type LifecycleAction } from '@/components/employees/lifecycle-ui';
+import { EmployeeDrawer } from '@/components/employees/employee-drawer';
+import type { Employee } from '@/lib/company/org';
 import { ProfileTabs } from '@/components/profile/profile-tabs';
 import { InfoGrid } from '@/components/profile/personal-section';
 import { useAccess } from '@/lib/access/use-access';
@@ -21,6 +25,9 @@ export default function EmployeeDetailPage() {
   const record = useEmployeeRecord(id);
   const me = useMyCard();
   const isSelf = me.data?.employee?.id === id;
+  const [action, setAction] = useState<LifecycleAction | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [checklist, setChecklist] = useState<'joining' | 'exit' | null>(null);
 
   const back = (
     <Button variant="ghost" size="sm" asChild>
@@ -39,20 +46,35 @@ export default function EmployeeDetailPage() {
   }
   const e = record.data!;
   // Photo: self, or an employee.edit scope wider than "own" (the API re-checks the exact reach)
-  const canEditPhoto = isSelf || (can('employee.edit') && scopeOf('employee.edit') !== 'own');
+  const canEditOthers = can('employee.edit') && scopeOf('employee.edit') !== 'own';
+  const canEditPhoto = isSelf || canEditOthers;
 
   return (
     <div className="space-y-4">
       <div>{back}</div>
-      <ProfileHeader person={e} canEditPhoto={canEditPhoto} />
-      <ProfileTabs employeeId={e.id} isSelf={isSelf} overview={<Overview e={e} />} />
+      <EmployeeHero
+        e={e}
+        perms={{ canEditPhoto, canEdit: can('employee.edit') && (isSelf || canEditOthers), canEditOthers, seesExits: can('employee.terminate'), isSelf }}
+        onAction={setAction}
+        onEdit={() => setEditing(true)}
+        onChecklist={setChecklist}
+      />
+      <ProfileTabs employeeId={e.id} isSelf={isSelf} overview={<Overview e={e} canRemind={canEditOthers && !isSelf} />} />
+      <LifecycleDialog action={action} person={action ? e : null} onClose={() => setAction(null)} />
+      <EmployeeDrawer state={editing ? { mode: 'edit', employee: e as unknown as Employee } : null} onClose={() => setEditing(false)} ownOnly={scopeOf('employee.edit') === 'own'} />
+      {checklist && <ChecklistDrawer person={e} kind={checklist} onClose={() => setChecklist(null)} />}
     </div>
   );
 }
 
-function Overview({ e }: { e: EmployeeRecord }) {
+function Overview({ e, canRemind }: { e: EmployeeRecord; canRemind: boolean }) {
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+      <div className="space-y-4">
+        <EmploymentHistory employeeId={e.id} />
+      </div>
+      <div className="space-y-4">
+      <ProfileChecklist employeeId={e.id} firstName={e.firstName} canRemind={canRemind} />
       <Card>
         <CardHeader icon={<Briefcase />} title="Employment" />
         <InfoGrid
@@ -63,7 +85,7 @@ function Overview({ e }: { e: EmployeeRecord }) {
             ['Employment type', prettyEnum(e.employmentType)],
             ['Status', prettyEnum(e.employmentStatus)],
             ['Joined', formatDate(e.joiningDate)],
-            ['Confirmed', e.confirmationDate && formatDate(e.confirmationDate)],
+            [e.employmentStatus === 'PROBATION' ? 'Probation ends' : 'Confirmed', e.confirmationDate && formatDate(e.confirmationDate)],
             ['Work phone', e.phone],
             ['Last sign-in', e.user?.lastLoginAt ? formatRelative(e.user.lastLoginAt) : 'Never'],
           ]}
@@ -100,6 +122,7 @@ function Overview({ e }: { e: EmployeeRecord }) {
           </div>
         </div>
       </Card>
+      </div>
     </div>
   );
 }

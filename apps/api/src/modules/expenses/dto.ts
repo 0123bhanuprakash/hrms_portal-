@@ -30,6 +30,8 @@ export class SaveCategoryDto {
   @IsOptional() @IsNumber({ maxDecimalPlaces: 2 }) @Min(1) @Max(10_000_000) maxPerItem?: number | null;
   /** Rupees; 0 = always, null = never */
   @IsOptional() @IsNumber({ maxDecimalPlaces: 2 }) @Min(0) @Max(10_000_000) receiptRequiredAbove?: number | null;
+  /** Rupees per person per calendar month; null = no cap */
+  @IsOptional() @IsNumber({ maxDecimalPlaces: 2 }) @Min(1) @Max(10_000_000) maxPerMonth?: number | null;
   @IsOptional() @IsBoolean() isActive?: boolean;
   @IsOptional() @IsInt() @Min(0) @Max(1000) sortOrder?: number;
 }
@@ -45,6 +47,8 @@ export class SaveItemDto {
   @Matches(DATE, { message: 'date must be YYYY-MM-DD' }) date!: string;
   @Transform(trim) @IsString() @MinLength(2) @MaxLength(300) description!: string;
   @Transform(rupees) @IsNumber({ maxDecimalPlaces: 2 }, { message: 'Amount must be a number with up to 2 decimals' }) @Min(1) @Max(10_000_000) amount!: number;
+  /** Needed when the item goes over the category limit or monthly cap */
+  @IsOptional() @Transform(blankToNull) @IsString() @MinLength(3, { message: 'Say why it goes over the limit' }) @MaxLength(300) overLimitReason?: string | null;
   /** Edit: drop the current receipt */
   @IsOptional() @Transform(({ obj }) => obj.removeReceipt === true || obj.removeReceipt === 'true') @IsBoolean() removeReceipt?: boolean;
 }
@@ -56,10 +60,25 @@ export class AdjustmentDto {
   @Transform(trim) @IsString() @MinLength(3) @MaxLength(300) reason!: string;
 }
 
+export class RejectItemDto {
+  @IsUUID() itemId!: string;
+  @Transform(trim) @IsString() @MinLength(3) @MaxLength(300) reason!: string;
+}
+
 export class DecideClaimDto {
   @IsOptional() @Transform(blankToNull) @IsString() @MaxLength(500) note?: string | null;
+  /** Any step: don't pay these items at all (the rest is approved) */
+  @IsOptional() @IsArray() @ArrayMaxSize(100) @ValidateNested({ each: true }) @Type(() => RejectItemDto) rejectItems?: RejectItemDto[];
   /** Finance / HR only: pay less for some items */
   @IsOptional() @IsArray() @ArrayMaxSize(100) @ValidateNested({ each: true }) @Type(() => AdjustmentDto) adjustments?: AdjustmentDto[];
+}
+
+export class BulkApproveDto {
+  @IsArray() @ArrayMaxSize(50) @IsUUID('all', { each: true }) ids!: string[];
+}
+
+export class CommentDto {
+  @Transform(trim) @IsString() @MinLength(2) @MaxLength(1000) body!: string;
 }
 
 export class RejectClaimDto {
@@ -77,6 +96,8 @@ export class ClaimQueryDto {
   @IsOptional() @IsIn(['DRAFT', 'PENDING', 'APPROVED', 'PAID', 'REJECTED', 'CANCELLED']) status?: string;
   @IsOptional() @IsUUID() employeeId?: string;
   @IsOptional() @IsUUID() projectId?: string;
+  /** mine: needs_me (sent back or a question to answer) · review: asked (my open questions) */
+  @IsOptional() @IsIn(['needs_me', 'asked']) filter?: 'needs_me' | 'asked';
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit?: number;
 }

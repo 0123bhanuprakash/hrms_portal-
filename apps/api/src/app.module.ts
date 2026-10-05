@@ -4,6 +4,8 @@ import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { UserThrottlerGuard } from './common/guards/user-throttler.guard';
 import { SystemModule } from './modules/system/system.module';
+import { AccountModule } from './modules/account/account.module';
+import { ReauthGuard } from './modules/account/reauth.guard';
 import { MaintenanceGuard } from './modules/system/maintenance.guard';
 import { RequestMetricsMiddleware } from './modules/system/request-metrics.middleware';
 import { PasswordChangeGuard } from './common';
@@ -104,6 +106,7 @@ import { AppController } from './app.controller';
     UserManagementModule, // Company Admin: users, roles & permissions
     PlansModule,          // Super Admin: plans & per-company features
     SystemModule,         // Super Admin: system health, email log, maintenance
+    AccountModule,        // Profile & security, platform admins, confirm-password
     OrgModule,            // Org levels, org chart, reporting lines
     DelegationsModule,    // Approval delegation
   ],
@@ -143,6 +146,12 @@ import { AppController } from './app.controller';
     {
       provide: APP_GUARD,
       useClass: SuperAdminGuard,
+    },
+
+    // ── Confirm password before risky changes — enforces @Risky() ─
+    {
+      provide: APP_GUARD,
+      useClass: ReauthGuard,
     },
 
     // ── Global Audit interceptor — writes @Audit() entries ─

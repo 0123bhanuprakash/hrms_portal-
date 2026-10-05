@@ -48,4 +48,19 @@ export class UpdatePreferencesDto {
   @ValidateIf((_, v) => v !== null && v !== undefined)
   @IsIn([...MENU_STYLES], { message: 'menuStyle must be classic, rail, floating or collapsible' })
   menuStyle?: string | null;
+
+  /** Super Admins: email me when a new device signs in */
+  @IsOptional()
+  @IsBoolean()
+  notifyNewDevice?: boolean;
+
+  /** Sign out after this many idle minutes; null = never */
+  @ValidateIf((_, v) => v !== null && v !== undefined)
+  @IsIn([15, 30, 60, 120], { message: 'idleTimeoutMinutes must be 15, 30, 60 or 120' })
+  idleTimeoutMinutes?: number | null;
+
+  /** Super Admins: ask for the password again before risky changes */
+  @IsOptional()
+  @IsBoolean()
+  reauthForRisky?: boolean;
 }

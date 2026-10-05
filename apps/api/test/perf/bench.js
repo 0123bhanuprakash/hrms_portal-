@@ -134,7 +134,6 @@ function plan(ids) {
     ],
     pmo: [
       ['reports: utilisation', '/reports/utilisation'],
-      ['hours by project', `/timesheets/report?from=${addDays(today, -56)}&to=${today}`],
       ['projects', '/projects'],
       ['project detail', `/projects/${ids.someProject}`],
     ],

@@ -159,6 +159,8 @@ enum AnnouncementAudience {
   COMPANY
   DEPARTMENTS
   LOCATIONS
+  /// Everyone below teamManagerId in the reporting line
+  TEAM
 }
 
 enum ProjectStatus {
@@ -166,6 +168,12 @@ enum ProjectStatus {
   ACTIVE
   ON_HOLD
   COMPLETED
+}
+
+/// Client work is billable; company work is an investment
+enum ProjectType {
+  CLIENT
+  INTERNAL
 }
 
 enum ProjectRole {
@@ -280,6 +288,8 @@ model User {
   companyId          String?    @map("company_id") @db.Uuid
   emailVerifiedAt    DateTime?  @map("email_verified_at")
   lastLoginAt        DateTime?  @map("last_login_at")
+  /// When the password was last set (age shown on Profile & security)
+  passwordChangedAt  DateTime?  @map("password_changed_at")
   loginAttempts      Int        @default(0) @map("login_attempts")
   lockedUntil        DateTime?  @map("locked_until")
   createdAt          DateTime   @default(now()) @map("created_at")
@@ -307,12 +317,12 @@ model User {
   announcementReads   AnnouncementRead[]
   kudosGiven          Kudos[]                    @relation("KudosFrom")
   kudosReactions      KudosReaction[]
+  companyNotes        CompanyNote[]
+  activityDays        UserActivityDay[]
 
   @@index([companyId])
   @@index([email])
   @@map("users")
-  companyNotes  CompanyNote[]
-  activityDays  UserActivityDay[]
 }
 
 /// Per-user UI and notification preferences
@@ -336,6 +346,12 @@ model UserPreferences {
   menuStyle            String? @map("menu_style")
   /// Small view settings that follow the person (chart styles, open menu sections, calendar views…)
   uiState              Json    @default("{}") @map("ui_state")
+  /// Super Admins: email me when a new device signs in
+  notifyNewDevice      Boolean @default(true) @map("notify_new_device")
+  /// Sign out after this many idle minutes (null = never)
+  idleTimeoutMinutes   Int?    @map("idle_timeout_minutes")
+  /// Super Admins: ask for the password again before risky changes
+  reauthForRisky       Boolean @default(false) @map("reauth_for_risky")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -385,6 +401,8 @@ model EmailVerificationToken {
   tokenHash  String    @unique @map("token_hash")
   expiresAt  DateTime  @map("expires_at")
   verifiedAt DateTime? @map("verified_at")
+  /// Set for an email change: the address being confirmed (the link goes there)
+  newEmail   String?   @map("new_email")
   createdAt  DateTime  @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -438,10 +456,11 @@ model Company {
   payslips        Payslip[]
   importJobs      ImportJob[]
   auditLogs       AuditLog[]
+  tags            CompanyTag[]
+  notes           CompanyNote[]
+  reportSchedules ReportSchedule[]
 
   @@map("companies")
-  tags         CompanyTag[]
-  notes        CompanyNote[]
 }
 
 /// Operational configuration per company
@@ -678,6 +697,8 @@ model Employee {
   terminationDate    DateTime?        @map("termination_date") @db.Date
   /// Opt-in: show day + month of birth to colleagues (Spotlight)
   showBirthday       Boolean          @default(false) @map("show_birthday")
+  /// Why they are leaving / left: resigned | let_go | contract_end | retired | other
+  exitReason         String?          @map("exit_reason")
   createdAt          DateTime         @default(now()) @map("created_at")
   updatedAt          DateTime         @updatedAt @map("updated_at")
 
@@ -696,6 +717,7 @@ model Employee {
   leaveBalances     LeaveBalance[]
   leaveRequests     LeaveRequest[]
   attendanceRecords AttendanceRecord[]
+  timesheetEntries  TimesheetEntry[]           @relation("TimesheetEntryEmployee")
   regularisations   AttendanceRegularisation[]
   kudosReceived     KudosRecipient[]
   expenseClaims     ExpenseClaim[]
@@ -705,7 +727,10 @@ model Employee {
   timesheets        Timesheet[]
   projectMembers    ProjectMember[]            @relation("ProjectMemberEmployee")
   ledMembers        ProjectMember[]            @relation("ProjectMemberLead")
+  ownedMilestones   ProjectMilestone[]         @relation("MilestoneOwner")
   payslips          Payslip[]
+  events            EmployeeEvent[]
+  checklistItems    EmployeeChecklistItem[]
   /// Closure table: everyone above me (incl. myself at depth 0)
   ancestors         EmployeeHierarchy[]        @relation("HierarchyDescendant")
   /// Closure table: everyone below me (incl. myself at depth 0)
@@ -804,6 +829,47 @@ model EmployeeStatutory {
 
   @@index([companyId])
   @@map("employee_statutory")
+}
+
+/// Employment history — one row per change to someone's job (who made it, when)
+model EmployeeEvent {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId   String    @map("company_id") @db.Uuid
+  employeeId  String    @map("employee_id") @db.Uuid
+  /// joined | manager | department | title | location | type | status | confirmed | probation_extended | notice | notice_withdrawn | left
+  kind        String
+  fromLabel   String?   @map("from_label")
+  toLabel     String?   @map("to_label")
+  /// When the change takes effect (last day, new probation end…)
+  effectiveOn DateTime? @map("effective_on") @db.Date
+  note        String?
+  /// Null = done by the system (e.g. import)
+  actorUserId String?   @map("actor_user_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, employeeId, createdAt])
+  @@map("employee_events")
+}
+
+/// Joining / exit checklist items for one person
+model EmployeeChecklistItem {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId    String    @map("company_id") @db.Uuid
+  employeeId   String    @map("employee_id") @db.Uuid
+  /// joining | exit
+  kind         String
+  label        String
+  sortOrder    Int       @default(0) @map("sort_order")
+  doneAt       DateTime? @map("done_at")
+  doneByUserId String?   @map("done_by_user_id") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId, kind])
+  @@map("employee_checklist_items")
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1446,6 +1512,10 @@ model Project {
   name        String
   description String?
   clientName  String?       @map("client_name")
+  /// Set by the PMO: client (billable) or internal (investment)
+  type        ProjectType   @default(INTERNAL)
+  /// Card / timeline colour (#RRGGBB)
+  color       String?
   status      ProjectStatus @default(ACTIVE)
   startDate   DateTime      @map("start_date") @db.Date
   endDate     DateTime?     @map("end_date") @db.Date
@@ -1456,6 +1526,10 @@ model Project {
   company          Company          @relation(fields: [companyId], references: [id])
   members          ProjectMember[]
   timesheetEntries TimesheetEntry[]
+  milestones       ProjectMilestone[]
+  updates          ProjectUpdate[]
+  openRoles        ProjectOpenRole[]
+  events           ProjectEvent[]
 
   @@unique([companyId, code])
   @@index([companyId, status])
@@ -1470,6 +1544,8 @@ model ProjectMember {
   projectId      String      @map("project_id") @db.Uuid
   employeeId     String      @map("employee_id") @db.Uuid
   role           ProjectRole @default(MEMBER)
+  /// Client projects: false for people the client doesn't pay for (shadows, trainees)
+  billed         Boolean     @default(true)
   /// Members only: their team lead in this project (a TEAM_LEAD of the same project)
   leadEmployeeId String?     @map("lead_employee_id") @db.Uuid
   /// 1–100
@@ -1488,6 +1564,78 @@ model ProjectMember {
   @@index([companyId, employeeId])
   @@index([projectId])
   @@map("project_members")
+}
+
+/// A checkpoint on a project's road (UAT sign-off, go-live…)
+model ProjectMilestone {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId       String    @map("company_id") @db.Uuid
+  projectId       String    @map("project_id") @db.Uuid
+  title           String
+  dueDate         DateTime  @map("due_date") @db.Date
+  ownerEmployeeId String?   @map("owner_employee_id") @db.Uuid
+  doneAt          DateTime? @map("done_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  project Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  owner   Employee? @relation("MilestoneOwner", fields: [ownerEmployeeId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, dueDate])
+  @@index([companyId, dueDate])
+  @@map("project_milestones")
+}
+
+/// The PM's weekly word on how it's going (health + a short note)
+model ProjectUpdate {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId    String   @map("company_id") @db.Uuid
+  projectId    String   @map("project_id") @db.Uuid
+  authorUserId String?  @map("author_user_id") @db.Uuid
+  /// on_track | at_risk | off_track
+  health       String
+  note         String
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt])
+  @@map("project_updates")
+}
+
+/// A seat the project needs filled (e.g. QA engineer · 50% from 1 Nov)
+model ProjectOpenRole {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId  String    @map("company_id") @db.Uuid
+  projectId  String    @map("project_id") @db.Uuid
+  title      String
+  allocation Int
+  fromDate   DateTime  @map("from_date") @db.Date
+  filledAt   DateTime? @map("filled_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("project_open_roles")
+}
+
+/// Project activity: people added, milestones done, type changes…
+model ProjectEvent {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  projectId   String   @map("project_id") @db.Uuid
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  /// created | type | status | member_added | member_updated | member_removed | milestone_added | milestone_done | milestone_reopened | update | role_opened | role_filled
+  kind        String
+  text        String
+  /// type changes: the type from this moment on (CLIENT | INTERNAL)
+  value       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt])
+  @@map("project_events")
 }
 
 /// Company / department / location news
@@ -1512,11 +1660,44 @@ model Announcement {
   attachmentSize Int?                 @map("attachment_size")
   attachmentKey  String?              @map("attachment_key")
   publishedAt    DateTime             @default(now()) @map("published_at")
+  /// policy | event | celebrate | update | urgent
+  category       String               @default("update")
+  /// Cover preset (indigo, teal, sunset, sky, rose, slate) and its emoji
+  cover          String?
+  coverEmoji     String?              @map("cover_emoji")
+  /// Animated scene: confetti | diyas | sparkles | aurora | snow | balloons | fireworks | rain
+  coverScene     String?              @map("cover_scene")
+  /// 3D art piece key (megaphone, calendar, trophy…)
+  coverArt       String?              @map("cover_art")
+  /// off | gentle | lively (a one-time burst when opened)
+  coverMotion    String               @default("gentle") @map("cover_motion")
+  /// Uploaded cover: public URL, kind (image | video | lottie), focal point (0–100) and darkening (0–70)
+  coverMediaUrl  String?              @map("cover_media_url")
+  coverMediaKind String?              @map("cover_media_kind")
+  coverFocusX    Int                  @default(50) @map("cover_focus_x")
+  coverFocusY    Int                  @default(50) @map("cover_focus_y")
+  coverDim       Int                  @default(25) @map("cover_dim")
+  /// draft | scheduled | published (scheduled ones go out at publishedAt)
+  status         String               @default("published")
+  /// When the audience was told (null = not yet: draft or scheduled)
+  notifiedAt     DateTime?            @map("notified_at")
+  /// TEAM audience: the manager whose reporting line receives it
+  teamManagerId  String?              @map("team_manager_id") @db.Uuid
+  /// Confirm by this day; a reminder goes 2 days before
+  ackDueAt       DateTime?            @map("ack_due_at") @db.Date
+  ackReminderSentAt DateTime?         @map("ack_reminder_sent_at")
+  lastNudgedAt   DateTime?            @map("last_nudged_at")
+  allowReactions Boolean              @default(true) @map("allow_reactions")
+  /// Events: when and where (RSVP going / maybe)
+  eventAt        DateTime?            @map("event_at")
+  eventPlace     String?              @map("event_place")
   updatedAt      DateTime             @updatedAt @map("updated_at")
   deletedAt      DateTime?            @map("deleted_at")
 
   author User?              @relation("AnnouncementAuthor", fields: [authorId], references: [id], onDelete: SetNull)
-  reads  AnnouncementRead[]
+  reads     AnnouncementRead[]
+  reactions AnnouncementReaction[]
+  rsvps     AnnouncementRsvp[]
 
   @@index([companyId, publishedAt])
   @@map("announcements")
@@ -1533,6 +1714,43 @@ model AnnouncementRead {
 
   @@id([announcementId, userId])
   @@map("announcement_reads")
+}
+
+model AnnouncementReaction {
+  announcementId String   @map("announcement_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  emoji          String
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+
+  @@id([announcementId, userId, emoji])
+  @@map("announcement_reactions")
+}
+
+/// Event replies: going | maybe | no
+model AnnouncementRsvp {
+  announcementId String   @map("announcement_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  response       String
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+
+  @@id([announcementId, userId])
+  @@map("announcement_rsvps")
+}
+
+/// "Add my thanks" — colleagues backing someone else's kudos
+model KudosThanks {
+  kudosId   String   @map("kudos_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  kudos Kudos @relation(fields: [kudosId], references: [id], onDelete: Cascade)
+
+  @@id([kudosId, userId])
+  @@map("kudos_thanks")
 }
 
 /// Company values kudos can be tagged with (editable by HR)
@@ -1568,6 +1786,7 @@ model Kudos {
   value      KudosValue?      @relation(fields: [valueId], references: [id], onDelete: SetNull)
   recipients KudosRecipient[]
   reactions  KudosReaction[]
+  thanks     KudosThanks[]
 
   @@index([companyId, createdAt])
   @@map("kudos")
@@ -1608,6 +1827,8 @@ model ExpenseCategory {
   maxPerItemPaise           Int?     @map("max_per_item_paise")
   /// Receipt needed when an item is above this (0 = always, null = never)
   receiptRequiredAbovePaise Int?     @map("receipt_required_above_paise")
+  /// Most one person may claim in a calendar month (null = no cap); going over needs a reason
+  maxPerMonthPaise          Int?     @map("max_per_month_paise")
   isActive                  Boolean  @default(true) @map("is_active")
   sortOrder                 Int      @default(100) @map("sort_order")
   createdAt                 DateTime @default(now()) @map("created_at")
@@ -1636,12 +1857,15 @@ model ExpenseClaim {
   paidById         String?            @map("paid_by_id") @db.Uuid
   paymentDate      DateTime?          @map("payment_date") @db.Date
   paymentReference String?            @map("payment_reference")
+  /// An approver asked a question that the employee hasn't answered yet (the asker's user id)
+  questionOpenById String?            @map("question_open_by_id") @db.Uuid
   createdAt        DateTime           @default(now()) @map("created_at")
   updatedAt        DateTime           @updatedAt @map("updated_at")
 
   employee  Employee          @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   items     ExpenseItem[]
   approvals ExpenseApproval[]
+  comments  ExpenseComment[]
 
   @@index([companyId, status])
   @@index([companyId, employeeId])
@@ -1659,6 +1883,8 @@ model ExpenseItem {
   approvedPaise Int?     @map("approved_paise")
   adjustReason  String?  @map("adjust_reason")
   adjustedById  String?  @map("adjusted_by_id") @db.Uuid
+  /// Why it goes over the category limit / monthly cap (allowed, flagged to approvers)
+  overLimitReason String? @map("over_limit_reason")
   receiptKey    String?  @map("receipt_key")
   receiptName   String?  @map("receipt_name")
   receiptMime   String?  @map("receipt_mime")
@@ -1670,6 +1896,22 @@ model ExpenseItem {
 
   @@index([claimId])
   @@map("expense_items")
+}
+
+/// Questions and replies on a claim — asking doesn't send the claim back
+model ExpenseComment {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  claimId   String   @map("claim_id") @db.Uuid
+  authorId  String   @map("author_id") @db.Uuid
+  /// QUESTION (from an approver) | REPLY (from the employee)
+  kind      String
+  body      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  claim ExpenseClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@index([claimId])
+  @@map("expense_comments")
 }
 
 /// One approval step of one submission round
@@ -1931,10 +2173,33 @@ model TimesheetEntry {
   minutes     Int
   /// Row order in the week grid
   line        Int      @default(0)
+  /// Time block: minutes from midnight of `date` (end may pass 1440 for night work). Null on old grid rows.
+  startMin      Int?            @map("start_min")
+  endMin        Int?            @map("end_min")
+  /// What the person did
+  description   String?
+  /// Development, Meeting, Review…
+  workType      String?         @map("work_type")
+  /// Each block is approved on its own (by the person's lead on that project)
+  status        TimesheetStatus @default(DRAFT)
+  approverIds   String[]        @default([]) @map("approver_ids") @db.Uuid
+  approverLabel String?         @map("approver_label")
+  submittedAt   DateTime?       @map("submitted_at")
+  /// Employee's note to the approver when submitting
+  submitNote    String?         @map("submit_note")
+  decidedById   String?         @map("decided_by_id") @db.Uuid
+  onBehalfOfId  String?         @map("on_behalf_of_id") @db.Uuid
+  decidedAt     DateTime?       @map("decided_at")
+  /// Approver's note (why it was sent back)
+  decisionNote  String?         @map("decision_note")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @default(now()) @updatedAt @map("updated_at")
 
   timesheet Timesheet @relation(fields: [timesheetId], references: [id], onDelete: Cascade)
+  employee  Employee  @relation("TimesheetEntryEmployee", fields: [employeeId], references: [id], onDelete: Cascade)
   project   Project?  @relation(fields: [projectId], references: [id], onDelete: Restrict)
 
+  @@index([companyId, status])
   @@index([timesheetId])
   @@index([companyId, projectId, date])
   @@index([companyId, employeeId, date])
@@ -2044,7 +2309,44 @@ model SignInAttempt {
   success   Boolean
   userId    String?  @map("user_id") @db.Uuid
   companyId String?  @map("company_id") @db.Uuid
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
 
   @@index([at])
+  @@index([userId, at])
   @@map("sign_in_attempts")
+}
+
+/// Reports & analytics emailed on a schedule. Each recipient gets numbers for
+/// what they may see (their own report scope), worked out when it's sent.
+model ReportSchedule {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId    String    @map("company_id") @db.Uuid
+  /// Who set it up
+  ownerId      String    @map("owner_id") @db.Uuid
+  /// overview | people | attendance | utilisation
+  report       String
+  /// DAILY | WEEKLY | MONTHLY
+  frequency    String
+  /// 1 = Monday … 7 = Sunday (weekly)
+  dayOfWeek    Int?      @map("day_of_week")
+  /// 1–28 (monthly)
+  dayOfMonth   Int?      @map("day_of_month")
+  /// Local hour in the company time zone
+  hour         Int
+  recipientIds String[]  @map("recipient_ids") @db.Uuid
+  attachCsv    Boolean   @default(false) @map("attach_csv")
+  /// { departmentId?, locationId? }
+  filters      Json?
+  active       Boolean   @default(true)
+  nextRunAt    DateTime  @map("next_run_at")
+  lastSentAt   DateTime? @map("last_sent_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([active, nextRunAt])
+  @@index([companyId])
+  @@map("report_schedules")
 }

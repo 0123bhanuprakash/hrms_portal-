@@ -101,7 +101,7 @@ const D = (k) => new Date(`${k}T00:00:00Z`);
     await p.timesheet.create({
       data: {
         companyId: cid, employeeId: P.a.id, weekStart: D(wk), status: 'APPROVED', totalMinutes: 2400,
-        entries: { create: [0, 1, 2, 3, 4].map((i) => ({ companyId: cid, employeeId: P.a.id, date: D(addDays(wk, i)), projectId: apollo.id, task: 'Dev', billable: true, minutes: 480 })) },
+        entries: { create: [0, 1, 2, 3, 4].map((i) => ({ companyId: cid, employeeId: P.a.id, date: D(addDays(wk, i)), projectId: apollo.id, task: 'Dev', billable: true, minutes: 480, status: 'APPROVED' })) },
       },
     });
     await p.timesheet.create({

@@ -9,6 +9,7 @@ import { detectFileType, DOCUMENT_TYPES } from '../employee-profile/file-types';
 import { TicketCategoriesService } from './ticket-categories.service';
 import { AUTO_CLOSE_DAYS, QUEUE_LABEL, QUEUE_PERMISSION, QUEUES, dueDates } from './sla';
 import type { AssignDto, CloseDto, CreateTicketDto, MessageDto, ReopenDto, ResolveDto, SummaryQueryDto, TicketQueryDto, UpdateTicketDto } from './dto';
+import { wordsWhere } from '../../common/word-search';
 
 const FILE_MAX_BYTES = 10 * 1024 * 1024;
 const ACTIVE: TicketStatus[] = [TicketStatus.OPEN, TicketStatus.IN_PROGRESS, TicketStatus.WAITING];
@@ -90,7 +91,7 @@ export class TicketsService {
         ...(Number.isInteger(n) && n > 0 ? [{ number: n }] : []),
         { subject: { contains: q.search, mode: 'insensitive' } },
         ...(q.view === 'queue'
-          ? [{ employee: { OR: [{ firstName: { contains: q.search, mode: 'insensitive' as const } }, { lastName: { contains: q.search, mode: 'insensitive' as const } }, { employeeId: { contains: q.search, mode: 'insensitive' as const } }] } }]
+          ? [{ employee: wordsWhere(q.search, (w) => [{ firstName: { contains: w, mode: 'insensitive' as const } }, { lastName: { contains: w, mode: 'insensitive' as const } }, { employeeId: { contains: w, mode: 'insensitive' as const } }]) }]
           : []),
       ];
     }

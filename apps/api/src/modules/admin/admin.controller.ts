@@ -29,6 +29,7 @@ import {
   UpdateCompanyStatusDto,
 } from './dto/admin-company.dto';
 import { SuperAdminOnly, Audit } from '../../common';
+import { Risky } from '../account/reauth.guard';
 
 // ============================================================
 // AdminController — Super Admin platform API (/api/v1/admin/*)
@@ -117,6 +118,7 @@ export class AdminController {
   }
 
   @Audit('company:bulk:update', 'company')
+  @Risky()
   @Post('companies/bulk')
   @HttpCode(200)
   @ApiOperation({ summary: 'Change status or plan, or add / remove a tag, for several companies' })
@@ -172,6 +174,7 @@ export class AdminController {
   }
 
   @Audit('company:status:update', 'company', { companyIdParam: 'id' })
+  @Risky()
   @Patch('companies/:id/status')
   @ApiOperation({ summary: 'Set company status; non-ACTIVE blocks all its users immediately' })
   updateCompanyStatus(@Param('id', uuid) id: string, @Body() dto: UpdateCompanyStatusDto) {

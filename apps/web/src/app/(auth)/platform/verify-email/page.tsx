@@ -6,8 +6,10 @@ import { PlatformAuthShell } from '@/components/auth/auth-shells';
 import { VerifyEmailStatus } from '@/components/auth/auth-forms';
 
 function Verify() {
-  const token = useSearchParams().get('token') ?? '';
-  return <VerifyEmailStatus token={token} loginHref="/platform/login" />;
+  const params = useSearchParams();
+  const change = params.get('change');
+  const token = change ?? params.get('token') ?? '';
+  return <VerifyEmailStatus token={token} change={Boolean(change)} loginHref="/platform/login" />;
 }
 
 export default function PlatformVerifyEmailPage() {

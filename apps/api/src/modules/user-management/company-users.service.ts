@@ -18,6 +18,7 @@ import { generateTemporaryPassword, hashPassword } from '../auth/password.util';
 import { RolesService } from './roles.service';
 import { EmployeesService } from '../employees/employees.service';
 import type { InviteUserDto, QueryCompanyUsersDto, UpdateCompanyUserDto } from './dto';
+import { wordsWhere } from '../../common/word-search';
 
 const USER_SELECT = {
   id: true,
@@ -70,16 +71,13 @@ export class CompanyUsersService {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     const and: Prisma.UserWhereInput[] = [{ companyId }];
-    if (query.search?.trim()) {
-      const q = query.search.trim();
-      and.push({
-        OR: [
-          { firstName: { contains: q, mode: 'insensitive' } },
-          { lastName: { contains: q, mode: 'insensitive' } },
-          { email: { contains: q, mode: 'insensitive' } },
-        ],
-      });
-    }
+    // Every word must match a field: "priya sharma" finds Priya Sharma
+    const search = wordsWhere(query.search, (w): Prisma.UserWhereInput[] => [
+      { firstName: { contains: w, mode: 'insensitive' as const } },
+      { lastName: { contains: w, mode: 'insensitive' as const } },
+      { email: { contains: w, mode: 'insensitive' as const } },
+    ]);
+    if (search) and.push(search);
     if (query.roleId) and.push({ userRoles: { some: { roleId: query.roleId } } });
     if (query.status === 'INVITED') and.push({ status: UserStatus.ACTIVE, lastLoginAt: null });
     else if (query.status) and.push({ status: query.status });

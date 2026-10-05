@@ -11,6 +11,7 @@ export interface AuthUser {
   status: string;
   /** Signed in with a temporary password: must choose a new one before using the portal */
   mustChangePassword?: boolean;
+  avatarUrl?: string | null;
 }
 
 export interface TenantBranding {
@@ -38,6 +39,8 @@ interface AuthState {
     permissions?: string[];
   }) => void;
   setTokens: (accessToken: string, refreshToken: string) => void;
+  /** Merge changes into the signed-in person (name, photo) */
+  updateUser: (patch: Partial<AuthUser>) => void;
   setBranding: (branding: TenantBranding | null) => void;
   logout: () => void;
   hasPermission: (permission: string) => boolean;
@@ -67,6 +70,11 @@ export const useAuthStore = create<AuthState>()(
 
       setTokens: (accessToken, refreshToken) => {
         set({ accessToken, refreshToken });
+      },
+
+      updateUser: (patch) => {
+        const user = get().user;
+        if (user) set({ user: { ...user, ...patch } });
       },
 
       setBranding: (branding) => {
