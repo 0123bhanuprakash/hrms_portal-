@@ -7,9 +7,11 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   Briefcase,
   Building2,
+  ChevronLeft,
   ChevronRight,
   ChevronsUpDown,
   ImageIcon,
+  Pin,
   LayoutDashboard,
   Loader2,
   LogOut,
@@ -48,15 +50,16 @@ import {
   Timer,
   LineChart,
 } from 'lucide-react';
-import type { MenuStyle, ThemeTokens } from '@hrms/types';
+import { MENU_STYLES, type MenuStyle, type ThemeTokens } from '@hrms/types';
 import { useAuthStore } from '@/store/useAuthStore';
 import { DisplayPreferences } from '@/components/preferences/display-preferences';
 import { MaintenanceGate } from '@/components/layout/maintenance-gate';
+import { PageBackdrop } from '@/components/motion/page-backdrop';
 import { useAccess } from '@/lib/access/use-access';
 import { usePendingCorrections } from '@/lib/company/attendance';
 import { usePendingLeave } from '@/lib/company/leave';
 import { useIsApprover } from '@/lib/company/projects';
-import { useAnnouncements } from '@/lib/company/engagement';
+import { HOME_ANNOUNCEMENTS, useAnnouncements } from '@/lib/company/engagement';
 import { usePendingExpenses } from '@/lib/company/expenses';
 import { usePendingAssetRequests } from '@/lib/company/assets';
 import { useHelpdeskCounts } from '@/lib/company/helpdesk';
@@ -64,14 +67,22 @@ import { usePendingTimesheets } from '@/lib/company/timesheets';
 import { changePasswordPath, loginPathFor, useAuthHydrated, withNext } from '@/lib/auth/portal';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { NotificationBell } from '@/components/notifications/notification-bell';
+import { LiveConnection, LiveDot } from '@/components/live/live-connection';
 import { DropdownMenu } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip } from '@/components/ui/tooltip';
 import { ThemeStyle } from '@/components/theme/theme-style';
 import { companyThemeTokens, useCompanyBranding, useCompanyTheme, usePreferences, type CompanyThemeResponse, type UserPreferences } from '@/lib/company/queries';
 import { findPreset } from '@/lib/theme/presets';
-import { ClassicNav, CollapsibleNav, FloatingNav, RailNav, type SidebarGroup } from '@/components/layout/sidebar-nav';
+import { rebrandTheme } from '@/lib/theme/generate';
+import { SeasonPopup, useSeasonLook } from '@/components/season/season';
+import { A11yPrefs } from '@/components/preferences/a11y-prefs';
+import { ClassicNav, CollapsibleNav, FloatingNav, type SidebarGroup } from '@/components/layout/sidebar-nav';
+import { NavProgress, PageSkeleton, usePendingNav } from '@/components/layout/pending-nav';
+import { TreeNav, useGlideFolded, useIsDesktop, usePeekHover, usePeekPinned } from '@/components/layout/tree-nav';
 import { initials } from '@/lib/format';
 import { cn } from '@/lib/cn';
+import { BrandMedia } from '@/components/brand/brand-media';
 
 interface NavItem {
   name: string;
@@ -155,8 +166,8 @@ const NAV_GROUPS: Array<{ label: string; icon: React.ElementType; items: NavItem
     icon: LifeBuoy,
     items: [
       { name: 'My tickets', href: '/app/helpdesk', icon: LifeBuoy, exact: true, permission: 'ticket.view', feature: 'ops.helpdesk', badge: 'myTickets' },
-      { name: 'Ticket queue', href: '/app/helpdesk/queue', icon: Headset, permission: 'ticket.handle_it', anyOf: ['ticket.handle_hr', 'ticket.handle_finance'], feature: 'ops.helpdesk', badge: 'ticketQueue' },
-      { name: 'Ticket topics', href: '/app/helpdesk/categories', icon: Tags, permission: 'ticket.handle_it', anyOf: ['ticket.handle_hr', 'ticket.handle_finance'], feature: 'ops.helpdesk' },
+      { name: 'Ticket queue', href: '/app/helpdesk/queue', icon: Headset, permission: 'ticket.handle_it', anyOf: ['ticket.handle_hr', 'ticket.handle_finance', 'ticket.handle_devops'], feature: 'ops.helpdesk', badge: 'ticketQueue' },
+      { name: 'Ticket topics', href: '/app/helpdesk/categories', icon: Tags, permission: 'ticket.handle_it', anyOf: ['ticket.handle_hr', 'ticket.handle_finance', 'ticket.handle_devops', 'ticket.manage_teams'], feature: 'ops.helpdesk' },
     ],
   },
   {
@@ -168,7 +179,7 @@ const NAV_GROUPS: Array<{ label: string; icon: React.ElementType; items: NavItem
       { name: 'Attendance approvals', href: '/app/attendance/approvals', icon: ClipboardCheck, permission: 'attendance.approve', feature: 'time.attendance', orDelegated: true, badge: 'attendanceApprovals' },
       { name: 'My leave', href: '/app/leave', icon: Plane, exact: true, permission: 'leave.view', feature: 'time.leave' },
       { name: 'Leave approvals', href: '/app/leave/approvals', icon: CalendarClock, permission: 'leave.approve', feature: 'time.leave', orDelegated: true, badge: 'leaveApprovals' },
-      { name: 'Who’s off', href: '/app/leave/calendar', icon: CalendarRange, permission: 'leave.view', feature: 'time.leave', beyondOwn: true },
+      { name: 'Who’s off', href: '/app/leave/calendar', icon: CalendarRange, permission: 'leave.view', feature: 'time.leave' },
       { name: 'Holidays', href: '/app/attendance/holidays', icon: CalendarDays, permission: 'attendance.view', feature: 'time.attendance' },
       { name: 'Attendance settings', href: '/app/attendance/settings', icon: Clock, permission: 'attendance.policy', feature: 'time.attendance' },
       { name: 'Leave types', href: '/app/leave/types', icon: Tags, permission: 'leave.manage_types', feature: 'time.leave' },
@@ -188,7 +199,7 @@ const NAV_GROUPS: Array<{ label: string; icon: React.ElementType; items: NavItem
     icon: SlidersHorizontal,
     items: [
       { name: 'Branding', href: '/app/settings/branding', icon: ImageIcon, permission: 'branding.manage' },
-      { name: 'Theme', href: '/app/settings/theme', icon: Palette, permission: 'branding.manage' },
+      { name: 'Theme', href: '/app/settings/theme', icon: Palette, permission: 'branding.manage', anyOf: ['theme.seasonal'] },
       { name: 'Delegation', href: '/app/delegations', icon: ArrowRightLeft },
       { name: 'Preferences', href: '/app/settings/preferences', icon: SlidersHorizontal },
     ],
@@ -233,6 +244,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   users: 'Users',
   roles: 'Roles & permissions',
   new: 'New',
+  compare: 'Compare',
   edit: 'Edit',
   insights: 'Insights',
   planner: 'Resource planner',
@@ -250,8 +262,10 @@ function personalThemeKey(theme: CompanyThemeResponse | undefined, prefs: UserPr
 /** The menu style to show: the employee's pick when allowed, else the company default. */
 function effectiveMenuStyle(theme: CompanyThemeResponse | undefined, prefs: UserPreferences | undefined): MenuStyle {
   const rules = theme?.personalization;
-  if (rules?.personalMenuStyle && prefs?.menuStyle) return prefs.menuStyle;
-  return rules?.defaultMenuStyle ?? 'classic';
+  // Older saved values (e.g. the removed "rail") fall back to classic
+  const known = (s: MenuStyle | null | undefined) => (s && (MENU_STYLES as readonly string[]).includes(s) ? s : null);
+  if (rules?.personalMenuStyle && known(prefs?.menuStyle)) return prefs!.menuStyle!;
+  return known(rules?.defaultMenuStyle) ?? 'classic';
 }
 
 /**
@@ -277,6 +291,9 @@ function CompanyTheme({ companyId, userId }: { companyId: string | null; userId:
   const ready = Boolean(theme.data && prefs.data);
   const personal = personalThemeKey(theme.data, prefs.data);
   const tokens = ready ? (personal ? findPreset(personal)!.tokens : companyThemeTokens(theme.data)) : (cached ?? companyThemeTokens(theme.data));
+  // A seasonal theme is on for everyone (each person can switch back to their own)
+  const look = useSeasonLook();
+  const shown = React.useMemo(() => (look.applies && look.season && tokens ? rebrandTheme(tokens, look.season.colors.main) : tokens), [look.applies, look.season, tokens]);
 
   useEffect(() => {
     if (!ready || !tokens) return;
@@ -287,7 +304,7 @@ function CompanyTheme({ companyId, userId }: { companyId: string | null; userId:
     }
   }, [ready, tokens, cacheKey]);
 
-  return <ThemeStyle tokens={tokens} />;
+  return <ThemeStyle tokens={shown} />;
 }
 
 export default function CompanyPortalLayout({ children }: { children: React.ReactNode }) {
@@ -299,7 +316,8 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
   const pendingApprovals = usePendingCorrections();
   const pendingLeave = usePendingLeave();
   const isApprover = useIsApprover('leave.approve');
-  const announcements = useAnnouncements({ limit: 1 });
+  // Same request as the Home card (React Query sends it once)
+  const announcements = useAnnouncements(HOME_ANNOUNCEMENTS);
   const pendingExpenses = usePendingExpenses();
   const pendingAssets = usePendingAssetRequests();
   const tickets = useHelpdeskCounts();
@@ -309,6 +327,37 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
   const companyTheme = useCompanyTheme(hydrated ? companyId : null);
   const prefs = usePreferences();
   const menuStyle = useMenuStyle(companyTheme.data, prefs.data, user?.id);
+  // The page just clicked; shown at once while it loads
+  const pendingPath = usePendingNav(pathname);
+  const navPath = pendingPath ?? pathname;
+  // Glide (folds to icons) and Peek (icons that open on hover) — desktop only
+  const desktop = useIsDesktop();
+  const [glideFolded, setGlideFolded] = useGlideFolded();
+  const [peekPinned, setPeekPinned] = usePeekPinned();
+  const peek = usePeekHover();
+  const isGlide = menuStyle === 'glide';
+  const isPeek = menuStyle === 'peek';
+  const compact = desktop && ((isGlide && glideFolded) || (isPeek && !peekPinned && !peek.open));
+  const peekOver = desktop && isPeek && !peekPinned && peek.open;
+  const peekClose = peek.close;
+  useEffect(() => peekClose(), [pathname, peekClose]);
+  // Ctrl + \ folds / unfolds Glide
+  useEffect(() => {
+    if (!isGlide) return;
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === '\\') {
+        e.preventDefault();
+        setGlideFolded(!glideFolded);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isGlide, glideFolded, setGlideFolded]);
+  const searchMenu = () => {
+    if (isGlide) setGlideFolded(false);
+    else peek.show();
+    setTimeout(() => document.querySelector<HTMLInputElement>('[data-menu-search]')?.focus(), 80);
+  };
 
   const allowed = hydrated && isAuthenticated && Boolean(user) && Boolean(companyId) && !user?.mustChangePassword;
 
@@ -359,7 +408,6 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
       )
       .map(({ name, href, icon, exact, soon, badge }) => ({ name, href, icon, exact, soon, count: badge ? counts[badge] : undefined })),
   })).filter((g) => g.items.length);
-  const rail = menuStyle === 'rail';
 
   const handleLogout = () => {
     logout();
@@ -368,35 +416,68 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
 
   return (
     <MaintenanceGate>
-      <div className="flex min-h-screen bg-canvas text-foreground">
+      <div className="isolate flex min-h-screen bg-canvas text-foreground">
+        <PageBackdrop />
         <CompanyTheme companyId={companyId} userId={user!.id} />
         <DisplayPreferences />
+        <A11yPrefs />
+        <SeasonPopup />
         {mobileOpen && (
           <div className="fixed inset-0 z-30 bg-black/40 backdrop-blur-[2px] lg:hidden animate-in fade-in-0" onClick={() => setMobileOpen(false)} />
         )}
 
+        {/* Peek sits over the page; this keeps its room in the row */}
+        {isPeek && <div aria-hidden className="m-peek hidden shrink-0 lg:block" style={{ width: peekPinned ? 252 : 68 }} />}
+
         {/* ── Sidebar ─────────────────────────────────────── */}
         <aside
+          {...(isPeek && desktop && !peekPinned ? peek.handlers : {})}
           className={cn(
             'fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-transform duration-200 ease-out',
             'lg:sticky lg:top-0 lg:h-screen lg:translate-x-0',
-            rail && 'lg:w-[84px]',
             menuStyle === 'floating' && 'lg:top-3 lg:m-3 lg:mr-0 lg:h-[calc(100vh-1.5rem)] lg:rounded-2xl lg:border lg:shadow-card',
+            isGlide && 'm-glide lg:top-3 lg:m-3 lg:mr-0 lg:h-[calc(100vh-1.5rem)] lg:rounded-[20px] lg:border lg:shadow-[0_12px_32px_-18px_rgb(20_20_60/0.35)]',
+            isGlide && (compact ? 'lg:w-[76px]' : 'lg:w-[260px]'),
+            isPeek && 'm-peek lg:fixed lg:inset-y-0 lg:left-0',
+            isPeek && (compact ? 'lg:w-[68px]' : 'lg:w-[252px]'),
+            peekOver && 'lg:shadow-[24px_0_60px_-20px_rgb(0_0_0/0.45)]',
             mobileOpen ? 'translate-x-0' : '-translate-x-full',
           )}
         >
-          <div className={cn('flex h-14 items-center gap-2.5 px-3', rail && 'lg:justify-center lg:px-0')}>
+          {isGlide && (
+            <Tooltip content={compact ? 'Open the menu' : 'Fold to icons'} shortcut="Ctrl \" side="right">
+              <button
+                type="button"
+                onClick={() => setGlideFolded(!glideFolded)}
+                aria-label={compact ? 'Open the menu' : 'Fold the menu to icons'}
+                aria-expanded={!compact}
+                className="m-glide-handle absolute -right-3 top-[22px] z-10 hidden h-6 w-6 items-center justify-center rounded-full border border-sidebar-border bg-sidebar text-sidebar-muted shadow-card transition-colors hover:text-sidebar-active-foreground lg:flex"
+              >
+                <ChevronLeft className={cn('h-3.5 w-3.5', compact && 'rotate-180')} />
+              </button>
+            </Tooltip>
+          )}
+          <div className={cn('flex h-14 shrink-0 items-center gap-2.5 px-3', compact && 'justify-center px-0')}>
             <Link href="/app" className="flex min-w-0 items-center gap-2.5" title={companyName}>
               {branding.data?.logoUrl ? (
-                <img src={branding.data.logoUrl} alt={`${companyName} logo`} className="h-8 w-8 shrink-0 rounded-lg bg-white object-contain p-0.5" />
+                <>
+                  <span className={cn('flex h-8 w-8 shrink-0 overflow-hidden rounded-lg bg-white p-0.5', branding.data.logoDarkUrl && 'dark:hidden')}>
+                    <BrandMedia src={branding.data.logoUrl} alt={`${companyName} logo`} className="h-full w-full" />
+                  </span>
+                  {branding.data.logoDarkUrl && (
+                    <span className="hidden h-8 w-8 shrink-0 overflow-hidden rounded-lg dark:flex">
+                      <BrandMedia src={branding.data.logoDarkUrl} alt={`${companyName} logo`} className="h-full w-full" />
+                    </span>
+                  )}
+                </>
               ) : (
                 <span className="m-shine flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/75 text-xs font-bold text-primary-foreground shadow-card">
                   {initials(companyName)}
                 </span>
               )}
-              <span className={cn('min-w-0 leading-tight', rail && 'lg:hidden')}>
+              <span className={cn('min-w-0 leading-tight', compact && 'hidden')}>
                 <span className="block truncate text-sm font-semibold text-sidebar-active-foreground">{companyName}</span>
-                <span className="block truncate text-2xs text-sidebar-muted">HR workspace</span>
+                <span className="block truncate text-2xs text-sidebar-muted">{branding.data?.tagline || 'HR workspace'}</span>
               </span>
             </Link>
             <button className="ml-auto rounded-md p-1.5 hover:bg-sidebar-active lg:hidden" onClick={() => setMobileOpen(false)} aria-label="Close menu">
@@ -404,36 +485,48 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
             </button>
           </div>
 
-          {menuStyle === 'rail' ? (
-            <>
-              <ClassicNav groups={groups} pathname={pathname} className="lg:hidden" />
-              <RailNav groups={groups} pathname={pathname} className="hidden lg:flex" />
-            </>
+          {isGlide || isPeek ? (
+            <TreeNav groups={groups} pathname={navPath} compact={compact} onSearch={searchMenu} />
           ) : menuStyle === 'floating' ? (
-            <FloatingNav groups={groups} pathname={pathname} />
+            <FloatingNav groups={groups} pathname={navPath} />
           ) : menuStyle === 'collapsible' ? (
-            <CollapsibleNav groups={groups} pathname={pathname} />
+            <CollapsibleNav groups={groups} pathname={navPath} />
           ) : (
-            <ClassicNav groups={groups} pathname={pathname} />
+            <ClassicNav groups={groups} pathname={navPath} />
           )}
 
+          {isPeek && !compact && desktop && (
+            <div className="mx-2 flex items-center gap-2 border-t border-sidebar-border px-2 py-2.5 text-[13px] font-medium text-sidebar-muted">
+              <Pin className="h-3.5 w-3.5" />
+              <span className="flex-1">Keep open</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={peekPinned}
+                onClick={() => setPeekPinned(!peekPinned)}
+                className={cn('relative h-5 w-9 rounded-full transition-colors', peekPinned ? 'bg-primary' : 'bg-sidebar-border')}
+              >
+                <span className={cn('absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-[left]', peekPinned ? 'left-[18px]' : 'left-0.5')} />
+              </button>
+            </div>
+          )}
           <div className="border-t border-sidebar-border p-2">
             <DropdownMenu
               align="left"
               label={user!.email}
               trigger={() => (
                 <button
-                  className={cn('flex w-full items-center gap-2.5 rounded-md p-1.5 text-left transition-colors hover:bg-sidebar-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', rail && 'lg:justify-center')}
-                  title={rail ? fullName : undefined}
+                  className={cn('flex w-full items-center gap-2.5 rounded-md p-1.5 text-left transition-colors hover:bg-sidebar-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', compact && 'justify-center')}
+                  title={compact ? fullName : undefined}
                 >
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary-soft text-xs font-semibold text-primary-soft-foreground">
                     {initials(fullName)}
                   </span>
-                  <span className={cn('min-w-0 flex-1 leading-tight', rail && 'lg:hidden')}>
+                  <span className={cn('min-w-0 flex-1 leading-tight', compact && 'hidden')}>
                     <span className="block truncate text-[13px] font-medium text-sidebar-active-foreground">{fullName}</span>
                     <span className="block truncate text-2xs text-sidebar-muted">{user!.email}</span>
                   </span>
-                  <ChevronsUpDown className={cn('h-3.5 w-3.5 text-sidebar-muted', rail && 'lg:hidden')} />
+                  <ChevronsUpDown className={cn('h-3.5 w-3.5 text-sidebar-muted', compact && 'hidden')} />
                 </button>
               )}
               items={[
@@ -455,32 +548,41 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
               <Breadcrumbs pathname={pathname} />
             </div>
             <div className="flex items-center gap-1">
+              <LiveConnection />
+              <LiveDot className="mr-1" />
               <NotificationBell />
               <ThemeToggle />
             </div>
           </header>
 
           <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-            <div className={cn('mx-auto animate-fade-up', pathname === '/app' ? 'max-w-[1500px]' : 'max-w-6xl')} key={pathname}>
-              {/* Covering someone's approvals right now */}
-              {access?.delegations?.length ? (
-                <Link
-                  href="/app/delegations"
-                  className="mb-4 flex items-center gap-2 rounded-lg border border-success/30 bg-success-soft/40 px-3 py-2 text-sm text-foreground hover:bg-success-soft/60"
-                >
-                  <ArrowRightLeft className="h-4 w-4 shrink-0 text-success" />
-                  <span>
-                    You’re covering approvals for{' '}
-                    {access.delegations.map((d, i) => (
-                      <React.Fragment key={d.id}>
-                        {i > 0 && ', '}
-                        <b>{d.fromName}</b> until {new Date(d.until).toLocaleDateString()}
-                      </React.Fragment>
-                    ))}
-                  </span>
-                </Link>
-              ) : null}
-              {children}
+            <NavProgress active={Boolean(pendingPath)} />
+            <div className={cn('mx-auto duration-150 animate-in fade-in-0', navPath === '/app' ? 'max-w-[1500px]' : 'max-w-6xl')} key={navPath}>
+              {pendingPath ? (
+                <PageSkeleton />
+              ) : (
+                <>
+                  {/* Covering someone's approvals right now */}
+                  {access?.delegations?.length ? (
+                    <Link
+                      href="/app/delegations"
+                      className="mb-4 flex items-center gap-2 rounded-lg border border-success/30 bg-success-soft/40 px-3 py-2 text-sm text-foreground hover:bg-success-soft/60"
+                    >
+                      <ArrowRightLeft className="h-4 w-4 shrink-0 text-success" />
+                      <span>
+                        You’re covering approvals for{' '}
+                        {access.delegations.map((d, i) => (
+                          <React.Fragment key={d.id}>
+                            {i > 0 && ', '}
+                            <b>{d.fromName}</b> until {new Date(d.until).toLocaleDateString()}
+                          </React.Fragment>
+                        ))}
+                      </span>
+                    </Link>
+                  ) : null}
+                  {children}
+                </>
+              )}
             </div>
           </main>
         </div>
@@ -498,7 +600,7 @@ function useMenuStyle(theme: CompanyThemeResponse | undefined, prefs: UserPrefer
     if (!userId) return;
     try {
       if (style) localStorage.setItem(key, style);
-      else setCached(localStorage.getItem(key) as MenuStyle | null);
+      else setCached((MENU_STYLES as readonly string[]).includes(localStorage.getItem(key) ?? '') ? (localStorage.getItem(key) as MenuStyle) : null);
     } catch {
       /* storage unavailable */
     }

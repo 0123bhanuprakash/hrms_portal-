@@ -3,23 +3,27 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAccess } from '@/lib/access/use-access';
+import { isLive } from '@/lib/live/socket';
 import { notificationKeys } from '@/lib/notifications';
 
 // ============================================================
-// Helpdesk: tickets to the IT, HR or Finance queue.
+// Helpdesk: tickets to the IT, HR, Finance or DevOps queue.
 // ============================================================
 
-export type Queue = 'IT' | 'HR' | 'FINANCE';
+export type Queue = 'IT' | 'HR' | 'FINANCE' | 'DEVOPS';
 export type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'WAITING' | 'RESOLVED' | 'CLOSED';
 export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 type Tone = 'neutral' | 'warning' | 'success' | 'danger' | 'info' | 'primary';
 
-export const QUEUES: Queue[] = ['IT', 'HR', 'FINANCE'];
-export const QUEUE_PERMISSION: Record<Queue, string> = { IT: 'ticket.handle_it', HR: 'ticket.handle_hr', FINANCE: 'ticket.handle_finance' };
+export const QUEUES: Queue[] = ['IT', 'HR', 'FINANCE', 'DEVOPS'];
+export const QUEUE_PERMISSION: Record<Queue, string> = { IT: 'ticket.handle_it', HR: 'ticket.handle_hr', FINANCE: 'ticket.handle_finance', DEVOPS: 'ticket.handle_devops' };
+/** Any of these = works a helpdesk queue (sidebar, dashboards) */
+export const QUEUE_PERMISSIONS = Object.values(QUEUE_PERMISSION);
 export const QUEUE_INFO: Record<Queue, { label: string; text: string }> = {
   IT: { label: 'IT', text: 'Laptop, software, access, email, network' },
   HR: { label: 'HR', text: 'Leave, letters, policies, benefits, profile' },
   FINANCE: { label: 'Finance', text: 'Salary, payslips, reimbursements, tax' },
+  DEVOPS: { label: 'DevOps', text: 'Servers, deployments, CI/CD, cloud access' },
 };
 export const STATUS: Record<TicketStatus, { label: string; tone: Tone }> = {
   OPEN: { label: 'Open', tone: 'warning' },
@@ -42,12 +46,37 @@ export const SLA_HOURS: Record<Priority, { response: number; resolution: number 
   LOW: { response: 24, resolution: 120 },
 };
 
+export type QuestionKind = 'text' | 'choice' | 'device';
+export interface TopicQuestion {
+  /** Stable key (lowercase letters, digits, dashes) */
+  id: string;
+  label: string;
+  kind: QuestionKind;
+  options?: string[];
+  required: boolean;
+}
 export interface TicketCategory {
   id: string;
   queue: Queue;
   name: string;
   isActive: boolean;
   sortOrder: number;
+  icon: string | null;
+  description: string | null;
+  /** Starting priority of new tickets (employee can change it) */
+  defaultPriority: Priority | null;
+  /** New tickets go straight to this person; null = team head / team */
+  routeToId: string | null;
+  routeTo: { id: string; firstName: string; lastName: string } | null;
+  questions: TopicQuestion[];
+  quickAnswer: string | null;
+  /** Agents only */
+  helpedCount?: number;
+  used30?: number;
+}
+export interface QuickAnswers {
+  topics: Array<{ id: string; queue: Queue; name: string; icon: string | null; quickAnswer: string; description: string | null }>;
+  tickets: Array<{ id: string; number: number; queue: Queue; subject: string; resolvedAt: string | null }>;
 }
 interface Named {
   id: string;
@@ -74,7 +103,7 @@ export interface Ticket {
   ratingComment: string | null;
   lastActivityAt: string;
   createdAt: string;
-  category: { id: string; name: string } | null;
+  category: { id: string; name: string; icon: string | null } | null;
   employee: { id: string; employeeId: string; firstName: string; lastName: string; email: string; avatarUrl: string | null; designation: { name: string } | null; department: { name: string } | null };
   assignee: Named | null;
   responseOverdue: boolean;
@@ -82,9 +111,18 @@ export interface Ticket {
   autoCloseAt: string | null;
   isAgent: boolean;
   isMine: boolean;
+  /** The team has a head who assigns; members work what is assigned to them */
+  teamHeadId: string | null;
+  /** Set for agents only */
+  requesterUserId: string | null;
+  canAssign: boolean;
+  canWork: boolean;
+  canNote: boolean;
   canReply: boolean;
   canResolve: boolean;
   canReopen: boolean;
+  /** The topic's questions, as asked, with the employee's answers */
+  answers: Array<{ label: string; answer: string }> | null;
   canClose: boolean;
 }
 
@@ -100,7 +138,7 @@ export interface TicketMessage {
   author: Named | null;
   fromAgent: boolean;
 }
-export type TicketDetail = Ticket & { messages: TicketMessage[] };
+export type TicketDetail = Ticket & { messages: TicketMessage[]; asset: { id: string; tag: string; name: string } | null };
 
 export interface QueueSummary {
   queue: Queue;
@@ -124,6 +162,7 @@ export const helpdeskKeys = {
   counts: ['helpdesk', 'counts'] as const,
   summary: ['helpdesk', 'summary'] as const,
   agents: (q: Queue) => ['helpdesk', 'agents', q] as const,
+  teams: ['helpdesk', 'teams'] as const,
 };
 
 const unwrap = <T,>(r: { data: { data: T } }) => r.data.data;
@@ -178,7 +217,8 @@ export function useHelpdeskCounts() {
     queryKey: helpdeskKeys.counts,
     queryFn: async () => unwrap<{ mine: number; queue: number }>(await api.get('/helpdesk/counts')),
     enabled: hasFeature('ops.helpdesk') && can('ticket.view'),
-    refetchInterval: 2 * 60_000,
+    // Live updates refresh it while connected; poll only when the connection is down
+    refetchInterval: () => (isLive() ? false : 2 * 60_000),
   });
 }
 
@@ -215,8 +255,8 @@ function form(fields: Record<string, unknown>, file?: File | null) {
 }
 
 export const useCreateTicket = () =>
-  useHelpdeskMutation(async ({ file, ...fields }: { queue: Queue; categoryId?: string; subject: string; description: string; priority?: 'LOW' | 'MEDIUM' | 'HIGH'; file?: File | null }) =>
-    unwrap<TicketDetail>(await api.post('/helpdesk/tickets', form(fields, file), multipart)),
+  useHelpdeskMutation(async ({ file, answers, ...fields }: { queue: Queue; categoryId?: string; subject: string; description: string; priority?: 'LOW' | 'MEDIUM' | 'HIGH'; answers?: Record<string, string>; file?: File | null }) =>
+    unwrap<TicketDetail>(await api.post('/helpdesk/tickets', form({ ...fields, answers: answers && Object.keys(answers).length ? JSON.stringify(answers) : undefined }, file), multipart)),
   );
 export const usePostMessage = (id: string) =>
   useHelpdeskMutation(async ({ file, ...fields }: { body: string; internal?: boolean; waitForEmployee?: boolean; file?: File | null }) =>
@@ -225,14 +265,111 @@ export const usePostMessage = (id: string) =>
 export const useAssignTicket = (id: string) => useHelpdeskMutation(async (assigneeId: string | null) => unwrap<TicketDetail>(await api.post(`/helpdesk/tickets/${id}/assign`, { assigneeId })));
 export const useUpdateTicket = (id: string) =>
   useHelpdeskMutation(async (body: { priority?: Priority; categoryId?: string | null; queue?: Queue }) => unwrap<TicketDetail | { id: string; moved: true; queue: Queue }>(await api.patch(`/helpdesk/tickets/${id}`, body)));
+export type BulkAction = { ids: string[] } & ({ action: 'assign'; assigneeId: string | null } | { action: 'priority'; priority: Priority } | { action: 'move'; queue: Queue });
+export const useBulkTickets = () =>
+  useHelpdeskMutation(async (body: BulkAction) => unwrap<{ done: number; failed: Array<{ id: string; number: number | null; message: string }> }>(await api.post('/helpdesk/tickets/bulk', body)));
 export const useResolveTicket = (id: string) => useHelpdeskMutation(async (resolution: string) => unwrap<TicketDetail>(await api.post(`/helpdesk/tickets/${id}/resolve`, { resolution })));
 export const useReopenTicket = (id: string) => useHelpdeskMutation(async (reason: string) => unwrap<TicketDetail>(await api.post(`/helpdesk/tickets/${id}/reopen`, { reason })));
 export const useCloseTicket = (id: string) =>
   useHelpdeskMutation(async (body: { rating?: number; comment?: string | null }) => unwrap<TicketDetail>(await api.post(`/helpdesk/tickets/${id}/close`, body)));
+export type TopicInput = {
+  id?: string;
+  queue: Queue;
+  name: string;
+  isActive?: boolean;
+  icon?: string | null;
+  description?: string | null;
+  defaultPriority?: Priority | null;
+  routeToId?: string | null;
+  questions?: TopicQuestion[];
+  quickAnswer?: string | null;
+};
 export const useSaveTicketCategory = () =>
-  useHelpdeskMutation(async ({ id, ...body }: { id?: string; queue: Queue; name: string; isActive?: boolean }) =>
+  useHelpdeskMutation(async ({ id, ...body }: TopicInput) =>
     unwrap<TicketCategory>(id ? await api.patch(`/helpdesk/categories/${id}`, body) : await api.post('/helpdesk/categories', body)),
   );
+export const useReorderTopics = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: { queue: Queue; ids: string[] }) => unwrap<TicketCategory[]>(await api.post('/helpdesk/categories/reorder', body)),
+    // Show the new order at once; the server confirms it
+    onMutate: ({ queue, ids }) => {
+      qc.setQueriesData<TicketCategory[]>({ queryKey: ['helpdesk', 'categories'] }, (old) => {
+        if (!old) return old;
+        const rank = new Map(ids.map((id, i) => [id, i]));
+        return [...old].sort((a, b) => (a.queue === queue && b.queue === queue ? (rank.get(a.id) ?? 0) - (rank.get(b.id) ?? 0) : 0));
+      });
+    },
+    onSettled: () => void qc.invalidateQueries({ queryKey: ['helpdesk', 'categories'] }),
+  });
+};
+export const useTopicHelped = () => useMutation({ mutationFn: async (id: string) => api.post(`/helpdesk/categories/${id}/helped`) });
+
+/** Quick answers + your own solved tickets for what you are typing (2+ characters, already debounced). */
+export function useQuickAnswers(q: string) {
+  const text = q.trim();
+  return useQuery({
+    queryKey: ['helpdesk', 'answers', text.toLowerCase()],
+    queryFn: async () => unwrap<QuickAnswers>(await api.get('/helpdesk/answers', { params: { q: text } })),
+    enabled: text.length >= 3,
+    staleTime: 60_000,
+    placeholderData: keepPreviousData,
+  });
+}
+
+/** Per team: usual first-reply time (minutes, last 30 days) and head — for employees. */
+export interface TeamDirectoryEntry {
+  queue: Queue;
+  label: string;
+  typicalReplyMinutes: number | null;
+  head: { id: string; firstName: string; lastName: string; avatarUrl: string | null } | null;
+}
+export function useHelpdeskDirectory(enabled = true) {
+  return useQuery({ queryKey: ['helpdesk', 'directory'], queryFn: async () => unwrap<TeamDirectoryEntry[]>(await api.get('/helpdesk/directory')), enabled, staleTime: 5 * 60_000 });
+}
+
+// ─── Teams & heads ───────────────────────────────────────────
+
+export interface TeamMember {
+  id: string;
+  firstName: string;
+  lastName: string;
+  avatarUrl: string | null;
+  designation: string | null;
+  active: boolean;
+  /** Holds the queue permission (a head/backup who lost it shows as false) */
+  inQueue: boolean;
+  open: number;
+  awayToday: boolean;
+}
+export interface HelpdeskTeam {
+  queue: Queue;
+  label: string;
+  headId: string | null;
+  backupId: string | null;
+  unassigned: number;
+  members: TeamMember[];
+  isLead: boolean;
+}
+
+export function useHelpdeskTeams(enabled = true) {
+  return useQuery({
+    queryKey: helpdeskKeys.teams,
+    queryFn: async () => unwrap<{ canManage: boolean; teams: HelpdeskTeam[] }>(await api.get('/helpdesk/teams')),
+    enabled,
+  });
+}
+
+export const useSaveTeam = () =>
+  useHelpdeskMutation(async ({ queue, ...body }: { queue: Queue; headId: string | null; backupId: string | null }) =>
+    unwrap<{ canManage: boolean; teams: HelpdeskTeam[] }>(await api.put(`/helpdesk/teams/${queue}`, body)),
+  );
+
+/** Who to suggest first: in the team, not away today, fewest open tickets. */
+export function suggestAssignee(team: HelpdeskTeam | undefined, exclude?: string | null): TeamMember | null {
+  const pool = (team?.members ?? []).filter((m) => m.inQueue && m.active && !m.awayToday && m.id !== exclude);
+  return pool.sort((a, b) => a.open - b.open || a.firstName.localeCompare(b.firstName))[0] ?? null;
+}
 
 /** Opens an attachment (authorised download). */
 export async function openAttachment(ticketId: string, m: TicketMessage) {

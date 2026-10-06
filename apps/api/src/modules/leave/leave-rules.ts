@@ -13,11 +13,17 @@ export function countLeaveDays(opts: {
   includeNonWorkingDays: boolean;
   workDays: number[];
   holidayKeys: Set<string>;
+  /** Sandwich rule: days off between two leave days count too */
+  sandwich?: boolean;
 }): { days: number; dates: string[] } {
   const dates: string[] = [];
+  const isOff = (key: string) => !opts.workDays.includes(weekdayOfKey(key)) || opts.holidayKeys.has(key);
+  const working: string[] = [];
+  for (let key = opts.startKey; key <= opts.endKey; key = addDays(key, 1)) if (!isOff(key)) working.push(key);
+  const [first, last] = [working[0], working[working.length - 1]];
   for (let key = opts.startKey; key <= opts.endKey; key = addDays(key, 1)) {
-    const off = !opts.workDays.includes(weekdayOfKey(key)) || opts.holidayKeys.has(key);
-    if (opts.includeNonWorkingDays || !off) dates.push(key);
+    const between = Boolean(opts.sandwich && first && last && key > first && key < last);
+    if (opts.includeNonWorkingDays || !isOff(key) || between) dates.push(key);
   }
   const days = opts.halfDay && dates.length === 1 ? 0.5 : dates.length;
   return { days, dates };
@@ -61,6 +67,18 @@ export interface BalanceNumbers {
   adjusted: number;
   usedDays: number;
   pendingDays: number;
+}
+
+/**
+ * Carried-forward days still usable: after the type's expiry date (MM-DD) in
+ * the year, only the carried days already used count (we assume carried days are used first).
+ */
+export function usableCarry(opts: { carryExpiry: string | null; year: number; today: Date; carriedForward: number; usedDays: number; pendingDays: number }): number {
+  const { carryExpiry, year, today, carriedForward } = opts;
+  if (!carryExpiry || !carriedForward) return carriedForward;
+  const expiry = new Date(`${year}-${carryExpiry}T23:59:59Z`);
+  if (today <= expiry) return carriedForward;
+  return Math.min(carriedForward, opts.usedDays + opts.pendingDays);
 }
 
 /** Days still available to request (null = unlimited). */

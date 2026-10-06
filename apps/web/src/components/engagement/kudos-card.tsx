@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { Emoji } from '@/components/motion/emoji';
 import { toast } from 'sonner';
 import { HandHeart, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -121,12 +122,12 @@ function ReactionButton({ emoji, count, mine, onReact }: { emoji: string; count?
         onReact();
       }}
       className={cn(
-        'inline-flex h-7 items-center gap-1 rounded-full border px-2 text-xs transition-colors',
+        'emo-host inline-flex h-7 items-center gap-1 rounded-full border px-2 text-xs transition-colors',
         mine ? 'border-primary bg-primary-soft text-primary-soft-foreground' : 'border-border hover:bg-subtle',
         !count && 'opacity-60 hover:opacity-100',
       )}
     >
-      <HeartBurst fire={fire}>{emoji}</HeartBurst>
+      <HeartBurst fire={fire}><Emoji e={emoji} fire={fire} /></HeartBurst>
       {count ? <span className="tabular-nums">{count}</span> : null}
     </button>
   );

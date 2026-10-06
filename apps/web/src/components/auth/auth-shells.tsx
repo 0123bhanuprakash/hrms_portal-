@@ -9,6 +9,10 @@ import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { resolveTheme } from '@/lib/theme/presets';
 import { workspaceName, workspaceTokens, type Workspace } from '@/lib/auth/portal';
 import { initials } from '@/lib/format';
+import { Backdrop } from '@/components/motion/page-backdrop';
+import { SeasonDecor } from '@/components/season/season';
+import { rebrandTheme } from '@/lib/theme/generate';
+import { BrandMedia } from '@/components/brand/brand-media';
 
 // ============================================================
 // Sign-in layouts
@@ -96,14 +100,37 @@ export function CompanyAuthShell({
   children: React.ReactNode;
 }) {
   const mode = useArtMode();
-  const tokens = workspaceTokens(workspace);
+  const season = workspace?.season ?? null;
+  const base = workspaceTokens(workspace);
+  // A seasonal theme on today dresses up the sign-in page too
+  const tokens = season && base ? rebrandTheme(base, season.colors.main) : base;
   const artTokens = tokens ?? resolveTheme(undefined);
   const name = workspace ? workspaceName(workspace) : 'HRMS Portal';
   const logo = workspace?.branding?.logoUrl ?? null;
+  const bg = workspace?.branding?.signInBackground ?? 'pack';
+  const photo = bg === 'photo' ? (workspace?.branding?.signInPhotoUrl ?? null) : null;
+  const welcome = workspace?.branding?.signInMessage || (workspace ? `Welcome to ${name}` : 'Your people, all in one place');
+  const coverText = (light: boolean) => (
+    <>
+      <div className="flex items-center gap-3">
+        {mark('h-11 w-11')}
+        <p className={`text-lg font-semibold tracking-tight ${light ? 'text-white' : 'text-foreground'}`}>{name}</p>
+      </div>
+      <div className="max-w-md space-y-3">
+        <h2 className={`text-3xl font-semibold leading-tight tracking-tight ${light ? 'text-white' : 'text-foreground'}`}>{welcome}</h2>
+        <p className={`text-sm leading-relaxed ${light ? 'text-white/80' : 'text-foreground/70'}`}>
+          Attendance, leave, payroll and your team — sign in to pick up where you left off.
+        </p>
+      </div>
+      <p className={`text-xs ${light ? 'text-white/70' : 'text-foreground/60'}`}>Powered by HRMS Portal</p>
+    </>
+  );
 
   const mark = (size: string) =>
     logo ? (
-      <img src={logo} alt={`${name} logo`} className={`${size} shrink-0 rounded-xl bg-white object-contain p-1 shadow-card`} />
+      <span className={`${size} flex shrink-0 overflow-hidden rounded-xl bg-white p-1 shadow-card`}>
+        <BrandMedia src={logo} alt={`${name} logo`} className="h-full w-full" />
+      </span>
     ) : (
       <div className={`${size} flex shrink-0 items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-card`}>
         {workspace ? initials(name) : <Building2 className="h-5 w-5" />}
@@ -114,30 +141,41 @@ export function CompanyAuthShell({
     <div className="flex min-h-screen bg-background text-foreground">
       <ThemeStyle tokens={tokens} />
 
-      {/* Cover */}
-      <ThemeArt
-        tokens={artTokens}
-        seed={workspace?.slug ?? 'hrms'}
-        mode={mode}
-        className="hidden w-[46%] max-w-[720px] flex-col justify-between p-10 lg:flex"
-      >
-        <div className="flex items-center gap-3">
-          {mark('h-11 w-11')}
-          <p className="text-lg font-semibold tracking-tight text-foreground">{name}</p>
+      {/* Cover: a season on today, a photo, plain, or the theme art */}
+      {season ? (
+        <div
+          className="relative hidden w-[46%] max-w-[720px] flex-col justify-between overflow-hidden p-10 lg:flex"
+          style={{ background: `radial-gradient(circle at 80% 10%, ${season.colors.accent}66, transparent 50%), radial-gradient(circle at 10% 95%, ${season.colors.main}55, transparent 45%), linear-gradient(135deg, ${season.colors.deep}, ${season.colors.main})` }}
+        >
+          <SeasonDecor kind={season.decoration} colors={season.colors} dense />
+          <div className="relative flex items-center gap-3">
+            {mark('h-11 w-11')}
+            <p className="text-lg font-semibold tracking-tight text-white">{name}</p>
+          </div>
+          <div className="relative max-w-md space-y-3 text-white">
+            <span className="text-5xl drop-shadow" aria-hidden>{season.emoji}</span>
+            <h2 className="text-3xl font-semibold leading-tight tracking-tight">{season.greeting || `Happy ${season.name}`}</h2>
+            <p className="text-sm text-white/80">{workspace?.branding?.signInMessage || `Welcome to ${name}`}</p>
+          </div>
+          <p className="relative text-xs text-white/70">Powered by HRMS Portal</p>
         </div>
-        <div className="max-w-md space-y-3">
-          <h2 className="text-3xl font-semibold leading-tight tracking-tight text-foreground">
-            {workspace ? `Welcome to ${name}` : 'Your people, all in one place'}
-          </h2>
-          <p className="text-sm leading-relaxed text-foreground/70">
-            Attendance, leave, payroll and your team — sign in to pick up where you left off.
-          </p>
+      ) : photo ? (
+        <div className="relative hidden w-[46%] max-w-[720px] flex-col justify-between overflow-hidden p-10 lg:flex">
+          <BrandMedia src={photo} fit="cover" interactive className="absolute inset-0 h-full w-full" />
+          <span className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/40" />
+          <div className="relative flex h-full flex-col justify-between">{coverText(true)}</div>
         </div>
-        <p className="text-xs text-foreground/60">Powered by HRMS Portal</p>
-      </ThemeArt>
+      ) : bg === 'plain' ? (
+        <div className="hidden w-[46%] max-w-[720px] flex-col justify-between bg-muted p-10 lg:flex">{coverText(false)}</div>
+      ) : (
+        <ThemeArt tokens={artTokens} seed={workspace?.slug ?? 'hrms'} mode={mode} className="hidden w-[46%] max-w-[720px] flex-col justify-between p-10 lg:flex">
+          {coverText(false)}
+        </ThemeArt>
+      )}
 
       {/* Form */}
-      <div className="relative flex flex-1 flex-col">
+      <div className="relative isolate flex flex-1 flex-col">
+        <Backdrop mood="hero" pack={workspace?.backdrop?.pack} level={workspace?.backdrop?.level} contained />
         <div className="flex items-center justify-between px-6 py-5 sm:px-10">
           <div className="flex items-center gap-2.5 lg:invisible">
             {mark('h-9 w-9')}

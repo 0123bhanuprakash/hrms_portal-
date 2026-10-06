@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Admin — invite</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F6F7FB}
+.app{display:flex;min-height:100vh;font-family:Manrope,system-ui,sans-serif;color:#111827;background:#F6F7FB;position:relative}
+.sb{flex:0 0 240px;background:#FFFFFF;border-right:1px solid #E5E7EF;display:flex;flex-direction:column}
+.sb-h{display:flex;gap:10px;align-items:center;padding:14px}
+.logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#E9416A,#7A2BD9);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px}
+.sb-h b{display:block;font-size:14px}.sb-h span{font-size:11px;color:#6B7280}
+.sb-g{padding:12px 14px 3px;font-size:10.5px;font-weight:700;letter-spacing:.07em;color:#9CA3AF}
+.sb-i{display:flex;align-items:center;gap:10px;height:34px;margin:0 10px;padding:0 10px;border-radius:7px;font-size:13.5px;color:#374151}
+.sb-i svg{color:#9CA3AF}.sb-i.on{background:#EEF0FF;color:#3730A3;font-weight:700}.sb-i.on svg{color:#4F46E5}
+.col{flex:1;min-width:0;display:flex;flex-direction:column}
+.hdr{height:56px;border-bottom:1px solid #E5E7EF;display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:rgba(255,255,255,.7)}
+.crumb{font-size:13.5px;color:#6B7280}.crumb b{color:#111827}
+.main{padding:24px 30px 40px;display:flex;flex-direction:column;gap:16px}
+.eyebrow{font-size:12.5px;color:#4F46E5;font-weight:700}
+h1{margin:2px 0 0;font-size:26px;font-weight:800;letter-spacing:-.02em}
+.sub{color:#6B7280;font-size:14px;margin-top:3px}
+.row{display:flex;align-items:center;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 14px;border-radius:9px;border:1px solid #E5E7EF;background:#fff;color:#111827;font-size:13px;font-weight:700;white-space:nowrap}
+.btn.pri{background:#4F46E5;border-color:#4F46E5;color:#fff}.btn.sm{height:30px;padding:0 10px;font-size:12px}
+.card{background:#fff;border:1px solid #E5E7EF;border-radius:14px;box-shadow:0 1px 2px rgba(17,24,39,.04)}
+.sec{padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.sec h3{margin:0;font-size:14.5px;display:flex;align-items:center;gap:8px}.sec h3 svg{color:#6B7280}
+.sec h3 .r{margin-left:auto;font-size:12px;font-weight:500;color:#6B7280}
+.mut{color:#6B7280}.xs{font-size:12px}
+.tabs{display:flex;gap:4px;background:#fff;border:1px solid #E5E7EF;border-radius:11px;padding:4px;width:max-content}
+.tabs span{display:flex;align-items:center;gap:7px;padding:7px 14px;border-radius:8px;font-size:13px;color:#6B7280;font-weight:600}
+.tabs span.on{background:#4F46E5;color:#fff}
+.fbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:9px;border:1px solid #E5E7EF;background:#fff;font-size:12.5px;font-weight:600;color:#374151}
+.chip.on{border-color:#C7C9F7;background:#EEF0FF;color:#3730A3}
+.seg{display:flex;border:1px solid #E5E7EF;border-radius:9px;overflow:hidden;background:#fff}.seg span{padding:7px 11px;font-size:12px;font-weight:600;color:#6B7280}.seg span.on{background:#111827;color:#fff}
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.kpi{padding:14px 16px;display:flex;flex-direction:column;gap:3px;position:relative;overflow:hidden}
+.kpi span.l{font-size:12px;color:#6B7280}.kpi b.v{font-size:25px;font-weight:800;letter-spacing:-.02em}
+.delta{font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;gap:2px}
+.d-up{color:#059669}.d-dn{color:#DC2626}.d-flat{color:#6B7280}
+.kpi svg.sp{position:absolute;right:12px;bottom:12px}
+.hl{display:flex;gap:12px;padding:12px 14px;border-radius:12px;border:1px solid #E5E7EF;background:#fff;align-items:flex-start}
+.hl .ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.g21{display:grid;grid-template-columns:1.5fr 1fr;gap:16px}.g12{display:grid;grid-template-columns:1fr 1.4fr;gap:16px}
+.lib{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid #EEF0F5;border-radius:12px;background:#F8F9FC}
+.lib .ic{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none}
+.bar{height:8px;border-radius:99px;background:#EEF0F5;overflow:hidden}.bar i{display:block;height:100%;border-radius:99px;transform-origin:left;animation:fw 1s cubic-bezier(.2,.8,.2,1) both}
+@keyframes fw{from{transform:scaleX(0)}}
+.chart polyline,.chart path.ln{stroke-dasharray:3000;animation:draw 1.6s ease both}@keyframes draw{from{stroke-dashoffset:3000}}
+.heat{display:grid;gap:3px}.heat i{display:block;border-radius:4px;aspect-ratio:1}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#6B7280;padding:8px 10px;border-bottom:1px solid #E5E7EF}
+td{padding:9px 10px;border-bottom:1px solid #EEF0F5}
+.av{width:28px;height:28px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;color:#fff;flex:none}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.p-ok{background:#E6F6F0;color:#059669}.p-warn{background:#FEF3E2;color:#D97706}.p-bad{background:#FDECEC;color:#DC2626}.p-pri{background:#EEF0FF;color:#3730A3}.p-neu{background:#EEF0F5;color:#6B7280}
+.dim{position:absolute;inset:0;background:rgba(17,24,39,.35);z-index:4}
+.drawer{position:absolute;top:0;right:0;bottom:0;width:440px;background:#fff;border-left:1px solid #E5E7EF;z-index:5;display:flex;flex-direction:column;box-shadow:-24px 0 50px -20px rgba(0,0,0,.35)}
+.modal{position:absolute;left:50%;top:150px;transform:translateX(-50%);width:480px;background:#fff;border:1px solid #E5E7EF;border-radius:16px;z-index:5;box-shadow:0 30px 60px -20px rgba(0,0,0,.4)}
+.fld{display:flex;flex-direction:column;gap:5px;font-size:12.5px}.fld label{font-weight:700}
+.inp{height:36px;border:1px solid #E5E7EF;border-radius:9px;padding:0 11px;display:flex;align-items:center;font-size:13px;gap:8px;background:#fff}
+
+.ph{position:relative;overflow:hidden;border-radius:14px;flex:none}
+.ph svg{display:block}
+.st{position:absolute;display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:800;padding:3px 8px;border-radius:99px;background:rgba(255,255,255,.92);box-shadow:0 2px 6px rgba(0,0,0,.12)}
+.st i{width:7px;height:7px;border-radius:50%;display:inline-block}
+.pc{display:flex;flex-direction:column;overflow:hidden;transition:transform .25s,box-shadow .25s}
+.pc:hover{transform:translateY(-4px);box-shadow:0 18px 36px -18px rgba(17,24,39,.35)}
+.pc .body{padding:12px 14px 14px;display:flex;flex-direction:column;gap:4px}
+.pc b.n{font-size:15px}.pc .role{font-size:12.5px;color:#6B7280}
+.tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:#F8F9FC;border:1px solid #EEF0F5;color:#374151}
+.acts{display:flex;gap:6px;padding:0 14px 14px}
+.acts span{flex:1;height:30px;border-radius:8px;border:1px solid #E5E7EF;display:flex;align-items:center;justify-content:center;gap:5px;font-size:12px;font-weight:700;color:#374151}
+.rail{display:flex;flex-direction:column;gap:2px;position:sticky;top:0;font-size:10.5px;font-weight:800;color:#9CA3AF;text-align:center}
+.rail span{padding:1px 0}.rail span.on{color:#4F46E5}
+.hlstrip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.hlc{padding:14px 16px;display:flex;align-items:center;gap:12px}
+.stack{display:flex}.stack .ph{border:2.5px solid #fff;margin-left:-10px;border-radius:50%}.stack .ph:first-child{margin-left:0}
+.search{display:flex;align-items:center;gap:8px;height:42px;padding:0 14px;border:1px solid #E5E7EF;border-radius:12px;background:#fff;flex:1;color:#6B7280;font-size:14px;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+.wall{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px}
+.grp{display:flex;flex-direction:column;gap:10px}
+.grp h3{margin:0;font-size:15px;display:flex;align-items:center;gap:10px}
+.mini{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid #EEF0F5;border-radius:12px;background:#fff}
+
+.new{display:inline-flex;font-size:9.5px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:99px;background:#DCFCE7;color:#166534;vertical-align:middle;margin-left:6px}
+.notes{padding:12px 14px;display:flex;flex-direction:column;gap:6px;background:#F8F9FC}
+.k-new,.k-old,.k-q,.k-fix{display:inline-block;min-width:44px;font-size:9.5px;font-weight:900;text-transform:uppercase;letter-spacing:.05em;margin-right:6px}
+.k-new{color:#16A34A}.k-old{color:#6B7280}.k-q{color:#D97706}.k-fix{color:#DC2626}
+.sec2{padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.lbl{font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#6B7280}
+.num{font-size:24px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.rchip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}.tbl th{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#6B7280;text-align:left;padding:8px 10px;background:#F8F9FC;border-bottom:1px solid #E5E7EF}.tbl td{padding:9px 10px;border-bottom:1px solid #EEF0F5;vertical-align:middle}
+.tbl tr.sel td{background:#EEF0FF}
+.cb{width:15px;height:15px;border-radius:4px;border:1.5px solid #CBD2DE;display:inline-flex;align-items:center;justify-content:center;background:#fff;flex:none}.cb.on{background:#4F46E5;border-color:#4F46E5;color:#fff}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+.ladder{display:inline-flex;border-radius:9px;background:#F8F9FC;border:1px solid #E5E7EF;padding:2px;gap:2px}
+.ladder span{font-size:10.5px;font-weight:700;padding:4px 7px;border-radius:7px;color:#6B7280;white-space:nowrap}
+.ladder span.past{background:#EEF0FF;color:#3730A3}.ladder span.on{background:#4F46E5;color:#fff}.ladder span.lk{opacity:.35}
+.ladder.cp span{width:16px;height:10px;padding:0;border-radius:3px}
+.tile{padding:12px;border-radius:12px;background:#F8F9FC;display:flex;flex-direction:column;gap:2px}
+.alertrow{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:11px;font-size:12.5px}
+.ovl{position:absolute;inset:0;background:rgba(17,24,39,.38);backdrop-filter:blur(2px)}
+.drw{position:absolute;top:0;right:0;bottom:0;width:520px;background:#fff;border-left:1px solid #E5E7EF;box-shadow:-20px 0 50px rgba(17,24,39,.15);display:flex;flex-direction:column}
+.drw .dh{padding:18px 20px;border-bottom:1px solid #E5E7EF}.drw .db{flex:1;overflow:hidden;padding:16px 20px;display:flex;flex-direction:column;gap:12px}.drw .df{padding:12px 20px;border-top:1px solid #E5E7EF;display:flex;gap:8px;justify-content:flex-end;background:#F8F9FC}
+.mdl{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;border-radius:16px;box-shadow:0 30px 80px rgba(17,24,39,.3);display:flex;flex-direction:column;overflow:hidden}
+.mh{padding:16px 20px;display:flex;gap:12px;align-items:flex-start;border-bottom:1px solid #EEF0F5}.mb{padding:16px 20px;display:flex;flex-direction:column;gap:14px}.mf{padding:12px 20px;border-top:1px solid #E5E7EF;display:flex;gap:8px;align-items:center;background:#F8F9FC}
+.mic{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex:none}
+.f{display:flex;flex-direction:column;gap:5px}.f>label{font-size:12px;font-weight:700}.f .h{font-size:11px;color:#6B7280}.f .er{font-size:11px;color:#DC2626;font-weight:700}
+.in{height:36px;border:1px solid #E5E7EF;border-radius:9px;padding:0 11px;display:flex;align-items:center;gap:8px;font-size:12.5px;background:#fff}.in.ph{color:#9CA3AF}.in.foc{border-color:#4F46E5;box-shadow:0 0 0 3px #EEF0FF}.in.bad{border-color:#DC2626;box-shadow:0 0 0 3px #FDECEC}.in.ok{border-color:#059669}
+.secn{display:flex;gap:10px;align-items:center;font-size:12.5px;font-weight:800}.secn i{width:20px;height:20px;border-radius:50%;background:#EEF0FF;color:#4F46E5;font-style:normal;font-size:11px;display:flex;align-items:center;justify-content:center}
+.kbd{font-size:10px;font-weight:800;border:1px solid #E5E7EF;border-bottom-width:2px;border-radius:5px;padding:0 5px;color:#6B7280;background:#fff}
+.bad2{background:#FDECEC;color:#DC2626}.good2{background:#E6F6F0;color:#059669}
+.prob{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:start;padding:10px 12px;border-radius:12px;background:#fff;border:1px solid #E5E7EF}
+.prob .n2{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px}
+.big{font-size:22px;font-weight:900;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+/* motion */
+.stg>*{animation:rise .5s cubic-bezier(.2,.8,.2,1) both}.stg>*:nth-child(2){animation-delay:.06s}.stg>*:nth-child(3){animation-delay:.12s}.stg>*:nth-child(4){animation-delay:.18s}.stg>*:nth-child(5){animation-delay:.24s}.stg>*:nth-child(6){animation-delay:.3s}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}}
+@keyframes wbar{from{transform:scaleX(0)}}.wb{transform-origin:left;animation:wbar 1s cubic-bezier(.2,.8,.2,1) both}
+@keyframes ripple{0%{transform:scale(.4);opacity:.9}100%{transform:scale(1.5);opacity:0}}
+.rip{position:absolute;border-radius:50%;border:2px solid #4F46E5;animation:ripple 2.4s ease-out infinite}
+@keyframes fly{0%,20%{transform:translate(0,0) scale(1);opacity:1}60%{transform:translate(170px,0) scale(.9);opacity:1}75%,100%{transform:translate(170px,0) scale(.9);opacity:0}}
+@keyframes land{0%,58%{opacity:0;transform:scale(.6)}70%,100%{opacity:1;transform:scale(1)}}
+@keyframes shimmer{0%{background-position:-120px 0}100%{background-position:220px 0}}
+.shim{background:linear-gradient(100deg,#FEF3C7 30%,#FFFBEB 50%,#FEF3C7 70%);background-size:200px 100%;animation:shimmer 2.2s linear infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(217,119,6,.45)}50%{box-shadow:0 0 0 7px rgba(217,119,6,0)}}
+.pulse{animation:pulse 1.8s ease-in-out infinite}
+@keyframes slideL{0%,15%{left:3px}45%,60%{left:calc(57% + 3px)}90%,100%{left:3px}}
+@keyframes dash{to{stroke-dashoffset:0}}.path{stroke-dasharray:240;stroke-dashoffset:240;animation:dash 1.6s ease forwards}
+@keyframes tick{0%,30%{transform:scale(0)}45%{transform:scale(1.2)}55%,100%{transform:scale(1)}}
+@keyframes morph{0%,30%{width:110px;border-radius:9px}45%,100%{width:36px;border-radius:50%}}
+@keyframes txt{0%,28%{opacity:1}33%,100%{opacity:0}}
+@keyframes shake{0%,100%{transform:none}20%,60%{transform:translateX(-5px)}40%,80%{transform:translateX(5px)}}
+.shake{animation:shake .5s ease 1s 1}
+@keyframes sheet{0%,10%{transform:translateY(100%)}35%,100%{transform:none}}
+@keyframes cnt{from{opacity:.2;transform:translateY(6px)}}
+.demo{background:#fff;border:1px solid #E5E7EF;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.stage{height:130px;border-radius:12px;background:#F8F9FC;display:flex;align-items:center;justify-content:center;gap:10px;padding:0 16px;position:relative;overflow:hidden}
+.where{font-size:10.5px;font-weight:800;color:#4F46E5;background:#EEF0FF;padding:2px 8px;border-radius:99px;align-self:flex-start}
+.seg2{display:inline-flex;background:#F8F9FC;border:1px solid #E5E7EF;border-radius:9px;padding:2px}.seg2 span{font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:7px;color:#6B7280}.seg2 span.on{background:#fff;color:#111827;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+</style>
+</helmet>
+<div class="app"><aside class="sb">
+<div class="sb-h"><span class="logo">AP</span><span><b>aakash-portal</b><span>HR workspace</span></span></div>
+<div class="sb-g">OVERVIEW</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Home</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M16 10h2M16 14h2"/><circle cx="9" cy="11" r="2"/><path d="M6 16.5a3.5 3.5 0 0 1 6 0"/></svg>My profile</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>Reports &amp; analytics</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v2M8 2v2"/><circle cx="12" cy="11" r="3"/><path d="M7 20a5 5 0 0 1 10 0"/></svg>People</div>
+<div class="sb-g">ORGANIZATION ›</div><div class="sb-g">ENGAGEMENT ›</div><div class="sb-g">WORK ›</div><div class="sb-g">EXPENSES ›</div><div class="sb-g">ASSETS ›</div><div class="sb-g">HELPDESK ›</div><div class="sb-g">TIME ›</div>
+<div class="sb-g">ADMINISTRATION</div><div class="sb-i on"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="15" r="3"/><circle cx="9" cy="7" r="4"/><path d="M10 15H6a4 4 0 0 0-4 4v2M21.7 16.4l-.9-.3M15.2 13.9l-.9-.3M16.6 18.7l.3-.9M19.1 12.2l.3-.9M19.6 18.7l-.4-1M16.8 12.3l-.4-1M14.3 16.6l1-.4M20.7 13.8l1-.4"/></svg><span style="flex:1">Users</span></div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg><span style="flex:1">Roles & permissions</span></div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3"/><path d="m16 16-1.9-1.9"/></svg><span style="flex:1">Access explorer</span></div>
+<div class="sb-g">SETTINGS ›</div>
+</aside><div class="col"><header class="hdr"><div class="crumb">Administration &nbsp;›&nbsp; <b>Users</b></div><div class="row mut xs"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span style="width:34px;height:20px;border-radius:99px;background:#E5E7EF;display:inline-block"></span></div></header><main class="main"><div class="row" style="align-items:flex-end"><div style="flex:1"><div class="eyebrow">Administration</div><h1>Users</h1><div class="sub">Everyone who can sign in, and the roles that decide what they can do.</div></div></div><div class="card" style="height:640px;opacity:.5"></div></main></div><div class="ovl"></div>
+<div class="mdl" style="width:860px">
+  <div class="mh"><span class="mic" style="background:#EEF0FF;color:#4F46E5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg></span><div style="flex:1"><b style="font-size:15px">Invite people</b><div class="xs mut">They get an email with a sign-in link. Everyone becomes an employee too.</div></div><span class="seg2"><span class="on">One person</span><span>Many<span class="new">New</span></span></span><span class="mut"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></span></div>
+  <div style="display:grid;grid-template-columns:1fr 300px">
+    <div class="mb" style="border-right:1px solid #EEF0F5">
+      <div class="secn"><i>1</i>Who</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="f"><label>First name *</label><div class="in">Meera</div></div><div class="f"><label>Last name *</label><div class="in">Joshi</div></div></div>
+      <div class="f"><label>Work email *</label><div class="in foc">meera.joshi@aakash.in<span style="margin-left:auto;color:#059669"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span></div><span class="h">Not used yet ✓</span></div>
+      <div class="secn"><i>2</i>Roles <span class="xs mut" style="font-weight:600">· Employee is always on</span></div>
+      <div class="row" style="gap:6px;flex-wrap:wrap"><span class="rchip" style="background:#F1F5F9;color:#475569">Employee ✓</span><span class="rchip" style="background:#fff;border:1px dashed #4F46E588;color:#4F46E5">+ Manager</span><span class="rchip" style="background:#fff;border:1px dashed #0D948888;color:#0D9488">+ Team Lead</span><span class="rchip" style="background:#fff;border:1px dashed #DB277788;color:#DB2777">+ HR</span><span class="rchip" style="background:#fff;border:1px dashed #65A30D88;color:#65A30D">+ Finance</span><span class="rchip" style="background:#fff;border:1px dashed #0284C788;color:#0284C7">+ IT Admin</span><span class="rchip" style="background:#fff;border:1px dashed #EA580C88;color:#EA580C">+ PMO</span></div>
+      <div class="secn"><i>3</i>Job <span class="xs mut" style="font-weight:600">· optional, can be filled later</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="f"><label>Department</label><div class="in">Engineering<span style="margin-left:auto" class="mut"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></div></div>
+        <div class="f"><label>Job title</label><div class="in">Software Engineer<span style="margin-left:auto" class="mut"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></div></div>
+        <div class="f"><label>Reports to</label><div class="in"><div class="ph" style="width:20px;height:20px;border-radius:50%"><svg width="20" height="20" viewBox="0 0 20 20"><defs><linearGradient id="g17" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#BBF7D0"/><stop offset="1" stop-color="#ECFDF5"/></linearGradient></defs>
+  <rect width="20" height="20" fill="url(#g17)"/>
+  <circle cx="16.4" cy="3.5999999999999996" r="4.4" fill="#fff" opacity=".35"/>
+  
+  <path d="M2.1799999999999997,20 Q2.5199999999999987,13.670000000000002 10,13.330000000000002 Q17.48,13.670000000000002 17.82,20Z" fill="#059669"/>
+  <rect x="8.708" y="10.780000000000001" width="2.5840000000000005" height="3.0600000000000005" fill="#8D5A3C"/>
+  <circle cx="10" cy="8.4" r="3.4000000000000004" fill="#8D5A3C"/>
+  <path d="M6.532,8.06 Q6.6,3.8099999999999996 10,4.32 Q13.4,3.8099999999999996 13.468,8.06 Q10,5.85 6.532,8.06Z" fill="#151515"/>
+  </svg></div>Karan Mehta<span style="margin-left:auto" class="mut"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></div></div>
+        <div class="f"><label>Joining date</label><div class="in"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Mon 12 Oct 2026</div></div>
+      </div>
+    </div>
+    <div class="mb" style="background:#F8F9FC">
+      <div class="lbl">Preview <span class="new">New</span></div>
+      <div class="card" style="padding:14px;display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center">
+        <span style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#E9416A,#7A2BD9);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px">MJ</span>
+        <b>Meera Joshi</b><span class="xs mut">Software Engineer · Engineering</span><span class="xs mut">Reports to Karan Mehta · AK214</span><span class="rchip" style="background:#F1F5F9;color:#475569">Employee</span>
+      </div>
+      <div class="xs" style="line-height:1.7"><b>She will be able to</b><br>• apply for leave, check in, timesheets<br>• see the people directory<br>• raise tickets and expense claims</div>
+      <div class="card" style="padding:10px;font-size:11.5px;line-height:1.6"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg> <b>Email</b><br><span class="mut">“Hi Meera, aakash-portal invited you…”</span></div>
+    </div>
+  </div>
+  <div class="mf"><span class="xs mut"><span class="kbd">Ctrl</span> + <span class="kbd">Enter</span> to send</span><span style="flex:1"></span><span class="btn">Cancel</span><span class="btn">Send &amp; add another</span><span class="btn pri"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>Send invite</span></div>
+</div><div class="card sec2" style="width:420px;position:absolute;right:40px;bottom:40px;z-index:3;box-shadow:0 20px 50px rgba(0,0,0,.25)">
+  <b style="font-size:13px">“Many” tab <span class="new">New</span></b>
+  <div class="in" style="height:70px;align-items:flex-start;padding-top:8px;line-height:1.6;font-size:11.5px;color:#6B7280">ravi@aakash.in, sana@aakash.in<br>john@ — paste emails or a CSV</div>
+  <div class="row" style="gap:6px;flex-wrap:wrap"><span class="pill p-ok"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> ravi@aakash.in</span><span class="pill p-ok"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> sana@aakash.in</span><span class="pill" style="background:#FDECEC;color:#DC2626">john@ — not an email</span></div>
+  <div class="xs mut">All get the Employee role. Roles &amp; job can be set after. <b>2 ready</b> · Send 2 invites</div>
+</div></div></x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

@@ -5,8 +5,10 @@ import type { AccessContext } from '../access/access.types';
 import { ProjectsService } from './projects.service';
 import { ProjectPlanningService } from './planning.service';
 import { AvailableQueryDto, BilledDto, CapacityQueryDto, MilestoneDto, MilestonePatchDto, OpenRoleDto, PlannerQueryDto, ProjectQueryDto, ProjectUpdateDto, SaveMemberDto, SaveProjectDto, TimelineQueryDto } from './dto';
+import { Live } from '../realtime/live.decorator';
 
 @RequireFeature('work.projects')
+@Live('projects', 'company')
 @Controller('projects')
 export class ProjectsController {
   constructor(

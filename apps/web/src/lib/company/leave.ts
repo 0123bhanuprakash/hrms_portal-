@@ -3,6 +3,8 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAccess } from '@/lib/access/use-access';
+import { isLive } from '@/lib/live/socket';
+import { useMayApprove } from '@/lib/company/projects';
 import { attendanceKeys } from '@/lib/company/attendance';
 
 // ============================================================
@@ -32,6 +34,16 @@ export interface LeaveType {
   includeNonWorkingDays: boolean;
   countsAsPresent: boolean;
   gender: 'MALE' | 'FEMALE' | 'OTHER' | 'PREFER_NOT_TO_SAY' | null;
+  /** Not usable while on probation */
+  blockDuringProbation: boolean;
+  /** Ask for a document when longer than this many days (null = never) */
+  documentAfterDays: number | null;
+  /** Weekly offs / holidays between leave days count as leave */
+  sandwichRule: boolean;
+  /** Days that may be taken in advance */
+  negativeBalance: number;
+  /** "MM-DD" — carried days not used by then lapse */
+  carryExpiry: string | null;
   isActive: boolean;
   sortOrder: number;
 }
@@ -47,6 +59,15 @@ export interface LeaveBalance {
   pending: number;
   /** null = unlimited */
   available: number | null;
+  /** Carried days that already expired this year */
+  carryExpired?: number;
+  /** If nothing more is taken: left on 31 Dec, carried over, lost */
+  yearEnd?: { left: number; carry: number; lapse: number } | null;
+}
+
+export interface TeamClash {
+  teamSize: number;
+  overlaps: Array<{ employee: { id: string; firstName: string; lastName: string; avatarUrl: string | null }; startDate: string; endDate: string; leaveType: string; color: string; status: LeaveStatus }>;
 }
 
 interface Named {
@@ -70,7 +91,12 @@ export interface LeaveRequest {
   cancelledAt: string | null;
   cancelReason: string | null;
   employee: { id: string; employeeId: string; firstName: string; lastName: string; avatarUrl: string | null; designation: { name: string } | null; department: { id: string; name: string } | null };
-  leaveType: { id: string; name: string; code: string; color: string; countsAsPresent: boolean; isPaid: boolean };
+  leaveType: { id: string; name: string; code: string; color: string; countsAsPresent: boolean; isPaid: boolean; documentAfterDays?: number | null };
+  document?: { name: string; size: number | null; mime: string | null } | null;
+  /** The type asks for a document and none is attached yet */
+  needsDocument?: boolean;
+  /** Approvers: teammates off at the same time */
+  team?: TeamClash;
   approvals: Array<{
     level: number;
     status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'SKIPPED';
@@ -95,6 +121,7 @@ export interface LeavePreview {
   after: number | null;
   errors: string[];
   warnings: string[];
+  needsDocument?: boolean;
   leaveType: { id: string; name: string; accrual: LeaveAccrual; approvalLevels: number };
   /** Who will approve: per level, why and who */
   route?: { mode: 'project' | 'reporting_line'; levels: Array<{ label: string; approvers: Named[] }> };
@@ -143,6 +170,8 @@ export const leaveKeys = {
   pendingCount: ['leave', 'pending-count'] as const,
   calendar: (q: object) => ['leave', 'calendar', q] as const,
   history: (balanceId: string) => ['leave', 'history', balanceId] as const,
+  usage: (year: number) => ['leave', 'usage', year] as const,
+  yearEnd: (id: string, year: number) => ['leave', 'year-end', id, year] as const,
 };
 
 const unwrap = <T,>(r: { data: { data: T } }) => r.data.data;
@@ -174,12 +203,15 @@ export function useLeaveRequests(q: { view: 'mine' | 'review' | 'all'; status?: 
 /** Leave requests waiting for me — nav badge (delegated approvals included). */
 export function usePendingLeave() {
   const { hasFeature } = useAccess();
+  // Only people who can approve here ask; the API would answer 0 for everyone else
+  const mayApprove = useMayApprove('leave.approve');
   // Project leads and line managers approve without a role permission — ask the API
   return useQuery({
     queryKey: leaveKeys.pendingCount,
     queryFn: async () => unwrap<{ count: number }>(await api.get('/leave/requests/pending-count')).count,
-    enabled: hasFeature('time.leave'),
-    refetchInterval: 2 * 60_000,
+    enabled: hasFeature('time.leave') && mayApprove,
+    // Live updates refresh it while connected; poll only when the connection is down
+    refetchInterval: () => (isLive() ? false : 2 * 60_000),
   });
 }
 
@@ -190,6 +222,23 @@ export function useWhosOff(q: { month: string; departmentId?: string }, enabled 
     placeholderData: keepPreviousData,
     enabled,
   });
+}
+
+export function useLeaveUsage(year: number, enabled = true) {
+  return useQuery({ queryKey: leaveKeys.usage(year), queryFn: async () => unwrap<Array<{ leaveTypeId: string; used: number; given: number; percent: number | null }>>(await api.get('/leave/types/usage', { params: { year } })), enabled });
+}
+
+export interface YearEndPreview {
+  leaveType: { id: string; name: string; carryForward?: boolean; maxCarryForward?: number };
+  year: number;
+  carry: number;
+  lapse: number;
+  people: number;
+  losing: Array<{ employee: { id: string; firstName: string; lastName: string; avatarUrl: string | null; employeeId: string }; left: number; lapse: number }>;
+}
+
+export function useYearEnd(id: string | null, year: number) {
+  return useQuery({ queryKey: leaveKeys.yearEnd(id ?? '', year), queryFn: async () => unwrap<YearEndPreview>(await api.get(`/leave/types/${id}/year-end`, { params: { year } })), enabled: Boolean(id) });
 }
 
 export function useBalanceHistory(balanceId: string | null) {
@@ -231,6 +280,27 @@ export const useCancelLeave = () =>
 
 export const useAdjustBalance = () =>
   useLeaveMutation(async (body: { employeeId: string; leaveTypeId: string; year: number; days: number; reason: string }) => unwrap(await api.post('/leave/balances/adjust', body)));
+
+export const useAskQuestion = () =>
+  useMutation({ mutationFn: async ({ id, question }: { id: string; question: string }) => unwrap<{ sent: boolean }>(await api.post(`/leave/requests/${id}/question`, { question })) });
+
+export const useRemindLapse = () =>
+  useMutation({ mutationFn: async ({ id, year }: { id: string; year: number }) => unwrap<{ sent: number }>(await api.post(`/leave/types/${id}/year-end/remind`, null, { params: { year } })) });
+
+export const useAttachDocument = () =>
+  useLeaveMutation(async ({ id, file }: { id: string; file: File }) => {
+    const form = new FormData();
+    form.append('file', file);
+    return unwrap<LeaveRequest>(await api.post(`/leave/requests/${id}/document`, form, { headers: { 'Content-Type': 'multipart/form-data' } }));
+  });
+
+/** Opens a request's document in a new tab (authorised fetch → blob). */
+export async function openLeaveDocument(id: string): Promise<void> {
+  const res = await api.get(`/leave/requests/${id}/document`, { responseType: 'blob' });
+  const url = URL.createObjectURL(res.data as Blob);
+  window.open(url, '_blank', 'noopener');
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
 
 export type LeaveTypeInput = Omit<LeaveType, 'id'>;
 export const useSaveLeaveType = () =>

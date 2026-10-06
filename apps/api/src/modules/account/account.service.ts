@@ -10,6 +10,7 @@ import { EmailProducerService } from '../email/email.producer.service';
 import { detectFileType, IMAGE_TYPES } from '../employee-profile/file-types';
 import { deviceFamily, networkOf } from '../auth/auth.service';
 import { generateTemporaryPassword, hashPassword } from '../auth/password.util';
+import { RealtimeService } from '../realtime/realtime.service';
 
 const DAY = 86_400_000;
 const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
@@ -35,6 +36,7 @@ export class AccountService {
     private readonly emailProducer: EmailProducerService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    private readonly realtime: RealtimeService,
   ) {}
 
   // ─── Overview ─────────────────────────────────────────────
@@ -161,6 +163,7 @@ export class AccountService {
       this.prisma.employee.updateMany({ where: { userId: token.userId }, data: { email: token.newEmail } }),
       this.prisma.refreshToken.updateMany({ where: { userId: token.userId, isRevoked: false }, data: { isRevoked: true } }),
     ]);
+    this.realtime.signOut(token.userId, {}, 'email');
     return { email: token.newEmail };
   }
 
@@ -272,6 +275,7 @@ export class AccountService {
       this.prisma.user.update({ where: { id: adminId }, data: { status: 'INACTIVE' } }),
       this.prisma.refreshToken.updateMany({ where: { userId: adminId, isRevoked: false }, data: { isRevoked: true } }),
     ]);
+    this.realtime.signOut(adminId, {}, 'inactive');
     return { id: admin.id, email: admin.email, removed: true };
   }
 }

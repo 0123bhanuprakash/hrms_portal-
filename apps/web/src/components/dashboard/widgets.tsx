@@ -68,7 +68,7 @@ export function Meter({ value, max, tone = 'primary', label }: { value: number; 
   const pct = max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0;
   return (
     <div className="h-2 overflow-hidden rounded-full bg-muted" role="meter" aria-valuemin={0} aria-valuemax={max} aria-valuenow={value} aria-label={label}>
-      <div className={cn('m-fill-w h-full rounded-full transition-[width] duration-700', FILL[tone])} style={{ width: `${pct}%` }} />
+      <div className={cn('m-fill-w m-shine-once h-full rounded-full', FILL[tone])} style={{ width: `${pct}%` }} />
     </div>
   );
 }
@@ -123,6 +123,8 @@ export function Donut({ slices, total, size = 132, center, label }: { slices: Sl
           {sum > 0 &&
             slices.map((s) => {
               const len = (s.value / sum) * c;
+              // Slices sweep round one after another
+              const delay = 0.15 + (offset / c) * 0.7;
               const el = (
                 <circle
                   key={s.label}
@@ -135,18 +137,19 @@ export function Donut({ slices, total, size = 132, center, label }: { slices: Sl
                   strokeDasharray={`${len} ${c}`}
                   strokeDashoffset={-offset}
                   transform={`rotate(-90 ${size / 2} ${size / 2})`}
-                  className={cn(TEXT[s.tone], 'm-draw')}
+                  className={cn(TEXT[s.tone], 'm-sweep')}
+                  style={{ animationDelay: `${delay}s`, animationDuration: `${Math.max(0.25, (len / c) * 0.8)}s` }}
                 />
               );
               offset += len;
               return el;
             })}
         </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">{center ?? <span className="text-2xl font-bold tabular-nums">{sum}</span>}</div>
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">{center ?? <span className="text-2xl font-bold tabular-nums"><CountUp value={sum} /></span>}</div>
       </div>
-      <ul className="min-w-[180px] flex-1 space-y-2 text-sm">
-        {slices.map((s) => (
-          <li key={s.label} className="flex items-center gap-2.5">
+      <ul className="m-legend min-w-[180px] flex-1 space-y-2 text-sm">
+        {slices.map((s, i) => (
+          <li key={s.label} className="flex items-center gap-2.5" style={{ ['--i' as string]: i }}>
             <span className={cn('h-2.5 w-2.5 shrink-0 rounded-[3px]', FILL[s.tone])} aria-hidden />
             <span className="flex-1 text-muted-foreground">{s.label}</span>
             <span className="font-semibold tabular-nums">{s.value}</span>

@@ -26,7 +26,33 @@ export function useReducedMotion(): boolean {
   return reduced;
 }
 
-/** Marks <html data-hidden> while the tab is hidden, so CSS loops pause. */
+/** Chart parts that animate in (app/motion.css → "Charts"). */
+const CHART_PARTS = '.m-fill-w, .m-grow-y, .m-draw, .m-sweep, .m-line, .m-fade, .m-dotpop, .m-legend > *, .m-cell, .tm-ring, .m-milestone > *';
+
+/** Calls back once, the first time the element is (about to be) on screen. */
+function onFirstSight(el: Element, seen: () => void) {
+  if (typeof IntersectionObserver === 'undefined') {
+    seen();
+    return () => undefined;
+  }
+  const io = new IntersectionObserver(
+    (entries) => {
+      if (entries.some((e) => e.isIntersecting)) {
+        io.disconnect();
+        seen();
+      }
+    },
+    { rootMargin: '0px 0px -40px 0px' },
+  );
+  io.observe(el);
+  return () => io.disconnect();
+}
+
+/**
+ * Marks <html data-hidden> while the tab is hidden, so CSS loops pause; and
+ * holds every chart animation (bars, rings, lines…) until that chart first
+ * scrolls into view, so it plays where you can see it — once.
+ */
 export function MotionVisibility() {
   useEffect(() => {
     const sync = () => document.documentElement.toggleAttribute('data-hidden', document.hidden);
@@ -34,7 +60,53 @@ export function MotionVisibility() {
     document.addEventListener('visibilitychange', sync);
     return () => document.removeEventListener('visibilitychange', sync);
   }, []);
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (!e.isIntersecting) continue;
+          e.target.removeAttribute('data-wait');
+          io.unobserve(e.target);
+        }
+      },
+      { rootMargin: '0px 0px -40px 0px' },
+    );
+    const known = new WeakSet<Element>();
+    const hold = (el: Element) => {
+      if (known.has(el)) return;
+      known.add(el);
+      el.setAttribute('data-wait', '');
+      io.observe(el);
+    };
+    const scan = (root: Element) => {
+      if (root.matches(CHART_PARTS)) hold(root);
+      root.querySelectorAll(CHART_PARTS).forEach(hold);
+    };
+    scan(document.body);
+    // Runs before the browser paints new nodes, so nothing starts early
+    const mo = new MutationObserver((list) => {
+      for (const m of list) m.addedNodes.forEach((n) => n instanceof Element && scan(n));
+    });
+    mo.observe(document.body, { childList: true, subtree: true });
+    return () => {
+      mo.disconnect();
+      io.disconnect();
+    };
+  }, []);
   return null;
+}
+
+/** Renders its children only once this spot first comes into view (for charts that animate on mount). */
+export function WhenSeen({ children, className, style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [seen, setSeen] = useState(false);
+  useEffect(() => (ref.current ? onFirstSight(ref.current, () => setSeen(true)) : undefined), []);
+  return (
+    <div ref={ref} className={className} style={style}>
+      {seen ? children : null}
+    </div>
+  );
 }
 
 /** A number that rolls up to its value (screen readers get the final value). */
@@ -42,7 +114,12 @@ export function CountUp({ value, format = (n) => String(Math.round(n)), duration
   const reduced = useReducedMotion();
   const [shown, setShown] = useState(reduced ? value : 0);
   const from = useRef(0);
+  const ref = useRef<HTMLSpanElement>(null);
+  // Count only once the number is on screen
+  const [seen, setSeen] = useState(false);
+  useEffect(() => (ref.current ? onFirstSight(ref.current, () => setSeen(true)) : undefined), []);
   useEffect(() => {
+    if (!seen && !reduced) return;
     if (reduced) {
       setShown(value);
       from.current = value;
@@ -60,9 +137,9 @@ export function CountUp({ value, format = (n) => String(Math.round(n)), duration
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [value, duration, reduced]);
+  }, [value, duration, reduced, seen]);
   return (
-    <span className={cn('tabular-nums', className)}>
+    <span ref={ref} className={cn('tabular-nums', className)}>
       <span aria-hidden>{format(shown)}</span>
       <span className="sr-only">{format(value)}</span>
     </span>

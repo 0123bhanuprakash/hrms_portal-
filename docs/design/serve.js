@@ -8,4 +8,4 @@ http.createServer((req, res) => {
   if (!f.startsWith(root) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); return res.end('not found'); }
   res.writeHead(200, { 'Content-Type': f.endsWith('.html') ? 'text/html; charset=utf-8' : f.endsWith('.json') ? 'application/json' : 'application/octet-stream' });
   fs.createReadStream(f).pipe(res);
-}).listen(5599, () => console.log('serving on 5599'));
+}).listen(process.env.PORT || 5599, () => console.log('serving on ' + (process.env.PORT || 5599)));

@@ -2,6 +2,7 @@
 import React from 'react';
 import { cn } from '@/lib/cn';
 import { initials } from '@/lib/format';
+import { BrandMedia } from '@/components/brand/brand-media';
 
 /** Company logo, or initials on the company's brand color. */
 export function CompanyAvatar({
@@ -21,11 +22,9 @@ export function CompanyAvatar({
 
   if (logoUrl) {
     return (
-      <img
-        src={logoUrl}
-        alt={`${name} logo`}
-        className={cn(dims, 'object-contain bg-white border border-border p-1', className)}
-      />
+      <span className={cn(dims, 'flex shrink-0 overflow-hidden bg-white border border-border p-1', className)}>
+        <BrandMedia src={logoUrl} alt={`${name} logo`} className="h-full w-full" />
+      </span>
     );
   }
 

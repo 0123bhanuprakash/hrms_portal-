@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ChevronDown, Search, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -9,8 +8,8 @@ import { cn } from '@/lib/cn';
 import { useUiState } from '@/lib/preferences/ui-state';
 
 // ============================================================
-// Sidebar menu styles. Classic is the original menu; Rail, Floating
-// and Collapsible are optional looks an employee (or the company) can
+// Sidebar menu styles. Classic is the original menu; Floating,
+// Collapsible (and Glide / Peek, in tree-nav.tsx) are optional looks an employee (or the company) can
 // pick. They only change how the same items are laid out.
 // ============================================================
 
@@ -30,11 +29,11 @@ export interface SidebarGroup {
   items: SidebarItem[];
 }
 
-const isActive = (item: SidebarItem, pathname: string) =>
+export const isActive = (item: SidebarItem, pathname: string) =>
   item.exact ? pathname === item.href : pathname.startsWith(item.href);
-const groupCount = (g: SidebarGroup) => g.items.reduce((n, i) => n + (i.count ?? 0), 0);
+export const groupCount = (g: SidebarGroup) => g.items.reduce((n, i) => n + (i.count ?? 0), 0);
 
-function CountPill({ count }: { count?: number }) {
+export function CountPill({ count }: { count?: number }) {
   if (!count) return null;
   return (
     <span
@@ -191,7 +190,7 @@ export function FloatingNav({ groups, pathname }: { groups: SidebarGroup[]; path
   );
 }
 
-const isOpenMap = (v: unknown): v is Record<string, boolean> => typeof v === 'object' && v !== null && !Array.isArray(v);
+export const isOpenMap = (v: unknown): v is Record<string, boolean> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
 /** Collapsible: groups fold away; the group you're in always opens. Open sections are saved on the account. */
 export function CollapsibleNav({ groups, pathname }: { groups: SidebarGroup[]; pathname: string }) {
@@ -250,138 +249,5 @@ export function CollapsibleNav({ groups, pathname }: { groups: SidebarGroup[]; p
         );
       })}
     </nav>
-  );
-}
-
-const SHORT: Record<string, string> = {
-  Organization: 'Org',
-  Engagement: 'Engage',
-  Administration: 'Admin',
-};
-
-/** Rail: a narrow strip of group icons; a group's pages open in a panel beside it. */
-export function RailNav({
-  groups,
-  pathname,
-  className,
-}: {
-  groups: SidebarGroup[];
-  pathname: string;
-  className?: string;
-}) {
-  const [openGroup, setOpenGroup] = useState<string | null>(null);
-  const ref = useRef<HTMLDivElement>(null);
-  const panel = useRef<HTMLDivElement>(null);
-  const current = groups.find((g) => g.items.some((i) => isActive(i, pathname)))?.label;
-  const flyout = groups.find((g) => g.label === openGroup);
-
-  useEffect(() => setOpenGroup(null), [pathname]);
-
-  useEffect(() => {
-    if (!openGroup) return;
-    const onDown = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (!ref.current?.contains(target) && !panel.current?.contains(target)) setOpenGroup(null);
-    };
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpenGroup(null);
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [openGroup]);
-
-  return (
-    <div ref={ref} className={cn('flex-1 flex-col overflow-hidden', className)}>
-      <nav className="flex-1 overflow-y-auto px-2 py-2" aria-label="Main">
-        <ul className="space-y-1">
-          {groups.map((group) => {
-            const Icon = group.icon;
-            const total = groupCount(group);
-            const here = group.label === current;
-            const single = group.items.length === 1 ? group.items[0] : undefined;
-            const classes = cn(
-              'relative flex w-full flex-col items-center gap-1 rounded-lg px-1 py-2 text-2xs font-medium transition-colors',
-              here || openGroup === group.label
-                ? 'bg-sidebar-active text-sidebar-active-foreground'
-                : 'text-sidebar-foreground hover:bg-sidebar-active/60 hover:text-sidebar-active-foreground',
-            );
-            const inner = (
-              <>
-                <Icon
-                  className={cn('h-[18px] w-[18px]', here ? 'text-primary' : 'text-sidebar-muted')}
-                />
-                <span className="w-full truncate text-center">
-                  {SHORT[group.label] ?? group.label}
-                </span>
-                {total > 0 && (
-                  <span className="bg-primary text-primary-foreground absolute right-2 top-1 min-w-4 rounded-full px-1 text-[10px] font-semibold tabular-nums leading-4">
-                    {total}
-                  </span>
-                )}
-              </>
-            );
-            return (
-              <li key={group.label}>
-                {single && !single.soon ? (
-                  <Link
-                    href={single.href}
-                    className={classes}
-                    title={single.name}
-                    aria-current={here ? 'page' : undefined}
-                  >
-                    {inner}
-                  </Link>
-                ) : (
-                  <button
-                    className={classes}
-                    onClick={() => setOpenGroup((g) => (g === group.label ? null : group.label))}
-                    aria-expanded={openGroup === group.label}
-                    aria-haspopup="menu"
-                    title={group.label}
-                  >
-                    {inner}
-                  </button>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
-
-      {/* Portalled: the sidebar's transform would otherwise trap a fixed panel inside it */}
-      {flyout &&
-        createPortal(
-          <div
-            ref={panel}
-            className="border-sidebar-border bg-sidebar text-sidebar-foreground shadow-menu animate-in fade-in-0 fixed inset-y-0 left-[84px] z-40 flex w-60 flex-col border-r"
-            role="menu"
-            aria-label={flyout.label}
-          >
-            <div className="flex h-14 items-center justify-between px-4">
-              <p className="text-sidebar-active-foreground text-sm font-semibold">{flyout.label}</p>
-              <button
-                onClick={() => setOpenGroup(null)}
-                className="hover:bg-sidebar-active rounded-md p-1"
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <ul className="flex-1 space-y-0.5 overflow-y-auto px-3 py-1">
-              {flyout.items.map((item) => (
-                <ItemLink
-                  key={item.href}
-                  item={item}
-                  pathname={pathname}
-                  onNavigate={() => setOpenGroup(null)}
-                />
-              ))}
-            </ul>
-          </div>,
-          document.body,
-        )}
-    </div>
   );
 }

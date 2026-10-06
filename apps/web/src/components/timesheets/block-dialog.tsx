@@ -6,7 +6,7 @@ import { AlertTriangle, Check, Clock3, Lock, Timer, Trash2, Undo2 } from 'lucide
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Field, Input, Textarea } from '@/components/ui/field';
+import { Field, Input, Textarea, FormError } from '@/components/ui/field';
 import { blockColor, GENERAL_COLOR } from '@/components/timesheets/week-calendar';
 import {
   TS_STATUS,
@@ -123,7 +123,7 @@ export function BlockDialog({ week, draft, onClose }: { week: Week; draft: Block
       title={editing ? 'Edit block' : 'Log work'}
       description={longDayLabel(date)}
       icon={<Timer />}
-      className="max-w-xl"
+      size="lg"
       footer={
         <div className="flex w-full flex-wrap items-center gap-2">
           {editing && <Button variant="ghost" className="text-destructive" icon={<Trash2 />} onClick={() => void remove()} loading={del.isPending}>Delete</Button>}
@@ -175,7 +175,7 @@ export function BlockDialog({ week, draft, onClose }: { week: Week; draft: Block
           {billing.text}
           <span className="ml-auto font-normal">set by the PMO</span>
         </p>
-        {error && <p role="alert" className="flex gap-2 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />{error}</p>}
+        <FormError>{error}</FormError>
       </div>
     </Modal>
   );

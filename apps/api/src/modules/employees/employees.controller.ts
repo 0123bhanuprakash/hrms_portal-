@@ -23,10 +23,12 @@ import { AddChecklistItemDto, BulkEmployeesDto, ChecklistQueryDto, ExtendProbati
 import { RequirePermission, RequireFeature, Audit, TenantCtx, CurrentAccess } from '../../common';
 import type { TenantContext } from '../../common/types/request.types';
 import type { AccessContext } from '../access/access.types';
+import { Live } from '../realtime/live.decorator';
 
 // Every route needs the Employee directory feature; which employees a caller
 // sees or edits follows their permission scope (own / reports / dept / company).
 @RequireFeature('people.directory')
+@Live('people', 'company')
 @Controller('employees')
 export class EmployeesController {
   constructor(
@@ -34,6 +36,16 @@ export class EmployeesController {
     private readonly importService: EmployeeImportService,
     private readonly lifecycle: EmployeeLifecycleService,
   ) {}
+
+  /**
+   * Everyone in a company is an employee: an account without a profile (e.g. a
+   * company admin from before this rule) creates its own basic one, then completes it.
+   */
+  @Audit('employee:create-own', 'employee')
+  @Post('me')
+  async createMine(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext) {
+    return this.employeesService.basicProfileFor(ctx.companyId!, access.userId);
+  }
 
   /** Employee profile for an existing sign-in account (e.g. invited from Users). */
   @RequirePermission('employee.create')
@@ -60,8 +72,8 @@ export class EmployeesController {
   @Audit('employee:import', 'employee')
   @Post('import')
   @HttpCode(HttpStatus.OK)
-  async import(@TenantCtx() ctx: TenantContext, @Body() dto: ImportEmployeesDto) {
-    return this.importService.import(ctx.companyId!, dto.rows, dto.sendInvites ?? true);
+  async import(@TenantCtx() ctx: TenantContext, @Body() dto: ImportEmployeesDto, @CurrentAccess() access: AccessContext) {
+    return this.importService.import(ctx.companyId!, dto.rows, dto.sendInvites ?? true, dto.progressId ? { userId: access.userId, id: dto.progressId } : undefined);
   }
 
   @RequirePermission('employee.create')

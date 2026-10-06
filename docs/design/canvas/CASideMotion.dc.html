@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sidebar — motion</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0}
+.w{--bg:#F4F4F8;--side:#FFFFFF;--card:#FFFFFF;--border:#E7E7EF;--fg:#16162A;--mut:#74748C;--soft:#F1F0FB;--pri:#5B4FE9;--priS:#EEECFF;--line:#DCDCE8;font-family:Manrope,system-ui,sans-serif;color:var(--fg);background:var(--bg);min-height:100vh;padding:34px 40px}
+.w.dark{--bg:#0E0E16;--side:#16161F;--card:#1B1B26;--border:#2A2A3A;--fg:#ECECF5;--mut:#8F8FA8;--soft:#22222F;--pri:#8B80FF;--priS:#2A2650;--line:#33334A}
+h1{font-size:26px;font-weight:800;letter-spacing:-.02em}
+.sub{color:var(--mut);font-size:14px;margin-top:6px;max-width:980px;line-height:1.5}
+.lbl{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
+.row{display:flex;gap:28px;align-items:flex-start;margin-top:26px}
+.cap{display:flex;flex-direction:column;gap:10px}
+.cap>b{font-size:12px;letter-spacing:.06em;color:var(--mut)}
+/* app frame */
+.frame{display:flex;gap:14px;height:820px;border-radius:22px;background:var(--bg);border:1px solid var(--border);padding:14px;overflow:hidden;position:relative}
+.page{flex:1;display:flex;flex-direction:column;gap:14px;min-width:0}
+.top{height:44px;display:flex;align-items:center;gap:10px;color:var(--mut);font-size:13px}
+.ph{background:var(--card);border:1px solid var(--border);border-radius:16px}
+/* Glide sidebar */
+.gl{width:262px;flex:none;background:var(--side);border:1px solid var(--border);border-radius:20px;box-shadow:0 10px 30px -18px #1a1a4a33;display:flex;flex-direction:column;padding:14px 12px;gap:6px;position:relative}
+.gl .brand{display:flex;align-items:center;gap:10px;padding:2px 4px 8px}
+.gl .logo{width:34px;height:34px;border-radius:11px;background:linear-gradient(135deg,var(--pri),#9B5CF6);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex:none}
+.gl .handle{position:absolute;right:-12px;top:22px;width:24px;height:24px;border-radius:50%;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--mut);box-shadow:0 2px 6px #0000001a}
+.gl .srch{display:flex;align-items:center;gap:8px;height:38px;border-radius:11px;border:1px solid var(--border);padding:0 10px;color:var(--mut);font-size:13px;margin-bottom:6px}
+.kbd{font-size:10px;font-weight:700;border:1px solid var(--border);border-radius:5px;padding:1px 5px;color:var(--mut);background:var(--bg)}
+.gl .sec{padding:10px 8px 4px}
+.it{display:flex;align-items:center;gap:10px;height:38px;border-radius:11px;padding:0 10px;font-size:13.5px;font-weight:600;color:var(--mut);position:relative}
+.it svg{flex:none}
+.it.on{background:var(--soft);color:var(--fg)}
+.it.on>svg{color:var(--pri)}
+.it .ch{margin-left:auto;color:var(--mut)}
+.cnt{margin-left:auto;font-size:10.5px;font-weight:800;min-width:20px;height:18px;border-radius:99px;background:var(--pri);color:#fff;display:flex;align-items:center;justify-content:center;padding:0 6px}
+/* tree lines under an open group */
+.tree{position:relative;margin:2px 0 4px 26px;padding-left:14px;display:flex;flex-direction:column;gap:2px}
+.tree::before{content:'';position:absolute;left:0;top:-4px;bottom:16px;width:1.5px;background:var(--line);border-radius:2px}
+.tree .s{position:relative;height:32px;display:flex;align-items:center;padding:0 10px;border-radius:9px;font-size:13px;color:var(--mut);font-weight:600}
+.tree .s::before{content:'';position:absolute;left:-14px;top:50%;width:12px;height:12px;margin-top:-12px;border-left:1.5px solid var(--line);border-bottom:1.5px solid var(--line);border-bottom-left-radius:8px}
+.tree .s.on{background:var(--soft);color:var(--fg)}
+.tree .s.on::after{content:'';position:absolute;left:-17px;top:50%;width:7px;height:7px;margin-top:-4px;border-radius:50%;background:var(--pri);box-shadow:0 0 0 3px var(--priS)}
+.me{margin-top:auto;display:flex;align-items:center;gap:10px;padding:10px 8px 2px;border-top:1px solid var(--border)}
+.av{width:32px;height:32px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff}
+/* folded */
+.gl.fold{width:76px;align-items:center;padding:14px 10px}
+.gl.fold .it{width:46px;justify-content:center;padding:0}
+.fly{position:absolute;left:84px;width:236px;background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 18px 40px -16px #1a1a4a55;padding:10px 10px 10px 8px;z-index:3}
+.fly .t{font-size:12px;font-weight:800;padding:2px 8px 8px;display:flex;align-items:center;gap:8px}
+.fly .tree{margin-left:12px}
+.tip{position:absolute;left:84px;background:var(--fg);color:var(--bg);font-size:12px;font-weight:700;padding:6px 10px;border-radius:8px;white-space:nowrap}
+.tip::before{content:'';position:absolute;left:-4px;top:50%;margin-top:-4px;width:8px;height:8px;background:var(--fg);transform:rotate(45deg)}
+.dot{position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:#E5484D;border:2px solid var(--side)}
+/* live motion demo */
+.live .gl{animation:gw 7s cubic-bezier(.65,0,.25,1) infinite;overflow:hidden}
+@keyframes gw{0%,8%{width:76px}22%,62%{width:262px}76%,100%{width:76px}}
+.live .txt{white-space:nowrap;animation:gt 7s ease infinite}
+@keyframes gt{0%,12%{opacity:0;transform:translateX(-6px)}24%,58%{opacity:1;transform:none}66%,100%{opacity:0;transform:translateX(-6px)}}
+.live .tree{animation:gtree 7s ease infinite;transform-origin:top;overflow:hidden}
+@keyframes gtree{0%,24%{max-height:0;opacity:0}36%,58%{max-height:200px;opacity:1}68%,100%{max-height:0;opacity:0}}
+.live .pill{position:absolute;left:12px;right:12px;height:38px;border-radius:11px;background:var(--soft);animation:gp 7s cubic-bezier(.5,1.4,.5,1) infinite;z-index:0}
+@keyframes gp{0%,30%{top:var(--a)}40%,100%{top:var(--b)}}
+.live .it{z-index:1;background:transparent!important}
+.live .handle svg{animation:gh 7s ease infinite}
+@keyframes gh{0%,15%{transform:rotate(0)}22%,62%{transform:rotate(180deg)}76%,100%{transform:rotate(0)}}
+.frames{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:22px}
+.fr{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px;min-height:340px}
+.fr .r svg{flex:none}
+.fr .stub{min-height:230px}
+.fr .stub{display:flex;gap:8px;flex:1}
+.fr .bar{background:var(--side);border:1px solid var(--border);border-radius:14px;padding:10px 8px;display:flex;flex-direction:column;gap:6px;overflow:hidden}
+.fr .r{display:flex;align-items:center;gap:8px;height:28px;border-radius:8px;padding:0 7px;color:var(--mut);font-size:11.5px;font-weight:600;white-space:nowrap}
+.fr .r.on{background:var(--soft);color:var(--fg)}
+.fr p{font-size:12px;color:var(--mut);line-height:1.45}
+.fr p b{color:var(--fg)}
+.tl{display:grid;grid-template-columns:170px 1fr;gap:8px 14px;align-items:center;font-size:12px;margin-top:8px}
+.tl .tr{position:relative;height:12px;border-radius:99px;background:var(--soft)}
+.tl .tr span{position:absolute;top:0;bottom:0;border-radius:99px;background:var(--c)}
+/* Peek (hover) */
+.peek{width:68px;flex:none;background:var(--side);border:1px solid var(--border);border-radius:18px;display:flex;flex-direction:column;align-items:center;padding:12px 8px;gap:4px;position:relative}
+.peek .it{width:46px;justify-content:center;padding:0}
+.peek.open{position:absolute;left:14px;top:14px;bottom:14px;width:252px;align-items:stretch;padding:12px;z-index:4;box-shadow:24px 0 60px -20px #00000088}
+.peek.open .it{width:auto;justify-content:flex-start;padding:0 10px}
+.pinrow{margin-top:auto;display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;color:var(--mut);padding:8px 10px;border-top:1px solid var(--border)}
+.sw{margin-left:auto;width:34px;height:20px;border-radius:99px;background:var(--line);position:relative}
+.sw::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff}
+.sw.on{background:var(--pri)}.sw.on::after{left:16px}
+.dim{position:absolute;inset:14px 14px 14px 90px;border-radius:16px;background:#00000040}
+/* phone */
+.phone{width:330px;height:680px;border-radius:40px;border:9px solid #111;background:var(--bg);overflow:hidden;position:relative;flex:none}
+.pick{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.opt{border:1.5px solid var(--border);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:8px;background:var(--card)}
+.opt.on{border-color:var(--pri);box-shadow:0 0 0 3px var(--priS)}
+.sk{height:86px;border-radius:9px;background:var(--bg);border:1px solid var(--border);display:flex;gap:5px;padding:5px;overflow:hidden}
+.sk i{display:block;border-radius:4px;background:var(--line)}
+.new{font-size:9.5px;font-weight:800;color:#fff;background:var(--pri);border-radius:99px;padding:1px 6px;margin-left:6px}
+.note{font-size:12.5px;color:var(--mut);line-height:1.55;max-width:560px}
+.note b{color:var(--fg)}
+</style>
+<div class="w"><h1>Glide — how it moves</h1>
+  <p class="sub">Left: the real thing, looping (fold → open → fold). The highlight <b>glides</b> from one page to the next instead of jumping, and the edge handle turns as it opens. Right: the same moment frame by frame.</p>
+  <div class="row">
+    <div class="cap live"><b>LIVE · LOOPS EVERY 7 S</b><div class="frame" style="width:560px;height:760px">
+      <div class="gl" style="position:relative">
+        <div class="pill" style="--a:178px;--b:450px"></div>
+        <div class="brand"><span class="logo">AP</span><span class="txt" style="line-height:1.2"><b style="font-size:14px">aakash-portal</b></span></div>
+        <span class="handle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="m9 18 6-6-6-6"/></svg></span>
+        <div class="it"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg><span class="txt">Overview</span></div><div class="it"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg><span class="txt">Organization</span></div><div class="it"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg><span class="txt">Engagement</span></div><div class="it"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9l-.8-1.2A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/></svg><span class="txt">Work</span></div><div class="it"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"/><path d="M8 7h8M8 11h8M8 15h5"/></svg><span class="txt">Expenses</span></div><div class="it"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M21 8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg><span class="txt">Assets</span></div><div class="it"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><path d="m4.9 4.9 4.3 4.3M14.8 14.8l4.3 4.3M14.8 9.2l4.3-4.3M4.9 19.1l4.3-4.3"/></svg><span class="txt">Helpdesk</span></div><div class="it"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><span class="txt">Time</span></div><div class="tree"><div class="s"><span>My attendance</span></div><div class="s on"><span>My leave</span></div><div class="s"><span>Leave approvals</span><span class="cnt" style="margin-left:auto">3</span></div></div>
+      </div>
+      <div class="page"><div class="ph" style="height:90px"></div><div class="ph" style="flex:1"></div></div>
+    </div></div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:18px">
+      <div class="frames"><div class="fr"><span class="lbl">Folded</span><div class="stub"><div class="bar" style="width:47px"><div class="r"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></div><div class="r on"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg></div><div class="r"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg></div><div class="r"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9l-.8-1.2A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/></svg></div><div class="r"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"/><path d="M8 7h8M8 11h8M8 15h5"/></svg></div><div class="r"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M21 8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg></div></div><div style="flex:1;border-radius:12px;background:var(--bg);border:1px dashed var(--border)"></div></div><p>Only icons. A red dot means something inside is waiting.</p></div><div class="fr"><span class="lbl">Opening · 120 ms</span><div class="stub"><div class="bar" style="width:93px"><div class="r"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg><span style="opacity:0">Overview</span></div><div class="r on"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg><span style="opacity:0">Organization</span></div><div class="r"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg><span style="opacity:0">Engagement</span></div><div class="r"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9l-.8-1.2A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/></svg><span style="opacity:0">Work</span></div><div class="r"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"/><path d="M8 7h8M8 11h8M8 15h5"/></svg><span style="opacity:0">Expenses</span></div><div class="r"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M21 8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg><span style="opacity:0">Assets</span></div></div><div style="flex:1;border-radius:12px;background:var(--bg);border:1px dashed var(--border)"></div></div><p>The card <b>widens with a soft spring</b>; icons stay put so nothing jumps.</p></div><div class="fr"><span class="lbl">Opening · 220 ms</span><div class="stub"><div class="bar" style="width:130px"><div class="r"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg><span style="opacity:1">Overview</span></div><div class="r on"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg><span style="opacity:1">Organization</span></div><div class="r"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg><span style="opacity:1">Engagement</span></div><div class="r"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9l-.8-1.2A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/></svg><span style="opacity:0.35">Work</span></div><div class="r"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"/><path d="M8 7h8M8 11h8M8 15h5"/></svg><span style="opacity:0.35">Expenses</span></div><div class="r"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M21 8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg><span style="opacity:0.35">Assets</span></div></div><div style="flex:1;border-radius:12px;background:var(--bg);border:1px dashed var(--border)"></div></div><p>Labels <b>fade and slide in</b> from the left, top to bottom (20 ms apart).</p></div><div class="fr"><span class="lbl">Open · 320 ms</span><div class="stub"><div class="bar" style="width:162px"><div class="r"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg><span style="opacity:1">Overview</span></div><div class="r on"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg><span style="opacity:1">Organization</span></div><div class="r"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg><span style="opacity:1">Engagement</span></div><div class="r"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9l-.8-1.2A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/></svg><span style="opacity:1">Work</span></div><div class="r"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"/><path d="M8 7h8M8 11h8M8 15h5"/></svg><span style="opacity:1">Expenses</span></div><div class="r"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M21 8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg><span style="opacity:1">Assets</span></div><div style="margin-left:18px;border-left:1.5px solid var(--line);padding-left:8px;display:flex;flex-direction:column;gap:4px"><div class="r on" style="height:22px">Employees</div><div class="r" style="height:22px">Organisation</div></div></div><div style="flex:1;border-radius:12px;background:var(--bg);border:1px dashed var(--border)"></div></div><p>The current section <b>unfolds its tree</b> — lines draw down, pages drop in.</p></div></div>
+      <div class="ph" style="padding:18px 20px"><div class="lbl">Timing</div><div class="tl"><span>Card widens</span><div class="tr"><span style="left:0%;width:64%;--c:var(--pri)"></span></div><span>Handle turns</span><div class="tr"><span style="left:0%;width:52%;--c:#9B5CF6"></span></div><span>Labels fade + slide in</span><div class="tr"><span style="left:18%;width:52%;--c:#0EA5E9"></span></div><span>Tree lines draw</span><div class="tr"><span style="left:44%;width:40%;--c:#16A34A"></span></div><span>Highlight glides</span><div class="tr"><span style="left:0%;width:56.00000000000001%;--c:#F59E0B"></span></div><span>Popped-out card (folded)</span><div class="tr"><span style="left:0%;width:36%;--c:#E0577A"></span></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--mut);margin:6px 0 0 184px"><span>0 ms</span><span>100 ms</span><span>200 ms</span><span>300 ms</span><span>400 ms</span><span>500 ms</span></div></div>
+      <p class="note"><b>Remembers your choice</b> (open or folded) on your account. With <b>Reduce motion</b> on it simply switches. On screens under 1024 px it is always the phone drawer.</p>
+    </div>
+  </div></div></x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":980}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

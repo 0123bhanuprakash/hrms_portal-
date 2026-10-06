@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Team attendance</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F6F7FB}
+.app{display:flex;min-height:100vh;font-family:Manrope,system-ui,sans-serif;color:#111827;background:#F6F7FB;position:relative}
+.sb{flex:0 0 240px;background:#FFFFFF;border-right:1px solid #E5E7EF;display:flex;flex-direction:column}
+.sb-h{display:flex;gap:10px;align-items:center;padding:14px}
+.logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#E9416A,#7A2BD9);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px}
+.sb-h b{display:block;font-size:14px}.sb-h span{font-size:11px;color:#6B7280}
+.sb-g{padding:12px 14px 3px;font-size:10.5px;font-weight:700;letter-spacing:.07em;color:#9CA3AF}
+.sb-i{display:flex;align-items:center;gap:10px;height:34px;margin:0 10px;padding:0 10px;border-radius:7px;font-size:13.5px;color:#374151}
+.sb-i svg{color:#9CA3AF}.sb-i.on{background:#EEF0FF;color:#3730A3;font-weight:700}.sb-i.on svg{color:#4F46E5}
+.col{flex:1;min-width:0;display:flex;flex-direction:column}
+.hdr{height:56px;border-bottom:1px solid #E5E7EF;display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:rgba(255,255,255,.7)}
+.crumb{font-size:13.5px;color:#6B7280}.crumb b{color:#111827}
+.main{padding:24px 30px 40px;display:flex;flex-direction:column;gap:16px}
+.eyebrow{font-size:12.5px;color:#4F46E5;font-weight:700}
+h1{margin:2px 0 0;font-size:26px;font-weight:800;letter-spacing:-.02em}
+.sub{color:#6B7280;font-size:14px;margin-top:3px}
+.row{display:flex;align-items:center;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 14px;border-radius:9px;border:1px solid #E5E7EF;background:#fff;color:#111827;font-size:13px;font-weight:700;white-space:nowrap}
+.btn.pri{background:#4F46E5;border-color:#4F46E5;color:#fff}.btn.sm{height:30px;padding:0 10px;font-size:12px}
+.card{background:#fff;border:1px solid #E5E7EF;border-radius:14px;box-shadow:0 1px 2px rgba(17,24,39,.04)}
+.sec{padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.sec h3{margin:0;font-size:14.5px;display:flex;align-items:center;gap:8px}.sec h3 svg{color:#6B7280}
+.sec h3 .r{margin-left:auto;font-size:12px;font-weight:500;color:#6B7280}
+.mut{color:#6B7280}.xs{font-size:12px}
+.tabs{display:flex;gap:4px;background:#fff;border:1px solid #E5E7EF;border-radius:11px;padding:4px;width:max-content}
+.tabs span{display:flex;align-items:center;gap:7px;padding:7px 14px;border-radius:8px;font-size:13px;color:#6B7280;font-weight:600}
+.tabs span.on{background:#4F46E5;color:#fff}
+.fbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:9px;border:1px solid #E5E7EF;background:#fff;font-size:12.5px;font-weight:600;color:#374151}
+.chip.on{border-color:#C7C9F7;background:#EEF0FF;color:#3730A3}
+.seg{display:flex;border:1px solid #E5E7EF;border-radius:9px;overflow:hidden;background:#fff}.seg span{padding:7px 11px;font-size:12px;font-weight:600;color:#6B7280}.seg span.on{background:#111827;color:#fff}
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.kpi{padding:14px 16px;display:flex;flex-direction:column;gap:3px;position:relative;overflow:hidden}
+.kpi span.l{font-size:12px;color:#6B7280}.kpi b.v{font-size:25px;font-weight:800;letter-spacing:-.02em}
+.delta{font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;gap:2px}
+.d-up{color:#059669}.d-dn{color:#DC2626}.d-flat{color:#6B7280}
+.kpi svg.sp{position:absolute;right:12px;bottom:12px}
+.hl{display:flex;gap:12px;padding:12px 14px;border-radius:12px;border:1px solid #E5E7EF;background:#fff;align-items:flex-start}
+.hl .ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.g21{display:grid;grid-template-columns:1.5fr 1fr;gap:16px}.g12{display:grid;grid-template-columns:1fr 1.4fr;gap:16px}
+.lib{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid #EEF0F5;border-radius:12px;background:#F8F9FC}
+.lib .ic{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none}
+.bar{height:8px;border-radius:99px;background:#EEF0F5;overflow:hidden}.bar i{display:block;height:100%;border-radius:99px;transform-origin:left;animation:fw 1s cubic-bezier(.2,.8,.2,1) both}
+@keyframes fw{from{transform:scaleX(0)}}
+.chart polyline,.chart path.ln{stroke-dasharray:3000;animation:draw 1.6s ease both}@keyframes draw{from{stroke-dashoffset:3000}}
+.heat{display:grid;gap:3px}.heat i{display:block;border-radius:4px;aspect-ratio:1}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#6B7280;padding:8px 10px;border-bottom:1px solid #E5E7EF}
+td{padding:9px 10px;border-bottom:1px solid #EEF0F5}
+.av{width:28px;height:28px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;color:#fff;flex:none}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.p-ok{background:#E6F6F0;color:#059669}.p-warn{background:#FEF3E2;color:#D97706}.p-bad{background:#FDECEC;color:#DC2626}.p-pri{background:#EEF0FF;color:#3730A3}.p-neu{background:#EEF0F5;color:#6B7280}
+.dim{position:absolute;inset:0;background:rgba(17,24,39,.35);z-index:4}
+.drawer{position:absolute;top:0;right:0;bottom:0;width:440px;background:#fff;border-left:1px solid #E5E7EF;z-index:5;display:flex;flex-direction:column;box-shadow:-24px 0 50px -20px rgba(0,0,0,.35)}
+.modal{position:absolute;left:50%;top:150px;transform:translateX(-50%);width:480px;background:#fff;border:1px solid #E5E7EF;border-radius:16px;z-index:5;box-shadow:0 30px 60px -20px rgba(0,0,0,.4)}
+.fld{display:flex;flex-direction:column;gap:5px;font-size:12.5px}.fld label{font-weight:700}
+.inp{height:36px;border:1px solid #E5E7EF;border-radius:9px;padding:0 11px;display:flex;align-items:center;font-size:13px;gap:8px;background:#fff}
+
+.ph{position:relative;overflow:hidden;border-radius:14px;flex:none}
+.ph svg{display:block}
+.st{position:absolute;display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:800;padding:3px 8px;border-radius:99px;background:rgba(255,255,255,.92);box-shadow:0 2px 6px rgba(0,0,0,.12)}
+.st i{width:7px;height:7px;border-radius:50%;display:inline-block}
+.pc{display:flex;flex-direction:column;overflow:hidden;transition:transform .25s,box-shadow .25s}
+.pc:hover{transform:translateY(-4px);box-shadow:0 18px 36px -18px rgba(17,24,39,.35)}
+.pc .body{padding:12px 14px 14px;display:flex;flex-direction:column;gap:4px}
+.pc b.n{font-size:15px}.pc .role{font-size:12.5px;color:#6B7280}
+.tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:#F8F9FC;border:1px solid #EEF0F5;color:#374151}
+.acts{display:flex;gap:6px;padding:0 14px 14px}
+.acts span{flex:1;height:30px;border-radius:8px;border:1px solid #E5E7EF;display:flex;align-items:center;justify-content:center;gap:5px;font-size:12px;font-weight:700;color:#374151}
+.rail{display:flex;flex-direction:column;gap:2px;position:sticky;top:0;font-size:10.5px;font-weight:800;color:#9CA3AF;text-align:center}
+.rail span{padding:1px 0}.rail span.on{color:#4F46E5}
+.hlstrip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.hlc{padding:14px 16px;display:flex;align-items:center;gap:12px}
+.stack{display:flex}.stack .ph{border:2.5px solid #fff;margin-left:-10px;border-radius:50%}.stack .ph:first-child{margin-left:0}
+.search{display:flex;align-items:center;gap:8px;height:42px;padding:0 14px;border:1px solid #E5E7EF;border-radius:12px;background:#fff;flex:1;color:#6B7280;font-size:14px;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+.wall{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px}
+.grp{display:flex;flex-direction:column;gap:10px}
+.grp h3{margin:0;font-size:15px;display:flex;align-items:center;gap:10px}
+.mini{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid #EEF0F5;border-radius:12px;background:#fff}
+
+.sb-i .nb{font-size:10.5px;font-weight:800;background:#4F46E5;color:#fff;border-radius:99px;padding:1px 7px}
+.new{display:inline-flex;font-size:9.5px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:99px;background:#DCFCE7;color:#166534;vertical-align:middle;margin-left:6px}
+.notes{padding:12px 14px;display:flex;flex-direction:column;gap:6px;background:#F8F9FC}
+.k-new,.k-old,.k-q{display:inline-block;min-width:44px;font-size:9.5px;font-weight:900;text-transform:uppercase;letter-spacing:.05em;margin-right:6px}
+.k-new{color:#16A34A}.k-old{color:#6B7280}.k-q{color:#D97706}
+.xst{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}.tbl th{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#6B7280;text-align:left;padding:8px 10px;background:#F8F9FC;border-bottom:1px solid #E5E7EF}.tbl td{padding:9px 10px;border-bottom:1px solid #EEF0F5;vertical-align:middle}
+.tgl{width:34px;height:20px;border-radius:99px;background:#4F46E5;position:relative;flex:none;display:inline-block}.tgl:after{content:'';position:absolute;right:3px;top:3px;width:14px;height:14px;border-radius:50%;background:#fff}.tgl.off{background:#D1D5DB}.tgl.off:after{right:auto;left:3px}
+.fld{display:flex;flex-direction:column;gap:5px}.fld label{font-size:12px;font-weight:700}.inp{border:1px solid #E5E7EF;border-radius:10px;padding:8px 11px;font-size:13px;background:#fff;display:flex;align-items:center;gap:8px}
+.av{border-radius:50%;overflow:hidden;flex:none;display:inline-block}
+.stack{display:flex}.stack .ph{border:2px solid #fff;margin-left:-8px}.stack .ph:first-child{margin-left:0}
+.dot{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex:none}
+.ln{flex:1;height:2px;border-radius:2px;min-width:14px}
+.step{display:flex;align-items:center;gap:6px;font-size:11px}
+.sec2{padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.lbl{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#6B7280}
+.num{font-size:24px;font-weight:800;letter-spacing:-.02em}
+.kbd{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 4px;border-radius:5px;border:1px solid #E5E7EF;border-bottom-width:2px;font-size:10px;font-weight:800;color:#374151;background:#fff}
+
+/* hours ruler (06:00–22:00) */
+.rul{position:relative;height:22px}
+.rul span{position:absolute;top:0;font-size:9.5px;color:#6B7280;font-weight:700;transform:translateX(-50%)}
+.trk{position:relative;height:16px;border-radius:6px;background:#F8F9FC;border:1px solid #EEF0F5}
+.blk{position:absolute;top:2px;bottom:2px;border-radius:4px}
+.shift{position:absolute;top:-4px;bottom:-4px;border-left:1.5px dashed #4F46E555;border-right:1.5px dashed #4F46E555;background:#4F46E508}
+.nowl{position:absolute;top:-6px;bottom:-6px;width:2px;background:#DC2626;border-radius:2px;animation:nowm 8s ease-in-out infinite alternate}
+.nowl:before{content:'';position:absolute;top:-4px;left:-3px;width:8px;height:8px;border-radius:50%;background:#DC2626}
+@keyframes nowm{to{transform:translateX(6px)}}
+
+/* motion */
+@keyframes pop{from{opacity:0;transform:translateY(8px) scale(.97)}}
+.stg>*{animation:pop .5s cubic-bezier(.2,.8,.2,1) both}
+.stg>*:nth-child(2){animation-delay:.05s}.stg>*:nth-child(3){animation-delay:.1s}.stg>*:nth-child(4){animation-delay:.15s}.stg>*:nth-child(5){animation-delay:.2s}.stg>*:nth-child(6){animation-delay:.25s}.stg>*:nth-child(7){animation-delay:.3s}.stg>*:nth-child(n+8){animation-delay:.35s}
+@keyframes ringd{from{stroke-dashoffset:var(--c)}}
+.ring circle.v{animation:ringd 1.4s cubic-bezier(.2,.8,.2,1) both}
+@keyframes pulse{0%{box-shadow:0 0 0 0 #05966966}100%{box-shadow:0 0 0 14px #05966900}}
+.live{width:9px;height:9px;border-radius:50%;background:#059669;display:inline-block;animation:pulse 1.8s ease-out infinite}
+@keyframes grow{from{transform:scaleY(0)}}
+.hb{transform-origin:bottom;animation:grow .9s cubic-bezier(.2,.8,.2,1) both}
+@keyframes wbar{from{transform:scaleX(0)}}
+.wb{transform-origin:left;animation:wbar 1s cubic-bezier(.2,.8,.2,1) both}
+</style>
+</helmet><style>
+.presence{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.pz{background:#fff;border:1px solid #E5E7EF;border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.more{width:26px;height:26px;border-radius:50%;background:#F8F9FC;border:2px solid #fff;margin-left:-8px;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;color:#6B7280}
+.sdot{width:7px;height:7px;border-radius:50%;display:inline-block;flex:none}
+.sq{display:block;aspect-ratio:1;border-radius:3px;animation:pop .4s ease both}
+.bar{border-radius:99px;background:#EEF0F5;overflow:hidden}.bar i{display:block;height:100%;border-radius:99px}
+</style>
+<div class="app"><aside class="sb">
+<div class="sb-h"><span class="logo">AP</span><span><b>aakash-portal</b><span>HR workspace</span></span></div>
+<div class="sb-g">OVERVIEW</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Home</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M16 10h2M16 14h2"/><circle cx="9" cy="11" r="2"/><path d="M6 16.5a3.5 3.5 0 0 1 6 0"/></svg>My profile</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>Reports &amp; analytics</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v2M8 2v2"/><circle cx="12" cy="11" r="3"/><path d="M7 20a5 5 0 0 1 10 0"/></svg>People</div>
+<div class="sb-g">ORGANIZATION ›</div><div class="sb-g">ENGAGEMENT ›</div><div class="sb-g">WORK ›</div><div class="sb-g">EXPENSES ›</div><div class="sb-g">ASSETS ›</div>
+<div class="sb-g">TIME</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg><span style="flex:1">My attendance</span></div><div class="sb-i on"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg><span style="flex:1">Team attendance</span></div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg><span style="flex:1">Attendance approvals</span><span class="nb">3</span></div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg><span style="flex:1">My leave</span></div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5M16 2v4M8 2v4M3 10h5"/><circle cx="16" cy="16" r="6"/><path d="M16 14v2.2l1.6 1"/></svg><span style="flex:1">Leave approvals</span><span class="nb">4</span></div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M3 10h18M8 2v4M17 14h-6M13 18H7M7 14h.01M17 18h.01"/></svg><span style="flex:1">Who’s off</span></div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/></svg><span style="flex:1">Holidays</span></div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><span style="flex:1">Attendance settings</span></div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5 6.3 6.3a2.4 2.4 0 0 1 0 3.4L17 19"/><path d="M9.6 5.6A2 2 0 0 0 8.2 5H4a1 1 0 0 0-1 1v4.2a2 2 0 0 0 .6 1.4l5.8 5.8a2.4 2.4 0 0 0 3.4 0l3.6-3.6a2.4 2.4 0 0 0 0-3.4Z"/><circle cx="6.5" cy="9.5" r=".5"/></svg><span style="flex:1">Leave types</span></div>
+</aside><div class="col"><header class="hdr"><div class="crumb">Time &nbsp;›&nbsp; <b>Team attendance</b></div><div class="row mut xs"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span style="width:34px;height:20px;border-radius:99px;background:#E5E7EF;display:inline-block"></span></div></header><main class="main">
+<div class="row" style="align-items:flex-end"><div style="flex:1"><div class="eyebrow">Time</div><h1>Team attendance</h1><div class="sub">Your team · Monday 5 Oct · live</div></div><span class="btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>Nudge 2 not in yet</span><span class="btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Export Oct</span></div>
+<div class="row" style="gap:12px">
+  <div class="tabs"><span class="on"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Today <span class="new">New</span></span><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Month grid <span class="new">New</span></span><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>List</span></div>
+  <span style="flex:1"></span><span class="chip">‹ Mon 5 Oct ›</span><span class="chip"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3M12 12V8"/></svg>Engineering ▾</span><span class="chip"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>Search</span>
+</div>
+<div class="presence stg">
+  <div class="pz" style="border-top:3px solid #059669"><div class="row"><span class="lbl" style="flex:1">In office</span><b class="num" style="font-size:22px;color:#059669">9</b></div><div class="stack"><div class="ph" style="width:26px;height:26px;border-radius:50%"><svg width="26" height="26" viewBox="0 0 26 26"><defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#C7D2FE"/><stop offset="1" stop-color="#EEF2FF"/></linearGradient></defs>
+  <rect width="26" height="26" fill="url(#g1)"/>
+  <circle cx="21.32" cy="4.68" r="5.72" fill="#fff" opacity=".35"/>
+  <path d="M7.917000000000001,10.92 Q7.475,4.29 13,5.395 Q18.525,4.29 18.083,10.92 L18.304,17.992 L7.696000000000001,17.992Z" fill="#2B1D14"/>
+  <path d="M2.8340000000000014,26 Q3.276,17.771 13,17.329 Q22.724,17.771 23.165999999999997,26Z" fill="#4F46E5"/>
+  <rect x="11.3204" y="14.014" width="3.3592" height="3.978" fill="#F2C9A5"/>
+  <circle cx="13" cy="10.92" r="4.42" fill="#F2C9A5"/>
+  
+  </svg></div><div class="ph" style="width:26px;height:26px;border-radius:50%"><svg width="26" height="26" viewBox="0 0 26 26"><defs><linearGradient id="g2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#BBF7D0"/><stop offset="1" stop-color="#ECFDF5"/></linearGradient></defs>
+  <rect width="26" height="26" fill="url(#g2)"/>
+  <circle cx="21.32" cy="4.68" r="5.72" fill="#fff" opacity=".35"/>
+  
+  <path d="M2.8340000000000014,26 Q3.276,17.771 13,17.329 Q22.724,17.771 23.165999999999997,26Z" fill="#059669"/>
+  <rect x="11.3204" y="14.014" width="3.3592" height="3.978" fill="#8D5A3C"/>
+  <circle cx="13" cy="10.92" r="4.42" fill="#8D5A3C"/>
+  <path d="M8.4916,10.478 Q8.58,4.952999999999999 13,5.6160000000000005 Q17.42,4.952999999999999 17.5084,10.478 Q13,7.605 8.4916,10.478Z" fill="#6B4423"/>
+  </svg></div><div class="ph" style="width:26px;height:26px;border-radius:50%"><svg width="26" height="26" viewBox="0 0 26 26"><defs><linearGradient id="g3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FDE68A"/><stop offset="1" stop-color="#FFFBEB"/></linearGradient></defs>
+  <rect width="26" height="26" fill="url(#g3)"/>
+  <circle cx="21.32" cy="4.68" r="5.72" fill="#fff" opacity=".35"/>
+  <path d="M7.917000000000001,10.92 Q7.475,4.29 13,5.395 Q18.525,4.29 18.083,10.92 L18.304,17.992 L7.696000000000001,17.992Z" fill="#3B2A20"/>
+  <path d="M2.8340000000000014,26 Q3.276,17.771 13,17.329 Q22.724,17.771 23.165999999999997,26Z" fill="#374151"/>
+  <rect x="11.3204" y="14.014" width="3.3592" height="3.978" fill="#F2C9A5"/>
+  <circle cx="13" cy="10.92" r="4.42" fill="#F2C9A5"/>
+  
+  </svg></div><span class="more">+6</span></div></div><div class="pz" style="border-top:3px solid #0284C7"><div class="row"><span class="lbl" style="flex:1">Work from home</span><b class="num" style="font-size:22px;color:#0284C7">4</b></div><div class="stack"><div class="ph" style="width:26px;height:26px;border-radius:50%"><svg width="26" height="26" viewBox="0 0 26 26"><defs><linearGradient id="g4" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#BBF7D0"/><stop offset="1" stop-color="#ECFDF5"/></linearGradient></defs>
+  <rect width="26" height="26" fill="url(#g4)"/>
+  <circle cx="21.32" cy="4.68" r="5.72" fill="#fff" opacity=".35"/>
+  
+  <path d="M2.8340000000000014,26 Q3.276,17.771 13,17.329 Q22.724,17.771 23.165999999999997,26Z" fill="#059669"/>
+  <rect x="11.3204" y="14.014" width="3.3592" height="3.978" fill="#8D5A3C"/>
+  <circle cx="13" cy="10.92" r="4.42" fill="#8D5A3C"/>
+  <path d="M8.4916,10.478 Q8.58,4.952999999999999 13,5.6160000000000005 Q17.42,4.952999999999999 17.5084,10.478 Q13,7.605 8.4916,10.478Z" fill="#151515"/>
+  </svg></div><div class="ph" style="width:26px;height:26px;border-radius:50%"><svg width="26" height="26" viewBox="0 0 26 26"><defs><linearGradient id="g5" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#A7F3D0"/><stop offset="1" stop-color="#ECFDF5"/></linearGradient></defs>
+  <rect width="26" height="26" fill="url(#g5)"/>
+  <circle cx="21.32" cy="4.68" r="5.72" fill="#fff" opacity=".35"/>
+  
+  <path d="M2.8340000000000014,26 Q3.276,17.771 13,17.329 Q22.724,17.771 23.165999999999997,26Z" fill="#0D9488"/>
+  <rect x="11.3204" y="14.014" width="3.3592" height="3.978" fill="#8D5A3C"/>
+  <circle cx="13" cy="10.92" r="4.42" fill="#8D5A3C"/>
+  <path d="M8.4916,10.478 Q8.58,4.952999999999999 13,5.6160000000000005 Q17.42,4.952999999999999 17.5084,10.478 Q13,7.605 8.4916,10.478Z" fill="#151515"/>
+  </svg></div><span class="more">+2</span></div></div><div class="pz" style="border-top:3px solid #D97706"><div class="row"><span class="lbl" style="flex:1">Late</span><b class="num" style="font-size:22px;color:#D97706">2</b></div><div class="stack"><div class="ph" style="width:26px;height:26px;border-radius:50%"><svg width="26" height="26" viewBox="0 0 26 26"><defs><linearGradient id="g6" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#BAE6FD"/><stop offset="1" stop-color="#F0F9FF"/></linearGradient></defs>
+  <rect width="26" height="26" fill="url(#g6)"/>
+  <circle cx="21.32" cy="4.68" r="5.72" fill="#fff" opacity=".35"/>
+  <path d="M7.917000000000001,10.92 Q7.475,4.29 13,5.395 Q18.525,4.29 18.083,10.92 L18.304,17.992 L7.696000000000001,17.992Z" fill="#1C1C1C"/>
+  <path d="M2.8340000000000014,26 Q3.276,17.771 13,17.329 Q22.724,17.771 23.165999999999997,26Z" fill="#0284C7"/>
+  <rect x="11.3204" y="14.014" width="3.3592" height="3.978" fill="#F2C9A5"/>
+  <circle cx="13" cy="10.92" r="4.42" fill="#F2C9A5"/>
+  
+  </svg></div><span class="more">+1</span></div></div><div class="pz" style="border-top:3px solid #DB2777"><div class="row"><span class="lbl" style="flex:1">On leave</span><b class="num" style="font-size:22px;color:#DB2777">2</b></div><div class="stack"><div class="ph" style="width:26px;height:26px;border-radius:50%"><svg width="26" height="26" viewBox="0 0 26 26"><defs><linearGradient id="g7" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FBCFE8"/><stop offset="1" stop-color="#FDF2F8"/></linearGradient></defs>
+  <rect width="26" height="26" fill="url(#g7)"/>
+  <circle cx="21.32" cy="4.68" r="5.72" fill="#fff" opacity=".35"/>
+  
+  <path d="M2.8340000000000014,26 Q3.276,17.771 13,17.329 Q22.724,17.771 23.165999999999997,26Z" fill="#7C3AED"/>
+  <rect x="11.3204" y="14.014" width="3.3592" height="3.978" fill="#8D5A3C"/>
+  <circle cx="13" cy="10.92" r="4.42" fill="#8D5A3C"/>
+  <path d="M8.4916,10.478 Q8.58,4.952999999999999 13,5.6160000000000005 Q17.42,4.952999999999999 17.5084,10.478 Q13,7.605 8.4916,10.478Z" fill="#6B4423"/>
+  </svg></div><div class="ph" style="width:26px;height:26px;border-radius:50%"><svg width="26" height="26" viewBox="0 0 26 26"><defs><linearGradient id="g8" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FDE68A"/><stop offset="1" stop-color="#FFFBEB"/></linearGradient></defs>
+  <rect width="26" height="26" fill="url(#g8)"/>
+  <circle cx="21.32" cy="4.68" r="5.72" fill="#fff" opacity=".35"/>
+  <path d="M7.917000000000001,10.92 Q7.475,4.29 13,5.395 Q18.525,4.29 18.083,10.92 L18.304,17.992 L7.696000000000001,17.992Z" fill="#1C1C1C"/>
+  <path d="M2.8340000000000014,26 Q3.276,17.771 13,17.329 Q22.724,17.771 23.165999999999997,26Z" fill="#374151"/>
+  <rect x="11.3204" y="14.014" width="3.3592" height="3.978" fill="#F2C9A5"/>
+  <circle cx="13" cy="10.92" r="4.42" fill="#F2C9A5"/>
+  
+  </svg></div></div></div><div class="pz" style="border-top:3px solid #9CA3AF"><div class="row"><span class="lbl" style="flex:1">Not in yet</span><b class="num" style="font-size:22px;color:#9CA3AF">3</b></div><div class="stack"><div class="ph" style="width:26px;height:26px;border-radius:50%"><svg width="26" height="26" viewBox="0 0 26 26"><defs><linearGradient id="g9" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FECACA"/><stop offset="1" stop-color="#FEF2F2"/></linearGradient></defs>
+  <rect width="26" height="26" fill="url(#g9)"/>
+  <circle cx="21.32" cy="4.68" r="5.72" fill="#fff" opacity=".35"/>
+  <path d="M7.917000000000001,10.92 Q7.475,4.29 13,5.395 Q18.525,4.29 18.083,10.92 L18.304,17.992 L7.696000000000001,17.992Z" fill="#2B1D14"/>
+  <path d="M2.8340000000000014,26 Q3.276,17.771 13,17.329 Q22.724,17.771 23.165999999999997,26Z" fill="#D97706"/>
+  <rect x="11.3204" y="14.014" width="3.3592" height="3.978" fill="#F2C9A5"/>
+  <circle cx="13" cy="10.92" r="4.42" fill="#F2C9A5"/>
+  
+  </svg></div><div class="ph" style="width:26px;height:26px;border-radius:50%"><svg width="26" height="26" viewBox="0 0 26 26"><defs><linearGradient id="g10" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#DDD6FE"/><stop offset="1" stop-color="#F5F3FF"/></linearGradient></defs>
+  <rect width="26" height="26" fill="url(#g10)"/>
+  <circle cx="21.32" cy="4.68" r="5.72" fill="#fff" opacity=".35"/>
+  
+  <path d="M2.8340000000000014,26 Q3.276,17.771 13,17.329 Q22.724,17.771 23.165999999999997,26Z" fill="#DB2777"/>
+  <rect x="11.3204" y="14.014" width="3.3592" height="3.978" fill="#8D5A3C"/>
+  <circle cx="13" cy="10.92" r="4.42" fill="#8D5A3C"/>
+  <path d="M8.4916,10.478 Q8.58,4.952999999999999 13,5.6160000000000005 Q17.42,4.952999999999999 17.5084,10.478 Q13,7.605 8.4916,10.478Z" fill="#4A3222"/>
+  </svg></div><div class="ph" style="width:26px;height:26px;border-radius:50%"><svg width="26" height="26" viewBox="0 0 26 26"><defs><linearGradient id="g11" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#C7D2FE"/><stop offset="1" stop-color="#EEF2FF"/></linearGradient></defs>
+  <rect width="26" height="26" fill="url(#g11)"/>
+  <circle cx="21.32" cy="4.68" r="5.72" fill="#fff" opacity=".35"/>
+  <path d="M7.917000000000001,10.92 Q7.475,4.29 13,5.395 Q18.525,4.29 18.083,10.92 L18.304,17.992 L7.696000000000001,17.992Z" fill="#3B2A20"/>
+  <path d="M2.8340000000000014,26 Q3.276,17.771 13,17.329 Q22.724,17.771 23.165999999999997,26Z" fill="#4F46E5"/>
+  <rect x="11.3204" y="14.014" width="3.3592" height="3.978" fill="#F2C9A5"/>
+  <circle cx="13" cy="10.92" r="4.42" fill="#F2C9A5"/>
+  
+  </svg></div></div></div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start">
+  <div class="card" style="padding:14px 16px">
+    <div class="row" style="margin-bottom:6px"><b style="font-size:14px;flex:1">Today’s timeline</b><span class="xs mut row" style="gap:6px"><span class="live"></span>Updates live · now 13:36</span></div>
+    <div style="display:grid;grid-template-columns:190px 1fr 92px;gap:8px 12px;align-items:center">
+      <span></span><div class="rul"><span style="left:0.00%">06</span><span style="left:12.50%">08</span><span style="left:25.00%">10</span><span style="left:37.50%">12</span><span style="left:50.00%">14</span><span style="left:62.50%">16</span><span style="left:75.00%">18</span><span style="left:87.50%">20</span><span style="left:100.00%">22</span></div><span></span>
+      <div class="row" style="gap:8px"><div class="ph" style="width:28px;height:28px;border-radius:50%"><svg width="28" height="28" viewBox="0 0 28 28"><defs><linearGradient id="g12" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#C7D2FE"/><stop offset="1" stop-color="#EEF2FF"/></linearGradient></defs>
+  <rect width="28" height="28" fill="url(#g12)"/>
+  <circle cx="22.959999999999997" cy="5.04" r="6.16" fill="#fff" opacity=".35"/>
+  <path d="M8.526,11.76 Q8.049999999999999,4.619999999999999 14,5.809999999999999 Q19.950000000000003,4.619999999999999 19.474,11.76 L19.712,19.376 L8.288,19.376Z" fill="#2B1D14"/>
+  <path d="M3.0519999999999996,28 Q3.527999999999997,19.138 14,18.662 Q24.472,19.138 24.948,28Z" fill="#4F46E5"/>
+  <rect x="12.1912" y="15.092" width="3.6176000000000004" height="4.284000000000001" fill="#F2C9A5"/>
+  <circle cx="14" cy="11.76" r="4.760000000000001" fill="#F2C9A5"/>
+  
+  </svg></div><span style="min-width:0"><b style="font-size:12.5px;display:block">Priya Sharma</b><span class="xs mut">Engineering Lead</span></span></div><div class="trk" style="height:16px"><i class="shift" style="left:21.88%;width:calc(78.13% - 21.88%)"></i><i class="blk wb" style="left:20.63%;width:calc(43.75% - 20.63%);background:#059669;opacity:1"></i><i class="blk wb" style="left:47.50%;width:calc(47.50% - 47.50%);background:#059669;opacity:1"></i><i class="nowl" style="left:47.50%"></i></div><span><span class="xst" style="background:#E6F6F0;color:#059669;">In office</span></span><div class="row" style="gap:8px"><div class="ph" style="width:28px;height:28px;border-radius:50%"><svg width="28" height="28" viewBox="0 0 28 28"><defs><linearGradient id="g13" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#BAE6FD"/><stop offset="1" stop-color="#F0F9FF"/></linearGradient></defs>
+  <rect width="28" height="28" fill="url(#g13)"/>
+  <circle cx="22.959999999999997" cy="5.04" r="6.16" fill="#fff" opacity=".35"/>
+  <path d="M8.526,11.76 Q8.049999999999999,4.619999999999999 14,5.809999999999999 Q19.950000000000003,4.619999999999999 19.474,11.76 L19.712,19.376 L8.288,19.376Z" fill="#1C1C1C"/>
+  <path d="M3.0519999999999996,28 Q3.527999999999997,19.138 14,18.662 Q24.472,19.138 24.948,28Z" fill="#0284C7"/>
+  <rect x="12.1912" y="15.092" width="3.6176000000000004" height="4.284000000000001" fill="#F2C9A5"/>
+  <circle cx="14" cy="11.76" r="4.760000000000001" fill="#F2C9A5"/>
+  
+  </svg></div><span style="min-width:0"><b style="font-size:12.5px;display:block">Neha Gupta</b><span class="xs mut">Software Engineer</span></span></div><div class="trk" style="height:16px"><i class="shift" style="left:21.88%;width:calc(78.13% - 21.88%)"></i><i class="blk wb" style="left:26.25%;width:calc(47.50% - 26.25%);background:#D97706;opacity:1"></i><i class="nowl" style="left:47.50%"></i></div><span><span class="xst" style="background:#FEF3E2;color:#D97706;">Late 27m</span></span><div class="row" style="gap:8px"><div class="ph" style="width:28px;height:28px;border-radius:50%"><svg width="28" height="28" viewBox="0 0 28 28"><defs><linearGradient id="g14" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#BBF7D0"/><stop offset="1" stop-color="#ECFDF5"/></linearGradient></defs>
+  <rect width="28" height="28" fill="url(#g14)"/>
+  <circle cx="22.959999999999997" cy="5.04" r="6.16" fill="#fff" opacity=".35"/>
+  
+  <path d="M3.0519999999999996,28 Q3.527999999999997,19.138 14,18.662 Q24.472,19.138 24.948,28Z" fill="#059669"/>
+  <rect x="12.1912" y="15.092" width="3.6176000000000004" height="4.284000000000001" fill="#8D5A3C"/>
+  <circle cx="14" cy="11.76" r="4.760000000000001" fill="#8D5A3C"/>
+  <path d="M9.1448,11.283999999999999 Q9.239999999999998,5.333999999999999 14,6.047999999999999 Q18.76,5.333999999999999 18.8552,11.283999999999999 Q14,8.19 9.1448,11.283999999999999Z" fill="#151515"/>
+  </svg></div><span style="min-width:0"><b style="font-size:12.5px;display:block">Karan Mehta</b><span class="xs mut">Engineering Lead</span></span></div><div class="trk" style="height:16px"><i class="shift" style="left:21.88%;width:calc(78.13% - 21.88%)"></i><i class="blk wb" style="left:21.88%;width:calc(47.50% - 21.88%);background:#0284C7;opacity:1"></i><i class="nowl" style="left:47.50%"></i></div><span><span class="xst" style="background:#E5F4FB;color:#0284C7;">WFH</span></span><div class="row" style="gap:8px"><div class="ph" style="width:28px;height:28px;border-radius:50%"><svg width="28" height="28" viewBox="0 0 28 28"><defs><linearGradient id="g15" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#BBF7D0"/><stop offset="1" stop-color="#ECFDF5"/></linearGradient></defs>
+  <rect width="28" height="28" fill="url(#g15)"/>
+  <circle cx="22.959999999999997" cy="5.04" r="6.16" fill="#fff" opacity=".35"/>
+  
+  <path d="M3.0519999999999996,28 Q3.527999999999997,19.138 14,18.662 Q24.472,19.138 24.948,28Z" fill="#059669"/>
+  <rect x="12.1912" y="15.092" width="3.6176000000000004" height="4.284000000000001" fill="#8D5A3C"/>
+  <circle cx="14" cy="11.76" r="4.760000000000001" fill="#8D5A3C"/>
+  <path d="M9.1448,11.283999999999999 Q9.239999999999998,5.333999999999999 14,6.047999999999999 Q18.76,5.333999999999999 18.8552,11.283999999999999 Q14,8.19 9.1448,11.283999999999999Z" fill="#6B4423"/>
+  </svg></div><span style="min-width:0"><b style="font-size:12.5px;display:block">Ravi Kumar</b><span class="xs mut">Engineering Manager</span></span></div><div class="trk" style="height:16px"><i class="shift" style="left:21.88%;width:calc(78.13% - 21.88%)"></i><i class="blk wb" style="left:18.13%;width:calc(40.00% - 18.13%);background:#059669;opacity:1"></i><i class="blk wb" style="left:43.13%;width:calc(47.50% - 43.13%);background:#059669;opacity:1"></i><i class="nowl" style="left:47.50%"></i></div><span><span class="xst" style="background:#E6F6F0;color:#059669;">In office</span></span><div class="row" style="gap:8px"><div class="ph" style="width:28px;height:28px;border-radius:50%"><svg width="28" height="28" viewBox="0 0 28 28"><defs><linearGradient id="g16" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#A7F3D0"/><stop offset="1" stop-color="#ECFDF5"/></linearGradient></defs>
+  <rect width="28" height="28" fill="url(#g16)"/>
+  <circle cx="22.959999999999997" cy="5.04" r="6.16" fill="#fff" opacity=".35"/>
+  
+  <path d="M3.0519999999999996,28 Q3.527999999999997,19.138 14,18.662 Q24.472,19.138 24.948,28Z" fill="#0D9488"/>
+  <rect x="12.1912" y="15.092" width="3.6176000000000004" height="4.284000000000001" fill="#8D5A3C"/>
+  <circle cx="14" cy="11.76" r="4.760000000000001" fill="#8D5A3C"/>
+  <path d="M9.1448,11.283999999999999 Q9.239999999999998,5.333999999999999 14,6.047999999999999 Q18.76,5.333999999999999 18.8552,11.283999999999999 Q14,8.19 9.1448,11.283999999999999Z" fill="#151515"/>
+  </svg></div><span style="min-width:0"><b style="font-size:12.5px;display:block">Arjun Nair</b><span class="xs mut">Product Designer</span></span></div><div class="trk" style="height:16px"><i class="shift" style="left:21.88%;width:calc(78.13% - 21.88%)"></i><i class="blk wb" style="left:24.38%;width:calc(47.50% - 24.38%);background:#0284C7;opacity:1"></i><i class="nowl" style="left:47.50%"></i></div><span><span class="xst" style="background:#E5F4FB;color:#0284C7;">WFH</span></span><div class="row" style="gap:8px"><div class="ph" style="width:28px;height:28px;border-radius:50%"><svg width="28" height="28" viewBox="0 0 28 28"><defs><linearGradient id="g17" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FBCFE8"/><stop offset="1" stop-color="#FDF2F8"/></linearGradient></defs>
+  <rect width="28" height="28" fill="url(#g17)"/>
+  <circle cx="22.959999999999997" cy="5.04" r="6.16" fill="#fff" opacity=".35"/>
+  
+  <path d="M3.0519999999999996,28 Q3.527999999999997,19.138 14,18.662 Q24.472,19.138 24.948,28Z" fill="#7C3AED"/>
+  <rect x="12.1912" y="15.092" width="3.6176000000000004" height="4.284000000000001" fill="#8D5A3C"/>
+  <circle cx="14" cy="11.76" r="4.760000000000001" fill="#8D5A3C"/>
+  <path d="M9.1448,11.283999999999999 Q9.239999999999998,5.333999999999999 14,6.047999999999999 Q18.76,5.333999999999999 18.8552,11.283999999999999 Q14,8.19 9.1448,11.283999999999999Z" fill="#6B4423"/>
+  </svg></div><span style="min-width:0"><b style="font-size:12.5px;display:block">Rahul Das</b><span class="xs mut">Sales Executive</span></span></div><div class="trk" style="height:16px"><i class="shift" style="left:21.88%;width:calc(78.13% - 21.88%)"></i><i class="nowl" style="left:47.50%"></i></div><span><span class="xst" style="background:#FCE7F3;color:#DB2777;">Casual leave</span></span><div class="row" style="gap:8px"><div class="ph" style="width:28px;height:28px;border-radius:50%"><svg width="28" height="28" viewBox="0 0 28 28"><defs><linearGradient id="g18" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FECACA"/><stop offset="1" stop-color="#FEF2F2"/></linearGradient></defs>
+  <rect width="28" height="28" fill="url(#g18)"/>
+  <circle cx="22.959999999999997" cy="5.04" r="6.16" fill="#fff" opacity=".35"/>
+  <path d="M8.526,11.76 Q8.049999999999999,4.619999999999999 14,5.809999999999999 Q19.950000000000003,4.619999999999999 19.474,11.76 L19.712,19.376 L8.288,19.376Z" fill="#2B1D14"/>
+  <path d="M3.0519999999999996,28 Q3.527999999999997,19.138 14,18.662 Q24.472,19.138 24.948,28Z" fill="#D97706"/>
+  <rect x="12.1912" y="15.092" width="3.6176000000000004" height="4.284000000000001" fill="#F2C9A5"/>
+  <circle cx="14" cy="11.76" r="4.760000000000001" fill="#F2C9A5"/>
+  
+  </svg></div><span style="min-width:0"><b style="font-size:12.5px;display:block">Ananya Bose</b><span class="xs mut">Marketing Associate</span></span></div><div class="trk" style="height:16px"><i class="shift" style="left:21.88%;width:calc(78.13% - 21.88%)"></i><i class="nowl" style="left:47.50%"></i></div><span><span class="xst" style="background:#fff;color:#9CA3AF;border:1px solid #E5E7EF">Not in yet</span></span><div class="row" style="gap:8px"><div class="ph" style="width:28px;height:28px;border-radius:50%"><svg width="28" height="28" viewBox="0 0 28 28"><defs><linearGradient id="g19" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FBCFE8"/><stop offset="1" stop-color="#FDF2F8"/></linearGradient></defs>
+  <rect width="28" height="28" fill="url(#g19)"/>
+  <circle cx="22.959999999999997" cy="5.04" r="6.16" fill="#fff" opacity=".35"/>
+  
+  <path d="M3.0519999999999996,28 Q3.527999999999997,19.138 14,18.662 Q24.472,19.138 24.948,28Z" fill="#7C3AED"/>
+  <rect x="12.1912" y="15.092" width="3.6176000000000004" height="4.284000000000001" fill="#8D5A3C"/>
+  <circle cx="14" cy="11.76" r="4.760000000000001" fill="#8D5A3C"/>
+  <path d="M9.1448,11.283999999999999 Q9.239999999999998,5.333999999999999 14,6.047999999999999 Q18.76,5.333999999999999 18.8552,11.283999999999999 Q14,8.19 9.1448,11.283999999999999Z" fill="#4A3222"/>
+  </svg></div><span style="min-width:0"><b style="font-size:12.5px;display:block">Dev Menon</b><span class="xs mut">DevOps Engineer</span></span></div><div class="trk" style="height:16px"><i class="shift" style="left:21.88%;width:calc(78.13% - 21.88%)"></i><i class="blk wb" style="left:21.25%;width:calc(47.50% - 21.25%);background:#7C3AED;opacity:1"></i><i class="nowl" style="left:47.50%"></i></div><span><span class="xst" style="background:#F1EBFE;color:#7C3AED;">Missed check-out</span></span>
+    </div>
+    <div class="xs mut" style="margin-top:10px">Bars grow as people work · dashed = shift · red line = now. Click a person → their month.</div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div class="card sec2"><b style="font-size:13.5px">Needs your attention <span class="new">New</span></b>
+      <div class="row xs" style="gap:8px;align-items:flex-start"><i class="sdot" style="margin-top:4px;background:#7C3AED"></i><span style="flex:1"><b>3 missing check-outs yesterday</b><div style="color:#4F46E5;font-weight:700">Remind them to fix it →</div></span></div><div class="row xs" style="gap:8px;align-items:flex-start"><i class="sdot" style="margin-top:4px;background:#DC2626"></i><span style="flex:1"><b>1 absent without leave (Fri)</b><div style="color:#4F46E5;font-weight:700">Ask Ananya →</div></span></div><div class="row xs" style="gap:8px;align-items:flex-start"><i class="sdot" style="margin-top:4px;background:#D97706"></i><span style="flex:1"><b>Neha late 3 times this week</b><div style="color:#4F46E5;font-weight:700">See her week →</div></span></div><div class="row xs" style="gap:8px;align-items:flex-start"><i class="sdot" style="margin-top:4px;background:#7C3AED"></i><span style="flex:1"><b>Karan: 9 corrections this month (over 8)</b><div style="color:#4F46E5;font-weight:700">See his month →</div></span></div></div>
+    <div class="card sec2"><b style="font-size:13.5px">This week · on time</b>
+      <div class="row xs" style="gap:8px"><span style="width:28px" class="mut">Mon</span><div class="bar" style="flex:1;height:8px"><i class="wb" style="width:86%;background:#059669"></i></div><b style="width:34px;text-align:right">86%</b></div><div class="row xs" style="gap:8px"><span style="width:28px" class="mut">Tue</span><div class="bar" style="flex:1;height:8px"><i class="wb" style="width:4%;background:#EEF0F5"></i></div><b style="width:34px;text-align:right">—</b></div><div class="row xs" style="gap:8px"><span style="width:28px" class="mut">Wed</span><div class="bar" style="flex:1;height:8px"><i class="wb" style="width:4%;background:#EEF0F5"></i></div><b style="width:34px;text-align:right">—</b></div><div class="row xs" style="gap:8px"><span style="width:28px" class="mut">Thu</span><div class="bar" style="flex:1;height:8px"><i class="wb" style="width:4%;background:#EEF0F5"></i></div><b style="width:34px;text-align:right">—</b></div><div class="row xs" style="gap:8px"><span style="width:28px" class="mut">Fri</span><div class="bar" style="flex:1;height:8px"><i class="wb" style="width:4%;background:#EEF0F5"></i></div><b style="width:34px;text-align:right">—</b></div></div>
+    <div class="card notes"><b class="xs" style="letter-spacing:.06em;text-transform:uppercase;color:#6B7280">What changes</b><div class="xs"><span class="k-old">Today</span>Day table with status chips, search, department, export, edit a day</div><div class="xs"><span class="k-new">New</span>Presence strip (who’s where right now) with faces</div><div class="xs"><span class="k-new">New</span>Live day timeline (Gantt) with “now” line</div><div class="xs"><span class="k-new">New</span>Month grid: people × days heatmap</div><div class="xs"><span class="k-new">New</span>Needs attention + nudge (in-app reminder only)</div><div class="xs"><span class="k-new">New</span>Team leads, managers and HR can nudge</div></div>
+  </div>
+</div>
+<div class="card" style="padding:14px 16px">
+  <div class="row" style="margin-bottom:8px"><b style="font-size:14px;flex:1">Month grid · October <span class="new">New</span></b><span class="xs mut">Each square = one day · hover for in/out</span></div>
+  <div style="display:grid;grid-template-columns:150px repeat(31,1fr);gap:3px;align-items:center">
+    <span></span><span style="font-size:9px;text-align:center;color:#6B7280;font-weight:700">1</span><span style="font-size:9px;text-align:center;color:#6B7280;font-weight:700">2</span><span style="font-size:9px;text-align:center;color:#6B7280;font-weight:700">3</span><span style="font-size:9px;text-align:center;color:#6B7280;font-weight:700">4</span><span style="font-size:9px;text-align:center;color:#6B7280;font-weight:700">5</span><span style="font-size:9px;text-align:center;color:#6B7280;font-weight:700">6</span><span style="font-size:9px;text-align:center;color:#6B7280;font-weight:700">7</span><span style="font-size:9px;text-align:center;color:#6B7280;font-weight:700">8</span><span style="font-size:9px;text-align:center;color:#6B7280;font-weight:700">9</span><span style="font-size:9px;text-align:center;color:#6B7280;font-weight:700">10</span><span style="font-size:9px;text-align:center;color:#6B7280;font-weight:700">11</span><span style="font-size:9px;text-align:center;color:#6B7280;font-weight:700">12</span><span style="font-size:9px;text-align:center;color:#6B7280;font-weight:700">13</span><span style="font-size:9px;text-align:center;color:#6B7280;font-weight:700">14</span><span style="font-size:9px;text-align:center;color:#6B7280;font-weight:700">15</span><span style="font-size:9px;text-align:center;color:#6B7280;font-weight:700">16</span><span style="font-size:9px;text-align:center;color:#6B7280;font-weight:700">17</span><span style="font-size:9px;text-align:center;color:#6B7280;font-weight:700">18</span><span style="font-size:9px;text-align:center;color:#6B7280;font-weight:700">19</span><span style="font-size:9px;text-align:center;color:#6B7280;font-weight:700">20</span><span style="font-size:9px;text-align:center;color:#6B7280;font-weight:700">21</span><span style="font-size:9px;text-align:center;color:#6B7280;font-weight:700">22</span><span style="font-size:9px;text-align:center;color:#6B7280;font-weight:700">23</span><span style="font-size:9px;text-align:center;color:#6B7280;font-weight:700">24</span><span style="font-size:9px;text-align:center;color:#6B7280;font-weight:700">25</span><span style="font-size:9px;text-align:center;color:#6B7280;font-weight:700">26</span><span style="font-size:9px;text-align:center;color:#6B7280;font-weight:700">27</span><span style="font-size:9px;text-align:center;color:#6B7280;font-weight:700">28</span><span style="font-size:9px;text-align:center;color:#6B7280;font-weight:700">29</span><span style="font-size:9px;text-align:center;color:#6B7280;font-weight:700">30</span><span style="font-size:9px;text-align:center;color:#6B7280;font-weight:700">31</span>
+    <span class="row xs" style="gap:6px"><div class="ph" style="width:20px;height:20px;border-radius:50%"><svg width="20" height="20" viewBox="0 0 20 20"><defs><linearGradient id="g20" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#C7D2FE"/><stop offset="1" stop-color="#EEF2FF"/></linearGradient></defs>
+  <rect width="20" height="20" fill="url(#g20)"/>
+  <circle cx="16.4" cy="3.5999999999999996" r="4.4" fill="#fff" opacity=".35"/>
+  <path d="M6.09,8.4 Q5.75,3.3 10,4.15 Q14.25,3.3 13.91,8.4 L14.08,13.840000000000002 L5.92,13.840000000000002Z" fill="#2B1D14"/>
+  <path d="M2.1799999999999997,20 Q2.5199999999999987,13.670000000000002 10,13.330000000000002 Q17.48,13.670000000000002 17.82,20Z" fill="#4F46E5"/>
+  <rect x="8.708" y="10.780000000000001" width="2.5840000000000005" height="3.0600000000000005" fill="#F2C9A5"/>
+  <circle cx="10" cy="8.4" r="3.4000000000000004" fill="#F2C9A5"/>
+  
+  </svg></div><b>Priya Sharma</b></span><i class="sq" style="background:#059669;;opacity:0.85;animation-delay:0.015s"></i><i class="sq" style="background:#0D9488;;opacity:0.85;animation-delay:0.030s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.045s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.060s"></i><i class="sq" style="background:#059669;;opacity:0.85;animation-delay:0.075s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.090s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.105s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.120s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.135s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.150s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.165s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.180s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.195s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.210s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.225s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.240s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.255s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.270s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.285s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.300s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.315s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.330s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.345s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.360s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.375s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.390s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.405s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.420s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.435s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.450s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.465s"></i><span class="row xs" style="gap:6px"><div class="ph" style="width:20px;height:20px;border-radius:50%"><svg width="20" height="20" viewBox="0 0 20 20"><defs><linearGradient id="g21" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#BAE6FD"/><stop offset="1" stop-color="#F0F9FF"/></linearGradient></defs>
+  <rect width="20" height="20" fill="url(#g21)"/>
+  <circle cx="16.4" cy="3.5999999999999996" r="4.4" fill="#fff" opacity=".35"/>
+  <path d="M6.09,8.4 Q5.75,3.3 10,4.15 Q14.25,3.3 13.91,8.4 L14.08,13.840000000000002 L5.92,13.840000000000002Z" fill="#1C1C1C"/>
+  <path d="M2.1799999999999997,20 Q2.5199999999999987,13.670000000000002 10,13.330000000000002 Q17.48,13.670000000000002 17.82,20Z" fill="#0284C7"/>
+  <rect x="8.708" y="10.780000000000001" width="2.5840000000000005" height="3.0600000000000005" fill="#F2C9A5"/>
+  <circle cx="10" cy="8.4" r="3.4000000000000004" fill="#F2C9A5"/>
+  
+  </svg></div><b>Neha Gupta</b></span><i class="sq" style="background:#D97706;;opacity:0.85;animation-delay:0.055s"></i><i class="sq" style="background:#0D9488;;opacity:0.85;animation-delay:0.070s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.085s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.100s"></i><i class="sq" style="background:#059669;;opacity:0.85;animation-delay:0.115s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.130s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.145s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.160s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.175s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.190s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.205s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.220s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.235s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.250s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.265s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.280s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.295s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.310s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.325s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.340s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.355s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.370s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.385s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.400s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.415s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.430s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.445s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.460s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.475s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.490s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.505s"></i><span class="row xs" style="gap:6px"><div class="ph" style="width:20px;height:20px;border-radius:50%"><svg width="20" height="20" viewBox="0 0 20 20"><defs><linearGradient id="g22" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#BBF7D0"/><stop offset="1" stop-color="#ECFDF5"/></linearGradient></defs>
+  <rect width="20" height="20" fill="url(#g22)"/>
+  <circle cx="16.4" cy="3.5999999999999996" r="4.4" fill="#fff" opacity=".35"/>
+  
+  <path d="M2.1799999999999997,20 Q2.5199999999999987,13.670000000000002 10,13.330000000000002 Q17.48,13.670000000000002 17.82,20Z" fill="#059669"/>
+  <rect x="8.708" y="10.780000000000001" width="2.5840000000000005" height="3.0600000000000005" fill="#8D5A3C"/>
+  <circle cx="10" cy="8.4" r="3.4000000000000004" fill="#8D5A3C"/>
+  <path d="M6.532,8.06 Q6.6,3.8099999999999996 10,4.32 Q13.4,3.8099999999999996 13.468,8.06 Q10,5.85 6.532,8.06Z" fill="#151515"/>
+  </svg></div><b>Karan Mehta</b></span><i class="sq" style="background:#059669;;opacity:0.85;animation-delay:0.095s"></i><i class="sq" style="background:#0D9488;;opacity:0.85;animation-delay:0.110s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.125s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.140s"></i><i class="sq" style="background:#059669;;opacity:0.85;animation-delay:0.155s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.170s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.185s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.200s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.215s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.230s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.245s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.260s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.275s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.290s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.305s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.320s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.335s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.350s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.365s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.380s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.395s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.410s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.425s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.440s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.455s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.470s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.485s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.500s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.515s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.530s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.545s"></i><span class="row xs" style="gap:6px"><div class="ph" style="width:20px;height:20px;border-radius:50%"><svg width="20" height="20" viewBox="0 0 20 20"><defs><linearGradient id="g23" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#BBF7D0"/><stop offset="1" stop-color="#ECFDF5"/></linearGradient></defs>
+  <rect width="20" height="20" fill="url(#g23)"/>
+  <circle cx="16.4" cy="3.5999999999999996" r="4.4" fill="#fff" opacity=".35"/>
+  
+  <path d="M2.1799999999999997,20 Q2.5199999999999987,13.670000000000002 10,13.330000000000002 Q17.48,13.670000000000002 17.82,20Z" fill="#059669"/>
+  <rect x="8.708" y="10.780000000000001" width="2.5840000000000005" height="3.0600000000000005" fill="#8D5A3C"/>
+  <circle cx="10" cy="8.4" r="3.4000000000000004" fill="#8D5A3C"/>
+  <path d="M6.532,8.06 Q6.6,3.8099999999999996 10,4.32 Q13.4,3.8099999999999996 13.468,8.06 Q10,5.85 6.532,8.06Z" fill="#6B4423"/>
+  </svg></div><b>Ravi Kumar</b></span><i class="sq" style="background:#059669;;opacity:0.85;animation-delay:0.135s"></i><i class="sq" style="background:#0D9488;;opacity:0.85;animation-delay:0.150s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.165s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.180s"></i><i class="sq" style="background:#059669;;opacity:0.85;animation-delay:0.195s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.210s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.225s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.240s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.255s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.270s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.285s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.300s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.315s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.330s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.345s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.360s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.375s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.390s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.405s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.420s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.435s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.450s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.465s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.480s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.495s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.510s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.525s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.540s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.555s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.570s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.585s"></i><span class="row xs" style="gap:6px"><div class="ph" style="width:20px;height:20px;border-radius:50%"><svg width="20" height="20" viewBox="0 0 20 20"><defs><linearGradient id="g24" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#A7F3D0"/><stop offset="1" stop-color="#ECFDF5"/></linearGradient></defs>
+  <rect width="20" height="20" fill="url(#g24)"/>
+  <circle cx="16.4" cy="3.5999999999999996" r="4.4" fill="#fff" opacity=".35"/>
+  
+  <path d="M2.1799999999999997,20 Q2.5199999999999987,13.670000000000002 10,13.330000000000002 Q17.48,13.670000000000002 17.82,20Z" fill="#0D9488"/>
+  <rect x="8.708" y="10.780000000000001" width="2.5840000000000005" height="3.0600000000000005" fill="#8D5A3C"/>
+  <circle cx="10" cy="8.4" r="3.4000000000000004" fill="#8D5A3C"/>
+  <path d="M6.532,8.06 Q6.6,3.8099999999999996 10,4.32 Q13.4,3.8099999999999996 13.468,8.06 Q10,5.85 6.532,8.06Z" fill="#151515"/>
+  </svg></div><b>Arjun Nair</b></span><i class="sq" style="background:#0284C7;;opacity:0.85;animation-delay:0.175s"></i><i class="sq" style="background:#0D9488;;opacity:0.85;animation-delay:0.190s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.205s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.220s"></i><i class="sq" style="background:#059669;;opacity:0.85;animation-delay:0.235s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.250s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.265s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.280s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.295s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.310s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.325s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.340s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.355s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.370s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.385s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.400s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.415s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.430s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.445s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.460s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.475s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.490s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.505s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.520s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.535s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.550s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.565s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.580s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.595s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.610s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.625s"></i><span class="row xs" style="gap:6px"><div class="ph" style="width:20px;height:20px;border-radius:50%"><svg width="20" height="20" viewBox="0 0 20 20"><defs><linearGradient id="g25" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FBCFE8"/><stop offset="1" stop-color="#FDF2F8"/></linearGradient></defs>
+  <rect width="20" height="20" fill="url(#g25)"/>
+  <circle cx="16.4" cy="3.5999999999999996" r="4.4" fill="#fff" opacity=".35"/>
+  
+  <path d="M2.1799999999999997,20 Q2.5199999999999987,13.670000000000002 10,13.330000000000002 Q17.48,13.670000000000002 17.82,20Z" fill="#7C3AED"/>
+  <rect x="8.708" y="10.780000000000001" width="2.5840000000000005" height="3.0600000000000005" fill="#8D5A3C"/>
+  <circle cx="10" cy="8.4" r="3.4000000000000004" fill="#8D5A3C"/>
+  <path d="M6.532,8.06 Q6.6,3.8099999999999996 10,4.32 Q13.4,3.8099999999999996 13.468,8.06 Q10,5.85 6.532,8.06Z" fill="#6B4423"/>
+  </svg></div><b>Rahul Das</b></span><i class="sq" style="background:#DB2777;;opacity:0.85;animation-delay:0.215s"></i><i class="sq" style="background:#0D9488;;opacity:0.85;animation-delay:0.230s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.245s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.260s"></i><i class="sq" style="background:#059669;;opacity:0.85;animation-delay:0.275s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.290s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.305s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.320s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.335s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.350s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.365s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.380s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.395s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.410s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.425s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.440s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.455s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.470s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.485s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.500s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.515s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.530s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.545s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.560s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.575s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.590s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.605s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.620s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.635s"></i><i class="sq" style="background:#fff;border:1px dashed #E5E7EF;opacity:0.85;animation-delay:0.650s"></i><i class="sq" style="background:#F8F9FC;;opacity:1;animation-delay:0.665s"></i>
+  </div>
+</div></main></div></div></x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1300}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

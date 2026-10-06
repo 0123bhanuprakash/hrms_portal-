@@ -13,9 +13,11 @@ import { CreateDesignationDto } from './dto/create-designation.dto';
 import { UpdateDesignationDto } from './dto/update-designation.dto';
 import { RequirePermission, RequireFeature, Audit, TenantCtx } from '../../common';
 import type { TenantContext } from '../../common/types/request.types';
+import { Live } from '../realtime/live.decorator';
 
 // Organisation structure is a core feature; reads need org.view, changes org.manage
 @RequireFeature('people.org')
+@Live('people', 'company')
 @Controller('designations')
 export class DesignationsController {
   constructor(private readonly designationsService: DesignationsService) {}

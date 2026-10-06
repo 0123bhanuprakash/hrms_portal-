@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { AlertTriangle, ArrowLeft, CheckCircle2, Download, FileSpreadsheet, Mail, ShieldCheck, Upload, XCircle } from 'lucide-react';
@@ -21,6 +21,7 @@ import {
 } from '@/lib/company/advanced';
 import { getApiErrorMessage } from '@/lib/errors';
 import { cn } from '@/lib/cn';
+import { onLive } from '@/lib/live/socket';
 
 type Filter = 'all' | 'error' | 'warning' | 'ok';
 
@@ -36,6 +37,14 @@ export default function ImportEmployeesPage() {
   const [filter, setFilter] = useState<Filter>('all');
   const [sendInvites, setSendInvites] = useState(true);
   const [result, setResult] = useState<ImportResult | null>(null);
+  // Live "N of M imported" while the import runs (needs the live connection; otherwise just a spinner)
+  const [progress, setProgress] = useState<{ id: string; done: number; total: number } | null>(null);
+  useEffect(() => {
+    if (!progress?.id) return;
+    return onLive('progress', (p) => {
+      if (p.id === progress.id) setProgress((cur) => (cur && cur.id === p.id ? { ...cur, done: p.done, total: p.total } : cur));
+    });
+  }, [progress?.id]);
 
   if (!isLoading && !can('employee.import')) {
     return <EmptyState icon={<ShieldCheck />} title="No access" description="Bulk import needs the “Bulk import employees” permission." />;
@@ -77,17 +86,21 @@ export default function ImportEmployeesPage() {
     });
   };
 
-  const doImport = () =>
+  const doImport = () => {
+    const progressId = crypto.randomUUID();
+    setProgress({ id: progressId, done: 0, total: preview?.summary.importable ?? rows.length });
     run.mutate(
-      { rows, sendInvites },
+      { rows, sendInvites, progressId },
       {
         onSuccess: (r) => {
           setResult(r);
           toast.success(`${r.created} employee${r.created === 1 ? '' : 's'} imported`);
         },
         onError: (e) => toast.error(getApiErrorMessage(e, 'Import failed')),
+        onSettled: () => setProgress(null),
       },
     );
+  };
 
   const shown = preview?.rows.filter((r) => filter === 'all' || r.status === filter) ?? [];
 
@@ -196,6 +209,18 @@ export default function ImportEmployeesPage() {
                   3. Import {preview.summary.importable} employee{preview.summary.importable === 1 ? '' : 's'}
                 </Button>
               </div>
+              {run.isPending && progress && (
+                <div className="space-y-1.5 px-4 pb-4" role="status" aria-live="polite">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium">Importing people…</span>
+                    <span className="tabular-nums text-muted-foreground">{progress.done} of {progress.total}</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-muted">
+                    <div className="h-full rounded-full bg-primary transition-[width] duration-300" style={{ width: `${progress.total ? Math.round((progress.done / progress.total) * 100) : 0}%` }} />
+                  </div>
+                  <p className="text-2xs text-muted-foreground">Keep this page open — creating profiles{sendInvites ? ' and sending welcome emails' : ''} takes a moment per person.</p>
+                </div>
+              )}
               {preview.summary.errors > 0 && <p className="px-4 pb-4 text-xs text-muted-foreground">Rows with errors are skipped. Fix them in your file and import it again — rows already imported will show “already exists”.</p>}
             </Card>
           )}

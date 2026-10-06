@@ -4,7 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import type { AccessContext } from '../access/access.types';
 import { ProfileService } from './profile.service';
 import type { DirectoryQueryDto } from './dto';
-import { addDays, dateFromKey, isValidTimeZone, keyFromDate, localDateKey } from '../attendance/time-zone';
+import { addDays, dateFromKey, isValidTimeZone, keyFromDate, localDateKey, zonedInstant } from '../attendance/time-zone';
 import { dayContext, statusesOn, weekKeys } from './people-today';
 import { wordsWhere } from '../../common/word-search';
 
@@ -285,6 +285,20 @@ export class PeopleService {
       if (years >= 1 && inDays <= SPOTLIGHT_DAYS) anniversaries.push({ ...basic(person), date: monthDay(next), inDays, years });
     }
 
+    // Kudos sent today to people celebrating today (wishes count up live on Home)
+    const celebrating = [...birthdays, ...anniversaries].filter((x) => x.inDays === 0).map((x) => x.id);
+    const wishes = new Map<string, number>();
+    if (celebrating.length) {
+      const since = zonedInstant(keyFromDate(today), '00:00', timeZone);
+      const rows = await this.prisma.kudosRecipient.groupBy({
+        by: ['employeeId'],
+        where: { employeeId: { in: celebrating }, kudos: { companyId, deletedAt: null, createdAt: { gte: since } } },
+        _count: { _all: true },
+      });
+      for (const r of rows) wishes.set(r.employeeId, r._count._all);
+    }
+    const withWishes = <T extends { id: string; inDays: number }>(x: T) => (x.inDays === 0 ? { ...x, wishesToday: wishes.get(x.id) ?? 0 } : x);
+
     const holidays = await this.prisma.publicHoliday.findMany({
       where: { companyId, date: { gte: today } },
       orderBy: { date: 'asc' },
@@ -295,8 +309,8 @@ export class PeopleService {
     const byDays = (a: { inDays: number }, b: { inDays: number }) => a.inDays - b.inDays;
     return {
       windowDays: SPOTLIGHT_DAYS,
-      birthdays: birthdays.sort(byDays),
-      anniversaries: anniversaries.sort(byDays),
+      birthdays: birthdays.sort(byDays).map(withWishes),
+      anniversaries: anniversaries.sort(byDays).map(withWishes),
       newJoiners: newJoiners.sort((a, b) => b.joiningDate.getTime() - a.joiningDate.getTime()),
       holidays,
     };

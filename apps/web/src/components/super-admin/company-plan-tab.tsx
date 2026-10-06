@@ -7,7 +7,7 @@ import { AlertTriangle, CalendarClock, Layers, Lock, RotateCcw, Users } from 'lu
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, ErrorState, Skeleton } from '@/components/ui/feedback';
-import { Field, Input, inputClass } from '@/components/ui/field';
+import { Field, Input, inputClass, FormError } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
@@ -23,6 +23,7 @@ import {
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatDate } from '@/lib/format';
 import { cn } from '@/lib/cn';
+import { DateInput, Select } from '@/components/ui/pickers';
 
 /** Super Admin → company → Plan & features. */
 export function CompanyPlanTab({ companyId }: { companyId: string }) {
@@ -89,7 +90,7 @@ export function CompanyPlanTab({ companyId }: { companyId: string }) {
         <Card>
           <CardHeader title="Plan" icon={<Layers />} action={<Link href="/super-admin/plans" className="text-xs font-medium text-primary hover:underline">Manage plans</Link>} />
           <div className="space-y-3 px-5 pb-5">
-            <select value={planChoice} onChange={(e) => setPlanChoice(e.target.value)} className={inputClass} aria-label="Plan">
+            <Select value={planChoice} onChange={(e) => setPlanChoice(e.target.value)} className={inputClass} aria-label="Plan">
               {plans.data
                 ?.filter((p) => p.isActive || p.id === d.plan?.id)
                 .map((p) => (
@@ -98,7 +99,7 @@ export function CompanyPlanTab({ companyId }: { companyId: string }) {
                     {!p.isActive ? ' (archived)' : ''}
                   </option>
                 ))}
-            </select>
+            </Select>
             {chosen && chosen.id !== d.plan?.id && (
               <Button className="w-full" onClick={() => setConfirmPlan(true)}>
                 Switch to {chosen.name}
@@ -257,12 +258,12 @@ function OverrideDialog({ companyId, feature, onClose }: { companyId: string; fe
       }
     >
       <div className="space-y-4">
-        {error && <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+        <FormError>{error}</FormError>
         <Field label="Reason" htmlFor="ov-reason" hint="Shown to other Super Admins and in the audit log.">
           <Input id="ov-reason" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} placeholder={turningOn ? 'e.g. 30-day payroll trial' : 'e.g. Uses an external payroll tool'} />
         </Field>
         <Field label={turningOn ? 'Trial ends' : 'Until'} htmlFor="ov-until" hint="Optional. Afterwards the company follows its plan again automatically.">
-          <Input id="ov-until" type="date" min={minDate} value={until} onChange={(e) => setUntil(e.target.value)} className="w-48" />
+          <DateInput id="ov-until" min={minDate} value={until} onChange={(e) => setUntil(e.target.value)} className="w-48" />
         </Field>
       </div>
     </Modal>
@@ -312,11 +313,11 @@ function LimitsCard({ companyId, limits }: { companyId: string; limits: import('
             </div>
           )}
         </div>
-        <select value={mode} onChange={(e) => setMode(e.target.value as typeof mode)} className={inputClass} aria-label="Employee limit">
+        <Select value={mode} onChange={(e) => setMode(e.target.value as typeof mode)} className={inputClass} aria-label="Employee limit">
           <option value="plan">Use plan ({formatLimit(emp.plan)})</option>
           <option value="custom">Custom limit</option>
           <option value="unlimited">Unlimited</option>
-        </select>
+        </Select>
         {mode === 'custom' && (
           <Input type="number" min={0} value={value} onChange={(e) => setValue(Math.max(0, Math.floor(Number(e.target.value) || 0)))} aria-label="Custom employee limit" />
         )}

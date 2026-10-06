@@ -14,12 +14,13 @@ import { MyProjects } from '@/components/projects/my-projects';
 import { ProjectTimeline } from '@/components/projects/project-timeline';
 import { HEALTH, HealthPill, MilestoneBar, TypeBadge, daysFrom, projectColor, shortDate } from '@/components/projects/project-ui';
 import { useAccess } from '@/lib/access/use-access';
-import { useOrgChart } from '@/lib/company/org';
+import { usePeoplePicker } from '@/lib/company/org';
 import { PROJECT_STATUS, usePortfolio, usePortfolioSummary, type Health, type LimitedProject, type PortfolioProject, type PortfolioQuery, type ProjectStatus, type ProjectType } from '@/lib/company/projects';
 import { useUiState } from '@/lib/preferences/ui-state';
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatRelative } from '@/lib/format';
 import { cn } from '@/lib/cn';
+import { PersonSelect, Select } from '@/components/ui/pickers';
 
 type Tab = 'mine' | 'all';
 type View = 'cards' | 'board' | 'timeline';
@@ -81,7 +82,7 @@ function Portfolio({ pmo }: { pmo: boolean }) {
   const list = usePortfolio(query);
   const all = usePortfolio({}, pmo);
   const summary = usePortfolioSummary(pmo);
-  const chart = useOrgChart();
+  const chart = usePeoplePicker();
   const counts = (h: Health) => (all.data?.data ?? []).filter((p): p is PortfolioProject => !p.limited && p.status === 'ACTIVE' && p.health.level === h).length;
   const rows = list.data?.data ?? [];
   const full = rows.filter((p): p is PortfolioProject => !p.limited);
@@ -118,25 +119,22 @@ function Portfolio({ pmo }: { pmo: boolean }) {
             {HEALTH[h].emoji} {HEALTH[h].label} · {counts(h)}
           </button>
         ))}
-        <select className={cn(inputClass, 'h-9 w-auto text-xs')} value={q.type ?? ''} onChange={(e) => setQ({ ...q, type: (e.target.value || undefined) as ProjectType | undefined })} aria-label="Type">
+        <Select className={cn(inputClass, 'h-9 w-auto text-xs')} value={q.type ?? ''} onChange={(e) => setQ({ ...q, type: (e.target.value || undefined) as ProjectType | undefined })} aria-label="Type">
           <option value="">Client & internal</option>
           <option value="CLIENT">Client (billable)</option>
           <option value="INTERNAL">Internal (investment)</option>
-        </select>
-        {pmo && <select className={cn(inputClass, 'h-9 w-auto text-xs')} value={q.status ?? ''} onChange={(e) => setQ({ ...q, status: (e.target.value || undefined) as ProjectStatus | undefined })} aria-label="Status">
+        </Select>
+        {pmo && <Select className={cn(inputClass, 'h-9 w-auto text-xs')} value={q.status ?? ''} onChange={(e) => setQ({ ...q, status: (e.target.value || undefined) as ProjectStatus | undefined })} aria-label="Status">
           <option value="">Any status</option>
           {Object.entries(PROJECT_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-        </select>}
-        {pmo && <select className={cn(inputClass, 'h-9 w-auto max-w-[11rem] text-xs')} value={q.managerId ?? ''} onChange={(e) => setQ({ ...q, managerId: e.target.value || undefined })} aria-label="Project manager">
-          <option value="">Any manager</option>
-          {(chart.data?.employees ?? []).sort((a, b) => a.firstName.localeCompare(b.firstName)).map((e) => <option key={e.id} value={e.id}>{e.firstName} {e.lastName}</option>)}
-        </select>}
-        {pmo && <select className={cn(inputClass, 'h-9 w-auto text-xs')} value={q.sort} onChange={(e) => setQ({ ...q, sort: e.target.value as PortfolioQuery['sort'] })} aria-label="Sort">
+        </Select>}
+        {pmo && <PersonSelect className="w-44 text-xs" aria-label="Project manager" value={q.managerId ?? ''} onChange={(v) => setQ({ ...q, managerId: v || undefined })} emptyLabel="Any manager" people={[...(chart.data?.employees ?? [])].sort((a, b) => a.firstName.localeCompare(b.firstName))} />}
+        {pmo && <Select className={cn(inputClass, 'h-9 w-auto text-xs')} value={q.sort} onChange={(e) => setQ({ ...q, sort: e.target.value as PortfolioQuery['sort'] })} aria-label="Sort">
           <option value="attention">Needs attention first</option>
           <option value="end">Ending soonest</option>
           <option value="start">Newest</option>
           <option value="name">Name A–Z</option>
-        </select>}
+        </Select>}
         {pmo && <div className="ml-auto inline-flex rounded-lg border border-border bg-surface p-0.5" role="group" aria-label="View">
           {([['cards', 'Cards', <LayoutGrid key="c" />], ['board', 'Board', <Kanban key="b" />], ['timeline', 'Timeline', <GanttChart key="t" />]] as const).map(([id, l, icon]) => (
             <button key={id} type="button" aria-pressed={view === id} onClick={() => setView(id)} className={cn('inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-semibold [&_svg]:size-3.5', view === id ? 'bg-primary-soft text-primary-soft-foreground' : 'text-muted-foreground hover:text-foreground')}>

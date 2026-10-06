@@ -4,13 +4,14 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Briefcase, Building2, FolderKanban } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Field, Input, Textarea, inputClass } from '@/components/ui/field';
+import { Field, Input, Textarea, inputClass, FormError } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { PROJECT_STATUS, useSaveProject, type ProjectDetail, type ProjectInput, type ProjectStatus, type ProjectType } from '@/lib/company/projects';
 import { cn } from '@/lib/cn';
 
 const COLORS = ['#4F46E5', '#0D9488', '#DB2777', '#F59E0B', '#0EA5E9', '#7C3AED', '#16A34A', '#EF4444'];
 import { getApiErrorMessage } from '@/lib/errors';
+import { DateInput, Select } from '@/components/ui/pickers';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -56,7 +57,7 @@ export function ProjectDialog({ value, onClose, onSaved }: { value: ProjectDetai
       busy={save.isPending}
       icon={<FolderKanban />}
       title={value === 'new' ? 'New project' : `Edit ${value.name}`}
-      className="sm:max-w-lg"
+      size="md"
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={save.isPending}>Cancel</Button>
@@ -65,7 +66,7 @@ export function ProjectDialog({ value, onClose, onSaved }: { value: ProjectDetai
       }
     >
       <form id="project-form" onSubmit={submit} className="grid gap-3 sm:grid-cols-[1fr_140px]">
-        {error && <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive sm:col-span-2">{error}</p>}
+        <FormError className="sm:col-span-2">{error}</FormError>
         <Field label="Name" htmlFor="pj-name" required><Input id="pj-name" value={f.name} onChange={(e) => set('name', e.target.value)} required minLength={2} maxLength={100} /></Field>
         <Field label="Code" htmlFor="pj-code" required hint="e.g. APOLLO"><Input id="pj-code" value={f.code} onChange={(e) => set('code', e.target.value.toUpperCase())} required maxLength={12} className="font-mono uppercase" /></Field>
         <Field label="Type" className="sm:col-span-2" hint={f.type === 'CLIENT' ? 'Everyone on it counts as billable — you can mark shadows or trainees as not billed.' : 'Company work — everyone’s time here counts as an investment.'}>
@@ -83,12 +84,12 @@ export function ProjectDialog({ value, onClose, onSaved }: { value: ProjectDetai
           <Field label="Client"><p className="flex h-9 items-center text-sm text-muted-foreground">Internal — no client</p></Field>
         )}
         <Field label="Status" htmlFor="pj-status">
-          <select id="pj-status" className={inputClass} value={f.status} onChange={(e) => set('status', e.target.value as ProjectStatus)}>
+          <Select id="pj-status" className={inputClass} value={f.status} onChange={(e) => set('status', e.target.value as ProjectStatus)}>
             {Object.entries(PROJECT_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-          </select>
+          </Select>
         </Field>
-        <Field label="Starts" htmlFor="pj-start" required><Input id="pj-start" type="date" value={f.startDate} onChange={(e) => set('startDate', e.target.value)} required /></Field>
-        <Field label="Ends" htmlFor="pj-end" hint="Blank = ongoing"><Input id="pj-end" type="date" value={f.endDate ?? ''} min={f.startDate} onChange={(e) => set('endDate', e.target.value)} /></Field>
+        <Field label="Starts" htmlFor="pj-start" required><DateInput id="pj-start" value={f.startDate} onChange={(e) => set('startDate', e.target.value)} required /></Field>
+        <Field label="Ends" htmlFor="pj-end" hint="Blank = ongoing"><DateInput id="pj-end" value={f.endDate ?? ''} min={f.startDate} onChange={(e) => set('endDate', e.target.value)} /></Field>
         <Field label="Colour" className="sm:col-span-2">
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => set('color', null)} aria-pressed={!f.color} className={cn('h-7 rounded-full border px-2.5 text-xs font-medium', !f.color ? 'border-primary bg-primary-soft' : 'border-border')}>Auto</button>

@@ -195,7 +195,7 @@ function ComingUp({ r }: { r: PeopleReport }) {
   const items = [
     ...r.probation.map((e) => ({ key: `p-${e.id}`, person: e, date: e.confirmationDate, text: e.confirmationDate ? `Probation ends ${formatDate(e.confirmationDate)}` : `On probation since ${formatDate(e.joiningDate)}`, tone: 'warning' as const, action: { href: `/app/employees/${e.id}`, label: 'Review' } })),
     ...r.notice.map((e) => ({ key: `n-${e.id}`, person: e, date: e.terminationDate, text: e.terminationDate ? `Last day ${formatDate(e.terminationDate)}` : 'Serving notice', tone: 'danger' as const, action: { href: `/app/employees/${e.id}`, label: 'Open' } })),
-    ...r.anniversaries.map((e) => ({ key: `a-${e.id}`, person: e, date: e.date, text: `${e.years} year${e.years === 1 ? '' : 's'} on ${formatDate(e.date)}`, tone: 'primary' as const, action: { href: '/app/kudos', label: 'Send kudos' } })),
+    ...r.anniversaries.map((e) => ({ key: `a-${e.id}`, person: e, date: e.date, text: `${e.years} year${e.years === 1 ? '' : 's'} on ${formatDate(e.date)}`, tone: 'primary' as const, action: { href: `/app/kudos?to=${e.id}`, label: 'Send kudos' } })),
   ].sort((a, b) => (a.date ?? '9999').localeCompare(b.date ?? '9999'));
   return (
     <Card className="flex flex-col gap-2 p-5">

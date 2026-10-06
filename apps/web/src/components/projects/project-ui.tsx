@@ -48,7 +48,7 @@ export function TypeBadge({ type, className }: { type: ProjectType; className?: 
 export function MilestoneBar({ done, total, timePct, color }: { done: number; total: number; timePct: number | null; color: string }) {
   return (
     <div className="relative flex gap-1" role="img" aria-label={`${done} of ${total} milestones done${timePct !== null ? `, ${timePct}% of the time gone` : ''}`}>
-      {total ? Array.from({ length: total }, (_, i) => <span key={i} className="h-2 flex-1 rounded-full" style={{ background: i < done ? color : 'hsl(var(--muted))' }} />) : <span className="h-2 flex-1 rounded-full bg-muted" />}
+      {total ? Array.from({ length: total }, (_, i) => <span key={i} className={cn('h-2 flex-1 rounded-full', i < done && 'm-fill-w')} style={{ background: i < done ? color : 'hsl(var(--muted))', animationDelay: `${i * 90}ms` }} />) : <span className="h-2 flex-1 rounded-full bg-muted" />}
       {timePct !== null && <b className="absolute -top-1 h-4 w-0.5 rounded bg-foreground" style={{ left: `calc(${timePct}% - 1px)` }} title={`${timePct}% of the time gone`} />}
     </div>
   );
@@ -60,8 +60,8 @@ export function BillingBar({ billable, investment, bench, className, showLegend 
   return (
     <div className={cn('space-y-1.5', className)}>
       <div className="flex h-2.5 overflow-hidden rounded-full bg-muted">
-        <span className="bg-primary transition-[width] duration-700" style={{ width: `${(billable / total) * 100}%` }} />
-        <span className="bg-teal-500 transition-[width] duration-700" style={{ width: `${(investment / total) * 100}%` }} />
+        <span className="m-fill-w bg-primary" style={{ width: `${(billable / total) * 100}%` }} />
+        <span className="m-fill-w bg-teal-500" style={{ width: `${(investment / total) * 100}%`, animationDelay: '0.5s' }} />
       </div>
       {showLegend && (
         <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">

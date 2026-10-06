@@ -38,6 +38,7 @@ import { getApiErrorMessage } from '@/lib/errors';
 import { formatDate } from '@/lib/format';
 import { money } from '@/lib/company/expenses';
 import { cn } from '@/lib/cn';
+import { DateInput, Select } from '@/components/ui/pickers';
 
 type Tab = 'register' | 'people' | 'checks';
 type Attention = NonNullable<AssetQuery['attention']>;
@@ -206,19 +207,19 @@ function AssetTable({ attention, onClearAttention, manage }: { attention: Attent
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tag, name, serial or who has it…" className="pl-9" aria-label="Search assets" />
         </div>
-        <select className={cn(inputClass, "w-auto")} value={status} onChange={(e) => { setStatus(e.target.value as AssetStatus | ''); setPage(1); }} aria-label="Status">
+        <Select className={cn(inputClass, "w-auto")} value={status} onChange={(e) => { setStatus(e.target.value as AssetStatus | ''); setPage(1); }} aria-label="Status">
           <option value="">All statuses</option>
           {(Object.keys(ASSET_STATUS) as AssetStatus[]).map((k) => <option key={k} value={k}>{ASSET_STATUS[k].label}</option>)}
-        </select>
-        <select className={cn(inputClass, "w-auto")} value={typeId} onChange={(e) => { setTypeId(e.target.value); setPage(1); }} aria-label="Type">
+        </Select>
+        <Select className={cn(inputClass, "w-auto")} value={typeId} onChange={(e) => { setTypeId(e.target.value); setPage(1); }} aria-label="Type">
           <option value="">All types</option>
           {types.data?.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-        </select>
+        </Select>
         {(locations.data?.length ?? 0) > 0 && (
-          <select className={cn(inputClass, "w-auto")} value={locationId} onChange={(e) => { setLocationId(e.target.value); setPage(1); }} aria-label="Location">
+          <Select className={cn(inputClass, "w-auto")} value={locationId} onChange={(e) => { setLocationId(e.target.value); setPage(1); }} aria-label="Location">
             <option value="">All locations</option>
             {locations.data!.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-          </select>
+          </Select>
         )}
         {attention && <Button size="sm" variant="ghost" onClick={onClearAttention}><X /> Clear filter</Button>}
       </div>
@@ -311,7 +312,7 @@ function MoveDialog({ ids, onClose, onDone }: { ids: string[] | null; onClose: (
       busy={move.isPending}
       icon={<MapPin />}
       title={`Move ${ids.length} asset${ids.length === 1 ? '' : 's'}`}
-      className="sm:max-w-sm"
+      size="sm"
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
@@ -320,10 +321,10 @@ function MoveDialog({ ids, onClose, onDone }: { ids: string[] | null; onClose: (
       }
     >
       <Field label="Location" htmlFor="mv-loc">
-        <select id="mv-loc" className={inputClass} value={locationId} onChange={(e) => setLocationId(e.target.value)}>
+        <Select id="mv-loc" className={inputClass} value={locationId} onChange={(e) => setLocationId(e.target.value)}>
           <option value="">No location</option>
           {locations.data?.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-        </select>
+        </Select>
       </Field>
     </Modal>
   );
@@ -492,7 +493,7 @@ function ReturnsAndChecks() {
         icon={<ClipboardCheck />}
         title="Start a check"
         description="Everyone holding something gets a notification and a card on their My assets page."
-        className="sm:max-w-sm"
+        size="sm"
         footer={
           <>
             <Button variant="secondary" onClick={() => setStarting(false)}>Cancel</Button>
@@ -502,7 +503,7 @@ function ReturnsAndChecks() {
       >
         <div className="space-y-3">
           <Field label="Name" htmlFor="ck-name"><Input id="ck-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={100} /></Field>
-          <Field label="Answer by" htmlFor="ck-due" required><Input id="ck-due" type="date" value={dueOn} onChange={(e) => setDueOn(e.target.value)} /></Field>
+          <Field label="Answer by" htmlFor="ck-due" required><DateInput id="ck-due" value={dueOn} onChange={(e) => setDueOn(e.target.value)} /></Field>
         </div>
       </Modal>
     </div>

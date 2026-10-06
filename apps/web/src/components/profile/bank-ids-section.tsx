@@ -5,11 +5,12 @@ import { toast } from 'sonner';
 import { Eye, EyeOff, Fingerprint, Landmark, Lock, Pencil, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/feedback';
-import { Field, Input, inputClass } from '@/components/ui/field';
+import { Field, Input, inputClass, FormError } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { InfoGrid } from '@/components/profile/personal-section';
 import { revealPrivate, useUpdateBank, useUpdateStatutory, type PrivateProfile } from '@/lib/company/profile';
 import { getApiErrorMessage } from '@/lib/errors';
+import { Select } from '@/components/ui/pickers';
 
 const REVEAL_SECONDS = 30;
 const mono = (v: string | null | undefined) => v && <span className="font-mono tracking-wide">{v}</span>;
@@ -166,7 +167,7 @@ function BankDialog({ open, onClose, employeeId, data }: { open: boolean; onClos
       icon={<Landmark />}
       title={data.bank ? 'Update bank account' : 'Add bank account'}
       description="Enter the full account number — it is encrypted before it is stored."
-      className="sm:max-w-lg"
+      size="md"
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={save.isPending}>Cancel</Button>
@@ -175,7 +176,7 @@ function BankDialog({ open, onClose, employeeId, data }: { open: boolean; onClos
       }
     >
       <form id="bank-form" onSubmit={submit} className="grid gap-3 sm:grid-cols-2" autoComplete="off">
-        {error && <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive sm:col-span-2">{error}</p>}
+        <FormError className="sm:col-span-2">{error}</FormError>
         <Field label="Account holder name" htmlFor="bk-holder" required className="sm:col-span-2">
           <Input id="bk-holder" value={f.accountHolderName} onChange={(e) => set('accountHolderName', e.target.value)} required minLength={2} maxLength={100} />
         </Field>
@@ -242,7 +243,7 @@ function IdsDialog({ open, onClose, employeeId, data }: { open: boolean; onClose
       icon={<Fingerprint />}
       title="Government IDs"
       description="Leave PAN or Aadhaar blank to keep the saved value."
-      className="sm:max-w-lg"
+      size="md"
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={save.isPending}>Cancel</Button>
@@ -251,7 +252,7 @@ function IdsDialog({ open, onClose, employeeId, data }: { open: boolean; onClose
       }
     >
       <form id="ids-form" onSubmit={submit} className="grid gap-3 sm:grid-cols-2" autoComplete="off">
-        {error && <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive sm:col-span-2">{error}</p>}
+        <FormError className="sm:col-span-2">{error}</FormError>
         <Field label="PAN" htmlFor="id-pan" hint={s?.panMasked ? `Saved: ${s.panMasked}` : 'e.g. ABCDE1234F'}>
           <Input id="id-pan" value={f.pan} onChange={(e) => set('pan', e.target.value.toUpperCase())} maxLength={10} className="font-mono uppercase" />
         </Field>
@@ -268,10 +269,10 @@ function IdsDialog({ open, onClose, employeeId, data }: { open: boolean; onClose
           <Input id="id-esic" value={f.esicNumber} onChange={(e) => set('esicNumber', e.target.value)} maxLength={17} inputMode="numeric" className="font-mono" />
         </Field>
         <Field label="Tax regime" htmlFor="id-regime">
-          <select id="id-regime" className={inputClass} value={f.taxRegime} onChange={(e) => set('taxRegime', e.target.value)}>
+          <Select id="id-regime" className={inputClass} value={f.taxRegime} onChange={(e) => set('taxRegime', e.target.value)}>
             <option value="NEW">New regime</option>
             <option value="OLD">Old regime</option>
-          </select>
+          </Select>
         </Field>
       </form>
     </Modal>

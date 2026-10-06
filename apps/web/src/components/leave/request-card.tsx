@@ -12,7 +12,7 @@ import { cn } from '@/lib/cn';
 const pretty = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();
 
 /** A leave request with its approval chain; actions are passed in. */
-export function LeaveRequestCard({ request: r, showEmployee, actions }: { request: LeaveRequest; showEmployee?: boolean; actions?: React.ReactNode }) {
+export function LeaveRequestCard({ request: r, showEmployee, actions, footer }: { request: LeaveRequest; showEmployee?: boolean; actions?: React.ReactNode; footer?: React.ReactNode }) {
   return (
     <Card className="p-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-start">
@@ -64,6 +64,7 @@ export function LeaveRequestCard({ request: r, showEmployee, actions }: { reques
           {actions}
         </div>
       </div>
+      {footer}
     </Card>
   );
 }

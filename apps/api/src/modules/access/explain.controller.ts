@@ -25,6 +25,13 @@ export class ExplainController {
     return this.explain.explainUser(companyOf(ctx), userId);
   }
 
+  @Get('sensitive')
+  @RequirePermission('role.view')
+  @ApiOperation({ summary: 'Who can see or change private data (salary, bank, documents, roles…) for other people' })
+  sensitive(@TenantCtx() ctx: TenantContext) {
+    return this.explain.sensitiveCheck(companyOf(ctx));
+  }
+
   @Get('employees/:employeeId')
   @RequirePermission('role.view')
   @ApiOperation({ summary: 'Everyone whose access reaches this employee for a permission, and why' })

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Emoji } from '@/components/motion/emoji';
 import Link from 'next/link';
 import { Building2, LayoutGrid, List, MapPin, Search, ShieldCheck, Users, UsersRound, X } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
@@ -14,6 +15,7 @@ import { useDirectory, usePeopleHighlights, type DirectoryPerson, type TodayStat
 import { useUiState } from '@/lib/preferences/ui-state';
 import { getApiErrorMessage } from '@/lib/errors';
 import { cn } from '@/lib/cn';
+import { Select } from '@/components/ui/pickers';
 
 type View = 'cards' | 'teams' | 'list';
 const isView = (v: unknown): v is View => v === 'cards' || v === 'teams' || v === 'list';
@@ -116,7 +118,7 @@ export default function PeopleDirectoryPage() {
             </span>
           </Card>
           <Card className="flex items-center gap-3 p-4">
-            <span className="text-2xl" aria-hidden>🎂</span>
+            <span className="text-2xl"><Emoji e="🎂" play="appear" /></span>
             <span className="min-w-0 flex-1">
               <b className="block text-sm">{h.birthdays.find((b) => b.inDays === 0) ? `${h.birthdays.filter((b) => b.inDays === 0).map((b) => b.firstName).join(', ')}’s birthday today` : h.birthdays.length ? `${h.birthdays.length} birthday${h.birthdays.length === 1 ? '' : 's'} this week` : 'No birthdays this week'}</b>
               <span className="block truncate text-xs text-muted-foreground">{h.birthdays.filter((b) => b.inDays > 0).slice(0, 2).map((b) => `${b.firstName} in ${b.inDays} day${b.inDays === 1 ? '' : 's'}`).join(' · ') || 'Day and month only'}</span>
@@ -145,18 +147,18 @@ export default function PeopleDirectoryPage() {
         </label>
         <label className="relative">
           <Building2 className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <select className={cn(inputClass, 'h-11 w-auto rounded-xl pl-8 text-sm', departmentId && 'border-primary/40 text-primary')} value={departmentId} onChange={(e) => setDepartmentId(e.target.value)} aria-label="Team">
+          <Select className={cn(inputClass, 'h-11 w-auto rounded-xl pl-8 text-sm', departmentId && 'border-primary/40 text-primary')} value={departmentId} onChange={(e) => setDepartmentId(e.target.value)} aria-label="Team">
             <option value="">All teams</option>
             {departments.data?.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-          </select>
+          </Select>
         </label>
         {locations.data && locations.data.length > 0 && (
           <label className="relative">
             <MapPin className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <select className={cn(inputClass, 'h-11 w-auto rounded-xl pl-8 text-sm', locationId && 'border-primary/40 text-primary')} value={locationId} onChange={(e) => setLocationId(e.target.value)} aria-label="Location">
+            <Select className={cn(inputClass, 'h-11 w-auto rounded-xl pl-8 text-sm', locationId && 'border-primary/40 text-primary')} value={locationId} onChange={(e) => setLocationId(e.target.value)} aria-label="Location">
               <option value="">All locations</option>
               {locations.data.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
+            </Select>
           </label>
         )}
       </div>
@@ -174,10 +176,10 @@ export default function PeopleDirectoryPage() {
           );
         })}
         {letter && <button type="button" onClick={() => setLetter('')} className="inline-flex h-8 items-center gap-1 rounded-full border border-primary/40 bg-primary-soft px-3 text-xs font-semibold text-primary-soft-foreground">Starts with {letter} <X className="h-3 w-3" /></button>}
-        <select aria-label="Sort" value={sort} onChange={(e) => setSort(e.target.value as 'name' | 'joined')} className="ml-auto h-8 rounded-lg border border-border bg-surface px-2 text-xs font-semibold text-muted-foreground">
+        <Select aria-label="Sort" value={sort} onChange={(e) => setSort(e.target.value as 'name' | 'joined')} className="ml-auto h-8 rounded-lg border border-border bg-surface px-2 text-xs font-semibold text-muted-foreground">
           <option value="name">A–Z</option>
           <option value="joined">Newest first</option>
-        </select>
+        </Select>
       </div>
 
       {list.isLoading ? (

@@ -10,6 +10,7 @@ import { Input, inputClass } from '@/components/ui/field';
 import { PersonAvatar } from '@/components/profile/person-avatar';
 import { TS_STATUS, addDays, fmtHours, mondayOf, todayKey, useCompliance, weekLabel } from '@/lib/company/timesheets';
 import { getApiErrorMessage } from '@/lib/errors';
+import { Select } from '@/components/ui/pickers';
 
 /** Who in my scope has (not) filled a week. */
 export function Compliance() {
@@ -31,14 +32,14 @@ export function Compliance() {
         <Button size="icon-sm" variant="secondary" aria-label="Previous week" onClick={() => { setWeek(addDays(week, -7)); setPage(1); }}><ChevronLeft /></Button>
         <span className="min-w-[150px] text-center text-sm font-semibold">{weekLabel(week)}</span>
         <Button size="icon-sm" variant="secondary" aria-label="Next week" disabled={week >= mondayOf(todayKey())} onClick={() => { setWeek(addDays(week, 7)); setPage(1); }}><ChevronRight /></Button>
-        <select className={`${inputClass} w-auto`} value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} aria-label="Status">
+        <Select className={`${inputClass} w-auto`} value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} aria-label="Status">
           <option value="">Everyone</option>
           <option value="missing">Not started</option>
           <option value="DRAFT">Not sent</option>
           <option value="SUBMITTED">Waiting for approval</option>
           <option value="APPROVED">Approved</option>
           <option value="REJECTED">Sent back</option>
-        </select>
+        </Select>
         <div className="relative min-w-[200px] flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Name or employee ID…" className="pl-9" aria-label="Search people" />

@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { cn } from '@/lib/cn';
-import { STATUS_META, clock, type CalendarDay, type DayStatus } from '@/lib/company/attendance';
+import { STATUS_META, clock, hours, type CalendarDay, type DayStatus, lateBy } from '@/lib/company/attendance';
+import { STATUS_BG } from '@/components/time/visuals';
 
 const HEAD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const LEGEND: DayStatus[] = ['PRESENT', 'HALF_DAY', 'ABSENT', 'MISSING_CHECKOUT', 'ON_LEAVE', 'WORK_FROM_HOME', 'HOLIDAY', 'WEEKEND'];
@@ -14,12 +15,15 @@ export function MonthCalendar({
   timeZone,
   selected,
   onSelect,
+  fullDayMinutes,
 }: {
   days: CalendarDay[];
   today: string;
   timeZone: string;
   selected?: string | null;
   onSelect?: (day: CalendarDay) => void;
+  /** Show an hours bar on each worked day */
+  fullDayMinutes?: number;
 }) {
   if (!days.length) return null;
   const lead = (new Date(`${days[0]!.date}T00:00:00Z`).getUTCDay() + 6) % 7; // blanks before the 1st
@@ -39,13 +43,14 @@ export function MonthCalendar({
             <button
               key={d.date}
               type="button"
+              style={{ animationDelay: `${Number(d.date.slice(8)) * 12}ms` }}
               role="gridcell"
               disabled={!clickable}
               onClick={() => onSelect?.(d)}
               aria-label={`${d.date}: ${d.holiday?.name ?? meta.label}`}
               aria-selected={selected === d.date}
               className={cn(
-                'relative flex min-h-[64px] flex-col rounded-lg p-1.5 text-left transition-shadow sm:min-h-[84px] sm:p-2',
+                'm-pop relative flex min-h-[64px] flex-col rounded-lg p-1.5 text-left transition-shadow sm:min-h-[84px] sm:p-2',
                 meta.cell,
                 clickable && 'hover:shadow-card hover:ring-1 hover:ring-foreground/20',
                 selected === d.date && 'ring-2 ring-primary',
@@ -68,10 +73,16 @@ export function MonthCalendar({
                 ) : d.checkIn ? (
                   <>
                     <span className="block tabular-nums">{clock(d.checkIn, timeZone)}–{d.checkOut ? clock(d.checkOut, timeZone) : '…'}</span>
-                    {(d.lateMinutes ?? 0) > 0 && <span className="block font-medium text-warning">Late {d.lateMinutes}m</span>}
+                    {(d.lateMinutes ?? 0) > 0 && <span className="block font-medium text-warning">Late {lateBy(d.lateMinutes)}</span>}
                   </>
                 ) : null}
               </span>
+              {fullDayMinutes && d.workingMinutes ? (
+                <span className='mt-1 hidden h-1 overflow-hidden rounded-full bg-black/10 sm:block' title={hours(d.workingMinutes) + ' worked'}>
+                  <span className={cn('m-fill-w block h-full rounded-full', STATUS_BG[d.status])} style={{ width: Math.min(100, (d.workingMinutes / fullDayMinutes) * 100) + '%' }} />
+                </span>
+              ) : null}
+              {d.autoClosed && <span className='absolute left-1/2 top-1 hidden -translate-x-1/2 text-[9px] font-bold uppercase text-violet-600 sm:block' title='Closed automatically — you forgot to check out'>auto</span>}
               {d.correction?.status === 'PENDING' && (
                 <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-warning sm:right-1.5 sm:top-auto sm:bottom-1.5" title="Correction pending" />
               )}

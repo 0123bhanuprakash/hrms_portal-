@@ -1,12 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { Suspense, useEffect, useRef, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { Check, Lock, Palette, Redo2, RotateCcw, Undo2 } from 'lucide-react';
+import { Check, Lock, Palette, Redo2, RotateCcw, Sparkles, Undo2, Users } from 'lucide-react';
 import type { ThemeRef, ThemeTokens } from '@hrms/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, EmptyState, ErrorState, Skeleton } from '@/components/ui/feedback';
+import { Card, EmptyState, ErrorState, Skeleton, Tabs } from '@/components/ui/feedback';
+import { SeasonsTab } from '@/components/season/seasons-tab';
+import { rebrandTheme } from '@/lib/theme/generate';
+import { isHex } from '@/lib/theme/color';
 import { Modal } from '@/components/ui/modal';
 import { PageHeader } from '@/components/ui/page-header';
 import { Tooltip } from '@/components/ui/tooltip';
@@ -20,13 +24,33 @@ import { useThemeLibrary } from '@/lib/theme/library';
 import { getApiErrorMessage } from '@/lib/errors';
 import { stableStringify } from '@/lib/theme/color';
 
+type Tab = 'look' | 'seasonal' | 'choices';
+
 export default function CompanyThemePage() {
+  return (
+    <Suspense>
+      <ThemePage />
+    </Suspense>
+  );
+}
+
+function ThemePage() {
   const { user, companyId } = useAuthStore();
   const { can } = useAccess();
-  const theme = useCompanyTheme(companyId);
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
   const canEdit = Boolean(user?.isSuperAdmin || can('branding.manage'));
+  const canSeason = Boolean(user?.isSuperAdmin || can('theme.seasonal'));
+  const tabs = [
+    ...(canEdit ? [{ id: 'look' as const, label: 'Look & colours', icon: <Palette /> }] : []),
+    ...(canSeason ? [{ id: 'seasonal' as const, label: 'Seasonal', icon: <Sparkles /> }] : []),
+    ...(canEdit ? [{ id: 'choices' as const, label: 'What employees can change', icon: <Users /> }] : []),
+  ];
+  const asked = params.get('tab') as Tab | null;
+  const tab: Tab = tabs.find((t) => t.id === asked)?.id ?? tabs[0]?.id ?? 'look';
 
-  if (!canEdit) {
+  if (!canEdit && !canSeason) {
     return (
       <Card>
         <EmptyState
@@ -38,11 +62,29 @@ export default function CompanyThemePage() {
     );
   }
 
+  return (
+    <div className="space-y-4">
+      <PageHeader
+        eyebrow="Settings"
+        title="Theme"
+        description="How your company portal looks for everyone — plus festival looks that switch on and back by themselves."
+      />
+      {tabs.length > 1 && (
+        <Tabs<Tab> value={tab} onChange={(t) => router.replace(t === tabs[0]!.id ? pathname : `${pathname}?tab=${t}`, { scroll: false })} tabs={tabs} />
+      )}
+      <div key={tab} className="animate-fade-up">
+        {tab === 'seasonal' ? <SeasonsTab /> : tab === 'choices' && companyId ? <EmployeeChoicesCard companyId={companyId} /> : <LookTab companyId={companyId} brand={params.get('primary')} />}
+      </div>
+    </div>
+  );
+}
+
+function LookTab({ companyId, brand }: { companyId: string | null; brand: string | null }) {
+  const theme = useCompanyTheme(companyId);
   if (theme.isLoading || !companyId) return <Skeleton className="h-[70vh] rounded-xl" />;
   if (theme.isError || !theme.data) {
     return <Card><ErrorState message={getApiErrorMessage(theme.error, 'Could not load your theme')} onRetry={() => theme.refetch()} /></Card>;
   }
-
   return (
     <CompanyThemeEditor
       key={companyId}
@@ -50,6 +92,7 @@ export default function CompanyThemePage() {
       initialTokens={companyThemeTokens(theme.data)!}
       initialSource={theme.data.themeSource ?? theme.data.platformDefault?.ref ?? null}
       usingPlatformDefault={!theme.data.themeTokens}
+      brand={brand}
     />
   );
 }
@@ -59,11 +102,14 @@ function CompanyThemeEditor({
   initialTokens,
   initialSource,
   usingPlatformDefault,
+  brand,
 }: {
   companyId: string;
   initialTokens: ThemeTokens;
   initialSource: ThemeRef | null;
   usingPlatformDefault: boolean;
+  /** From Branding → "Make a theme from these": start from this main colour */
+  brand?: string | null;
 }) {
   const branding = useCompanyBranding(companyId);
   const update = useUpdateCompanyTheme(companyId);
@@ -78,6 +124,15 @@ function CompanyThemeEditor({
   const [pickerRef, setPickerRef] = useState<ThemeRef | null>(initialSource);
 
   const dirty = stableStringify(tokens) !== saved;
+  const fromBrand = useRef(false);
+  useEffect(() => {
+    if (!brand || fromBrand.current || !isHex(brand)) return;
+    fromBrand.current = true;
+    history.set(rebrandTheme(tokens, brand.toUpperCase()));
+    setSource(null);
+    toast.success('Started from your logo colours — review and publish when ready');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brand]);
   useUnsavedGuard(dirty);
   useUndoShortcuts(history);
 
@@ -105,12 +160,6 @@ function CompanyThemeEditor({
 
   return (
     <div className="space-y-4">
-      <PageHeader
-        eyebrow="Settings"
-        title="Theme"
-        description="Customize how your company portal looks for everyone in your organization. Changes stay private until you publish."
-      />
-
       {/* Toolbar */}
       <div className="sticky top-14 z-10 -mx-4 flex flex-wrap items-center gap-2 border-b border-border bg-background/85 px-4 py-3 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 text-sm">
@@ -160,16 +209,15 @@ function CompanyThemeEditor({
         onChange={history.set}
         companyName={branding.data?.displayName}
         previewNote="Preview only — your team sees the new look after you publish"
+        before={hasOwnTheme ? (JSON.parse(saved) as ThemeTokens) : undefined}
       />
-
-      <EmployeeChoicesCard companyId={companyId} />
 
       <Modal
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
         title="Start from a theme"
         description="Replaces your current edits with a suggested theme. You can still fine-tune it before publishing."
-        className="max-w-2xl"
+        size="lg"
         footer={
           <>
             <Button variant="secondary" onClick={() => setPickerOpen(false)}>Cancel</Button>

@@ -113,7 +113,7 @@ function TypeDialog({ value, onClose }: { value: AssetType | 'new' | null; onClo
   };
 
   return (
-    <Modal open onClose={onClose} busy={save.isPending} icon={<Tags />} title={value === 'new' ? 'Add asset type' : `Edit ${value.name}`} className="sm:max-w-2xl"
+    <Modal open onClose={onClose} busy={save.isPending} icon={<Tags />} title={value === 'new' ? 'Add asset type' : `Edit ${value.name}`} size="lg"
       footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button><Button type="submit" form="type-form" loading={save.isPending}>Save</Button></>}>
       <form id="type-form" onSubmit={submit} className="space-y-4">
         <Field label="Picture">
@@ -280,7 +280,7 @@ function KitDialog({ value, onClose, types }: { value: KitRule | 'new' | null; o
   };
 
   return (
-    <Modal open onClose={onClose} busy={save.isPending} icon={<Gift />} title={value === 'new' ? 'Add a starter kit rule' : `Edit ${value.name}`} className="sm:max-w-2xl"
+    <Modal open onClose={onClose} busy={save.isPending} icon={<Gift />} title={value === 'new' ? 'Add a starter kit rule' : `Edit ${value.name}`} size="lg"
       footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button><Button type="submit" form="kit-form" loading={save.isPending} disabled={!f.items.length || noWho}>Save</Button></>}>
       <form id="kit-form" onSubmit={submit} className="space-y-4">
         <Field label="Name" htmlFor="kt-name" required><Input id="kt-name" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required minLength={2} maxLength={60} placeholder="e.g. Sales team extras" /></Field>

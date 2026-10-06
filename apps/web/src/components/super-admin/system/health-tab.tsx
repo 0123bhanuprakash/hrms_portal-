@@ -45,12 +45,14 @@ function stateOf(system: SystemStatus | undefined, key: ServiceKey): State | und
 function UptimeBars({ days }: { days: HealthHistory['days'] }) {
   return (
     <div className="flex h-8 items-end gap-[2px]" role="img" aria-label="Uptime for the last 90 days">
-      {days.map((d) => (
+      {days.map((d, i) => (
         <i
           key={d.day}
+          // The 90 days pop in as a wave, oldest first
+          style={{ ['--i' as string]: i }}
           title={d.uptime === null ? `${d.day}: no checks` : `${d.day}: ${d.uptime}% of ${d.checks} checks passed`}
           className={cn(
-            'block h-full flex-1 rounded-[2px] transition-transform hover:scale-y-110',
+            'm-cell block h-full flex-1 origin-bottom rounded-[2px] transition-transform hover:scale-y-110',
             d.uptime === null ? 'bg-muted' : d.uptime === 100 ? 'bg-success' : d.uptime >= 95 ? 'bg-warning' : 'bg-destructive',
           )}
         />
@@ -196,10 +198,10 @@ function TrafficChart({ traffic }: { traffic: Traffic }) {
       </h2>
       <svg viewBox={`0 0 ${W} ${H + 18}`} className="h-48 w-full" preserveAspectRatio="none" role="img" aria-label="Requests per minute and response time for the last hour">
         {[0.25, 0.5, 0.75].map((g) => <line key={g} x1={0} x2={W} y1={H * g} y2={H * g} className="stroke-border" strokeWidth={1} />)}
-        {m.map((v, i) => (v.errors ? <rect key={v.at} x={x(i) - 4} y={0} width={8} height={H} className="fill-destructive/20" /> : null))}
-        <path d={`M0,${H} L${req.replace(/ /g, ' L')} L${W},${H} Z`} className="fill-primary/10" />
-        <polyline points={req} fill="none" className="stroke-primary m-line" strokeWidth={2.2} strokeLinejoin="round" style={{ ['--m-len' as string]: 2000 }} />
-        <polyline points={line(m.map((v) => v.p95), maxP95)} fill="none" className="stroke-info" strokeWidth={1.8} strokeLinejoin="round" />
+        {m.map((v, i) => (v.errors ? <rect key={v.at} x={x(i) - 4} y={0} width={8} height={H} className="m-fade fill-destructive/20" /> : null))}
+        <path d={`M0,${H} L${req.replace(/ /g, ' L')} L${W},${H} Z`} className="m-fade fill-primary/10" />
+        <polyline points={req} fill="none" className="stroke-primary m-line" strokeWidth={2.2} strokeLinejoin="round" />
+        <polyline points={line(m.map((v) => v.p95), maxP95)} fill="none" className="stroke-info m-line" strokeWidth={1.8} strokeLinejoin="round" style={{ animationDelay: '0.35s' }} />
         {['−60m', '−45m', '−30m', '−15m', 'now'].map((t, i) => (
           <text key={t} x={(i * W) / 4} y={H + 15} fontSize={11} className="fill-muted-foreground" textAnchor={i === 0 ? 'start' : i === 4 ? 'end' : 'middle'}>{t}</text>
         ))}

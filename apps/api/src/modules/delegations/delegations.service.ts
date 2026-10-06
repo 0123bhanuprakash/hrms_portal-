@@ -12,6 +12,7 @@ const SELECT = {
   startsAt: true,
   endsAt: true,
   reason: true,
+  permissions: true,
   revokedAt: true,
   createdAt: true,
   delegator: { select: { id: true, firstName: true, lastName: true, email: true } },
@@ -68,8 +69,12 @@ export class DelegationsService {
     if (!delegate) throw new NotFoundException('The person covering must be in this company');
     if (delegate.status !== UserStatus.ACTIVE) throw new BadRequestException(`${delegate.firstName}'s account isn't active`);
 
-    const permissions = await this.delegableFor(delegatorId);
-    if (!permissions.length) throw new BadRequestException(`${delegator.firstName} has no approvals to delegate`);
+    const all = await this.delegableFor(delegatorId);
+    if (!all.length) throw new BadRequestException(`${delegator.firstName} has no approvals to delegate`);
+    // Hand over some of them, or (default) all
+    const permissions = dto.permissions?.length ? all.filter((p) => dto.permissions!.includes(p.key)) : all;
+    if (!permissions.length) throw new BadRequestException(`${delegator.firstName} can't approve any of the chosen kinds`);
+    const chosen = permissions.length === all.length ? [] : permissions.map((p) => p.key);
 
     const startsAt = dto.startsAt ? new Date(dto.startsAt) : new Date();
     const endsAt = new Date(dto.endsAt);
@@ -88,7 +93,7 @@ export class DelegationsService {
     }
 
     const row = await this.prisma.approvalDelegation.create({
-      data: { companyId, delegatorId, delegateId: dto.delegateId, startsAt, endsAt, reason: dto.reason?.trim() || null, createdById: actor.userId },
+      data: { companyId, delegatorId, delegateId: dto.delegateId, startsAt, endsAt, reason: dto.reason?.trim() || null, permissions: chosen, createdById: actor.userId },
       select: SELECT,
     });
     this.access.invalidateDelegations(dto.delegateId);
@@ -162,6 +167,8 @@ export class DelegationsService {
       startsAt: r.startsAt,
       endsAt: r.endsAt,
       reason: r.reason,
+      /** Approval kinds handed over; empty = all */
+      permissions: r.permissions,
       revokedAt: r.revokedAt,
       createdAt: r.createdAt,
       delegator: { id: r.delegator.id, name: `${r.delegator.firstName} ${r.delegator.lastName}`, email: r.delegator.email },

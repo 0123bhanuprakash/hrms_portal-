@@ -1,5 +1,6 @@
 'use client';
 
+import { CompleteProfileNudge } from '@/components/profile/no-profile';
 import React from 'react';
 import Link from 'next/link';
 import {
@@ -38,6 +39,8 @@ import { useMyCard, useSpotlight } from '@/lib/company/profile';
 import { cn } from '@/lib/cn';
 import { useMoment } from '@/components/motion/moments';
 import { useToday } from '@/lib/company/attendance';
+import { SeasonBanner, useSeasonLook } from '@/components/season/season';
+import { useHomeHidden } from '@/components/preferences/home-cards';
 
 export default function HomePage() {
   const { user, companyId } = useAuthStore();
@@ -195,11 +198,15 @@ export default function HomePage() {
     </Card>
   );
 
-  const celebrations = can('org.view') && <CelebrationsCard data={spotlight.data} loading={spotlight.isLoading} />;
-  const comingUp = can('org.view') && <ComingUpCard data={spotlight.data} loading={spotlight.isLoading} />;
+  const look = useSeasonLook();
+  const hidden = useHomeHidden();
+  const celebrations = can('org.view') && !hidden.has('celebrations') && <CelebrationsCard data={spotlight.data} loading={spotlight.isLoading} />;
+  const comingUp = can('org.view') && !hidden.has('comingup') && <ComingUpCard data={spotlight.data} loading={spotlight.isLoading} />;
 
   return (
     <div className="space-y-5">
+      {look.season && <SeasonBanner season={look.season} firstName={user?.firstName} />}
+      <CompleteProfileNudge />
       {/* Hero + today */}
       <div className={cn('m-stagger grid gap-5', heroSide && 'lg:grid-cols-12')}>
         <HomeHero className={cn(heroSide && 'lg:col-span-8')} title={hero.title} subtitle={hero.subtitle} stats={hero.stats} actions={hero.actions} moment={moment} />
@@ -214,10 +221,10 @@ export default function HomePage() {
               <ApprovalsCard />
               {isEmployee && hasFeature('time.attendance') && can('attendance.view') && <MyWeekCard />}
               <Pair>
-                <WhosOffCard />
+                {!hidden.has('whosoff') && <WhosOffCard />}
                 <DepartmentsCard />
               </Pair>
-              <JoinersCard />
+              {!hidden.has('joiners') && <JoinersCard />}
               <Pair>
                 {isEmployee && <NeedsActionCard me={me.data} />}
                 <ProbationCard />
@@ -244,11 +251,11 @@ export default function HomePage() {
           {comingUp}
           {team}
           {makeItYours}
-          <KudosTickerCard />
+          {!hidden.has('kudos') && <KudosTickerCard />}
         </div>
       </div>
 
-      <HomeAnnouncements />
+      {!hidden.has('announcements') && <HomeAnnouncements />}
     </div>
   );
 }

@@ -23,6 +23,7 @@ import {
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatDateTime, formatRelative } from '@/lib/format';
 import { cn } from '@/lib/cn';
+import { Select } from '@/components/ui/pickers';
 
 export const REPORT_LABEL: Record<ScheduleReport, string> = { overview: 'Overview', people: 'People', attendance: 'Attendance & leave', utilisation: 'Utilisation' };
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -77,9 +78,9 @@ function ScheduleForm({ initial, available, filters, onDone }: { initial: Draft;
   return (
     <div className="space-y-4">
       <Field label="Report" htmlFor="sch-report">
-        <select id="sch-report" className={inputClass} value={d.report} onChange={(e) => setD({ ...d, report: e.target.value as ScheduleReport })}>
+        <Select id="sch-report" className={inputClass} value={d.report} onChange={(e) => setD({ ...d, report: e.target.value as ScheduleReport })}>
           {available.map((r) => <option key={r} value={r}>{REPORT_LABEL[r]}</option>)}
-        </select>
+        </Select>
       </Field>
       <Field label="How often" htmlFor="sch-freq">
         <div id="sch-freq" className="flex w-max rounded-lg border border-border p-0.5" role="radiogroup">
@@ -93,22 +94,22 @@ function ScheduleForm({ initial, available, filters, onDone }: { initial: Draft;
       <div className="grid gap-3 sm:grid-cols-2">
         {d.frequency === 'WEEKLY' && (
           <Field label="Day" htmlFor="sch-dow">
-            <select id="sch-dow" className={inputClass} value={d.dayOfWeek} onChange={(e) => setD({ ...d, dayOfWeek: Number(e.target.value) })}>
+            <Select id="sch-dow" className={inputClass} value={d.dayOfWeek} onChange={(e) => setD({ ...d, dayOfWeek: Number(e.target.value) })}>
               {DAYS.map((name, i) => <option key={name} value={i + 1}>{name}</option>)}
-            </select>
+            </Select>
           </Field>
         )}
         {d.frequency === 'MONTHLY' && (
           <Field label="Day of month" htmlFor="sch-dom">
-            <select id="sch-dom" className={inputClass} value={d.dayOfMonth} onChange={(e) => setD({ ...d, dayOfMonth: Number(e.target.value) })}>
+            <Select id="sch-dom" className={inputClass} value={d.dayOfMonth} onChange={(e) => setD({ ...d, dayOfMonth: Number(e.target.value) })}>
               {Array.from({ length: 28 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}</option>)}
-            </select>
+            </Select>
           </Field>
         )}
         <Field label="Time" htmlFor="sch-hour" hint="Your company’s time zone">
-          <select id="sch-hour" className={inputClass} value={d.hour} onChange={(e) => setD({ ...d, hour: Number(e.target.value) })}>
+          <Select id="sch-hour" className={inputClass} value={d.hour} onChange={(e) => setD({ ...d, hour: Number(e.target.value) })}>
             {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{hourLabel(h)}</option>)}
-          </select>
+          </Select>
         </Field>
       </div>
       <Field label="Send to" htmlFor="sch-to" hint="Each person gets numbers for only the people they can see.">
@@ -159,7 +160,7 @@ export function ScheduleDialog({ open, onClose, report, available, filters }: { 
   }, [open, list.data, blank]);
 
   return (
-    <Modal open={open} onClose={onClose} icon={<Mail />} title={editing ? (editing.id ? 'Change schedule' : 'Email a report') : 'Emailed reports'} description={editing ? 'A summary arrives by email with a link to the full report.' : 'Reports you’ve set up to arrive by email.'} className="max-w-xl">
+    <Modal open={open} onClose={onClose} icon={<Mail />} title={editing ? (editing.id ? 'Change schedule' : 'Email a report') : 'Emailed reports'} description={editing ? 'A summary arrives by email with a link to the full report.' : 'Reports you’ve set up to arrive by email.'} size="lg">
       {editing ? (
         <ScheduleForm initial={editing} available={available} filters={filters} onDone={() => (list.data?.length ? setEditing(null) : onClose())} />
       ) : !list.data ? (

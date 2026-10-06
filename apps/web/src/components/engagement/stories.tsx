@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Emoji } from '@/components/motion/emoji';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -59,7 +60,7 @@ export function StoryViewer({ items, start, onClose }: { items: Announcement[]; 
   const go = useCallback(
     (to: number) => {
       if (to >= items.length) {
-        toast.success('You’re all caught up 🎉');
+        toast.success(<>You’re all caught up <Emoji e="🎉" play="appear" /></>);
         onClose();
         return;
       }
@@ -192,11 +193,7 @@ export function StoryViewer({ items, start, onClose }: { items: Announcement[]; 
             {a.allowReactions &&
               ['👍', '❤️', '🎉'].map((e) => {
                 const mine = a.reactions.find((r) => r.emoji === e)?.mine;
-                return (
-                  <button key={e} type="button" onClick={() => react.mutate({ id: a.id, emoji: e })} aria-pressed={Boolean(mine)} className={cn('flex h-11 w-11 items-center justify-center rounded-xl text-lg transition-transform active:scale-90', mine ? 'bg-white/30' : 'bg-white/10 hover:bg-white/20')}>
-                    {e}
-                  </button>
-                );
+                return <StoryReaction key={e} emoji={e} mine={Boolean(mine)} onReact={() => react.mutate({ id: a.id, emoji: e })} />;
               })}
           </div>
           {waiting && <p className="text-center text-xs text-white/60">HR asked everyone to confirm this one — it waits for you.</p>}
@@ -204,5 +201,15 @@ export function StoryViewer({ items, start, onClose }: { items: Announcement[]; 
       </div>
     </div>,
     document.body,
+  );
+}
+
+/** Story reaction: pops and floats up 3 copies when you react. */
+function StoryReaction({ emoji, mine, onReact }: { emoji: string; mine: boolean; onReact: () => void }) {
+  const [fire, setFire] = React.useState(0);
+  return (
+    <button type="button" onClick={() => { if (!mine) setFire((n) => n + 1); onReact(); }} aria-pressed={mine} aria-label={`React ${emoji}`} className={cn('emo-host flex h-11 w-11 items-center justify-center rounded-xl text-lg transition-transform active:scale-90', mine ? 'bg-white/30' : 'bg-white/10 hover:bg-white/20')}>
+      <Emoji e={emoji} fire={fire} burst />
+    </button>
   );
 }

@@ -3,6 +3,8 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAccess } from '@/lib/access/use-access';
+import { isLive } from '@/lib/live/socket';
+import { useMayApprove } from '@/lib/company/projects';
 import { notificationKeys } from '@/lib/notifications';
 
 // ============================================================
@@ -187,11 +189,14 @@ export function useExpenseSummary(enabled = true) {
 /** Claims waiting for me (manager step / Finance / HR) — nav badge. */
 export function usePendingExpenses() {
   const { hasFeature } = useAccess();
+  // Only people who can approve here ask; the API would answer 0 for everyone else
+  const mayApprove = useMayApprove('expense.approve', 'expense.finance', 'expense.hr');
   return useQuery({
     queryKey: expenseKeys.pending,
     queryFn: async () => unwrap<{ count: number }>(await api.get('/expenses/claims/pending-count')).count,
-    enabled: hasFeature('ops.expenses'),
-    refetchInterval: 2 * 60_000,
+    enabled: hasFeature('ops.expenses') && mayApprove,
+    // Live updates refresh it while connected; poll only when the connection is down
+    refetchInterval: () => (isLive() ? false : 2 * 60_000),
   });
 }
 

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Field, Input, Textarea, inputClass } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { ProductArt } from '@/components/assets/product-art';
-import { useOrgChart } from '@/lib/company/org';
+import { usePeoplePicker } from '@/lib/company/org';
 import {
   CONDITIONS,
   CONDITION_LABEL,
@@ -27,6 +27,7 @@ import {
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatDate } from '@/lib/format';
 import { cn } from '@/lib/cn';
+import { DateInput, PersonSelect, Select } from '@/components/ui/pickers';
 
 const footer = (formId: string, onClose: () => void, busy: boolean, label: string, disabled = false) => (
   <>
@@ -37,9 +38,9 @@ const footer = (formId: string, onClose: () => void, busy: boolean, label: strin
 
 function ConditionSelect({ id, value, onChange }: { id: string; value: AssetCondition; onChange: (c: AssetCondition) => void }) {
   return (
-    <select id={id} className={inputClass} value={value} onChange={(e) => onChange(e.target.value as AssetCondition)}>
+    <Select id={id} className={inputClass} value={value} onChange={(e) => onChange(e.target.value as AssetCondition)}>
       {CONDITIONS.map((c) => <option key={c} value={c}>{CONDITION_LABEL[c]}</option>)}
-    </select>
+    </Select>
   );
 }
 
@@ -98,12 +99,12 @@ export function AssetFormDialog({ value, onClose, onSaved }: { value: Asset | 'n
   };
 
   return (
-    <Modal open onClose={onClose} busy={save.isPending} icon={<HardDrive />} title={value === 'new' ? 'Add an asset' : `Edit ${value.tag}`} className="sm:max-w-xl" footer={footer('asset-form', onClose, save.isPending, 'Save')}>
+    <Modal open onClose={onClose} busy={save.isPending} icon={<HardDrive />} title={value === 'new' ? 'Add an asset' : `Edit ${value.tag}`} size="lg" footer={footer('asset-form', onClose, save.isPending, 'Save')}>
       <form id="asset-form" onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
         <Field label="Type" htmlFor="af-type" required>
-          <select id="af-type" className={inputClass} value={f.typeId} onChange={(e) => set('typeId', e.target.value)} required>
+          <Select id="af-type" className={inputClass} value={f.typeId} onChange={(e) => set('typeId', e.target.value)} required>
             {types.data?.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-          </select>
+          </Select>
         </Field>
         <Field label="Asset tag" htmlFor="af-tag" hint={value === 'new' ? `Blank = next ${type?.prefix ?? ''} number` : undefined}>
           <Input id="af-tag" value={f.tag} onChange={(e) => set('tag', e.target.value)} placeholder={value === 'new' ? 'Automatic' : undefined} maxLength={30} pattern="[A-Za-z0-9\-]{2,30}" />
@@ -115,10 +116,10 @@ export function AssetFormDialog({ value, onClose, onSaved }: { value: Asset | 'n
         <Field label="Model" htmlFor="af-model"><Input id="af-model" value={f.model} onChange={(e) => set('model', e.target.value)} maxLength={60} /></Field>
         <Field label="Serial number" htmlFor="af-serial"><Input id="af-serial" value={f.serialNumber} onChange={(e) => set('serialNumber', e.target.value)} maxLength={80} /></Field>
         <Field label="Condition" htmlFor="af-cond"><ConditionSelect id="af-cond" value={f.condition} onChange={(c) => set('condition', c)} /></Field>
-        <Field label="Purchase date" htmlFor="af-pdate"><Input id="af-pdate" type="date" value={f.purchaseDate} onChange={(e) => set('purchaseDate', e.target.value)} /></Field>
+        <Field label="Purchase date" htmlFor="af-pdate"><DateInput id="af-pdate" value={f.purchaseDate} onChange={(e) => set('purchaseDate', e.target.value)} /></Field>
         <Field label="Cost (₹)" htmlFor="af-cost"><Input id="af-cost" type="number" min={0} step="0.01" value={f.purchaseCost} onChange={(e) => set('purchaseCost', e.target.value)} /></Field>
         <Field label="Vendor" htmlFor="af-vendor"><Input id="af-vendor" value={f.vendor} onChange={(e) => set('vendor', e.target.value)} maxLength={100} /></Field>
-        <Field label="Warranty until" htmlFor="af-warranty" hint={type?.warrantyMonths && !f.warrantyUntil ? `Blank = purchase date + ${type.warrantyMonths} months` : undefined}><Input id="af-warranty" type="date" value={f.warrantyUntil} onChange={(e) => set('warrantyUntil', e.target.value)} /></Field>
+        <Field label="Warranty until" htmlFor="af-warranty" hint={type?.warrantyMonths && !f.warrantyUntil ? `Blank = purchase date + ${type.warrantyMonths} months` : undefined}><DateInput id="af-warranty" value={f.warrantyUntil} onChange={(e) => set('warrantyUntil', e.target.value)} /></Field>
         {(type?.fields ?? []).map((k) => (
           <Field key={k} label={k} htmlFor={`af-spec-${k}`}><Input id={`af-spec-${k}`} value={specs[k] ?? ''} onChange={(e) => setSpecs({ ...specs, [k]: e.target.value })} maxLength={120} /></Field>
         ))}
@@ -132,7 +133,7 @@ export function AssetFormDialog({ value, onClose, onSaved }: { value: Asset | 'n
 
 export function AssignDialog({ asset, onClose }: { asset: Asset | null; onClose: () => void }) {
   const assign = useAssignAsset();
-  const chart = useOrgChart();
+  const chart = usePeoplePicker();
   const [employeeId, setEmployeeId] = useState('');
   const [condition, setCondition] = useState<AssetCondition>('GOOD');
   const [notes, setNotes] = useState('');
@@ -149,7 +150,7 @@ export function AssignDialog({ asset, onClose }: { asset: Asset | null; onClose:
     setTicked([]);
   }, [asset]);
   const people = useMemo(
-    () => (chart.data?.employees ?? []).filter((e) => e.employmentStatus !== 'TERMINATED').sort((a, b) => a.firstName.localeCompare(b.firstName)),
+    () => [...(chart.data?.employees ?? [])].sort((a, b) => a.firstName.localeCompare(b.firstName)),
     [chart.data],
   );
   if (!asset) return null;
@@ -166,19 +167,16 @@ export function AssignDialog({ asset, onClose }: { asset: Asset | null; onClose:
   };
 
   return (
-    <Modal open onClose={onClose} busy={assign.isPending} icon={<UserPlus />} title={`Hand over ${asset.tag}`} description="They’ll get a notification to confirm they received it." className="sm:max-w-md" footer={footer('assign-form', onClose, assign.isPending, 'Hand over', !employeeId || (loan && !dueBack))}>
+    <Modal open onClose={onClose} busy={assign.isPending} icon={<UserPlus />} title={`Hand over ${asset.tag}`} description="They’ll get a notification to confirm they received it." size="sm" footer={footer('assign-form', onClose, assign.isPending, 'Hand over', !employeeId || (loan && !dueBack))}>
       <form id="assign-form" onSubmit={submit} className="space-y-3">
         <Field label="Employee" htmlFor="as-emp" required>
-          <select id="as-emp" className={inputClass} value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} required>
-            <option value="">{chart.isLoading ? 'Loading…' : 'Choose someone'}</option>
-            {people.map((p) => <option key={p.id} value={p.id}>{p.firstName} {p.lastName} ({p.employeeId})</option>)}
-          </select>
+          <PersonSelect id="as-emp" value={employeeId} onChange={setEmployeeId} placeholder={chart.isLoading ? 'Loading…' : 'Choose someone'} people={people.map((p) => ({ ...p, sub: p.employeeId }))} />
         </Field>
         <Field label="Condition at hand-over" htmlFor="as-cond"><ConditionSelect id="as-cond" value={condition} onChange={setCondition} /></Field>
         {asset.type.loanable && (
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="accent-[hsl(var(--primary))]" checked={loan} onChange={(e) => setLoan(e.target.checked)} /> A loan — it comes back on a date</label>
         )}
-        {loan && <Field label="Due back" htmlFor="as-due" required><Input id="as-due" type="date" value={dueBack} onChange={(e) => setDueBack(e.target.value)} required /></Field>}
+        {loan && <Field label="Due back" htmlFor="as-due" required><DateInput id="as-due" value={dueBack} onChange={(e) => setDueBack(e.target.value)} required /></Field>}
         <Checklist items={asset.type.checklist} ticked={ticked} onChange={setTicked} />
         <Field label="Notes" htmlFor="as-notes"><Input id="as-notes" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={500} /></Field>
       </form>
@@ -246,7 +244,7 @@ export function HandOverDialog({ request, onClose }: { request: AssetRequest | n
       icon={<PackagePlus />}
       title={`Hand over a ${request.type.name.toLowerCase()} to ${request.employee.firstName}`}
       description={request.source === 'KIT' ? `Starter kit${request.neededBy ? ` — ready by ${formatDate(request.neededBy)}` : ''}` : `Approved${request.kind === 'LOAN' ? ` · loan until ${formatDate(request.loanUntil)}` : ''}`}
-      className="sm:max-w-lg"
+      size="md"
       footer={footer('handover-form', onClose, assign.isPending, assetId ? `Hand over ${options.find((a) => a.id === assetId)?.tag ?? ''}` : 'Hand over', !assetId)}
     >
       <form id="handover-form" onSubmit={submit} className="space-y-3">
@@ -301,7 +299,7 @@ export function ReturnDialog({ asset, onClose }: { asset: Asset | null; onClose:
   };
 
   return (
-    <Modal open onClose={onClose} busy={ret.isPending} icon={<RotateCcw />} title={`Take back ${asset.tag}`} description={asset.holder ? `From ${asset.holder.employee.firstName} ${asset.holder.employee.lastName}.` : undefined} className="sm:max-w-md" footer={footer('return-form', onClose, ret.isPending, 'Record return')}>
+    <Modal open onClose={onClose} busy={ret.isPending} icon={<RotateCcw />} title={`Take back ${asset.tag}`} description={asset.holder ? `From ${asset.holder.employee.firstName} ${asset.holder.employee.lastName}.` : undefined} size="sm" footer={footer('return-form', onClose, ret.isPending, 'Record return')}>
       <form id="return-form" onSubmit={submit} className="space-y-3">
         <Field label="Condition now" htmlFor="rt-cond" hint={condition === 'DAMAGED' ? 'Damaged assets go to repair (a repair job is opened).' : undefined}><ConditionSelect id="rt-cond" value={condition} onChange={setCondition} /></Field>
         <Field label="Notes" htmlFor="rt-notes"><Input id="rt-notes" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={500} /></Field>
@@ -348,7 +346,7 @@ export function StatusDialog({ value, onClose }: { value: { asset: Asset; status
   };
 
   return (
-    <Modal open onClose={onClose} busy={set.isPending} icon={<Wrench />} title={`${backFromRepair ? 'Back from repair' : t.title}: ${value.asset.tag}`} description={t.text} className="sm:max-w-md" footer={footer('status-form', onClose, set.isPending, backFromRepair ? 'Mark available' : t.title, repairing && issue.trim().length < 3)}>
+    <Modal open onClose={onClose} busy={set.isPending} icon={<Wrench />} title={`${backFromRepair ? 'Back from repair' : t.title}: ${value.asset.tag}`} description={t.text} size="sm" footer={footer('status-form', onClose, set.isPending, backFromRepair ? 'Mark available' : t.title, repairing && issue.trim().length < 3)}>
       <form id="status-form" onSubmit={submit} className="space-y-3">
         {repairing && (
           <>
@@ -378,7 +376,7 @@ export function ProblemDialog({ held, onClose }: { held: HeldAsset | null; onClo
       icon={<AlertTriangle />}
       title={`Problem with ${held.asset.tag}`}
       description="IT gets a helpdesk ticket linked to this asset."
-      className="sm:max-w-md"
+      size="sm"
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
@@ -440,7 +438,7 @@ export function ImportDialog({ open, onClose }: { open: boolean; onClose: () => 
       icon={<FileUp />}
       title="Import assets from a spreadsheet"
       description="CSV columns: type, name, tag, brand, model, serial, purchase date (YYYY-MM-DD), cost, vendor, warranty until. Blank tag = automatic."
-      className="sm:max-w-2xl"
+      size="lg"
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>

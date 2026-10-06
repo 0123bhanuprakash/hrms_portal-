@@ -43,7 +43,7 @@ const DEPTS = [['ENG', 'Engineering'], ['QA', 'Quality'], ['DES', 'Design'], ['P
   }
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
   const enterprise = await p.plan.findUniqueOrThrow({ where: { key: 'enterprise' } });
-  const company = await p.company.create({ data: { name: 'Perf Bench', slug: SLUG, email: `x@${SLUG}.test`, planId: enterprise.id, settings: { create: { timezone: TZ } } } });
+  const company = await p.company.create({ data: { name: 'Perf Bench', slug: SLUG, email: `x@${SLUG}.test`, planId: enterprise.id, settings: { create: { timezone: TZ } }, branding: { create: { displayName: 'Perf Bench' } } } });
   const cid = company.id;
   const templates = await p.role.findMany({ where: { isTemplate: true }, include: { rolePermissions: true } });
   const roles = {};

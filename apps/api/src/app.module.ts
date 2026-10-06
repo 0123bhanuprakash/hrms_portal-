@@ -21,6 +21,7 @@ import { UserManagementModule } from './modules/user-management/user-management.
 import { PlansModule } from './modules/plans/plans.module';
 import { OrgModule } from './modules/org/org.module';
 import { DelegationsModule } from './modules/delegations/delegations.module';
+import { SeasonsModule } from './modules/seasons/seasons.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { EmailModule } from './modules/email/email.module';
 import { CompaniesModule } from './modules/companies/companies.module';
@@ -34,6 +35,7 @@ import { EmployeeProfileModule } from './modules/employee-profile/employee-profi
 import { AttendanceModule } from './modules/attendance/attendance.module';
 import { LeaveModule } from './modules/leave/leave.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { RealtimeModule } from './modules/realtime/realtime.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { EngagementModule } from './modules/engagement/engagement.module';
 import { ExpensesModule } from './modules/expenses/expenses.module';
@@ -94,6 +96,7 @@ import { AppController } from './app.controller';
     EmployeeProfileModule, // Profile, private data, documents, directory
     AttendanceModule,      // Phase 3: attendance
     LeaveModule,           // Phase 4: leave
+    RealtimeModule,        // Live updates over Socket.IO
     NotificationsModule,   // In-app inbox + notification emails
     ProjectsModule,        // Projects, allocation, approval routing
     EngagementModule,      // Announcements, kudos
@@ -109,6 +112,7 @@ import { AppController } from './app.controller';
     AccountModule,        // Profile & security, platform admins, confirm-password
     OrgModule,            // Org levels, org chart, reporting lines
     DelegationsModule,    // Approval delegation
+    SeasonsModule,        // Seasonal themes
   ],
 
   providers: [

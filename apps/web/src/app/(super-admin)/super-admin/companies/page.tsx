@@ -39,6 +39,7 @@ import type { CompaniesQuery, CompanyListItem, CompanyStatus } from '@/lib/admin
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatDate, formatRelative } from '@/lib/format';
 import { cn } from '@/lib/cn';
+import { Select } from '@/components/ui/pickers';
 
 const PAGE_SIZE = 12;
 type SortField = NonNullable<CompaniesQuery['sortBy']>;
@@ -367,10 +368,10 @@ function CompaniesView() {
 
 function FilterSelect({ label, value, onChange, options }: { label: string; value?: string; onChange: (v: string | undefined) => void; options: Array<{ value: string; label: string }> }) {
   return (
-    <select aria-label={`Filter by ${label.toLowerCase()}`} value={value ?? ''} onChange={(e) => onChange(e.target.value || undefined)} className={cn(inputClass, 'h-9 w-auto pr-8 text-xs', value && 'border-primary text-primary')}>
+    <Select aria-label={`Filter by ${label.toLowerCase()}`} value={value ?? ''} onChange={(e) => onChange(e.target.value || undefined)} className={cn(inputClass, 'h-9 w-auto pr-8 text-xs', value && 'border-primary text-primary')}>
       <option value="">{label}: all</option>
       {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-    </select>
+    </Select>
   );
 }
 
@@ -533,10 +534,10 @@ function BulkBar({ ids, rows, onDone }: { ids: string[]; rows: CompanyListItem[]
       >
         {dialog?.kind === 'status' && <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} maxLength={500} placeholder="Reason (optional) — saved in the audit log" aria-label="Reason" />}
         {dialog?.kind === 'plan' && (
-          <select value={planId} onChange={(e) => setPlanId(e.target.value)} aria-label="Plan" className={inputClass}>
+          <Select value={planId} onChange={(e) => setPlanId(e.target.value)} aria-label="Plan" className={inputClass}>
             <option value="">Choose a plan…</option>
             {(plans.data ?? []).filter((p) => p.isActive).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
+          </Select>
         )}
         {(dialog?.kind === 'addTag' || dialog?.kind === 'removeTag') && (
           <div className="space-y-2">

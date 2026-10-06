@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
-import type { ThemeTokens } from '@hrms/types';
+import type { BackdropLevel, BackdropPack, ThemeTokens } from '@hrms/types';
 import { api } from '@/lib/api';
 import { companyThemeTokens, type CompanyThemeResponse } from '@/lib/company/queries';
 import { useAuthStore, type AuthUser } from '@/store/useAuthStore';
@@ -114,8 +114,17 @@ export interface Workspace {
     faviconUrl: string | null;
     primaryColor: string;
     secondaryColor: string;
+    tagline?: string | null;
+    logoDarkUrl?: string | null;
+    signInMessage?: string | null;
+    signInBackground?: 'pack' | 'photo' | 'plain';
+    signInPhotoUrl?: string | null;
   } | null;
   theme: CompanyThemeResponse;
+  /** A seasonal theme that is on today (and shown on the sign-in page) */
+  season?: { name: string; emoji: string; colors: { main: string; accent: string; deep: string }; decoration: import('@/lib/company/seasons').Decoration; greeting: string | null } | null;
+  /** The company's default page background (older APIs: absent → Signature) */
+  backdrop?: { pack: BackdropPack; level: BackdropLevel };
 }
 
 export function workspaceName(w: Workspace): string {

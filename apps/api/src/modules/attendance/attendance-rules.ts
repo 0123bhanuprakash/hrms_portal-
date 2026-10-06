@@ -14,6 +14,14 @@ export interface PolicyRules {
   fullDayMinutes: number;
   regularisationWindowDays: number;
   webCheckInEnabled: boolean;
+  /** Corrections in a month above this tell lead / manager / HR */
+  correctionAlertAt: number;
+  /** Late arrivals in a month that tell the line manager (null = off) */
+  lateAlertAt: number | null;
+  /** Close a forgotten check-out this long after the shift ends (null = off) */
+  autoCloseAfterMinutes: number | null;
+  /** Optional holidays each person may pick per year */
+  optionalHolidayLimit: number;
 }
 
 export const DEFAULT_POLICY: PolicyRules = {
@@ -25,7 +33,26 @@ export const DEFAULT_POLICY: PolicyRules = {
   fullDayMinutes: 480,
   regularisationWindowDays: 30,
   webCheckInEnabled: true,
+  correctionAlertAt: 8,
+  lateAlertAt: null,
+  autoCloseAfterMinutes: null,
+  optionalHolidayLimit: 5,
 };
+
+/** A person's working hours: the company shift, or an extra shift they are on. */
+export interface ShiftHours {
+  id: string | null;
+  name: string;
+  start: string;
+  end: string;
+  /** Ends after midnight */
+  overnight: boolean;
+}
+
+/** The policy with the person's own shift start / end (lateness and auto close use it). */
+export function withShift<T extends PolicyRules>(policy: T, shift: ShiftHours | null): T {
+  return shift?.id ? { ...policy, shiftStart: shift.start, shiftEnd: shift.end } : policy;
+}
 
 /**
  * What a day looks like on the calendar. Stored statuses plus states that

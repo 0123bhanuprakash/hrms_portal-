@@ -153,7 +153,7 @@ export class AccessService {
     const now = new Date();
     const rows = await this.prisma.approvalDelegation.findMany({
       where: { delegateId: userId, companyId, revokedAt: null, startsAt: { lte: now }, endsAt: { gt: now }, delegator: { status: 'ACTIVE' } },
-      select: { id: true, endsAt: true, delegatorId: true, delegator: { select: { firstName: true, lastName: true } } },
+      select: { id: true, endsAt: true, delegatorId: true, permissions: true, delegator: { select: { firstName: true, lastName: true } } },
     });
     const list: ActiveDelegation[] = [];
     for (const r of rows) {
@@ -161,8 +161,9 @@ export class AccessService {
       const user = await this.prisma.user.findUnique({ where: { id: r.delegatorId }, select: ACCESS_USER_SELECT });
       if (!user) continue;
       const theirs = await this.resolve(user, { withDelegations: false });
-      const grants = new Map(DELEGABLE_PERMISSIONS.filter((k) => theirs.grants.has(k)).map((k) => [k, theirs.grants.get(k)!] as const));
-      list.push({ id: r.id, fromUserId: r.delegatorId, fromName: `${r.delegator.firstName} ${r.delegator.lastName}`, until: r.endsAt, employee: theirs.employee, grants });
+      const only = r.permissions.length ? new Set(r.permissions) : null;
+      const grants = new Map(DELEGABLE_PERMISSIONS.filter((k) => theirs.grants.has(k) && (!only || only.has(k))).map((k) => [k, theirs.grants.get(k)!] as const));
+      list.push({ id: r.id, fromUserId: r.delegatorId, fromName: `${r.delegator.firstName} ${r.delegator.lastName}`, until: r.endsAt, employee: theirs.employee, grants, only });
     }
     // Expire the cache no later than the first delegation ends
     const soonest = Math.min(...list.map((d) => d.until.getTime()), Date.now() + AccessService.DELEGATION_TTL_MS);

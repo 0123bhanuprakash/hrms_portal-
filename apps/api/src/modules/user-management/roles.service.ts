@@ -1,11 +1,14 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type { AccessScope } from '@hrms/types';
 import { PrismaService } from '../prisma/prisma.service';
-import { broader, FEATURE_BY_KEY, PERMISSION_BY_KEY, SCOPE_ORDER } from '../access/catalog';
+import { broader, CATALOG, EXTRA_ROLE_TEMPLATES, FEATURE_BY_KEY, PERMISSION_BY_KEY, SCOPE_ORDER } from '../access/catalog';
 import type { AccessContext } from '../access/access.types';
 import type { DuplicateRoleDto, GrantDto, RoleStatusDto, SaveRoleDto } from './dto';
 
 type Grants = Map<string, AccessScope | null>;
+
+/** feature key → module key (for the per-module counts on role cards) */
+const MODULE_OF_FEATURE = new Map(CATALOG.flatMap((m) => m.features.map((f) => [f.key, m.key] as const)));
 
 const ROLE_LIST_SELECT = {
   id: true,
@@ -41,7 +44,41 @@ export class RolesService {
       select: ROLE_LIST_SELECT,
       orderBy: [{ isOwner: 'desc' }, { status: 'asc' }, { createdAt: 'asc' }],
     });
-    return roles.map(({ _count, ...r }) => ({ ...r, permissionCount: _count.rolePermissions, userCount: _count.userRoles }));
+    const ids = roles.map((r) => r.id);
+    const [perms, holders] = await Promise.all([
+      this.prisma.rolePermission.findMany({ where: { roleId: { in: ids }, permission: { deprecated: false } }, select: { roleId: true, permission: { select: { key: true } } } }),
+      this.prisma.userRole.findMany({
+        where: { roleId: { in: ids }, user: { status: 'ACTIVE' } },
+        select: { roleId: true, user: { select: { id: true, firstName: true, lastName: true } } },
+        orderBy: { assignedAt: 'asc' },
+      }),
+    ]);
+    return roles.map(({ _count, ...r }) => {
+      const mine = perms.filter((p) => p.roleId === r.id).map((p) => PERMISSION_BY_KEY.get(p.permission.key)).filter(Boolean);
+      const modules: Record<string, number> = {};
+      for (const p of mine) {
+        const m = MODULE_OF_FEATURE.get(p!.feature);
+        if (m) modules[m] = (modules[m] ?? 0) + 1;
+      }
+      return {
+        ...r,
+        permissionCount: _count.rolePermissions,
+        userCount: _count.userRoles,
+        sensitiveCount: mine.filter((p) => p!.sensitive).length,
+        modules,
+        holders: holders.filter((h) => h.roleId === r.id).slice(0, 3).map((h) => h.user),
+      };
+    });
+  }
+
+  /** Extra starting points for new roles (Recruiter, Payroll officer, …). */
+  templates() {
+    return EXTRA_ROLE_TEMPLATES.map((t) => ({
+      key: t.key,
+      name: t.name,
+      description: t.description,
+      grants: t.grants.map(([key, scope]) => ({ key, scope: scope ?? null })),
+    }));
   }
 
   async get(companyId: string, id: string) {
@@ -50,11 +87,18 @@ export class RolesService {
       where: { roleId: id, permission: { deprecated: false } },
       select: { scope: true, permission: { select: { key: true } } },
     });
+    const holders = await this.prisma.userRole.findMany({
+      where: { roleId: id, user: { status: 'ACTIVE' } },
+      select: { user: { select: { id: true, firstName: true, lastName: true } } },
+      orderBy: { assignedAt: 'asc' },
+      take: 30,
+    });
     const { _count, ...rest } = role;
     return {
       ...rest,
       permissionCount: _count.rolePermissions,
       userCount: _count.userRoles,
+      holders: holders.map((h) => h.user),
       grants: Object.fromEntries(rows.map((r) => [r.permission.key, r.scope])) as Record<string, AccessScope | null>,
     };
   }

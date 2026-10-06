@@ -24,16 +24,16 @@ const { check } = t;
     check('Defaults: all themes, classic menu', rules?.allowedThemes?.length === 0 && rules?.defaultMenuStyle === 'classic');
 
     // Employee picks a theme and a menu style
-    let r = await call(S.emp, 'PATCH', '/users/me/preferences', { colorTheme: 'obsidian-gold', menuStyle: 'rail' });
-    check('Employee saves own theme + menu', r.status === 200 && r.data?.colorTheme === 'obsidian-gold' && r.data?.menuStyle === 'rail', JSON.stringify(r.body));
+    let r = await call(S.emp, 'PATCH', '/users/me/preferences', { colorTheme: 'obsidian-gold', menuStyle: 'glide' });
+    check('Employee saves own theme + menu', r.status === 200 && r.data?.colorTheme === 'obsidian-gold' && r.data?.menuStyle === 'glide', JSON.stringify(r.body));
     r = await call(S.emp, 'GET', '/users/me/preferences');
-    check('Choices persist', r.data?.colorTheme === 'obsidian-gold' && r.data?.menuStyle === 'rail');
+    check('Choices persist', r.data?.colorTheme === 'obsidian-gold' && r.data?.menuStyle === 'glide');
 
     // Validation
     check('Unknown theme → 400', (await call(S.emp, 'PATCH', '/users/me/preferences', { colorTheme: 'neon-pink' })).status === 400);
     check('Unknown menu style → 400', (await call(S.emp, 'PATCH', '/users/me/preferences', { menuStyle: 'sideways' })).status === 400);
     r = await call(S.emp, 'PATCH', '/users/me/preferences', { timezone: 'UTC' });
-    check('Other changes keep the choices', r.status === 200 && r.data?.colorTheme === 'obsidian-gold' && r.data?.menuStyle === 'rail');
+    check('Other changes keep the choices', r.status === 200 && r.data?.colorTheme === 'obsidian-gold' && r.data?.menuStyle === 'glide');
 
     // Only Company Admins set the rules
     check('Employee cannot change the rules → 403', (await call(S.emp, 'PUT', `/companies/${cid}/personalization`, { personalThemes: false })).status === 403);
@@ -53,7 +53,7 @@ const { check } = t;
     // Switch personal choices off
     await call(S.admin, 'PUT', `/companies/${cid}/personalization`, { personalThemes: false, personalMenuStyle: false });
     check('Themes off → own theme refused', (await call(S.emp, 'PATCH', '/users/me/preferences', { colorTheme: 'ocean' })).status === 400);
-    check('Menu off → own menu refused', (await call(S.emp, 'PATCH', '/users/me/preferences', { menuStyle: 'floating' })).status === 400);
+    check('Menu off → own menu refused', (await call(S.emp, 'PATCH', '/users/me/preferences', { menuStyle: 'glide' })).status === 400);
     r = await call(S.emp, 'PATCH', '/users/me/preferences', { colorTheme: null, menuStyle: null });
     check('Back to company defaults is always allowed', r.status === 200 && r.data?.colorTheme === null && r.data?.menuStyle === null, JSON.stringify(r.body));
 
@@ -76,6 +76,20 @@ const { check } = t;
     r = await call(S.admin, 'PUT', `/companies/${cid}/ui-defaults`, { values: { 'chart:by-department': 'blocks' } });
     check('Admin sets company default views', r.status === 200 && r.data?.['chart:by-department'] === 'blocks', JSON.stringify(r.body));
     check('Defaults travel with the theme', (await call(S.emp, 'GET', `/companies/${cid}/theme`)).data?.uiDefaults?.['chart:by-department'] === 'blocks');
+
+    // Page background packs: Signature (default), Terra, Prism, Simple (plain)
+    for (const pack of ['terra', 'prism', 'simple']) {
+      r = await call(S.emp, 'PATCH', '/users/me/preferences', { backdropPack: pack });
+      check(`Employee picks the ${pack} background`, r.status === 200 && r.data?.backdropPack === pack, JSON.stringify(r.body));
+    }
+    check('Unknown background pack → 400', (await call(S.emp, 'PATCH', '/users/me/preferences', { backdropPack: 'neon' })).status === 400);
+    r = await call(S.emp, 'PATCH', '/users/me/preferences', { backdropPack: null });
+    check('Back to the company background', r.status === 200 && r.data?.backdropPack === null);
+    r = await call(S.admin, 'PUT', `/companies/${cid}/personalization`, { defaultBackdropPack: 'prism', defaultBackdropLevel: 'calm' });
+    check('Admin sets Prism as the company background', r.status === 200 && r.data?.defaultBackdropPack === 'prism' && r.data?.defaultBackdropLevel === 'calm', JSON.stringify(r.body));
+    check('Bad company background → 400', (await call(S.admin, 'PUT', `/companies/${cid}/personalization`, { defaultBackdropPack: 'neon' })).status === 400);
+    r = await call(undefined, 'GET', `/companies/branding/by-slug/${SLUG}`);
+    check('Sign-in page gets the company background', r.status === 200 && r.data?.backdrop?.pack === 'prism' && r.data?.backdrop?.level === 'calm', JSON.stringify(r.body));
   } catch (e) {
     console.error('ERROR', e.stack);
     t.results.push(false);

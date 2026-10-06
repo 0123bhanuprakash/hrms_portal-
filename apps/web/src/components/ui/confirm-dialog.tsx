@@ -47,6 +47,9 @@ export function ConfirmDialog({
       open={isOpen}
       onClose={onClose}
       busy={isLoading}
+      guard={false}
+      size="sm"
+      tone={isDanger ? 'danger' : 'primary'}
       title={title}
       description={description}
       icon={isDanger ? <AlertTriangle className="text-destructive" /> : <Info className="text-primary" />}

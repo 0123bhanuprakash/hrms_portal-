@@ -2,7 +2,7 @@ import { BadRequestException, ConflictException, ForbiddenException, Injectable,
 import { EmploymentStatus, LeaveStatus, Prisma, ProjectRole, ProjectType, TimesheetStatus, UserStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AccessService } from '../access/access.service';
-import { holds, type AccessContext } from '../access/access.types';
+import { covering, holds, type AccessContext } from '../access/access.types';
 import { NotificationsService, dateRange } from '../notifications/notifications.service';
 import { ApprovalRouterService } from '../projects/approval-router.service';
 import { addDays, dateFromKey, isValidTimeZone, keyFromDate, localDateKey, localMinutes } from '../attendance/time-zone';
@@ -333,7 +333,7 @@ export class TimesheetsService {
     const who = await this.nameOf(employeeId);
     for (const g of groups.values()) {
       const dates = [...g.dates].sort();
-      const to = g.route.approverIds.length ? [...g.route.approverIds, ...(await this.notifications.coveringFor(g.route.approverIds))] : await this.notifications.companyWideApprovers(companyId, APPROVE);
+      const to = g.route.approverIds.length ? [...g.route.approverIds, ...(await this.notifications.coveringFor(g.route.approverIds, APPROVE))] : await this.notifications.companyWideApprovers(companyId, APPROVE);
       void this.notifications.notify({
         companyId,
         userIds: to.filter((u) => u !== access.userId),
@@ -713,7 +713,7 @@ export class TimesheetsService {
   /** Everyone whose time I approve or look after: people I lead on projects, PM, manage, or who sent time to me. */
   private async myPeople(companyId: string, access: AccessContext, from: string, to: string): Promise<string[]> {
     const me = access.employee?.id;
-    const myIds = [access.userId, ...access.delegations.map((d) => d.fromUserId)];
+    const myIds = [access.userId, ...covering(access, APPROVE).map((d) => d.fromUserId)];
     const during = { startDate: { lte: dateFromKey(to) }, OR: [{ endDate: null }, { endDate: { gte: dateFromKey(from) } }] };
     const [routed, led, managed, reports] = await Promise.all([
       this.prisma.timesheetEntry.findMany({
@@ -881,7 +881,7 @@ export class TimesheetsService {
   }
 
   private reviewWhere(access: AccessContext): Prisma.TimesheetEntryWhereInput {
-    const me = [access.userId, ...access.delegations.map((d) => d.fromUserId)];
+    const me = [access.userId, ...covering(access, APPROVE).map((d) => d.fromUserId)];
     return {
       status: TimesheetStatus.SUBMITTED,
       employee: { userId: { not: access.userId } },
@@ -897,7 +897,7 @@ export class TimesheetsService {
   private decideAs(access: AccessContext, b: { status: TimesheetStatus; approverIds: string[]; employee: { userId: string } }): { onBehalfOf: string | null } | null {
     if (b.status !== TimesheetStatus.SUBMITTED || b.employee.userId === access.userId) return null;
     if (b.approverIds.includes(access.userId) || this.companyApprover(access)) return { onBehalfOf: null };
-    const cover = access.delegations.find((d) => b.approverIds.includes(d.fromUserId));
+    const cover = covering(access, APPROVE).find((d) => b.approverIds.includes(d.fromUserId));
     return cover ? { onBehalfOf: cover.fromUserId } : null;
   }
 

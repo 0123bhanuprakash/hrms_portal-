@@ -87,7 +87,7 @@ const post = (body) => ({ title: 'Team update', body: 'Hello **team**', audience
     check('Scheduled: hidden from the feed', !(await call(S.eva, 'GET', '/announcements')).data?.some((a) => a.id === party.id));
 
     // The minute job: publish due posts, send confirm-by reminders
-    const job = new AnnouncementsService(p, new NotificationsService(p, { queueNotification: async () => undefined }, { get: () => undefined }), null);
+    const job = new AnnouncementsService(p, new NotificationsService(p, { queueNotification: async () => undefined }, { get: () => undefined }, new (require(require('path').resolve('dist/apps/api/src/modules/realtime/realtime.service.js')).RealtimeService)()), null);
     await p.announcement.update({ where: { id: party.id }, data: { publishedAt: new Date(Date.now() - 1000) } });
     await call(S.ana, 'POST', `/announcements/${policy.id}/acknowledge`);
     let res = await job.runDue();

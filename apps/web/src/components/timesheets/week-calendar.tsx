@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import { Emoji } from '@/components/motion/emoji';
 import { AlertTriangle, Check, Clock3, Lock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { projectColor } from '@/components/projects/project-ui';
@@ -82,7 +83,7 @@ export function WeekCalendar({ week, dates, editable, onCreate, onOpen, onPickDa
                 {s && <Badge tone={s.tone} className="shrink-0 px-1.5 py-0 text-[10px]">{s.label}</Badge>}
               </span>
               <span className="truncate text-[11px] text-muted-foreground">
-                {d.holiday ? `🎉 ${d.holiday}` : d.leave && !d.leave.halfDay ? `🌴 ${d.leave.type}` : d.weekend && !d.minutes ? 'Weekend' : (
+                {d.holiday ? <><Emoji e="🎉" /> {d.holiday}</> : d.leave && !d.leave.halfDay ? <><Emoji e="🌴" /> {d.leave.type}</> : d.weekend && !d.minutes ? 'Weekend' : (
                   <>
                     <b className="text-foreground">{fmtHours(d.minutes)}</b>
                     {d.attendance?.workingMinutes ? ` · ${fmtHours(d.attendance.workingMinutes)} in` : d.attendance?.open ? ' · checked in' : ''}
@@ -140,7 +141,7 @@ export function WeekCalendar({ week, dates, editable, onCreate, onOpen, onPickDa
                 {hours.map((h) => <div key={h} className="pointer-events-none absolute inset-x-0 border-t border-dashed border-border/70" style={{ top: (h - from) * HH }} />)}
                 {off && (
                   <div className="pointer-events-none absolute inset-1.5 flex flex-col items-center justify-center gap-1 rounded-lg bg-[repeating-linear-gradient(135deg,hsl(var(--primary-soft))_0_10px,transparent_10px_20px)] text-xs font-bold text-primary-soft-foreground">
-                    {d.holiday ? `🎉 ${d.holiday}` : `🌴 ${d.leave!.type}`}
+                    {d.holiday ? <><Emoji e="🎉" /> {d.holiday}</> : <><Emoji e="🌴" /> {d.leave!.type}</>}
                     <span className="text-[11px] font-medium">Nothing to log</span>
                   </div>
                 )}

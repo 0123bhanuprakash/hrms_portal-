@@ -100,8 +100,9 @@ export interface EmployeeDocument {
 
 export interface Spotlight {
   windowDays: number;
-  birthdays: Array<PersonBasic & { date: string; inDays: number }>;
-  anniversaries: Array<PersonBasic & { date: string; inDays: number; years: number }>;
+  /** wishesToday: kudos they got today (only for today's celebrations; climbs live) */
+  birthdays: Array<PersonBasic & { date: string; inDays: number; wishesToday?: number }>;
+  anniversaries: Array<PersonBasic & { date: string; inDays: number; years: number; wishesToday?: number }>;
   newJoiners: Array<PersonBasic & { joiningDate: string }>;
   holidays: Array<{ id: string; name: string; date: string; isOptional: boolean }>;
 }

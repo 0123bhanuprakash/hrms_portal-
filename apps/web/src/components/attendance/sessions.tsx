@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { toast } from 'sonner';
-import { Clock } from 'lucide-react';
+import { ChevronRight, Clock, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { Field, Textarea } from '@/components/ui/field';
@@ -33,7 +33,10 @@ export function sessionsOf(t: TodayAttendance): Array<{ in: string; out: string 
     if (p.kind === 'IN') out.push({ in: p.at, out: null, early: false, note: null });
     else if (out.length && !out[out.length - 1]!.out) Object.assign(out[out.length - 1]!, { out: p.at, early: p.early, note: p.note });
   }
-  return out;
+  // Double taps (in and out within a minute) aren't real sessions
+  const real = out.filter((s) => !s.out || new Date(s.out).getTime() - new Date(s.in).getTime() >= 60_000);
+  // Only the day's last check-out can be "early"; one you came back from was a break
+  return real.map((s, i) => (i === real.length - 1 ? s : { ...s, early: false }));
 }
 
 /** Minutes since midnight in the company's time zone. */
@@ -78,26 +81,59 @@ export function DayTimeline({ t, now }: { t: TodayAttendance; now: Date }) {
   );
 }
 
-/** "1 · 09:12 – 12:58 · 3h 46m" for each session. */
+/** Sessions shown on a card; the rest open in a popup so the card keeps its height. */
+const SHOWN = 2;
+
+/** "1 · 09:12 – 12:58 · 3h 46m" for each session — the latest two, then "See all". */
 export function SessionList({ t, now }: { t: TodayAttendance; now: Date }) {
+  const [all, setAll] = useState(false);
   const tz = t.policy.timeZone;
   const sessions = sessionsOf(t);
   if (sessions.length < 2) return null;
+  const rows = sessions.map((x, i) => {
+    const end = x.out ? new Date(x.out) : now;
+    return { ...x, n: i + 1, mins: Math.max(0, Math.round((end.getTime() - new Date(x.in).getTime()) / 60_000)) };
+  });
+  const hidden = rows.length - SHOWN;
+  const total = rows.reduce((sum, r) => sum + r.mins, 0);
+  const row = (r: (typeof rows)[number]) => (
+    <li key={r.n} className="flex items-center gap-2 rounded-md bg-muted/60 px-2 py-1 tabular-nums">
+      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-success-soft text-[10px] font-bold text-success">{r.n}</span>
+      <span className="flex-1">{clock(r.in, tz)} – {r.out ? clock(r.out, tz) : 'now'}</span>
+      {r.early && <span className="text-warning" title={r.note ?? undefined}>early</span>}
+      <b>{hours(r.mins) === '—' ? '0m' : hours(r.mins)}</b>
+    </li>
+  );
   return (
-    <ul className="space-y-1 text-xs">
-      {sessions.map((x, i) => {
-        const end = x.out ? new Date(x.out) : now;
-        const mins = Math.max(0, Math.round((end.getTime() - new Date(x.in).getTime()) / 60_000));
-        return (
-          <li key={i} className="flex items-center gap-2 rounded-md bg-muted/60 px-2 py-1 tabular-nums">
-            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-success-soft text-[10px] font-bold text-success">{i + 1}</span>
-            <span className="flex-1">{clock(x.in, tz)} – {x.out ? clock(x.out, tz) : 'now'}</span>
-            {x.early && <span className="text-warning" title={x.note ?? undefined}>early</span>}
-            <b>{hours(mins) === '—' ? '0m' : hours(mins)}</b>
+    <>
+      <ul className="space-y-1 text-xs">
+        {hidden > 0 && (
+          <li>
+            <button
+              type="button"
+              onClick={() => setAll(true)}
+              className="flex w-full items-center gap-2 rounded-md border border-dashed border-border px-2 py-1 text-left text-muted-foreground transition-colors hover:border-primary/40 hover:bg-subtle hover:text-foreground"
+            >
+              <History className="h-3.5 w-3.5 shrink-0" />
+              <span className="flex-1">+{hidden} earlier session{hidden === 1 ? '' : 's'}</span>
+              <span className="inline-flex items-center gap-0.5 font-semibold text-primary">See all {rows.length}<ChevronRight className="h-3.5 w-3.5" /></span>
+            </button>
           </li>
-        );
-      })}
-    </ul>
+        )}
+        {rows.slice(-SHOWN).map(row)}
+      </ul>
+      <Modal
+        open={all}
+        onClose={() => setAll(false)}
+        icon={<History />}
+        title={`Today’s sessions · ${rows.length}`}
+        description={`Worked ${hours(total) === '—' ? '0m' : hours(total)} in total. Every check-in and check-out today, in order.`}
+        size="sm"
+        guard={false}
+      >
+        <ul className="space-y-1.5 text-sm">{rows.map(row)}</ul>
+      </Modal>
+    </>
   );
 }
 
@@ -151,7 +187,7 @@ export function useCheckActions(t: TodayAttendance | undefined, onDone?: () => v
       icon={<Clock />}
       title="Checking out early?"
       description={asking ? `You’ve worked ${hours(asking.worked) === '—' ? '0m' : hours(asking.worked)} today — ${hours(short)} short of your ${hours(t?.policy.fullDayMinutes)} day. Add a reason for your manager, or just check out. You can check in again later.` : undefined}
-      className="sm:max-w-md"
+      size="sm"
       footer={
         <>
           <Button variant="secondary" onClick={() => void doOut()} loading={checkOut.isPending && !note.trim()} disabled={checkOut.isPending}>Just check out</Button>
@@ -173,5 +209,5 @@ export function useCheckActions(t: TodayAttendance | undefined, onDone?: () => v
       </div>
     </Modal>
   );
-  return { doIn, requestOut, dialog, inPending: checkIn.isPending, outPending: checkOut.isPending };
+  return { doIn, doOut, requestOut, dialog, inPending: checkIn.isPending, outPending: checkOut.isPending };
 }

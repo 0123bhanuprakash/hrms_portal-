@@ -2,10 +2,12 @@ import { BadRequestException, ConflictException, ForbiddenException, Injectable,
 import { Prisma, RegularisationStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AccessService } from '../access/access.service';
-import type { AccessContext, ActiveDelegation } from '../access/access.types';
+import { covering, type AccessContext, type ActiveDelegation } from '../access/access.types';
 import { AttendanceService } from './attendance.service';
 import { AttendancePolicyService } from './policy.service';
 import { addDays, dateFromKey, keyFromDate, localDateKey } from './time-zone';
+import { withShift } from './attendance-rules';
+import { ShiftsService } from './shifts.service';
 import { NotificationsService, dateRange } from '../notifications/notifications.service';
 import { ApprovalRouterService } from '../projects/approval-router.service';
 import type { CreateRegularisationDto, RegularisationQueryDto, ReviewRegularisationDto } from './dto';
@@ -43,6 +45,7 @@ export class RegularisationService {
     private readonly policies: AttendancePolicyService,
     private readonly notifications: NotificationsService,
     private readonly router: ApprovalRouterService,
+    private readonly shifts: ShiftsService,
   ) {}
 
   async create(companyId: string, access: AccessContext, dto: CreateRegularisationDto) {
@@ -57,7 +60,8 @@ export class RegularisationService {
     if (dto.date < addDays(todayKey, -policy.regularisationWindowDays)) {
       throw new BadRequestException(`Corrections can only be requested for the last ${policy.regularisationWindowDays} days`);
     }
-    const times = this.attendance.timesFor(policy, dto.date, dto.checkIn, dto.checkOut ?? null);
+    const shift = await this.shifts.hoursOf(companyId, employee.id);
+    const times = this.attendance.timesFor(withShift(policy, shift), dto.date, dto.checkIn, dto.checkOut ?? null, shift?.overnight);
 
     const pending = await this.prisma.attendanceRegularisation.count({
       where: { companyId, employeeId: employee.id, date: dateFromKey(dto.date), status: RegularisationStatus.PENDING },
@@ -71,7 +75,41 @@ export class RegularisationService {
       select: SELECT,
     });
     void this.notifyApprovers(companyId, approverIds, created, dto, policy.timeZone);
+    void this.manyCorrectionsAlert(companyId, employee.id, dto.date, approverIds, policy.correctionAlertAt);
     return created;
+  }
+
+  /** Corrections this person asked for in the month of a date (cancelled ones don't count). */
+  private monthCount(companyId: string, employeeId: string, dateKey: string) {
+    const month = dateKey.slice(0, 7);
+    const last = keyFromDate(new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)));
+    return this.prisma.attendanceRegularisation.count({
+      where: { companyId, employeeId, status: { not: RegularisationStatus.CANCELLED }, date: { gte: dateFromKey(month + '-01'), lte: dateFromKey(last) } },
+    });
+  }
+
+  /**
+   * No monthly limit — but once someone goes over the company's number
+   * (8 by default), their lead / manager (the approvers) and line manager hear about it once.
+   */
+  private async manyCorrectionsAlert(companyId: string, employeeId: string, dateKey: string, pool: string[], threshold: number) {
+    const count = await this.monthCount(companyId, employeeId, dateKey);
+    if (count !== threshold + 1) return;
+    const e = await this.prisma.employee.findUnique({ where: { id: employeeId }, select: { firstName: true, lastName: true, userId: true, reportingManager: { select: { userId: true } } } });
+    if (!e) return;
+    const to = [...new Set([...pool, ...(e.reportingManager ? [e.reportingManager.userId] : [])])].filter((u) => u !== e.userId);
+    const month = new Date(dateFromKey(dateKey.slice(0, 7) + '-01')).toLocaleDateString('en-GB', { month: 'long', timeZone: 'UTC' });
+    await this.notifications.notify({
+      companyId,
+      userIds: to.length ? to : await this.notifications.companyWideApprovers(companyId, APPROVE),
+      type: 'attendance.many_corrections',
+      title: `${e.firstName} ${e.lastName} has asked for ${count} attendance corrections in ${month}`,
+      body: `That is more than ${threshold}. You may want to check in with them.`,
+      link: '/app/attendance/approvals',
+      actionLabel: 'See their requests',
+      email: false,
+      dedupeKey: `many-corrections:${employeeId}:${dateKey.slice(0, 7)}`,
+    });
   }
 
   /** The approver pool (team lead / PM / line manager) and anyone covering for them; else HR. */
@@ -82,7 +120,7 @@ export class RegularisationService {
     dto: CreateRegularisationDto,
     timeZone: string,
   ) {
-    const to = pool.length ? [...pool, ...(await this.notifications.coveringFor(pool))] : await this.notifications.companyWideApprovers(companyId, APPROVE);
+    const to = pool.length ? [...pool, ...(await this.notifications.coveringFor(pool, APPROVE))] : await this.notifications.companyWideApprovers(companyId, APPROVE);
     await this.notifications.notify({
       companyId,
       userIds: to,
@@ -144,10 +182,21 @@ export class RegularisationService {
       : [];
     const current = new Map(records.map((r) => [`${r.employeeId}|${keyFromDate(r.date)}`, r]));
     const policy = await this.policies.get(companyId);
+    // For reviewers: corrections that month and the person's last 30 days
+    const extra = new Map<string, { monthCount: number; recent: Awaited<ReturnType<AttendanceService['recentDays']>> }>();
+    if (query.view === 'review') {
+      for (const r of rows) {
+        const key = `${r.employeeId}|${keyFromDate(r.date).slice(0, 7)}`;
+        if (extra.has(key)) continue;
+        const [monthCount, recent] = await Promise.all([this.monthCount(companyId, r.employeeId, keyFromDate(r.date)), this.attendance.recentDays(companyId, r.employeeId, keyFromDate(r.date))]);
+        extra.set(key, { monthCount, recent });
+      }
+    }
     return {
       data: rows.map(({ employeeId, ...r }) => {
         const c = current.get(`${employeeId}|${keyFromDate(r.date)}`);
-        return { ...r, date: keyFromDate(r.date), current: c ? { checkIn: c.checkIn, checkOut: c.checkOut, status: c.status } : null };
+        const x = extra.get(`${employeeId}|${keyFromDate(r.date).slice(0, 7)}`);
+        return { ...r, date: keyFromDate(r.date), current: c ? { checkIn: c.checkIn, checkOut: c.checkOut, status: c.status } : null, ...(x && { monthCount: x.monthCount, overLimit: x.monthCount > policy.correctionAlertAt, recent: x.recent }) };
       }),
       meta: { total, page, limit, totalPages: Math.ceil(total / limit), timeZone: policy.timeZone },
     };
@@ -167,7 +216,8 @@ export class RegularisationService {
     const dateKey = keyFromDate(request.date);
     const toHHmm = (d: Date) =>
       new Intl.DateTimeFormat('en-GB', { timeZone: policy.timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(d);
-    const times = this.attendance.timesFor(policy, dateKey, toHHmm(request.checkIn), request.checkOut ? toHHmm(request.checkOut) : null);
+    const shift = await this.shifts.hoursOf(companyId, request.employeeId);
+    const times = this.attendance.timesFor(withShift(policy, shift), dateKey, toHHmm(request.checkIn), request.checkOut ? toHHmm(request.checkOut) : null, shift?.overnight);
 
     return this.prisma.$transaction(async (tx) => {
       const { count } = await tx.attendanceRegularisation.updateMany({
@@ -175,7 +225,7 @@ export class RegularisationService {
         data: { status: RegularisationStatus.APPROVED, reviewedById: access.userId, onBehalfOfId: onBehalfOf, reviewedAt: new Date(), reviewNote: dto.note ?? null },
       });
       if (!count) throw new ConflictException('This request has already been decided');
-      const data = { ...times, checkInSource: 'REGULARISED', checkOutSource: times.checkOut ? 'REGULARISED' : null, isManualEntry: true, notes: `Correction: ${request.reason}`.slice(0, 500) };
+      const data = { ...times, checkInSource: 'REGULARISED', checkOutSource: times.checkOut ? 'REGULARISED' : null, isManualEntry: true, autoClosed: false, notes: `Correction: ${request.reason}`.slice(0, 500) };
       await tx.attendanceRecord.upsert({
         where: { companyId_employeeId_date: { companyId, employeeId: request.employeeId, date: request.date } },
         update: data,
@@ -219,10 +269,10 @@ export class RegularisationService {
    */
   private reviewReach(access: AccessContext): Prisma.AttendanceRegularisationWhereInput | null {
     const scope = this.access.employeeScope(access, APPROVE);
-    const covering = access.delegations.map((d) => d.fromUserId);
+    const covered = covering(access, APPROVE).map((d) => d.fromUserId);
     return {
       employee: { userId: { not: access.userId } },
-      OR: [...(scope ? [{ employee: scope }] : []), { approverIds: { hasSome: [access.userId, ...covering] } }],
+      OR: [...(scope ? [{ employee: scope }] : []), { approverIds: { hasSome: [access.userId, ...covered] } }],
     };
   }
 
@@ -247,9 +297,9 @@ export class RegularisationService {
       return Boolean(scope) && (await this.prisma.employee.count({ where: { AND: [{ id: employeeId, companyId }, scope!] } })) > 0;
     };
     if (access.isSuperAdmin || (await reaches({ ...access, delegations: [] }))) return null;
-    const forPool = access.delegations.find((d) => pool.includes(d.fromUserId));
+    const forPool = covering(access, APPROVE).find((d) => pool.includes(d.fromUserId));
     if (forPool) return forPool.fromUserId;
-    for (const d of access.delegations as ActiveDelegation[]) {
+    for (const d of covering(access, APPROVE) as ActiveDelegation[]) {
       if (await reaches({ ...access, grants: new Map(), delegations: [d] })) return d.fromUserId;
     }
     throw new ForbiddenException('You do not have permission to perform this action. Required: attendance.approve');

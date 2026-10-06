@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { Cake, HeartPulse, Home, Pencil, Phone, UserRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/feedback';
-import { Field, Input, inputClass } from '@/components/ui/field';
+import { Field, Input, inputClass, FormError } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import {
   BLOOD_GROUPS,
@@ -17,6 +17,7 @@ import {
 } from '@/lib/company/profile';
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatDate } from '@/lib/format';
+import { DateInput, Select } from '@/components/ui/pickers';
 
 const pretty = (s: string | null | undefined) => (s ? s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, ' ') : null);
 const addressText = (a: Address | null | undefined) =>
@@ -207,7 +208,7 @@ function PersonalDialog({ open, onClose, employeeId, data, isSelf }: { open: boo
       icon={<UserRound />}
       title={isSelf ? 'Edit your personal details' : 'Edit personal details'}
       description="Visible only to you and to people with permission to see personal details."
-      className="sm:max-w-2xl"
+      size="lg"
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={save.isPending}>Cancel</Button>
@@ -216,7 +217,7 @@ function PersonalDialog({ open, onClose, employeeId, data, isSelf }: { open: boo
       }
     >
       <form id="personal-form" onSubmit={submit} className="max-h-[65vh] space-y-5 overflow-y-auto pr-1">
-        {error && <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+        <FormError>{error}</FormError>
 
         <section className="grid gap-3 sm:grid-cols-2">
           <Field label="Phone" htmlFor="pd-phone">
@@ -226,25 +227,25 @@ function PersonalDialog({ open, onClose, employeeId, data, isSelf }: { open: boo
             <Input id="pd-email" type="email" value={f.personalEmail} onChange={(e) => set('personalEmail', e.target.value)} maxLength={200} />
           </Field>
           <Field label="Date of birth" htmlFor="pd-dob">
-            <Input id="pd-dob" type="date" value={f.dateOfBirth} max={new Date().toISOString().slice(0, 10)} onChange={(e) => set('dateOfBirth', e.target.value)} />
+            <DateInput id="pd-dob" value={f.dateOfBirth} max={new Date().toISOString().slice(0, 10)} onChange={(e) => set('dateOfBirth', e.target.value)} />
           </Field>
           <Field label="Gender" htmlFor="pd-gender">
-            <select id="pd-gender" className={inputClass} value={f.gender} onChange={(e) => set('gender', e.target.value)}>
+            <Select id="pd-gender" className={inputClass} value={f.gender} onChange={(e) => set('gender', e.target.value)}>
               <option value="">Not set</option>
               {['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY'].map((g) => <option key={g} value={g}>{pretty(g)}</option>)}
-            </select>
+            </Select>
           </Field>
           <Field label="Blood group" htmlFor="pd-blood">
-            <select id="pd-blood" className={inputClass} value={f.bloodGroup} onChange={(e) => set('bloodGroup', e.target.value)}>
+            <Select id="pd-blood" className={inputClass} value={f.bloodGroup} onChange={(e) => set('bloodGroup', e.target.value)}>
               <option value="">Not set</option>
               {BLOOD_GROUPS.map((b) => <option key={b} value={b}>{b}</option>)}
-            </select>
+            </Select>
           </Field>
           <Field label="Marital status" htmlFor="pd-marital">
-            <select id="pd-marital" className={inputClass} value={f.maritalStatus} onChange={(e) => set('maritalStatus', e.target.value)}>
+            <Select id="pd-marital" className={inputClass} value={f.maritalStatus} onChange={(e) => set('maritalStatus', e.target.value)}>
               <option value="">Not set</option>
               {MARITAL_STATUSES.map((m) => <option key={m} value={m}>{pretty(m)}</option>)}
-            </select>
+            </Select>
           </Field>
 
         </section>

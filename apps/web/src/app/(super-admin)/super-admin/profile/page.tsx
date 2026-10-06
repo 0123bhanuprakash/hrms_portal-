@@ -7,7 +7,7 @@ import { History, Keyboard, Lock, Palette, UserCircle } from 'lucide-react';
 import { Card, Skeleton } from '@/components/ui/feedback';
 import { Kbd } from '@/components/ui/badge';
 import { DisplaySettingsCard } from '@/components/preferences/display-preferences';
-import { MenuStyleCard, MomentsCard } from '@/components/preferences/personal-look';
+import { BackdropCard, MenuStyleCard, MomentsCard } from '@/components/preferences/personal-look';
 import { NAV_SHORTCUTS } from '@/components/super-admin/command-menu';
 import { AccountSection } from '@/components/super-admin/profile/account-section';
 import { SecuritySection, securityChecks } from '@/components/super-admin/profile/security-section';
@@ -77,6 +77,7 @@ function Profile() {
           ) : section === 'appearance' ? (
             <div className="space-y-5">
               <MenuStyleCard platform />
+              <BackdropCard platform />
               <MomentsCard platform />
               <DisplaySettingsCard />
             </div>

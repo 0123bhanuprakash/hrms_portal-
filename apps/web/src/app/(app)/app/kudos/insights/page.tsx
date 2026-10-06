@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { Emoji } from '@/components/motion/emoji';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { ArrowLeft, BarChart3, Download, EyeOff, Mail, Network, ShieldCheck, Sparkles } from 'lucide-react';
@@ -172,7 +173,7 @@ function NotThanked({ d }: { d: KudosInsights }) {
     <Card>
       <CardHeader icon={<EyeOff />} title="Not thanked in 90 days" description="Private to HR — never shown on the wall" />
       {!people.length ? (
-        <p className="px-5 pb-5 text-sm text-muted-foreground">Everyone has been thanked recently. 🎉</p>
+        <p className="px-5 pb-5 text-sm text-muted-foreground">Everyone has been thanked recently. <Emoji e="🎉" play="appear" /></p>
       ) : (
         <>
           <div className="flex items-center gap-2 border-y border-border px-5 py-2 text-xs">

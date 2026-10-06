@@ -3,6 +3,8 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAccess } from '@/lib/access/use-access';
+import { isLive } from '@/lib/live/socket';
+import { useMayApprove } from '@/lib/company/projects';
 import { notificationKeys } from '@/lib/notifications';
 import type { ProjectType } from '@/lib/company/projects';
 
@@ -223,11 +225,14 @@ export function useTimesheets(q: SheetQuery, enabled = true) {
 
 export function usePendingTimesheets() {
   const { hasFeature } = useAccess();
+  // Only people who can approve here ask; the API would answer 0 for everyone else
+  const mayApprove = useMayApprove('timesheet.approve');
   return useQuery({
     queryKey: timesheetKeys.pending,
     queryFn: async () => unwrap<{ count: number }>(await api.get('/timesheets/pending-count')).count,
-    enabled: hasFeature('work.timesheets'),
-    refetchInterval: 2 * 60_000,
+    enabled: hasFeature('work.timesheets') && mayApprove,
+    // Live updates refresh it while connected; poll only when the connection is down
+    refetchInterval: () => (isLive() ? false : 2 * 60_000),
   });
 }
 

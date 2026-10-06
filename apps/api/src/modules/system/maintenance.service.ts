@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { RealtimeService } from '../realtime/realtime.service';
 
 export interface MaintenanceSettings {
   /** Company users are paused right now */
@@ -35,7 +36,10 @@ const TTL_MS = 10_000;
 export class MaintenanceService {
   private cached: { at: number; value: MaintenanceSettings } | null = null;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly realtime: RealtimeService,
+  ) {}
 
   async get(): Promise<MaintenanceSettings> {
     if (this.cached && Date.now() - this.cached.at < TTL_MS) return this.cached.value;
@@ -60,6 +64,8 @@ export class MaintenanceService {
       create: { key: KEY, value: next as unknown as Prisma.InputJsonObject, updatedById: userId },
     });
     this.cached = { at: Date.now(), value: next };
+    // Every open tab re-checks the pause notice at once
+    this.realtime.broadcast('system');
     return next;
   }
 

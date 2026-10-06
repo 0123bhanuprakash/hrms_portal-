@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Prism · Equaliser — Reports & analytics</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<style>
+*{box-sizing:border-box}
+.bd{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;background:#F6F6F9;color:#16161D;padding:34px 40px;min-height:100%}
+.bd h1{font-size:26px;font-weight:800;letter-spacing:-.02em;margin:0}
+.bd .sub{color:#6B6B76;font-size:13.5px;margin-top:4px;max-width:900px;line-height:1.5}
+.eyebrow{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#4F46E5}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.tag{font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;background:#EEF0FF;color:#4338CA}
+.tag.g{background:#E8F7EF;color:#047857}.tag.a{background:#FEF3E2;color:#B45309}.tag.n{background:#ECECF1;color:#4B4B55}
+.cols{display:flex;gap:22px;margin-top:20px;align-items:flex-start}
+.side{width:378px;flex:none;display:flex;flex-direction:column;gap:14px}
+.cap{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#8A8A95;margin-bottom:6px}
+.spec{background:#fff;border:1px solid #E5E5EC;border-radius:14px;padding:14px 16px;font-size:12.5px;line-height:1.55}
+.spec dl{display:grid;grid-template-columns:96px 1fr;gap:6px 10px;margin:0}.spec dt{color:#8A8A95;font-weight:700}.spec dd{margin:0}
+.spec ul{margin:0;padding-left:17px}.spec li{margin:2px 0}
+.mini{width:378px;height:221px;border-radius:12px;overflow:hidden;border:1px solid #E5E5EC;position:relative}
+.mini > .stage{transform:scale(.39375);transform-origin:0 0;position:absolute;left:0;top:0}
+
+/* ── App frame (sidebar + top bar stay exactly as today) ── */
+.stage{--bg:#0E0E11;--surf:#16161B;--raise:#1C1C22;--line:#26262E;--tx:#EDEDF2;--mu:#8C8C99;--pri:#E3A63B;--pri2:#F2C46D;--a2:#8B5CF6;--a3:#14B8A6;--glow:.5;
+ width:960px;height:560px;border-radius:16px;overflow:hidden;position:relative;display:flex;background:var(--bg);color:var(--tx);border:1px solid #2A2A33;box-shadow:0 30px 60px -30px rgba(10,10,20,.5);flex:none}
+.stage.light{--bg:#F7F7FA;--surf:#FFFFFF;--raise:#FFFFFF;--line:#E7E7EE;--tx:#16161D;--mu:#71717C;--pri:#4F46E5;--pri2:#818CF8;--a2:#A855F7;--a3:#0EA5E9;--glow:.32;border-color:#E5E5EC;box-shadow:none}
+.sb{width:168px;flex:none;background:var(--surf);border-right:1px solid var(--line);padding:14px 12px;display:flex;flex-direction:column;gap:7px;position:relative;z-index:2}
+.sb .lg{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:800;margin-bottom:8px}.sb .lg i{width:22px;height:22px;border-radius:7px;background:linear-gradient(135deg,var(--pri),var(--a2))}
+.sb .it{height:9px;border-radius:5px;background:var(--line);width:78%}.sb .it.on{background:var(--pri);opacity:.85;width:66%}.sb .g{height:6px;width:40%;border-radius:4px;background:var(--line);opacity:.6;margin-top:8px}
+.mn{flex:1;position:relative;display:flex;flex-direction:column;min-width:0}
+.tb{height:44px;flex:none;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;padding:0 18px;position:relative;z-index:2;background:color-mix(in srgb,var(--bg) 70%,transparent);backdrop-filter:blur(10px)}
+.tb .cr{height:8px;width:120px;border-radius:5px;background:var(--line)}.tb .sp{flex:1}.tb .bl{width:18px;height:18px;border-radius:50%;background:var(--line)}.tb .tg{width:34px;height:18px;border-radius:99px;background:var(--line)}
+.pg{flex:1;position:relative;overflow:hidden}
+.fx{position:absolute;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.ct{position:relative;z-index:1;padding:18px 20px;display:flex;flex-direction:column;gap:12px}
+.ey{font-size:9.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--pri)}
+.h{font-size:19px;font-weight:800;letter-spacing:-.02em}
+.p{font-size:11px;color:var(--mu)}
+.card{background:var(--surf);border:1px solid var(--line);border-radius:12px;padding:12px;position:relative}
+.ln{height:7px;border-radius:5px;background:var(--line)}.ln.s{width:40%}.ln.m{width:65%}.ln.l{width:88%}
+.num{font-size:20px;font-weight:800;letter-spacing:-.02em}
+.row{display:flex;gap:10px}.f1{flex:1;min-width:0}
+.k4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.av{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--pri2),var(--a2));flex:none}
+.btn{height:26px;padding:0 12px;border-radius:8px;background:var(--pri);color:#fff;font-size:10.5px;font-weight:800;display:inline-flex;align-items:center}
+.pill{height:16px;width:54px;border-radius:99px;background:color-mix(in srgb,var(--pri) 22%,transparent)}
+.trow{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}.trow:last-child{border:0}
+
+/* ── Layer 1 · ambient base: every page ── */
+.base{position:absolute;inset:0;background:radial-gradient(120% 70% at 50% -10%,color-mix(in srgb,var(--pri) 9%,transparent),transparent 60%)}
+.vig{position:absolute;inset:0;background:radial-gradient(130% 100% at 50% 40%,transparent 60%,color-mix(in srgb,var(--bg) 70%,#000 30%) 100%);opacity:.35}
+.light .vig{opacity:.08}
+
+/* ── Effects (transform/opacity only, slow, pause when tab hidden) ── */
+/* aurora — home */
+.blob{position:absolute;border-radius:50%;filter:blur(70px);opacity:calc(var(--glow) * .7);will-change:transform}
+.b1{width:420px;height:320px;left:-80px;top:-120px;background:var(--pri);animation:drift1 38s ease-in-out infinite alternate}
+.b2{width:380px;height:300px;right:-90px;top:40px;background:var(--a2);animation:drift2 46s ease-in-out infinite alternate}
+.b3{width:360px;height:260px;left:30%;bottom:-160px;background:var(--a3);animation:drift3 52s ease-in-out infinite alternate;opacity:calc(var(--glow) * .5)}
+@keyframes drift1{to{transform:translate(160px,90px) scale(1.15)}}
+@keyframes drift2{to{transform:translate(-140px,80px) scale(.9)}}
+@keyframes drift3{to{transform:translate(120px,-70px) scale(1.1)}}
+
+/* particles — people */
+.pt{position:absolute;bottom:-10px;width:4px;height:4px;border-radius:50%;background:var(--pri2);opacity:0;animation:rise linear infinite}
+@keyframes rise{0%{transform:translateY(0);opacity:0}15%{opacity:calc(var(--glow) * 1)}85%{opacity:calc(var(--glow) * .8)}100%{transform:translateY(-560px);opacity:0}}
+.halo{position:absolute;left:12%;top:-80px;width:520px;height:240px;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,var(--pri) 40%,transparent),transparent);opacity:var(--glow);filter:blur(10px);animation:breathe 9s ease-in-out infinite}
+@keyframes breathe{50%{opacity:calc(var(--glow) * .55);transform:scale(1.06)}}
+
+/* light sweep + dial — attendance & timesheets */
+.sweep{position:absolute;top:-60%;left:0;width:34%;height:220%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.09),transparent);transform:rotate(18deg) translateX(-160%);animation:sweep 14s cubic-bezier(.45,0,.2,1) infinite}
+.light .sweep{background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--pri) 10%,transparent),transparent)}
+@keyframes sweep{0%,30%{transform:rotate(18deg) translateX(-160%)}75%,100%{transform:rotate(18deg) translateX(420%)}}
+.dial{position:absolute;right:-140px;top:-140px;width:420px;height:420px;border-radius:50%;background:conic-gradient(from 0deg,transparent 0 70%,color-mix(in srgb,var(--pri) 60%,transparent) 88%,transparent 100%);-webkit-mask:radial-gradient(closest-side,transparent 86%,#000 87%,#000 100%);mask:radial-gradient(closest-side,transparent 86%,#000 87%,#000 100%);opacity:var(--glow);animation:spin 60s linear infinite}
+.dial2{position:absolute;right:-90px;top:-90px;width:320px;height:320px;border-radius:50%;border:1px dashed color-mix(in srgb,var(--tx) 14%,transparent)}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* horizon — leave, who's off, holidays */
+.hz1,.hz2{position:absolute;left:0;right:0;top:0;height:260px}
+.hz1{background:linear-gradient(180deg,color-mix(in srgb,#F59E0B 22%,transparent),color-mix(in srgb,#EC4899 10%,transparent) 45%,transparent)}
+.hz2{background:linear-gradient(180deg,color-mix(in srgb,#38BDF8 22%,transparent),color-mix(in srgb,var(--a2) 10%,transparent) 45%,transparent);animation:dawn 24s ease-in-out infinite alternate}
+@keyframes dawn{0%{opacity:0}100%{opacity:1}}
+.sun{position:absolute;left:62%;top:150px;width:220px;height:220px;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,#FBBF24 45%,transparent),transparent);filter:blur(6px);opacity:var(--glow);animation:sunrise 24s ease-in-out infinite alternate}
+@keyframes sunrise{to{transform:translateY(-70px)}}
+
+/* blueprint grid + spotlight — projects, planner */
+.grid{position:absolute;inset:-20px;background-image:radial-gradient(color-mix(in srgb,var(--tx) 22%,transparent) 1px,transparent 1.2px);background-size:22px 22px;-webkit-mask:radial-gradient(70% 80% at 50% 30%,#000,transparent);mask:radial-gradient(70% 80% at 50% 30%,#000,transparent);opacity:.55}
+.spot{position:absolute;width:360px;height:360px;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,var(--pri) 38%,transparent),transparent);opacity:var(--glow);left:-60px;top:-60px;animation:roam 48s ease-in-out infinite alternate}
+@keyframes roam{33%{transform:translate(420px,60px)}66%{transform:translate(200px,240px)}100%{transform:translate(560px,180px)}}
+
+/* mesh — expenses & payments */
+.mesh{position:absolute;inset:-50%;background:
+ radial-gradient(25% 30% at 30% 35%,color-mix(in srgb,#10B981 60%,transparent),transparent 70%),
+ radial-gradient(22% 28% at 68% 42%,color-mix(in srgb,var(--a3) 50%,transparent),transparent 70%),
+ radial-gradient(26% 26% at 52% 70%,color-mix(in srgb,var(--pri) 36%,transparent),transparent 70%);
+ opacity:var(--glow);filter:blur(24px);animation:meshspin 90s linear infinite}
+@keyframes meshspin{to{transform:rotate(360deg)}}
+.coin{position:absolute;width:10px;height:10px;border-radius:50%;border:1.5px solid color-mix(in srgb,#10B981 60%,transparent);opacity:0;animation:rise linear infinite}
+
+/* studio light — assets */
+.cone{position:absolute;left:50%;top:-40px;width:760px;height:520px;margin-left:-380px;background:radial-gradient(50% 60% at 50% 0%,color-mix(in srgb,var(--tx) 10%,transparent),transparent 70%);-webkit-mask:linear-gradient(180deg,#000,transparent);opacity:.9;animation:flicker 7s ease-in-out infinite}
+@keyframes flicker{50%{opacity:.7}}
+.floor{position:absolute;left:10%;right:10%;bottom:-120px;height:220px;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,var(--pri) 26%,transparent),transparent);opacity:var(--glow)}
+.bok{position:absolute;border-radius:50%;background:color-mix(in srgb,var(--pri2) 40%,transparent);filter:blur(2px);opacity:calc(var(--glow) * .6);animation:bob ease-in-out infinite alternate}
+@keyframes bob{to{transform:translate(30px,-40px)}}
+
+/* signal rings — helpdesk */
+.rings{position:absolute;right:60px;top:40px;width:10px;height:10px}
+.rings i{position:absolute;left:-150px;top:-150px;width:310px;height:310px;border-radius:50%;border:1.5px solid color-mix(in srgb,var(--a3) 55%,transparent);opacity:0;animation:ring 9s ease-out infinite}
+.rings i:nth-child(2){animation-delay:3s}.rings i:nth-child(3){animation-delay:6s}
+@keyframes ring{0%{transform:scale(.25);opacity:calc(var(--glow) * 1.2)}100%{transform:scale(1.8);opacity:0}}
+.core{position:absolute;right:20px;top:0;width:90px;height:90px;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,var(--a3) 45%,transparent),transparent);opacity:var(--glow)}
+
+/* floaters — announcements & kudos */
+.fl{position:absolute;bottom:-40px;opacity:0;animation:float linear infinite}
+.fl.c{width:18px;height:18px;border-radius:50%;border:2px solid color-mix(in srgb,var(--pri) 55%,transparent)}
+.fl.q{width:16px;height:16px;border-radius:5px;background:color-mix(in srgb,var(--a2) 30%,transparent)}
+.fl.h{width:16px;height:16px;color:color-mix(in srgb,#EC4899 60%,transparent);font-size:16px;line-height:16px}
+@keyframes float{0%{transform:translateY(0) rotate(0);opacity:0}12%{opacity:calc(var(--glow) * 1.1)}88%{opacity:calc(var(--glow) * .9)}100%{transform:translateY(-620px) rotate(200deg);opacity:0}}
+.warm{position:absolute;left:-10%;right:-10%;top:-200px;height:420px;background:radial-gradient(50% 50% at 30% 50%,color-mix(in srgb,#F59E0B 22%,transparent),transparent),radial-gradient(40% 50% at 75% 40%,color-mix(in srgb,#EC4899 18%,transparent),transparent);opacity:var(--glow);animation:breathe 12s ease-in-out infinite}
+
+/* data waves — reports */
+.waves{position:absolute;left:0;bottom:0;width:200%;height:220px;animation:wave 34s linear infinite}
+.waves.w2{animation-duration:52s;opacity:.6;bottom:-20px}
+@keyframes wave{to{transform:translateX(-50%)}}
+.waves path{fill:none;stroke-width:1.5}
+
+/* quiet — settings, roles, admin forms */
+.noise{position:absolute;inset:0;opacity:.05;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
+.qgrad{position:absolute;inset:0;background:linear-gradient(160deg,color-mix(in srgb,var(--pri) 7%,transparent),transparent 40%,color-mix(in srgb,var(--a2) 5%,transparent))}
+
+/* pulse line — super admin */
+.night{position:absolute;inset:0;background:linear-gradient(180deg,color-mix(in srgb,#1E3A8A 30%,transparent),transparent 70%)}
+.light .night{background:linear-gradient(180deg,color-mix(in srgb,#3B82F6 10%,transparent),transparent 70%)}
+.star{position:absolute;width:2px;height:2px;border-radius:50%;background:var(--tx);opacity:.25;animation:twinkle ease-in-out infinite alternate}
+@keyframes twinkle{to{opacity:.05}}
+.pulse{position:absolute;left:0;right:0;bottom:70px;height:120px}
+.pulse path{fill:none;stroke-width:1.6}
+.pulse .run{stroke-dasharray:90 1400;animation:run 7s linear infinite}
+@keyframes run{from{stroke-dashoffset:1490}to{stroke-dashoffset:0}}
+
+/* sign-in hero */
+.big .blob{filter:blur(80px);opacity:calc(var(--glow) * 1)}
+
+/* reduced motion: everything settles to its first frame */
+.rm *{animation:none!important}
+</style><style>
+.fx svg{position:absolute;overflow:visible}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes spinr{to{transform:rotate(-360deg)}}
+
+/* ════════ TERRA ════════ */
+/* sky wheel — home: real time of day (board runs a whole day in 48 s) */
+.t-ph{position:absolute;inset:0;opacity:0;animation:t-phase 48s linear infinite}
+.t-ph.dawn{background:linear-gradient(180deg,color-mix(in srgb,#F472B6 30%,transparent),color-mix(in srgb,#FBBF24 18%,transparent) 42%,transparent 78%)}
+.t-ph.day{background:linear-gradient(180deg,color-mix(in srgb,#38BDF8 32%,transparent),color-mix(in srgb,#A5F3FC 12%,transparent) 45%,transparent 78%);animation-delay:-36s}
+.t-ph.dusk{background:linear-gradient(180deg,color-mix(in srgb,#7C3AED 28%,transparent),color-mix(in srgb,#F97316 20%,transparent) 42%,transparent 78%);animation-delay:-24s}
+.t-ph.night{background:linear-gradient(180deg,color-mix(in srgb,#1E3A8A 45%,transparent),color-mix(in srgb,#312E81 18%,transparent) 50%,transparent 80%);animation-delay:-12s}
+.light .t-ph.night{background:linear-gradient(180deg,color-mix(in srgb,#6366F1 18%,transparent),transparent 70%)}
+@keyframes t-phase{0%{opacity:0}8%,25%{opacity:1}33%,100%{opacity:0}}
+.t-wheel{position:absolute;left:50%;top:540px;width:0;height:0;animation:spin 48s linear infinite}
+.t-orb{position:absolute;width:56px;height:56px;margin:-28px;border-radius:50%}
+.t-orb.sun{left:-470px;top:0;background:radial-gradient(circle,#FDE68A 0 30%,color-mix(in srgb,#FBBF24 55%,transparent) 36%,transparent 70%);box-shadow:0 0 80px 30px color-mix(in srgb,#FBBF24 22%,transparent)}
+.t-orb.moon{left:470px;top:0;width:34px;height:34px;margin:-17px;background:radial-gradient(circle at 35% 35%,#F1F5F9,#CBD5E1 60%);box-shadow:0 0 40px 12px color-mix(in srgb,#E2E8F0 18%,transparent);opacity:.8}
+.t-cloud{position:absolute;height:34px;border-radius:40px;background:color-mix(in srgb,#fff 10%,transparent);filter:blur(6px);animation:t-drift linear infinite}
+.t-cloud::before,.t-cloud::after{content:"";position:absolute;border-radius:50%;background:inherit}
+.t-cloud::before{width:46%;height:150%;left:16%;top:-60%}.t-cloud::after{width:34%;height:120%;left:48%;top:-40%}
+.light .t-cloud{background:color-mix(in srgb,#fff 70%,transparent);filter:blur(4px)}
+@keyframes t-drift{from{transform:translateX(-260px)}to{transform:translateX(1060px)}}
+.t-strip{display:flex;gap:6px}.t-strip span{flex:1;height:34px;border-radius:8px;position:relative;font-size:10px;font-weight:800;color:#fff;display:flex;align-items:flex-end;padding:4px 7px}
+
+/* fireflies — people */
+.t-dusk{position:absolute;inset:0;background:linear-gradient(180deg,color-mix(in srgb,#312E81 14%,transparent),transparent 40%,color-mix(in srgb,#065F46 22%,transparent))}
+.light .t-dusk{background:linear-gradient(180deg,transparent 40%,color-mix(in srgb,#10B981 10%,transparent))}
+.t-grass path{fill:color-mix(in srgb,#064E3B 55%,transparent)}.light .t-grass path{fill:color-mix(in srgb,#10B981 14%,transparent)}
+.t-ff{position:absolute;width:5px;height:5px;border-radius:50%;background:#FDE68A;box-shadow:0 0 10px 3px color-mix(in srgb,#FACC15 50%,transparent);animation:t-wander var(--d) ease-in-out infinite alternate,t-blink var(--b) ease-in-out infinite}
+.light .t-ff{background:#CA8A04;box-shadow:0 0 8px 2px color-mix(in srgb,#FACC15 45%,transparent)}
+@keyframes t-wander{33%{transform:translate(var(--x1),var(--y1))}66%{transform:translate(var(--x2),var(--y2))}100%{transform:translate(var(--x3),var(--y3))}}
+@keyframes t-blink{0%,100%{opacity:.08}50%{opacity:calc(var(--glow) * 1.7)}}
+
+/* sun path — attendance & timesheets */
+.t-band{position:absolute;inset:0 0 auto 0;height:300px;background:linear-gradient(180deg,color-mix(in srgb,#FBBF24 12%,transparent),transparent)}
+.t-arc path{fill:none;stroke-width:1.5}
+.t-arc .done{stroke-dasharray:1312;stroke-dashoffset:1312;animation:t-fill 40s ease-in-out infinite alternate}
+@keyframes t-fill{to{stroke-dashoffset:0}}
+.t-dialw{position:absolute;left:396px;top:560px;width:0;height:0;animation:t-day 40s ease-in-out infinite alternate}
+@keyframes t-day{from{transform:rotate(-78deg)}to{transform:rotate(78deg)}}
+.t-dialw .t-orb.sun{left:0;top:-470px;width:44px;height:44px;margin:-22px}
+.t-hr{position:absolute;font-size:9px;font-weight:800;color:var(--mu);letter-spacing:.06em}
+
+/* clouds & hills — leave */
+.t-sky2{position:absolute;inset:0 0 auto 0;height:280px;background:linear-gradient(180deg,color-mix(in srgb,#7DD3FC 20%,transparent),color-mix(in srgb,#FDBA74 10%,transparent) 55%,transparent)}
+.t-hills path:nth-child(1){fill:color-mix(in srgb,var(--a3) 12%,transparent)}.t-hills path:nth-child(2){fill:color-mix(in srgb,#10B981 14%,transparent)}
+.t-bird{position:absolute;animation:t-fly linear infinite}.t-bird path{fill:none;stroke:color-mix(in srgb,var(--tx) 40%,transparent);stroke-width:1.4;stroke-linecap:round}
+@keyframes t-fly{0%{transform:translate(-60px,0)}50%{transform:translate(420px,-18px)}100%{transform:translate(900px,6px)}}
+
+/* topographic contours — projects */
+.t-topo{animation:t-shift 70s ease-in-out infinite alternate}
+.t-topo path{fill:none;stroke:color-mix(in srgb,var(--tx) 13%,transparent);stroke-width:1}
+.t-topo path.ix{stroke:color-mix(in srgb,var(--pri) 38%,transparent);stroke-width:1.5}
+@keyframes t-shift{to{transform:translate(-40px,18px) scale(1.04)}}
+.t-route{fill:none;stroke:color-mix(in srgb,var(--pri) 55%,transparent);stroke-width:1.6;stroke-dasharray:5 6}
+.t-pin{fill:var(--bg);stroke:var(--pri);stroke-width:2}
+.t-walker{position:absolute;left:0;top:0;width:10px;height:10px;border-radius:50%;background:var(--pri);box-shadow:0 0 14px 4px color-mix(in srgb,var(--pri) 45%,transparent);offset-path:var(--route);animation:t-walk 30s ease-in-out infinite alternate}
+@keyframes t-walk{from{offset-distance:0%}to{offset-distance:100%}}
+
+/* dappled light (komorebi) — expenses */
+.t-canopy{position:absolute;inset:0;background:linear-gradient(170deg,color-mix(in srgb,#065F46 26%,transparent),transparent 55%,color-mix(in srgb,#14532D 16%,transparent))}
+.light .t-canopy{background:linear-gradient(170deg,color-mix(in srgb,#10B981 12%,transparent),transparent 60%)}
+.t-dap{position:absolute;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,#FDE68A 60%,transparent),color-mix(in srgb,#34D399 20%,transparent) 60%,transparent);filter:blur(5px);opacity:calc(var(--glow) * .9);animation:t-sway var(--d) ease-in-out infinite alternate}
+@keyframes t-sway{to{transform:translate(var(--x),var(--y)) scale(1.18);opacity:calc(var(--glow) * .35)}}
+.t-leaf{position:absolute;top:-30px;width:14px;height:9px;border-radius:0 100% 0 100%;background:color-mix(in srgb,#22C55E 55%,transparent);animation:t-leaffall linear infinite}
+@keyframes t-leaffall{0%{transform:translate(0,0) rotate(0);opacity:0}10%{opacity:.8}50%{transform:translate(60px,280px) rotate(220deg)}100%{transform:translate(-20px,600px) rotate(420deg);opacity:0}}
+
+/* zen garden — assets */
+.t-sand{position:absolute;inset:0;background:linear-gradient(180deg,color-mix(in srgb,#D6B98C 7%,transparent),color-mix(in srgb,#D6B98C 13%,transparent))}
+.t-zen path,.t-zen circle.r{fill:none;stroke:color-mix(in srgb,var(--tx) 11%,transparent);stroke-width:1.2}
+.t-zen .stone{fill:url(#stoneG)}
+.t-ripple{transform-box:fill-box;transform-origin:center;animation:t-breathe 12s ease-in-out infinite alternate}
+@keyframes t-breathe{to{transform:scale(1.035)}}
+.t-rake{position:absolute;top:0;bottom:0;width:240px;background:linear-gradient(90deg,transparent,color-mix(in srgb,#FDE68A 9%,transparent),transparent);animation:t-rakemove 26s ease-in-out infinite alternate}
+@keyframes t-rakemove{from{transform:translateX(-260px)}to{transform:translateX(820px)}}
+
+/* lighthouse — helpdesk */
+.t-sea{position:absolute;left:0;right:0;bottom:0;height:150px;background:linear-gradient(180deg,transparent,color-mix(in srgb,#0E7490 22%,transparent))}
+.t-dusk2{position:absolute;inset:0;background:linear-gradient(180deg,color-mix(in srgb,#1E1B4B 22%,transparent),transparent 60%)}
+.light .t-dusk2{background:linear-gradient(180deg,color-mix(in srgb,#06B6D4 8%,transparent),transparent 60%)}
+.t-beam{position:absolute;left:676px;top:330px;width:900px;height:200px;margin-top:-100px;transform-origin:0 50%;background:linear-gradient(90deg,color-mix(in srgb,#FEF3C7 32%,transparent),transparent 85%);clip-path:polygon(0 47%,100% 0,100% 100%,0 53%);filter:blur(3px);opacity:calc(var(--glow) * 1.5);animation:t-scan 16s ease-in-out infinite alternate}
+.light .t-beam{background:linear-gradient(90deg,color-mix(in srgb,var(--a3) 30%,transparent),transparent 85%)}
+@keyframes t-scan{from{transform:rotate(-200deg)}to{transform:rotate(-150deg)}}
+.t-lamp{position:absolute;left:666px;top:320px;width:20px;height:20px;border-radius:50%;background:radial-gradient(circle,#FEF3C7,color-mix(in srgb,#FBBF24 40%,transparent) 50%,transparent 72%);animation:breathe 4s ease-in-out infinite}
+.t-house path{fill:color-mix(in srgb,var(--tx) 18%,transparent)}
+.t-wv{position:absolute;left:0;width:200%;animation:wave 30s linear infinite}.t-wv path{fill:none;stroke:color-mix(in srgb,var(--a3) 30%,transparent);stroke-width:1.2}
+
+/* petal breeze — announcements & kudos */
+.t-pw{position:absolute;top:-30px;animation:t-fall linear infinite}
+.t-pet{width:16px;height:12px;border-radius:100% 0 100% 0;background:linear-gradient(135deg,#FBCFE8,#F472B6);opacity:.9;box-shadow:0 0 8px color-mix(in srgb,#F472B6 40%,transparent);animation:t-flut ease-in-out infinite alternate}
+.light .t-pet{background:linear-gradient(135deg,#F9A8D4,#EC4899);opacity:.55}
+@keyframes t-fall{0%{transform:translate(0,0);opacity:0}8%{opacity:1}100%{transform:translate(var(--dx),600px);opacity:0}}
+@keyframes t-flut{to{transform:rotate3d(1,.4,0,170deg) rotate(60deg)}}
+
+/* mountain ridges — reports */
+.t-mist{position:absolute;inset:0;background:linear-gradient(180deg,transparent 30%,color-mix(in srgb,var(--pri) 7%,transparent) 70%,transparent)}
+.t-ridge{position:absolute;left:0;bottom:0;width:200%;animation:wave linear infinite}
+.t-ridge path.f{stroke:none}.t-ridge path.l{fill:none;stroke-width:1.6}
+
+/* linen — settings (still) */
+.t-linen{position:absolute;inset:0;background:linear-gradient(160deg,color-mix(in srgb,#D6B98C 8%,transparent),transparent 45%,color-mix(in srgb,#10B981 4%,transparent))}
+.t-vein path{fill:none;stroke:color-mix(in srgb,var(--tx) 7%,transparent);stroke-width:1.2}
+
+/* northern lights — super admin */
+.t-polar{position:absolute;inset:0;background:linear-gradient(180deg,color-mix(in srgb,#0B1E3F 45%,transparent),transparent 75%)}
+.light .t-polar{background:linear-gradient(180deg,color-mix(in srgb,#38BDF8 10%,transparent),transparent 75%)}
+.t-cur{position:absolute;top:-40px;height:330px;filter:blur(18px);opacity:calc(var(--glow) * 1.1);transform-origin:50% 0;-webkit-mask:repeating-linear-gradient(90deg,#000 0 14px,rgba(0,0,0,.45) 14px 22px);mask:repeating-linear-gradient(90deg,#000 0 14px,rgba(0,0,0,.45) 14px 22px);animation:t-curtain var(--d) ease-in-out infinite alternate}
+@keyframes t-curtain{0%{transform:translateX(0) skewX(-14deg) scaleY(1)}50%{transform:translateX(50px) skewX(6deg) scaleY(1.12)}100%{transform:translateX(-30px) skewX(-6deg) scaleY(.92)}}
+.t-peaks path{fill:color-mix(in srgb,#020617 50%,transparent)}.light .t-peaks path{fill:color-mix(in srgb,#0EA5E9 10%,transparent)}
+
+/* ════════ PRISM ════════ */
+/* light beams — home */
+.p-gridf{position:absolute;inset:0;background-image:linear-gradient(color-mix(in srgb,var(--tx) 7%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--tx) 7%,transparent) 1px,transparent 1px);background-size:44px 44px;-webkit-mask:radial-gradient(70% 60% at 50% 0%,#000,transparent);mask:radial-gradient(70% 60% at 50% 0%,#000,transparent)}
+.p-hline{position:absolute;left:8%;right:8%;top:0;height:1px;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--pri2) 90%,transparent),transparent);box-shadow:0 0 24px 4px color-mix(in srgb,var(--pri) 35%,transparent)}
+.p-beam{position:absolute;top:-30px;width:120px;height:720px;margin-left:-60px;transform-origin:50% 0;background:linear-gradient(180deg,color-mix(in srgb,var(--c) 42%,transparent),transparent 78%);filter:blur(16px);opacity:calc(var(--glow) * 1.2);animation:p-sway var(--d) ease-in-out infinite alternate}
+@keyframes p-sway{from{transform:rotate(var(--a))}to{transform:rotate(calc(var(--a) + 9deg))}}
+
+/* bauhaus shapes — people */
+.p-sh{position:absolute;opacity:calc(var(--glow) * .75)}
+.p-circ{border-radius:50%}.p-ring{border-radius:50%;border:2px solid}
+.p-semi{border-radius:999px 999px 0 0}
+.p-quar{border-radius:100% 0 0 0}
+.p-rot{animation:spin 60s linear infinite}.p-rotr{animation:spinr 80s linear infinite}
+.p-flip{animation:p-flip 30s ease-in-out infinite alternate}@keyframes p-flip{to{transform:rotate(180deg)}}
+.p-glide{animation:p-glide 26s ease-in-out infinite alternate}@keyframes p-glide{to{transform:translate(-60px,30px)}}
+
+/* chronograph rings — attendance & timesheets */
+.p-chrono{position:absolute;right:-150px;top:-170px;width:520px;height:520px}
+.p-chrono circle{fill:none;transform-box:fill-box;transform-origin:center}
+.p-chrono .r1{animation:spin 90s linear infinite}.p-chrono .r2{animation:spinr 60s linear infinite}.p-chrono .r3{animation:spin 40s linear infinite}
+.p-hand{transform-origin:260px 260px;animation:spin 60s linear infinite}
+
+/* striped sun — leave */
+.p-stripes{position:absolute;right:40px;top:30px;width:300px;height:300px;animation:p-rise 24s ease-in-out infinite alternate}
+@keyframes p-rise{from{transform:translateY(40px)}to{transform:translateY(-10px)}}
+.p-hz{position:absolute;left:0;right:0;height:1px;background:color-mix(in srgb,var(--tx) 10%,transparent)}
+
+/* isometric blocks — projects */
+.p-iso{position:absolute;inset:0;background-image:repeating-linear-gradient(30deg,color-mix(in srgb,var(--tx) 8%,transparent) 0 1px,transparent 1px 30px),repeating-linear-gradient(150deg,color-mix(in srgb,var(--tx) 8%,transparent) 0 1px,transparent 1px 30px);-webkit-mask:radial-gradient(75% 85% at 70% 30%,#000,transparent);mask:radial-gradient(75% 85% at 70% 30%,#000,transparent)}
+.p-blk{position:absolute;animation:p-build var(--d) ease-in-out infinite alternate;opacity:calc(var(--glow) * 1.4)}
+@keyframes p-build{from{transform:translateY(16px)}to{transform:translateY(-14px)}}
+
+/* faceted gem — expenses */
+.p-facets polygon{animation:p-glint var(--d) ease-in-out infinite alternate}
+@keyframes p-glint{from{opacity:.25}to{opacity:1}}
+.p-shine{position:absolute;top:-60%;left:0;width:26%;height:220%;background:linear-gradient(90deg,transparent,color-mix(in srgb,#fff 8%,transparent),transparent);transform:rotate(24deg) translateX(-200%);animation:p-shine 16s ease-in-out infinite}
+@keyframes p-shine{0%,40%{transform:rotate(24deg) translateX(-200%)}80%,100%{transform:rotate(24deg) translateX(520%)}}
+
+/* wireframe cubes — assets */
+.p-3d{position:absolute;inset:0;perspective:900px}
+.p-cube{position:absolute;width:var(--s);height:var(--s);transform-style:preserve-3d;animation:p-tumble var(--d) linear infinite}
+.p-cube i{position:absolute;inset:0;border:1.5px solid color-mix(in srgb,var(--pri) 55%,transparent);background:color-mix(in srgb,var(--pri) 4%,transparent)}
+.p-cube i:nth-child(1){transform:translateZ(calc(var(--s) / 2))}.p-cube i:nth-child(2){transform:rotateY(180deg) translateZ(calc(var(--s) / 2))}
+.p-cube i:nth-child(3){transform:rotateY(90deg) translateZ(calc(var(--s) / 2))}.p-cube i:nth-child(4){transform:rotateY(-90deg) translateZ(calc(var(--s) / 2))}
+.p-cube i:nth-child(5){transform:rotateX(90deg) translateZ(calc(var(--s) / 2))}.p-cube i:nth-child(6){transform:rotateX(-90deg) translateZ(calc(var(--s) / 2))}
+@keyframes p-tumble{from{transform:rotateX(-22deg) rotateY(0)}to{transform:rotateX(-22deg) rotateY(360deg)}}
+.p-floor{position:absolute;left:-30%;right:-30%;bottom:-40px;height:260px;transform:perspective(500px) rotateX(64deg);transform-origin:50% 100%;background-image:linear-gradient(color-mix(in srgb,var(--pri) 22%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--pri) 22%,transparent) 1px,transparent 1px);background-size:40px 40px;-webkit-mask:linear-gradient(0deg,#000,transparent);mask:linear-gradient(0deg,#000,transparent)}
+
+/* radar — helpdesk */
+.p-radar{position:absolute;right:-90px;top:-110px;width:420px;height:420px;border-radius:50%;overflow:hidden;
+ background:repeating-radial-gradient(circle,transparent 0 51px,color-mix(in srgb,var(--a3) 26%,transparent) 51px 52.5px),linear-gradient(color-mix(in srgb,var(--a3) 18%,transparent),color-mix(in srgb,var(--a3) 18%,transparent)) center/1px 100% no-repeat,linear-gradient(90deg,color-mix(in srgb,var(--a3) 18%,transparent),color-mix(in srgb,var(--a3) 18%,transparent)) center/100% 1px no-repeat}
+.p-sweep{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,transparent 0 78%,color-mix(in srgb,var(--a3) 45%,transparent) 100%);opacity:var(--glow);animation:spin 8s linear infinite}
+.p-blip{position:absolute;width:7px;height:7px;margin:-3.5px;border-radius:50%;background:var(--a3);box-shadow:0 0 10px 3px color-mix(in srgb,var(--a3) 50%,transparent);opacity:0;animation:p-blip 8s linear infinite}
+@keyframes p-blip{0%{opacity:0}2%{opacity:1}40%{opacity:0}100%{opacity:0}}
+
+/* memphis shapes — announcements & kudos */
+.p-mf{position:absolute;bottom:-40px;opacity:0;animation:p-mfloat linear infinite}
+@keyframes p-mfloat{0%{transform:translateY(0) rotate(0) scale(1.5);opacity:0}12%{opacity:calc(var(--glow) * 1.6)}88%{opacity:calc(var(--glow) * 1.4)}100%{transform:translateY(-620px) rotate(200deg) scale(1.5);opacity:0}}
+.p-tri{width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-bottom:16px solid}
+.p-plus{font-size:20px;font-weight:900;line-height:20px}
+.p-dotg{position:absolute;width:120px;height:80px;background-image:radial-gradient(color-mix(in srgb,var(--tx) 22%,transparent) 1.5px,transparent 2px);background-size:12px 12px}
+
+/* equaliser — reports */
+.p-eq{position:absolute;left:0;right:0;bottom:0;height:190px;display:flex;align-items:flex-end;gap:8px;padding:0 10px}
+.p-eq i{flex:1;height:100%;border-radius:3px 3px 0 0;transform-origin:50% 100%;background:linear-gradient(180deg,color-mix(in srgb,var(--c) 55%,transparent),transparent);opacity:calc(var(--glow) * 1.3);animation:p-eqm var(--d) ease-in-out infinite alternate}
+@keyframes p-eqm{from{transform:scaleY(var(--lo))}to{transform:scaleY(var(--hi))}}
+.p-guides{position:absolute;inset:0;background-image:linear-gradient(color-mix(in srgb,var(--tx) 6%,transparent) 1px,transparent 1px);background-size:100% 38px}
+
+/* swiss grid — settings (still) */
+.p-cols{position:absolute;inset:0;background-image:linear-gradient(90deg,color-mix(in srgb,var(--pri) 7%,transparent) 1px,transparent 1px);background-size:calc(100% / 12) 100%}
+.p-base{position:absolute;inset:0;background-image:linear-gradient(color-mix(in srgb,var(--tx) 4%,transparent) 1px,transparent 1px);background-size:100% 8px}
+
+/* grid horizon — super admin */
+.p-sky{position:absolute;inset:0;background:linear-gradient(180deg,color-mix(in srgb,#1E3A8A 26%,transparent),transparent 60%)}
+.light .p-sky{background:linear-gradient(180deg,color-mix(in srgb,#3B82F6 9%,transparent),transparent 60%)}
+.p-plane{position:absolute;left:-40%;right:-40%;bottom:0;height:250px;overflow:hidden;transform:perspective(320px) rotateX(58deg);transform-origin:50% 100%;-webkit-mask:linear-gradient(0deg,#000 20%,transparent);mask:linear-gradient(0deg,#000 20%,transparent)}
+.p-plane i{position:absolute;left:0;right:0;top:-48px;bottom:0;background-image:linear-gradient(color-mix(in srgb,var(--a3) 40%,transparent) 1.5px,transparent 1.5px),linear-gradient(90deg,color-mix(in srgb,var(--a3) 40%,transparent) 1.5px,transparent 1.5px);background-size:48px 48px;animation:p-roll 9s linear infinite}
+@keyframes p-roll{to{transform:translateY(48px)}}
+.p-horizon{position:absolute;left:0;right:0;bottom:250px;height:1px;background:linear-gradient(90deg,transparent,var(--a3),transparent);box-shadow:0 0 22px 5px color-mix(in srgb,var(--a3) 35%,transparent)}
+.p-run{position:absolute;bottom:246px;left:0;width:90px;height:9px;border-radius:9px;background:radial-gradient(closest-side,var(--a3),transparent);animation:p-runx 7s linear infinite}
+@keyframes p-runx{from{transform:translateX(-100px)}to{transform:translateX(820px)}}
+
+/* prism — sign-in */
+.p-ray{position:absolute;left:0;top:250px;width:250px;height:2px;background:linear-gradient(90deg,transparent,#fff);box-shadow:0 0 12px 2px rgba(255,255,255,.45);transform-origin:100% 50%;transform:rotate(-8deg);animation:breathe 7s ease-in-out infinite}
+.light .p-ray{background:linear-gradient(90deg,transparent,var(--pri));box-shadow:none}
+.p-gem{position:absolute;left:240px;top:170px;width:120px;height:110px;clip-path:polygon(50% 0,100% 100%,0 100%);background:linear-gradient(160deg,color-mix(in srgb,#fff 30%,transparent),color-mix(in srgb,#fff 6%,transparent));border:0}
+.light .p-gem{background:linear-gradient(160deg,color-mix(in srgb,var(--pri) 30%,transparent),color-mix(in srgb,var(--pri) 8%,transparent))}
+.p-fan{position:absolute;left:330px;top:120px;width:720px;height:360px;clip-path:polygon(0 36%,100% 0,100% 100%,0 46%);background:linear-gradient(180deg,#F43F5E,#F59E0B 18%,#FDE047 34%,#22C55E 52%,#38BDF8 70%,#8B5CF6 88%);filter:blur(3px);opacity:calc(var(--glow) * .9);animation:p-shimmer 9s ease-in-out infinite alternate}
+@keyframes p-shimmer{from{opacity:calc(var(--glow) * .55)}to{opacity:calc(var(--glow) * 1)}}
+
+/* ── calm (Lively off) for tiles ── */
+.still *{animation-play-state:paused!important}
+</style><div class="bd">
+  <div class="eyebrow" style="color:#4338CA">Prism pack · Reports & analytics</div><h1>Equaliser</h1><div class="sub">A row of bars along the bottom rises and falls slowly like a music equaliser, over faint guide lines — the company’s numbers in rhythm.</div>
+  <div class="tags"><span class="tag ">Reports & analytics</span><span class="tag ">People / Time / Leave reports</span><span class="tag ">Insights</span><span class="tag n">Replaces Signature · Data waves</span></div>
+  <div class="cols"><div><div class="cap">Dark · live</div><div class="stage" style="">
+  <div class="sb"><div class="lg"><i></i>aakash-portal</div><div class="g"></div><div class="it on"></div><div class="it"></div><div class="it"></div><div class="g"></div><div class="it"></div><div class="it"></div><div class="it"></div><div class="g"></div><div class="it"></div><div class="it"></div></div>
+  <div class="mn"><div class="tb"><div class="cr"></div><div class="sp"></div><div class="bl"></div><div class="tg"></div></div>
+  <div class="pg"><div class="fx"><div class="base"></div><div class="p-guides"></div><div class="p-eq"><i style="--c:var(--pri);--lo:0.12;--hi:0.58;--d:12.1s;animation-delay:-6.4s"></i><i style="--c:var(--pri);--lo:0.13;--hi:0.85;--d:11.8s;animation-delay:-4.3s"></i><i style="--c:var(--pri);--lo:0.26;--hi:0.94;--d:10.1s;animation-delay:-6.6s"></i><i style="--c:var(--pri);--lo:0.15;--hi:0.77;--d:12.5s;animation-delay:-0.0s"></i><i style="--c:var(--pri);--lo:0.22;--hi:0.52;--d:10.1s;animation-delay:-1.1s"></i><i style="--c:var(--pri);--lo:0.14;--hi:0.82;--d:7.1s;animation-delay:-6.5s"></i><i style="--c:var(--pri);--lo:0.22;--hi:0.98;--d:10.4s;animation-delay:-0.9s"></i><i style="--c:var(--pri);--lo:0.14;--hi:0.96;--d:9.9s;animation-delay:-7.7s"></i><i style="--c:var(--pri);--lo:0.24;--hi:0.89;--d:10.1s;animation-delay:-4.6s"></i><i style="--c:var(--pri);--lo:0.31;--hi:0.92;--d:12.1s;animation-delay:-1.7s"></i><i style="--c:var(--pri);--lo:0.17;--hi:0.84;--d:8.7s;animation-delay:-6.5s"></i><i style="--c:var(--pri);--lo:0.14;--hi:0.58;--d:11.4s;animation-delay:-0.3s"></i><i style="--c:var(--a2);--lo:0.28;--hi:0.68;--d:7.2s;animation-delay:-1.0s"></i><i style="--c:var(--a2);--lo:0.13;--hi:0.82;--d:7.6s;animation-delay:-6.6s"></i><i style="--c:var(--a2);--lo:0.19;--hi:0.59;--d:9.7s;animation-delay:-0.2s"></i><i style="--c:var(--a2);--lo:0.21;--hi:0.77;--d:11.7s;animation-delay:-3.4s"></i><i style="--c:var(--a2);--lo:0.31;--hi:0.67;--d:10.1s;animation-delay:-4.3s"></i><i style="--c:var(--a2);--lo:0.15;--hi:0.59;--d:10.1s;animation-delay:-4.2s"></i><i style="--c:var(--a2);--lo:0.30;--hi:0.74;--d:7.0s;animation-delay:-7.2s"></i><i style="--c:var(--a2);--lo:0.37;--hi:0.92;--d:12.7s;animation-delay:-0.7s"></i><i style="--c:var(--a2);--lo:0.14;--hi:0.52;--d:8.6s;animation-delay:-5.6s"></i><i style="--c:var(--a2);--lo:0.31;--hi:0.84;--d:10.1s;animation-delay:-2.7s"></i><i style="--c:var(--a2);--lo:0.37;--hi:0.51;--d:12.8s;animation-delay:-1.7s"></i><i style="--c:var(--a2);--lo:0.36;--hi:0.85;--d:7.3s;animation-delay:-3.1s"></i><i style="--c:var(--a3);--lo:0.12;--hi:0.62;--d:10.5s;animation-delay:-0.5s"></i><i style="--c:var(--a3);--lo:0.15;--hi:0.98;--d:12.3s;animation-delay:-0.3s"></i><i style="--c:var(--a3);--lo:0.27;--hi:0.84;--d:10.8s;animation-delay:-4.5s"></i><i style="--c:var(--a3);--lo:0.14;--hi:0.71;--d:8.4s;animation-delay:-5.8s"></i><i style="--c:var(--a3);--lo:0.23;--hi:0.53;--d:10.7s;animation-delay:-2.5s"></i><i style="--c:var(--a3);--lo:0.30;--hi:0.79;--d:7.9s;animation-delay:-1.7s"></i><i style="--c:var(--a3);--lo:0.26;--hi:0.82;--d:7.3s;animation-delay:-0.3s"></i><i style="--c:var(--a3);--lo:0.23;--hi:0.49;--d:12.7s;animation-delay:-0.6s"></i><i style="--c:var(--a3);--lo:0.14;--hi:0.67;--d:7.5s;animation-delay:-0.7s"></i><i style="--c:var(--a3);--lo:0.26;--hi:0.77;--d:10.4s;animation-delay:-4.7s"></i><i style="--c:var(--a3);--lo:0.24;--hi:0.73;--d:12.9s;animation-delay:-3.0s"></i><i style="--c:var(--a3);--lo:0.13;--hi:0.58;--d:9.7s;animation-delay:-4.1s"></i></div><div class="vig"></div></div><div class="ct"><div class="row" style="align-items:flex-end"><div class="f1"><div class="ey">Reports & analytics</div><div class="h">People</div><div class="p">Headcount, joiners & leavers, attendance trends</div></div></div>
+    <div class="k4"><div class="card"><div class="p">Headcount</div><div class="num">62</div></div><div class="card"><div class="p">Joined</div><div class="num">+4</div></div><div class="card"><div class="p">Left</div><div class="num">1</div></div><div class="card"><div class="p">Attendance</div><div class="num">93%</div></div></div>
+    <div class="card" style="height:200px;display:flex;align-items:flex-end;gap:10px;padding:16px"><div class="f1" style="height:40%;border-radius:6px 6px 2px 2px;background:color-mix(in srgb,var(--pri) 30%,transparent)"></div><div class="f1" style="height:62%;border-radius:6px 6px 2px 2px;background:color-mix(in srgb,var(--pri) 40%,transparent)"></div><div class="f1" style="height:55%;border-radius:6px 6px 2px 2px;background:color-mix(in srgb,var(--pri) 50%,transparent)"></div><div class="f1" style="height:78%;border-radius:6px 6px 2px 2px;background:color-mix(in srgb,var(--pri) 60%,transparent)"></div><div class="f1" style="height:70%;border-radius:6px 6px 2px 2px;background:color-mix(in srgb,var(--pri) 30%,transparent)"></div><div class="f1" style="height:88%;border-radius:6px 6px 2px 2px;background:color-mix(in srgb,var(--pri) 40%,transparent)"></div><div class="f1" style="height:64%;border-radius:6px 6px 2px 2px;background:color-mix(in srgb,var(--pri) 50%,transparent)"></div><div class="f1" style="height:92%;border-radius:6px 6px 2px 2px;background:color-mix(in srgb,var(--pri) 60%,transparent)"></div><div class="f1" style="height:80%;border-radius:6px 6px 2px 2px;background:color-mix(in srgb,var(--pri) 30%,transparent)"></div><div class="f1" style="height:96%;border-radius:6px 6px 2px 2px;background:color-mix(in srgb,var(--pri) 40%,transparent)"></div><div class="f1" style="height:85%;border-radius:6px 6px 2px 2px;background:color-mix(in srgb,var(--pri) 50%,transparent)"></div><div class="f1" style="height:100%;border-radius:6px 6px 2px 2px;background:color-mix(in srgb,var(--pri) 60%,transparent)"></div></div></div></div></div></div></div>
+  <div class="side"><div><div class="cap">Light</div><div class="mini"><div class="stage light" style="">
+  <div class="sb"><div class="lg"><i></i>aakash-portal</div><div class="g"></div><div class="it on"></div><div class="it"></div><div class="it"></div><div class="g"></div><div class="it"></div><div class="it"></div><div class="it"></div><div class="g"></div><div class="it"></div><div class="it"></div></div>
+  <div class="mn"><div class="tb"><div class="cr"></div><div class="sp"></div><div class="bl"></div><div class="tg"></div></div>
+  <div class="pg"><div class="fx"><div class="base"></div><div class="p-guides"></div><div class="p-eq"><i style="--c:var(--pri);--lo:0.12;--hi:0.58;--d:12.1s;animation-delay:-6.4s"></i><i style="--c:var(--pri);--lo:0.13;--hi:0.85;--d:11.8s;animation-delay:-4.3s"></i><i style="--c:var(--pri);--lo:0.26;--hi:0.94;--d:10.1s;animation-delay:-6.6s"></i><i style="--c:var(--pri);--lo:0.15;--hi:0.77;--d:12.5s;animation-delay:-0.0s"></i><i style="--c:var(--pri);--lo:0.22;--hi:0.52;--d:10.1s;animation-delay:-1.1s"></i><i style="--c:var(--pri);--lo:0.14;--hi:0.82;--d:7.1s;animation-delay:-6.5s"></i><i style="--c:var(--pri);--lo:0.22;--hi:0.98;--d:10.4s;animation-delay:-0.9s"></i><i style="--c:var(--pri);--lo:0.14;--hi:0.96;--d:9.9s;animation-delay:-7.7s"></i><i style="--c:var(--pri);--lo:0.24;--hi:0.89;--d:10.1s;animation-delay:-4.6s"></i><i style="--c:var(--pri);--lo:0.31;--hi:0.92;--d:12.1s;animation-delay:-1.7s"></i><i style="--c:var(--pri);--lo:0.17;--hi:0.84;--d:8.7s;animation-delay:-6.5s"></i><i style="--c:var(--pri);--lo:0.14;--hi:0.58;--d:11.4s;animation-delay:-0.3s"></i><i style="--c:var(--a2);--lo:0.28;--hi:0.68;--d:7.2s;animation-delay:-1.0s"></i><i style="--c:var(--a2);--lo:0.13;--hi:0.82;--d:7.6s;animation-delay:-6.6s"></i><i style="--c:var(--a2);--lo:0.19;--hi:0.59;--d:9.7s;animation-delay:-0.2s"></i><i style="--c:var(--a2);--lo:0.21;--hi:0.77;--d:11.7s;animation-delay:-3.4s"></i><i style="--c:var(--a2);--lo:0.31;--hi:0.67;--d:10.1s;animation-delay:-4.3s"></i><i style="--c:var(--a2);--lo:0.15;--hi:0.59;--d:10.1s;animation-delay:-4.2s"></i><i style="--c:var(--a2);--lo:0.30;--hi:0.74;--d:7.0s;animation-delay:-7.2s"></i><i style="--c:var(--a2);--lo:0.37;--hi:0.92;--d:12.7s;animation-delay:-0.7s"></i><i style="--c:var(--a2);--lo:0.14;--hi:0.52;--d:8.6s;animation-delay:-5.6s"></i><i style="--c:var(--a2);--lo:0.31;--hi:0.84;--d:10.1s;animation-delay:-2.7s"></i><i style="--c:var(--a2);--lo:0.37;--hi:0.51;--d:12.8s;animation-delay:-1.7s"></i><i style="--c:var(--a2);--lo:0.36;--hi:0.85;--d:7.3s;animation-delay:-3.1s"></i><i style="--c:var(--a3);--lo:0.12;--hi:0.62;--d:10.5s;animation-delay:-0.5s"></i><i style="--c:var(--a3);--lo:0.15;--hi:0.98;--d:12.3s;animation-delay:-0.3s"></i><i style="--c:var(--a3);--lo:0.27;--hi:0.84;--d:10.8s;animation-delay:-4.5s"></i><i style="--c:var(--a3);--lo:0.14;--hi:0.71;--d:8.4s;animation-delay:-5.8s"></i><i style="--c:var(--a3);--lo:0.23;--hi:0.53;--d:10.7s;animation-delay:-2.5s"></i><i style="--c:var(--a3);--lo:0.30;--hi:0.79;--d:7.9s;animation-delay:-1.7s"></i><i style="--c:var(--a3);--lo:0.26;--hi:0.82;--d:7.3s;animation-delay:-0.3s"></i><i style="--c:var(--a3);--lo:0.23;--hi:0.49;--d:12.7s;animation-delay:-0.6s"></i><i style="--c:var(--a3);--lo:0.14;--hi:0.67;--d:7.5s;animation-delay:-0.7s"></i><i style="--c:var(--a3);--lo:0.26;--hi:0.77;--d:10.4s;animation-delay:-4.7s"></i><i style="--c:var(--a3);--lo:0.24;--hi:0.73;--d:12.9s;animation-delay:-3.0s"></i><i style="--c:var(--a3);--lo:0.13;--hi:0.58;--d:9.7s;animation-delay:-4.1s"></i></div><div class="vig"></div></div><div class="ct"><div class="row" style="align-items:flex-end"><div class="f1"><div class="ey">Reports & analytics</div><div class="h">People</div><div class="p">Headcount, joiners & leavers, attendance trends</div></div></div>
+    <div class="k4"><div class="card"><div class="p">Headcount</div><div class="num">62</div></div><div class="card"><div class="p">Joined</div><div class="num">+4</div></div><div class="card"><div class="p">Left</div><div class="num">1</div></div><div class="card"><div class="p">Attendance</div><div class="num">93%</div></div></div>
+    <div class="card" style="height:200px;display:flex;align-items:flex-end;gap:10px;padding:16px"><div class="f1" style="height:40%;border-radius:6px 6px 2px 2px;background:color-mix(in srgb,var(--pri) 30%,transparent)"></div><div class="f1" style="height:62%;border-radius:6px 6px 2px 2px;background:color-mix(in srgb,var(--pri) 40%,transparent)"></div><div class="f1" style="height:55%;border-radius:6px 6px 2px 2px;background:color-mix(in srgb,var(--pri) 50%,transparent)"></div><div class="f1" style="height:78%;border-radius:6px 6px 2px 2px;background:color-mix(in srgb,var(--pri) 60%,transparent)"></div><div class="f1" style="height:70%;border-radius:6px 6px 2px 2px;background:color-mix(in srgb,var(--pri) 30%,transparent)"></div><div class="f1" style="height:88%;border-radius:6px 6px 2px 2px;background:color-mix(in srgb,var(--pri) 40%,transparent)"></div><div class="f1" style="height:64%;border-radius:6px 6px 2px 2px;background:color-mix(in srgb,var(--pri) 50%,transparent)"></div><div class="f1" style="height:92%;border-radius:6px 6px 2px 2px;background:color-mix(in srgb,var(--pri) 60%,transparent)"></div><div class="f1" style="height:80%;border-radius:6px 6px 2px 2px;background:color-mix(in srgb,var(--pri) 30%,transparent)"></div><div class="f1" style="height:96%;border-radius:6px 6px 2px 2px;background:color-mix(in srgb,var(--pri) 40%,transparent)"></div><div class="f1" style="height:85%;border-radius:6px 6px 2px 2px;background:color-mix(in srgb,var(--pri) 50%,transparent)"></div><div class="f1" style="height:100%;border-radius:6px 6px 2px 2px;background:color-mix(in srgb,var(--pri) 60%,transparent)"></div></div></div></div></div></div></div></div>
+  <div class="spec"><dl><dt>Layers</dt><dd>Ambient base · guide lines · 36 bars in 3 colour groups</dd><dt>Motion</dt><dd>Each bar 7–13 s, out of step (never fast)</dd><dt>Strength</dt><dd>Bars fade upwards, under the real charts</dd><dt>Cost</dt><dd>36 elements, scale only</dd></dl></div></div></div></div></x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

@@ -1,11 +1,13 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Audit, CurrentAccess, RequirePermission, TenantCtx } from '../../common';
 import type { TenantContext } from '../../common/types/request.types';
 import type { AccessContext } from '../access/access.types';
 import { companyOf } from '../user-management/company-context';
 import { DelegationsService } from './delegations.service';
-import { CreateDelegationDto } from './dto';
+import { CreateDelegationDto, RangeQueryDto } from './dto';
+import { CoverService } from './cover.service';
+import { LiveAccess } from '../realtime/live.decorator';
 
 // ============================================================
 // Approval delegation
@@ -17,9 +19,44 @@ import { CreateDelegationDto } from './dto';
 
 @ApiTags('Delegations')
 @ApiBearerAuth()
+@LiveAccess('caller')
 @Controller('delegations')
 export class DelegationsController {
-  constructor(private readonly delegations: DelegationsService) {}
+  constructor(
+    private readonly delegations: DelegationsService,
+    private readonly cover: CoverService,
+  ) {}
+
+  @Get('away')
+  @ApiOperation({ summary: 'My approved leave coming up, and whether someone covers it' })
+  away(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext) {
+    return this.cover.myLeave(companyOf(ctx), access.userId);
+  }
+
+  @Get('suggest')
+  @ApiOperation({ summary: 'Good covers for my approvals on these dates' })
+  suggest(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Query() q: RangeQueryDto) {
+    return this.cover.suggest(companyOf(ctx), access.userId, q.from, q.to);
+  }
+
+  @Get('timeline')
+  @ApiOperation({ summary: 'Me and my team: leave and who covers' })
+  timeline(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Query() q: RangeQueryDto) {
+    return this.cover.timeline(companyOf(ctx), access.userId, q.from, q.to);
+  }
+
+  @Get('recap')
+  @ApiOperation({ summary: 'While you were away: what your cover decided' })
+  recap(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext) {
+    return this.cover.recap(companyOf(ctx), access.userId);
+  }
+
+  @Get('gaps')
+  @RequirePermission('user.view')
+  @ApiOperation({ summary: 'Approvers on leave in the next 30 days with nobody covering' })
+  gaps(@TenantCtx() ctx: TenantContext) {
+    return this.cover.gaps(companyOf(ctx));
+  }
 
   @Get()
   @ApiOperation({ summary: "Approvals I've delegated and approvals I'm covering" })

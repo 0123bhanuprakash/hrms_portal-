@@ -110,6 +110,17 @@ export class EmployeesService {
     });
   }
 
+  /**
+   * Everyone in a company is an employee: a basic profile (name, email, joining
+   * today) for an account that has none. Job title, department and the rest are
+   * filled in later ("Complete your profile").
+   */
+  async basicProfileFor(companyId: string, userId: string) {
+    const settings = await this.prisma.companySettings.findUnique({ where: { companyId }, select: { timezone: true } });
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: settings?.timezone || 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    return this.createForUser(companyId, userId, { joiningDate: today });
+  }
+
   /** Plan limit: maxEmployees counts everyone not terminated (null / missing = unlimited). */
   private async assertEmployeeLimit(companyId: string): Promise<void> {
     const company = await this.prisma.company.findUnique({ where: { id: companyId }, select: { featuresVersion: true } });

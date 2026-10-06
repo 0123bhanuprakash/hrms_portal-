@@ -3,7 +3,7 @@ import { randomUUID } from 'crypto';
 import { ExpenseClaimStatus, ExpenseStage, LeaveApprovalStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AccessService } from '../access/access.service';
-import { holds, type AccessContext } from '../access/access.types';
+import { covering, holds, type AccessContext } from '../access/access.types';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ApprovalRouterService } from '../projects/approval-router.service';
 import { PrivateFilesService } from '../employee-profile/private-files.service';
@@ -462,7 +462,7 @@ export class ExpenseClaimsService {
       // Waiting for me: the database narrows to claims with a pending step I could act on
       // (my manager pool / someone I cover, or Finance / HR); the exact rule (current round,
       // manager before Finance + HR, one person never two steps) is then applied per claim.
-      const me = [access.userId, ...access.delegations.map((d) => d.fromUserId)];
+      const me = [access.userId, ...covering(access, 'expense.approve').map((d) => d.fromUserId)];
       const candidates: Prisma.ExpenseClaimWhereInput[] = [{ approvals: { some: { stage: ExpenseStage.MANAGER, status: LeaveApprovalStatus.PENDING, approverIds: { hasSome: me } } } }];
       // Finance / HR act only once the manager step is done (a pending manager row exists only in the current round)
       const parallel = [...(holds(access, FINANCE) ? [ExpenseStage.FINANCE] : []), ...(holds(access, HR) ? [ExpenseStage.HR] : [])];
@@ -671,7 +671,7 @@ export class ExpenseClaimsService {
     if (manager?.status === LeaveApprovalStatus.PENDING) {
       if (actedBefore(ExpenseStage.MANAGER)) return null;
       if (manager.approverIds.includes(access.userId)) return { step: manager, onBehalfOf: null };
-      const cover = access.delegations.find((d) => manager.approverIds.includes(d.fromUserId));
+      const cover = covering(access, 'expense.approve').find((d) => manager.approverIds.includes(d.fromUserId));
       return cover ? { step: manager, onBehalfOf: cover.fromUserId } : null;
     }
     // Finance and HR in parallel; one person never decides two steps of a round
@@ -743,7 +743,7 @@ export class ExpenseClaimsService {
     if (row.employee.userId === access.userId) return row;
     if (row.status === ExpenseClaimStatus.DRAFT) throw new NotFoundException('Claim not found');
     if (holds(access, FINANCE) || holds(access, HR)) return row;
-    if (row.approvals.some((a) => a.approverIds.includes(access.userId) || a.actedById === access.userId || access.delegations.some((d) => a.approverIds.includes(d.fromUserId)))) return row;
+    if (row.approvals.some((a) => a.approverIds.includes(access.userId) || a.actedById === access.userId || covering(access, 'expense.approve').some((d) => a.approverIds.includes(d.fromUserId)))) return row;
     const scope = this.access.employeeScope(access, 'expense.view');
     if (scope && (await this.prisma.employee.count({ where: { AND: [{ id: row.employee.id }, scope] } }))) return row;
     throw new NotFoundException('Claim not found');
@@ -836,7 +836,7 @@ export class ExpenseClaimsService {
       let to: string[];
       let step: string;
       if (manager.status === LeaveApprovalStatus.PENDING) {
-        to = [...manager.approverIds, ...(await this.notifications.coveringFor(manager.approverIds))];
+        to = [...manager.approverIds, ...(await this.notifications.coveringFor(manager.approverIds, 'expense.approve'))];
         step = 'manager approval';
       } else {
         to = [...(await this.notifications.companyWideApprovers(companyId, FINANCE)), ...(await this.notifications.companyWideApprovers(companyId, HR))];

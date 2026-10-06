@@ -5,12 +5,13 @@ import { toast } from 'sonner';
 import { AlertTriangle, Check, Copy, Lock, Send } from 'lucide-react';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
-import { Field, Input, Textarea } from '@/components/ui/field';
+import { Field, Textarea } from '@/components/ui/field';
 import { Skeleton } from '@/components/ui/feedback';
 import { blockColor } from '@/components/timesheets/week-calendar';
 import { addDays, dayLabel, fmtHours, useCopyDay, useSubmitPreview, useSubmitTime } from '@/lib/company/timesheets';
 import { getApiErrorMessage } from '@/lib/errors';
 import { cn } from '@/lib/cn';
+import { DateInput } from '@/components/ui/pickers';
 
 const CHECK = {
   ok: { text: 'looks right', cls: 'bg-success/10 text-success' },
@@ -53,7 +54,7 @@ export function SubmitDialog({ open, onClose, onFillDay }: { open: boolean; onCl
       title="Send for approval"
       description="Sends every day you’ve logged but not sent yet, up to today — or just today."
       icon={<Send />}
-      className="max-w-xl"
+      size="lg"
       footer={
         <div className="flex w-full items-center gap-2">
           <span className="flex flex-1 items-center gap-1 text-xs text-muted-foreground"><Lock className="h-3 w-3" /> Approved time is locked</span>
@@ -176,8 +177,8 @@ export function CopyDayDialog({ open, onClose, defaultFrom, defaultTo, minDate, 
       }
     >
       <div className="grid grid-cols-2 gap-3">
-        <Field label="From" htmlFor="cp-from"><Input id="cp-from" type="date" min={minDate} max={maxDate} value={from} onChange={(e) => setFrom(e.target.value)} /></Field>
-        <Field label="To" htmlFor="cp-to"><Input id="cp-to" type="date" min={minDate} max={maxDate} value={to} onChange={(e) => setTo(e.target.value)} /></Field>
+        <Field label="From" htmlFor="cp-from"><DateInput id="cp-from" min={minDate} max={maxDate} value={from} onChange={(e) => setFrom(e.target.value)} /></Field>
+        <Field label="To" htmlFor="cp-to"><DateInput id="cp-to" min={minDate} max={maxDate} value={to} onChange={(e) => setTo(e.target.value)} /></Field>
       </div>
       <div className="mt-3 flex flex-wrap gap-1.5">
         {[['Yesterday → today', addDays(maxDate, -1), maxDate]].map(([l, f, t]) => (

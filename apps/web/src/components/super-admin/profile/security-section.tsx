@@ -19,6 +19,7 @@ import { getApiErrorMessage } from '@/lib/errors';
 import { describeUserAgent, formatDateTime, formatRelative } from '@/lib/format';
 import { useAuthStore } from '@/store/useAuthStore';
 import { cn } from '@/lib/cn';
+import { Select } from '@/components/ui/pickers';
 
 const DAY = 86_400_000;
 export const daysSince = (iso: string | null | undefined) => (iso ? Math.floor((Date.now() - new Date(iso).getTime()) / DAY) : null);
@@ -290,7 +291,7 @@ function ProtectionCard({ overview }: { overview: AccountOverview }) {
             <span className="block text-sm font-semibold">Sign me out after inactivity</span>
             <span className="block text-xs text-muted-foreground">On this console, after no mouse or keyboard use in any tab</span>
           </span>
-          <select
+          <Select
             aria-label="Idle sign-out"
             className={cn(inputClass, 'h-9 w-auto text-xs')}
             value={p.idleTimeoutMinutes ?? ''}
@@ -302,7 +303,7 @@ function ProtectionCard({ overview }: { overview: AccountOverview }) {
           >
             <option value="">Never</option>
             {[15, 30, 60, 120].map((m) => <option key={m} value={m}>After {m < 60 ? `${m} minutes` : `${m / 60} hour${m === 60 ? '' : 's'}`}</option>)}
-          </select>
+          </Select>
         </li>
         <li className="flex items-center gap-3 py-3">
           <span className="min-w-0 flex-1">

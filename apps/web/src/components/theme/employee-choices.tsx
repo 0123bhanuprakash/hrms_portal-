@@ -3,16 +3,18 @@
 import React from 'react';
 import { toast } from 'sonner';
 import { Check } from 'lucide-react';
-import type { CompanyPersonalization, MenuStyle } from '@hrms/types';
+import type { BackdropLevel, BackdropPack, CompanyPersonalization, MenuStyle } from '@hrms/types';
 import { Card, CardHeader, Skeleton } from '@/components/ui/feedback';
 import { Field, inputClass } from '@/components/ui/field';
 import { MENU_STYLE_INFO } from '@/components/preferences/personal-look';
 import { useCompanyTheme, usePreferences, useUpdatePersonalization } from '@/lib/company/queries';
 import { useUpdateUiDefaults } from '@/lib/preferences/ui-state';
+import { BACKDROP_LEVEL_INFO, BACKDROP_PACK_INFO } from '@/lib/preferences/backdrop';
 import { Button } from '@/components/ui/button';
 import { THEME_PRESETS } from '@/lib/theme/presets';
 import { getApiErrorMessage } from '@/lib/errors';
 import { cn } from '@/lib/cn';
+import { Select } from '@/components/ui/pickers';
 
 function Switch({ checked, onChange, label, disabled }: { checked: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
   return (
@@ -125,7 +127,7 @@ export function EmployeeChoicesCard({ companyId }: { companyId: string }) {
         <div className="flex items-start gap-4 px-5 py-4">
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold">Personal menu style</p>
-            <p className="text-xs text-muted-foreground">Employees can switch the side menu between Classic, Rail, Floating and Collapsible.</p>
+            <p className="text-xs text-muted-foreground">Employees can switch the side menu between Classic, Glide, Peek, Floating and Collapsible.</p>
           </div>
           <Switch
             label="Personal menu style"
@@ -139,7 +141,7 @@ export function EmployeeChoicesCard({ companyId }: { companyId: string }) {
 
         <div className="px-5 py-4">
           <Field label="Default menu style" htmlFor="default-menu-style" hint="What everyone sees unless they pick their own.">
-            <select
+            <Select
               id="default-menu-style"
               className={cn(inputClass, 'sm:max-w-xs')}
               value={rules.defaultMenuStyle}
@@ -151,7 +153,40 @@ export function EmployeeChoicesCard({ companyId }: { companyId: string }) {
                   {MENU_STYLE_INFO[s].label} — {MENU_STYLE_INFO[s].text}
                 </option>
               ))}
-            </select>
+            </Select>
+          </Field>
+        </div>
+
+        <div className="grid gap-4 px-5 py-4 sm:grid-cols-2">
+          <Field label="Default page backgrounds" htmlFor="default-backdrop-pack" hint="The living background behind every page — a different mood per section.">
+            <Select
+              id="default-backdrop-pack"
+              className={inputClass}
+              value={rules.defaultBackdropPack}
+              disabled={update.isPending}
+              onChange={(e) => change({ defaultBackdropPack: e.target.value as BackdropPack }, 'Default backgrounds saved')}
+            >
+              {(Object.keys(BACKDROP_PACK_INFO) as BackdropPack[]).map((p) => (
+                <option key={p} value={p}>
+                  {BACKDROP_PACK_INFO[p].label} — {BACKDROP_PACK_INFO[p].text}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="How lively" htmlFor="default-backdrop-level" hint="Everyone can still change this for themselves in Preferences.">
+            <Select
+              id="default-backdrop-level"
+              className={inputClass}
+              value={rules.defaultBackdropLevel}
+              disabled={update.isPending}
+              onChange={(e) => change({ defaultBackdropLevel: e.target.value as BackdropLevel }, 'Default saved')}
+            >
+              {(Object.keys(BACKDROP_LEVEL_INFO) as BackdropLevel[]).map((l) => (
+                <option key={l} value={l}>
+                  {BACKDROP_LEVEL_INFO[l].label} — {BACKDROP_LEVEL_INFO[l].text}
+                </option>
+              ))}
+            </Select>
           </Field>
         </div>
       </div>

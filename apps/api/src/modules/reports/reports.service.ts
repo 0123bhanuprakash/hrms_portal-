@@ -121,7 +121,7 @@ export class ReportsService {
       ...rows.filter((e) => left(e) && e.terminationDate && e.terminationDate.getTime() >= windowStart && e.terminationDate.getTime() <= nowT).map((e) => ({ ...person(e), kind: 'left' as const, date: keyFromDate(e.terminationDate!) })),
     ]
       .sort((a, b) => b.date.localeCompare(a.date))
-      .slice(0, 40);
+      .slice(0, 500); // everyone, for "See everyone" (capped only as a safety net)
     const avgTenureMonths = headcount ? Math.round(current.reduce((n, e) => n + (nowT - e.joiningDate.getTime()), 0) / headcount / (30.44 * 86_400_000)) : 0;
 
     // Leavers per department per month (12 months); rate = share of the department (still here + left) who left

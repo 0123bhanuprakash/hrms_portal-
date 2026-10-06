@@ -14,6 +14,7 @@ import { api } from '@/lib/api';
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatDateTime, formatRelative, humanizeAction } from '@/lib/format';
 import { cn } from '@/lib/cn';
+import { Select } from '@/components/ui/pickers';
 
 const PAGE_SIZE = 25;
 const RANGES = [
@@ -133,7 +134,7 @@ function AuditLogsView() {
       {/* Filters */}
       <Card className="p-3">
         <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_auto]">
-          <select
+          <Select
             aria-label="Filter by company"
             value={query.companyId ?? ''}
             onChange={(e) => update({ companyId: e.target.value || undefined })}
@@ -143,8 +144,8 @@ function AuditLogsView() {
             {companies.data?.data.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
-          </select>
-          <select
+          </Select>
+          <Select
             aria-label="Filter by action"
             value={query.action ?? ''}
             onChange={(e) => update({ action: e.target.value || undefined })}
@@ -154,7 +155,7 @@ function AuditLogsView() {
             {actions.data?.map((a) => (
               <option key={a} value={a}>{humanizeAction(a)}</option>
             ))}
-          </select>
+          </Select>
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input value={email} onChange={(e) => setEmail(e.target.value)} data-page-search placeholder="Actor email…" aria-label="Filter by actor email" className={cn(inputClass, 'h-9 pl-9')} />

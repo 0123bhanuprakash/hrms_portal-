@@ -425,7 +425,7 @@ function ChangeThemeModal({
       busy={update.isPending}
       title={`Change theme · ${company.name}`}
       description="Replaces the company's current theme, including any customizations their admin made."
-      className="max-w-2xl"
+      size="lg"
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={update.isPending}>Cancel</Button>

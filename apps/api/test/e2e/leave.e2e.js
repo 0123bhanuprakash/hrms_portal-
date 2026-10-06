@@ -184,7 +184,9 @@ async function cleanup() {
     // ── Who's off
     const off = await call(H, 'GET', `/leave/calendar?month=${m4.slice(0, 7)}`);
     check("Who's off: HR sees leave in the month", off.status === 200 && off.data.leaves.length >= 2, JSON.stringify(off.data?.leaves?.length));
-    check("Who's off: employee sees only own", (await call(E, 'GET', `/leave/calendar?month=${m4.slice(0, 7)}`)).data.leaves.every((l) => l.employee.id === P.emp.id));
+    // Employees see their own team (same manager, their manager, their reports) — not everyone
+    const team = new Set([P.emp.id, P.peer.id, P.boss.id]);
+    check("Who's off: employee sees own team only", (await call(E, 'GET', `/leave/calendar?month=${m4.slice(0, 7)}`)).data.leaves.every((l) => team.has(l.employee.id)));
     const types2 = await call(H, 'GET', '/leave/types?all=true');
     check('HR lists all types incl. inactive', types2.data?.length === 7);
   } catch (e) { console.error('ERROR', e.stack); results.push(false); }

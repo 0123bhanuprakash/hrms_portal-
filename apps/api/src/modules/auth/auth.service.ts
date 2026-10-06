@@ -24,6 +24,7 @@ import type {
   RefreshResponse,
   AuthUserResponse,
 } from './dto/auth.dto';
+import { RealtimeService } from '../realtime/realtime.service';
 
 // ============================================================
 // AuthService — Core authentication business logic
@@ -77,6 +78,7 @@ export class AuthService {
     private readonly accessService: AccessService,
     private readonly maintenance: MaintenanceService,
     private readonly emailService: EmailService,
+    private readonly realtime: RealtimeService,
   ) {}
 
   // ─── Login ─────────────────────────────────────────────────
@@ -247,6 +249,7 @@ export class AuthService {
         where: { userId: stored.userId, familyId: stored.familyId },
         data: { isRevoked: true },
       });
+      this.realtime.signOut(stored.userId, { sid: stored.familyId }, 'security');
       throw new UnauthorizedException(
         'Token reuse detected. All sessions have been revoked for your security. Please log in again.',
       );
@@ -406,6 +409,7 @@ export class AuthService {
       }),
     ]);
 
+    this.realtime.signOut(record.userId, {}, 'password');
     this.logger.log(`Password reset successful for user: ${record.user.email}`);
   }
 
@@ -520,6 +524,7 @@ export class AuthService {
     if (count === 0) {
       throw new NotFoundException('Session not found or already signed out');
     }
+    this.realtime.signOut(userId, { sid: sessionId }, 'device');
   }
 
   /** Signs out every session except the current one. Returns how many were revoked. */
@@ -532,6 +537,7 @@ export class AuthService {
       },
       data: { isRevoked: true },
     });
+    if (count) this.realtime.signOut(userId, currentSid ? { exceptSid: currentSid } : {}, 'device');
     return count;
   }
 

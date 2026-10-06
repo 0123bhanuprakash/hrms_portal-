@@ -4,10 +4,11 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { ClipboardEdit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Field, Input, Textarea, inputClass } from '@/components/ui/field';
+import { Field, Input, Textarea, inputClass, FormError } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { dayLabel, hhmm, useRequestCorrection, useUpsertRecord, type CalendarDay, type DayStatus } from '@/lib/company/attendance';
 import { getApiErrorMessage } from '@/lib/errors';
+import { Select } from '@/components/ui/pickers';
 
 /**
  * Employee: request a correction (goes to the manager).
@@ -77,7 +78,7 @@ export function CorrectionDialog({
       icon={<ClipboardEdit />}
       title={mode === 'request' ? `Correct ${dayLabel(day.date)}` : `Edit ${employeeName ? `${employeeName} · ` : ''}${dayLabel(day.date)}`}
       description={mode === 'request' ? 'Your manager approves the change before it shows on your attendance.' : 'Saved straight away and marked as a manual entry.'}
-      className="sm:max-w-md"
+      size="sm"
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={busy}>Cancel</Button>
@@ -86,16 +87,16 @@ export function CorrectionDialog({
       }
     >
       <form id="correction-form" onSubmit={submit} className="space-y-3">
-        {error && <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+        <FormError>{error}</FormError>
         {mode === 'edit' && (
           <Field label="Mark the day as" htmlFor="cr-status">
-            <select id="cr-status" className={inputClass} value={status} onChange={(e) => setStatus(e.target.value as DayStatus | '')}>
+            <Select id="cr-status" className={inputClass} value={status} onChange={(e) => setStatus(e.target.value as DayStatus | '')}>
               <option value="">Worked — use the times below</option>
               <option value="ON_LEAVE">On leave</option>
               <option value="ABSENT">Absent</option>
               <option value="WORK_FROM_HOME">Work from home</option>
               <option value="HOLIDAY">Holiday</option>
-            </select>
+            </Select>
           </Field>
         )}
         {!status && (

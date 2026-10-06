@@ -81,8 +81,15 @@ export const BUILTIN_THEME_KEYS = [
 export type BuiltinThemeKey = (typeof BUILTIN_THEME_KEYS)[number];
 
 /** Layouts of the main menu. `classic` is today's sidebar and the default. */
-export const MENU_STYLES = ['classic', 'rail', 'floating', 'collapsible'] as const;
+export const MENU_STYLES = ['classic', 'glide', 'peek', 'floating', 'collapsible'] as const;
 export type MenuStyle = (typeof MENU_STYLES)[number];
+
+/** Page background packs — a set of "moods", one per section. `signature` is the default; `simple` = plain background, no motion. */
+export const BACKDROP_PACKS = ['signature', 'terra', 'prism', 'simple'] as const;
+export type BackdropPack = (typeof BACKDROP_PACKS)[number];
+/** How lively page backgrounds are: moving, still, or plain. */
+export const BACKDROP_LEVELS = ['lively', 'calm', 'off'] as const;
+export type BackdropLevel = (typeof BACKDROP_LEVELS)[number];
 
 /** What a company lets its people change for themselves. */
 export interface CompanyPersonalization {
@@ -94,4 +101,7 @@ export interface CompanyPersonalization {
   personalMenuStyle: boolean;
   /** Menu style for everyone who hasn't picked one */
   defaultMenuStyle: MenuStyle;
+  /** Page background pack and liveliness for everyone who hasn't picked one */
+  defaultBackdropPack: BackdropPack;
+  defaultBackdropLevel: BackdropLevel;
 }

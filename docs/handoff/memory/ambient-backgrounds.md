@@ -1,0 +1,18 @@
+---
+name: ambient-backgrounds
+description: Page background moods — Signature pack BUILT 2026-10-05 (uncommitted); next = design + build 2 new packs Terra & Prism
+metadata:
+  type: project
+---
+
+User approved the 13 "Signature" moods (canvas row "Ambient backgrounds", boards Bg*.dc.html, builder docs/design/builders/build-backgrounds.js) and asked to implement them. Also asked for a Themes/Preferences "background theme" choice: default = Signature (a mood per section); picking another pack gives a COMPLETELY NEW set for every section. User asked for 2 new pack ideas, referencing the web.
+
+BUILT 2026-10-05 (NOT committed yet — working tree): API prefs backdropPack/backdropLevel + company defaultBackdropPack/defaultBackdropLevel (migration 20261021100000_page_backdrops); web lib/preferences/backdrop.ts (route→mood), components/motion/page-backdrop.tsx (PageBackdrop + Backdrop), app/backdrops.css, wired in (app) and (super-admin) layouts (root div `isolate`, backdrop z-index -1) and the company sign-in form side (hero). Preferences → "Page backgrounds" card (style + Lively/Calm/Off; Terra & Prism shown "Coming soon"); Settings → Theme admin defaults. Checked in browser (dark): home, expenses, leave, helpdesk, assets, reports, projects, people OK. Light mode only partly checked.
+
+NEXT: design Terra (nature/organic: real time-of-day sky, topographic contour lines, fireflies, lighthouse beam, petals, mountain ridges, northern lights) and Prism (Bauhaus/Swiss/Linear-style geometry: light beams, grids, circles & semicircles, radar sweep, iso grid, equaliser bars) as canvas rows, get approval, then add keys to BACKDROP_PACKS (packages/types + apps/api/src/modules/themes/personalization.ts) and per-pack moods in page-backdrop.tsx/backdrops.css (e.g. `.bd-root[data-pack=terra]`). Web refs used: Aurora UI / mesh gradients (Stripe, Linear, Vercel), topographic contour backgrounds, Bauhaus geometric UI.
+
+**How to apply:** first commit the built Signature work when the user asks; then the 2 packs. Related: [[ui-roadmap-phases]].
+
+
+UPDATE 2026-10-05 (new Claude profile): Terra + Prism DESIGNED, waiting for the user's OK. Builder docs/design/builders/build-packs.js (reuses build-backgrounds.js exports) → boards BgPacks (picker + same section in 3 packs), TerraOverview + 13 Terra*, PrismOverview + 13 Prism*. Terra: time-of-day sky, fireflies, sun path, clouds & hills, contour map, dappled light, zen garden, lighthouse, petal breeze, mountain ridges, linen (still), northern lights, golden hour. Prism: light beams, Bauhaus shapes, chronograph, striped sun, isometric build, facets, wireframe cubes, radar, Memphis confetti, equaliser, Swiss grid (still), grid horizon, prism sign-in. Build after approval: CSS classes .t-* / .p-* already written in build-packs.js can be ported to backdrops.css under .bd-root[data-pack=terra|prism].
+BUILT 2026-10-05 (uncommitted): Terra + Prism packs AND "Simple" (plain, no background, no motion — like before; user asked for it). Packs list = signature, terra, prism, simple (types + API personalization.ts). Web: components/motion/backdrop-packs.tsx (TerraLayers/PrismLayers; Terra Home sky + Attendance sun path follow the clock in the person's time zone, shift 09:30–18:30), app/backdrop-packs.css (.bdt-*/.bdp-*, container units), Backdrop gets pack prop, Preferences card shows 4 live tiles (lively choice hidden for Simple). Public /companies/branding/by-slug now returns backdrop {pack, level} so sign-in uses the company default. e2e personalization 39/39. Checked in browser on Hema (light + dark), then restored her to Signature.

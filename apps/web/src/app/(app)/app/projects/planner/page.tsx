@@ -17,6 +17,7 @@ import { useDepartments } from '@/lib/company/org';
 import { useAvailable, usePlanner, usePortfolio, useProjectPlan, type PlannerCell, type PortfolioProject, type ProjectPerson } from '@/lib/company/projects';
 import { getApiErrorMessage } from '@/lib/errors';
 import { cn } from '@/lib/cn';
+import { DateInput, Select } from '@/components/ui/pickers';
 
 const addDays = (k: string, n: number) => {
   const d = new Date(`${k}T00:00:00Z`);
@@ -84,10 +85,10 @@ function PlannerContent() {
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Find a person" className="h-9 pl-8" aria-label="Find a person" />
         </div>
-        <select className={cn(inputClass, 'h-9 w-auto text-xs')} value={departmentId} onChange={(e) => setDepartmentId(e.target.value)} aria-label="Department">
+        <Select className={cn(inputClass, 'h-9 w-auto text-xs')} value={departmentId} onChange={(e) => setDepartmentId(e.target.value)} aria-label="Department">
           <option value="">All departments</option>
           {departments.data?.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
-        </select>
+        </Select>
         <div className="ml-auto inline-flex rounded-lg border border-border bg-surface p-0.5" role="group" aria-label="Weeks">
           {[4, 8, 13].map((w) => (
             <button key={w} type="button" aria-pressed={weeks === w} onClick={() => setWeeks(w)} className={cn('h-7 rounded-md px-3 text-xs font-semibold', weeks === w ? 'bg-primary-soft text-primary-soft-foreground' : 'text-muted-foreground')}>{w === 13 ? 'Quarter' : `${w} weeks`}</button>
@@ -234,9 +235,9 @@ function FindFree({ onAssign, today }: { onAssign: (r: AssignRequest) => void; t
       <CardHeader icon={<Search />} title="Find someone free" />
       <div className="space-y-3 px-5 pb-5">
         <div className="grid grid-cols-3 gap-2">
-          <Field label="From" htmlFor="ff-from"><Input id="ff-from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></Field>
-          <Field label="For" htmlFor="ff-weeks"><select id="ff-weeks" className={inputClass} value={weeksFor} onChange={(e) => setWeeksFor(Number(e.target.value))}>{[2, 4, 6, 8, 12].map((w) => <option key={w} value={w}>{w} weeks</option>)}</select></Field>
-          <Field label="At least" htmlFor="ff-min"><select id="ff-min" className={inputClass} value={min} onChange={(e) => setMin(Number(e.target.value))}>{[25, 50, 75, 100].map((m) => <option key={m} value={m}>{m}% free</option>)}</select></Field>
+          <Field label="From" htmlFor="ff-from"><DateInput id="ff-from" value={from} onChange={(e) => setFrom(e.target.value)} /></Field>
+          <Field label="For" htmlFor="ff-weeks"><Select id="ff-weeks" className={inputClass} value={weeksFor} onChange={(e) => setWeeksFor(Number(e.target.value))}>{[2, 4, 6, 8, 12].map((w) => <option key={w} value={w}>{w} weeks</option>)}</Select></Field>
+          <Field label="At least" htmlFor="ff-min"><Select id="ff-min" className={inputClass} value={min} onChange={(e) => setMin(Number(e.target.value))}>{[25, 50, 75, 100].map((m) => <option key={m} value={m}>{m}% free</option>)}</Select></Field>
         </div>
         <Button size="sm" onClick={() => setQuery({ from, to: addDays(from, weeksFor * 7 - 1), min })}><Search /> Search</Button>
         {r.data && (

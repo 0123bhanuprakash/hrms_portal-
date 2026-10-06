@@ -12,15 +12,16 @@ import { StorageService } from '../storage/storage.service';
 import { CompanyRolesService } from '../access/company-roles.service';
 import { DEFAULT_PLAN_KEY } from '../access/catalog';
 import { companyThemeFields, type CompanyThemeInput } from '../themes/company-theme';
+import { SeasonsService } from '../seasons/seasons.service';
 import { ThemesService } from '../themes/themes.service';
-import type { CompanyPersonalization, MenuStyle, ThemeRef, ThemeTokens } from '@hrms/types';
+import type { BackdropLevel, BackdropPack, CompanyPersonalization, MenuStyle, ThemeRef, ThemeTokens } from '@hrms/types';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { UpdateBrandingDto } from './dto/update-branding.dto';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { CompanyStatus, Prisma, UserStatus } from '@prisma/client';
 import { generateTemporaryPassword, hashPassword } from '../auth/password.util';
-import { MENU_STYLES } from '../themes/personalization';
+import { BACKDROP_LEVELS, BACKDROP_PACKS, MENU_STYLES } from '../themes/personalization';
 import { mergeUiState } from '../users/ui-state';
 import type { UpdatePersonalizationDto } from './dto/update-personalization.dto';
 
@@ -35,6 +36,7 @@ export class CompaniesService {
     private readonly companyRoles: CompanyRolesService,
     private readonly storage: StorageService,
     private readonly themes: ThemesService,
+    private readonly seasons: SeasonsService,
   ) {}
 
   /**
@@ -137,7 +139,23 @@ export class CompaniesService {
         data: { userId: adminUser.id, roleId: ownerRoleId, companyId: company.id },
       });
 
-      return { company, settings, branding, adminUser };
+      // Everyone in a company is an employee — the admin too (employee #1).
+      // They complete job title, department etc. themselves later.
+      const firstNumber = await tx.companySettings.update({ where: { id: settings.id }, data: { employeeIdSequence: { increment: 1 } } });
+      const adminEmployee = await tx.employee.create({
+        data: {
+          companyId: company.id,
+          userId: adminUser.id,
+          employeeId: `${firstNumber.employeeIdPrefix || 'EMP'}${String(firstNumber.employeeIdSequence).padStart(3, '0')}`,
+          firstName: adminUser.firstName,
+          lastName: adminUser.lastName,
+          email: adminUser.email,
+          joiningDate: new Date(new Date().toISOString().slice(0, 10)),
+        },
+      });
+      await tx.employeeHierarchy.create({ data: { companyId: company.id, ancestorId: adminEmployee.id, descendantId: adminEmployee.id, depth: 0 } });
+
+      return { company, settings: firstNumber, branding, adminUser, adminEmployee };
     });
 
     // 4. Send welcome email to Company Admin (asynchronous, non-blocking queue)
@@ -164,6 +182,7 @@ export class CompaniesService {
         email: result.adminUser.email,
         firstName: result.adminUser.firstName,
         lastName: result.adminUser.lastName,
+        employeeId: result.adminEmployee.employeeId,
       },
       branding: result.branding,
       settings: result.settings,
@@ -274,13 +293,15 @@ export class CompaniesService {
   async personalization(companyId: string): Promise<CompanyPersonalization> {
     const s = await this.prisma.companySettings.findUnique({
       where: { companyId },
-      select: { personalThemes: true, allowedThemes: true, personalMenuStyle: true, defaultMenuStyle: true },
+      select: { personalThemes: true, allowedThemes: true, personalMenuStyle: true, defaultMenuStyle: true, defaultBackdropPack: true, defaultBackdropLevel: true },
     });
     return {
       personalThemes: s?.personalThemes ?? true,
       allowedThemes: s?.allowedThemes ?? [],
       personalMenuStyle: s?.personalMenuStyle ?? true,
       defaultMenuStyle: ((MENU_STYLES as readonly string[]).includes(s?.defaultMenuStyle ?? '') ? s!.defaultMenuStyle : 'classic') as MenuStyle,
+      defaultBackdropPack: ((BACKDROP_PACKS as readonly string[]).includes(s?.defaultBackdropPack ?? '') ? s!.defaultBackdropPack : 'signature') as BackdropPack,
+      defaultBackdropLevel: ((BACKDROP_LEVELS as readonly string[]).includes(s?.defaultBackdropLevel ?? '') ? s!.defaultBackdropLevel : 'lively') as BackdropLevel,
     };
   }
 
@@ -300,6 +321,8 @@ export class CompaniesService {
       ...(dto.allowedThemes !== undefined && { allowedThemes: [...new Set(dto.allowedThemes)] }),
       ...(dto.personalMenuStyle !== undefined && { personalMenuStyle: dto.personalMenuStyle }),
       ...(dto.defaultMenuStyle !== undefined && { defaultMenuStyle: dto.defaultMenuStyle }),
+      ...(dto.defaultBackdropPack !== undefined && { defaultBackdropPack: dto.defaultBackdropPack }),
+      ...(dto.defaultBackdropLevel !== undefined && { defaultBackdropLevel: dto.defaultBackdropLevel }),
     };
     await this.prisma.companySettings.upsert({ where: { companyId }, update: data, create: { companyId, ...data } });
     return this.personalization(companyId);
@@ -319,6 +342,11 @@ export class CompaniesService {
       create: { companyId, displayName: company.name, ...fields },
     });
     return this.describeTheme(branding);
+  }
+
+  /** Creates the default branding row for a company that has none. */
+  ensureBranding(companyId: string, name: string) {
+    return this.prisma.companyBranding.upsert({ where: { companyId }, update: {}, create: { companyId, displayName: name } });
   }
 
   private async describeTheme(branding: { themeTokens: Prisma.JsonValue; themeSource: Prisma.JsonValue } | null) {
@@ -355,6 +383,11 @@ export class CompaniesService {
             secondaryColor: true,
             themeTokens: true,
             themeSource: true,
+            tagline: true,
+            logoDarkUrl: true,
+            signInMessage: true,
+            signInBackground: true,
+            signInPhotoUrl: true,
           },
         },
       },
@@ -371,6 +404,10 @@ export class CompaniesService {
       branding: company.branding ? branding : null,
       // Lets the public login page render the company's theme
       theme: await this.describeTheme(company.branding),
+      // …and its default page background (sign-in hero)
+      backdrop: await this.personalization(company.id).then((p) => ({ pack: p.defaultBackdropPack, level: p.defaultBackdropLevel })),
+      // A seasonal theme that is on today and dresses up the sign-in page too
+      season: await this.seasons.active(company.id).then((s) => (s?.onSignIn ? { name: s.name, emoji: s.emoji, colors: s.colors, decoration: s.decoration, greeting: s.greeting } : null)),
     };
   }
 
@@ -408,6 +445,11 @@ export class CompaniesService {
         ...(dto.faviconUrl !== undefined && { faviconUrl: dto.faviconUrl }),
         ...(dto.primaryColor && { primaryColor: dto.primaryColor }),
         ...(dto.secondaryColor && { secondaryColor: dto.secondaryColor }),
+        ...(dto.tagline !== undefined && { tagline: dto.tagline.trim() || null }),
+        ...(dto.logoDarkUrl !== undefined && { logoDarkUrl: dto.logoDarkUrl }),
+        ...(dto.signInMessage !== undefined && { signInMessage: dto.signInMessage.trim() || null }),
+        ...(dto.signInBackground && { signInBackground: dto.signInBackground }),
+        ...(dto.signInPhotoUrl !== undefined && { signInPhotoUrl: dto.signInPhotoUrl }),
       },
       create: {
         companyId,
@@ -416,6 +458,11 @@ export class CompaniesService {
         faviconUrl: dto.faviconUrl,
         primaryColor: dto.primaryColor || '#1E40AF',
         secondaryColor: dto.secondaryColor || '#EFF6FF',
+        tagline: dto.tagline?.trim() || null,
+        logoDarkUrl: dto.logoDarkUrl ?? null,
+        signInMessage: dto.signInMessage?.trim() || null,
+        signInBackground: dto.signInBackground ?? 'pack',
+        signInPhotoUrl: dto.signInPhotoUrl ?? null,
       },
     });
   }
@@ -482,18 +529,20 @@ export class CompaniesService {
    * Upload logo file and update CompanyBranding.logoUrl
    */
   async uploadLogo(companyId: string, file: Express.Multer.File) {
-    const logoUrl = await this.storeBrandingAsset(companyId, file, {
-      name: 'logo',
-      maxBytes: 2 * 1024 * 1024,
-      extensions: {
-        'image/jpeg': 'jpg',
-        'image/png': 'png',
-        'image/svg+xml': 'svg',
-        'image/webp': 'webp',
-      },
-    });
-
+    const logoUrl = await this.storeBrandingAsset(companyId, file, { name: 'logo', ...LOGO_MEDIA });
     return this.updateBranding(companyId, { logoUrl });
+  }
+
+  /** Logo for dark mode (usually a white version). */
+  async uploadLogoDark(companyId: string, file: Express.Multer.File) {
+    const logoDarkUrl = await this.storeBrandingAsset(companyId, file, { name: 'logo-dark', ...LOGO_MEDIA });
+    return this.updateBranding(companyId, { logoDarkUrl });
+  }
+
+  /** Picture, animation, video or 3D model behind the sign-in box. */
+  async uploadSignInPhoto(companyId: string, file: Express.Multer.File) {
+    const signInPhotoUrl = await this.storeBrandingAsset(companyId, file, { name: 'sign-in', ...SIGN_IN_MEDIA });
+    return this.updateBranding(companyId, { signInPhotoUrl, signInBackground: 'photo' });
   }
 
   /**
@@ -522,27 +571,72 @@ export class CompaniesService {
   private async storeBrandingAsset(
     companyId: string,
     file: Express.Multer.File | undefined,
-    opts: { name: string; maxBytes: number; extensions: Record<string, string> },
+    opts: { name: string; maxBytes: number; extensions: Record<string, string>; maxBytesByExt?: Record<string, number> },
   ): Promise<string> {
     if (!file) {
       throw new BadRequestException(`No ${opts.name} file provided`);
     }
 
-    const ext = opts.extensions[file.mimetype];
+    // Browsers often send .glb with no MIME type — the content check below confirms it
+    const mimetype =
+      (!file.mimetype || file.mimetype === 'application/octet-stream') && file.originalname?.toLowerCase().endsWith('.glb')
+        ? 'model/gltf-binary'
+        : file.mimetype;
+    const ext = opts.extensions[mimetype];
     if (!ext) {
       const allowed = [...new Set(Object.values(opts.extensions))].join(', ').toUpperCase();
       throw new BadRequestException(`Invalid file type '${file.mimetype}'. Allowed types: ${allowed}.`);
     }
 
-    if (file.size > opts.maxBytes) {
-      throw new BadRequestException(
-        `File size exceeds maximum ${Math.round(opts.maxBytes / 1024)}KB limit`,
-      );
+    const maxBytes = opts.maxBytesByExt?.[ext] ?? opts.maxBytes;
+    if (file.size > maxBytes) {
+      throw new BadRequestException(`File size exceeds maximum ${Math.round(maxBytes / 1024)}KB limit`);
     }
+    assertMediaContent(ext, file.buffer);
 
     // 404 before touching storage if the company does not exist
     await this.findOne(companyId);
 
-    return this.storage.upload(`${companyId}/branding/${opts.name}.${ext}`, file.buffer, file.mimetype);
+    return this.storage.upload(`${companyId}/branding/${opts.name}.${ext}`, file.buffer, mimetype);
+  }
+}
+
+// Animated and 3D media for logos and the sign-in page
+const ANIMATED_MEDIA = {
+  'image/gif': 'gif',
+  'image/apng': 'png',
+  'application/json': 'json', // Lottie animation
+  'video/mp4': 'mp4',
+  'video/webm': 'webm',
+  'model/gltf-binary': 'glb', // 3D model
+};
+
+const LOGO_MEDIA = {
+  maxBytes: 2 * 1024 * 1024,
+  maxBytesByExt: { gif: 5 * 1024 * 1024, mp4: 5 * 1024 * 1024, webm: 5 * 1024 * 1024, glb: 5 * 1024 * 1024 },
+  extensions: { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/svg+xml': 'svg', 'image/webp': 'webp', ...ANIMATED_MEDIA },
+};
+
+const SIGN_IN_MEDIA = {
+  maxBytes: 4 * 1024 * 1024,
+  maxBytesByExt: { gif: 10 * 1024 * 1024, mp4: 15 * 1024 * 1024, webm: 15 * 1024 * 1024, glb: 15 * 1024 * 1024 },
+  extensions: { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', ...ANIMATED_MEDIA },
+};
+
+/** Lottie and 3D files are read by the browser, so check they really are what they claim. */
+function assertMediaContent(ext: string, buf: Buffer) {
+  if (ext === 'json') {
+    let data: { v?: unknown; layers?: unknown } | null = null;
+    try {
+      data = JSON.parse(buf.toString('utf8'));
+    } catch {
+      throw new BadRequestException('That JSON file could not be read. Export the animation as Lottie JSON.');
+    }
+    if (!data || typeof data !== 'object' || typeof data.v !== 'string' || !Array.isArray(data.layers)) {
+      throw new BadRequestException('That JSON file is not a Lottie animation.');
+    }
+  }
+  if (ext === 'glb' && buf.subarray(0, 4).toString('ascii') !== 'glTF') {
+    throw new BadRequestException('That file is not a 3D model in GLB format.');
   }
 }

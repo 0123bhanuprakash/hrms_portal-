@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { Emoji } from '@/components/motion/emoji';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -289,7 +290,7 @@ function Reach({ a }: { a: Announcement }) {
           />
         </div>
         {!shown.length ? (
-          <p className="px-5 py-6 text-sm text-muted-foreground">{tab === 'waiting' ? 'Everyone is done. 🎉' : 'Nobody yet.'}</p>
+          <p className="px-5 py-6 text-sm text-muted-foreground">{tab === 'waiting' ? <>Everyone is done. <Emoji e="🎉" play="appear" /></> : 'Nobody yet.'}</p>
         ) : (
           <ul className="max-h-80 divide-y divide-border overflow-y-auto">
             {shown.map((p) => (

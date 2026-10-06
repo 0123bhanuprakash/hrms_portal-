@@ -154,14 +154,20 @@ export function ThemeEditorPanels({
   extraSections,
   companyName,
   previewNote,
+  before,
 }: {
   tokens: ThemeTokens;
   onChange: (tokens: ThemeTokens) => void;
   extraSections?: React.ReactNode;
   companyName?: string;
   previewNote?: React.ReactNode;
+  /** The published theme: enables the before / after slider */
+  before?: ThemeTokens;
 }) {
   const [mode, setMode] = useState<Mode>('light');
+  /** One mode, light + dark side by side, or before / after */
+  const [view, setView] = useState<'one' | 'both' | 'compare'>('one');
+  const [split, setSplit] = useState(50);
   const [page, setPage] = useState<PreviewPage>('dashboard');
   const [device, setDevice] = useState<PreviewDevice>('desktop');
   const [brand, setBrand] = useState(tokens.light.primary);
@@ -330,7 +336,17 @@ export function ThemeEditorPanels({
                 { value: 'form', label: 'Form', icon: <FileText /> },
               ]}
             />
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Segmented
+                size="sm"
+                value={view}
+                onChange={setView}
+                options={[
+                  { value: 'one', label: 'One', aria: 'One preview' },
+                  { value: 'both', label: 'Light + dark', aria: 'Light and dark side by side' },
+                  ...(before ? [{ value: 'compare' as const, label: 'Before / after', aria: 'Before and after' }] : []),
+                ]}
+              />
               <Segmented
                 size="sm"
                 value={mode}
@@ -352,7 +368,35 @@ export function ThemeEditorPanels({
               />
             </div>
           </div>
-          <ThemePreviewFrame tokens={tokens} mode={mode} page={page} device={device} companyName={companyName} />
+          {view === 'both' ? (
+            <div className="grid grid-cols-2 gap-px bg-border">
+              <ThemePreviewFrame tokens={tokens} mode="light" page={page} device={device} companyName={companyName} height={520} />
+              <ThemePreviewFrame tokens={tokens} mode="dark" page={page} device={device} companyName={companyName} height={520} />
+            </div>
+          ) : view === 'compare' && before ? (
+            <div className="relative">
+              <ThemePreviewFrame tokens={before} mode={mode} page={page} device={device} companyName={companyName} />
+              <div className="pointer-events-none absolute inset-0" style={{ clipPath: `inset(0 0 0 ${split}%)` }}>
+                <ThemePreviewFrame tokens={tokens} mode={mode} page={page} device={device} companyName={companyName} />
+              </div>
+              <div aria-hidden className="pointer-events-none absolute inset-y-0 w-0.5 bg-foreground/80" style={{ left: `${split}%` }}>
+                <span className="absolute left-1/2 top-1/2 h-7 w-7 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-foreground bg-surface shadow" />
+              </div>
+              <span className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-surface/90 px-2 py-0.5 text-[11px] font-semibold shadow">Published</span>
+              <span className="pointer-events-none absolute bottom-3 right-3 rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground shadow">Your edit</span>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={split}
+                onChange={(e) => setSplit(+e.target.value)}
+                aria-label="Move the before / after line"
+                className="absolute inset-x-0 bottom-0 h-full w-full cursor-ew-resize opacity-0"
+              />
+            </div>
+          ) : (
+            <ThemePreviewFrame tokens={tokens} mode={mode} page={page} device={device} companyName={companyName} />
+          )}
         </Card>
         {previewNote && <p className="mt-2 text-center text-xs text-muted-foreground">{previewNote}</p>}
       </div>

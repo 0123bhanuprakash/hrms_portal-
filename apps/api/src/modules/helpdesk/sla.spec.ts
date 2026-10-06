@@ -19,8 +19,9 @@ describe('helpdesk response targets', () => {
     for (const h of Object.values(SLA_HOURS)) expect(h.response).toBeLessThan(h.resolution);
   });
 
-  it('only IT, HR and Finance take tickets', () => {
-    expect(QUEUES).toEqual(['IT', 'HR', 'FINANCE']);
+  it('only IT, HR, Finance and DevOps take tickets', () => {
+    expect(QUEUES).toEqual(['IT', 'HR', 'FINANCE', 'DEVOPS']);
     expect(QUEUE_PERMISSION.FINANCE).toBe('ticket.handle_finance');
+    expect(QUEUE_PERMISSION.DEVOPS).toBe('ticket.handle_devops');
   });
 });

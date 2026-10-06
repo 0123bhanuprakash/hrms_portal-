@@ -30,10 +30,12 @@ import {
   SetStatusDto,
   StartCheckDto,
 } from './dto';
+import { Live } from '../realtime/live.decorator';
 
 const document = FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024, files: 1 } });
 
 @RequireFeature('ops.assets')
+@Live('assets')
 @Controller('assets')
 export class AssetsController {
   constructor(

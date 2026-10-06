@@ -2,6 +2,10 @@ import type { Metadata } from 'next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import './motion.css';
+import './emoji-motion.css';
+import './backdrops.css';
+import './backdrop-packs.css';
+import './season.css';
 import { AppProviders } from '@/providers/app-providers';
 import { DISPLAY_BOOT_SCRIPT } from '@/lib/preferences/display';
 

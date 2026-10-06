@@ -9,14 +9,14 @@ import { Card, CardHeader, Skeleton } from '@/components/ui/feedback';
 import { ActionRow, IconTile, Meter, MiniBars, Ring } from '@/components/dashboard/widgets';
 import { Burst, Milestones } from '@/components/motion/motion';
 import { useAccess } from '@/lib/access/use-access';
-import { STATUS_META, clock, hours, useCalendar, useToday } from '@/lib/company/attendance';
+import { STATUS_META, clock, hours, useCalendar, useToday, lateBy } from '@/lib/company/attendance';
 import { DayTimeline, SessionList, isWorking, liveWorked, useCheckActions } from '@/components/attendance/sessions';
 import { useLeaveBalances } from '@/lib/company/leave';
 import { useTimesheets } from '@/lib/company/timesheets';
 import { useClaims } from '@/lib/company/expenses';
-import { useTickets } from '@/lib/company/helpdesk';
+import { QUEUE_INFO, useTickets } from '@/lib/company/helpdesk';
 import { useMyAssets } from '@/lib/company/assets';
-import { useAnnouncements } from '@/lib/company/engagement';
+import { HOME_ANNOUNCEMENTS, useAnnouncements } from '@/lib/company/engagement';
 import type { MyCard } from '@/lib/company/profile';
 import { formatDate } from '@/lib/format';
 
@@ -74,7 +74,7 @@ export function TodayCard() {
           </p>
           {(r?.sessions ?? 0) > 1 && <p className="text-xs text-muted-foreground">{r!.sessions} sessions{r?.breakMinutes ? ` · break ${hours(r.breakMinutes)}` : ''}</p>}
           {t.carriedOver && <Badge tone="info">Night shift since {clock(t.carriedOver.openSince, tz)}</Badge>}
-          {(r?.lateMinutes ?? 0) > 0 && <Badge tone="warning">{r!.lateMinutes} min late</Badge>}
+          {(r?.lateMinutes ?? 0) > 0 && <Badge tone="warning">{lateBy(r!.lateMinutes)} late</Badge>}
           <p className="text-xs text-muted-foreground">Shift {t.policy.shiftStart} – {t.policy.shiftEnd}</p>
         </div>
       </div>
@@ -183,13 +183,15 @@ export function useNeedsAction(me: MyCard | undefined) {
   const claims = useClaims({ view: 'mine', status: 'REJECTED', limit: 3 }, can('expense.submit'));
   const tickets = useTickets({ view: 'mine', status: 'WAITING', limit: 3 }, can('ticket.view'));
   const assets = useMyAssets(can('asset.view'));
-  const acks = useAnnouncements({ filter: 'ack', limit: 3 }, hasFeature('engage.announcements') && can('announcement.view'));
+  // Only ask for the list when something waits for my confirmation
+  const latest = useAnnouncements(HOME_ANNOUNCEMENTS);
+  const acks = useAnnouncements({ filter: 'ack', limit: 3 }, hasFeature('engage.announcements') && can('announcement.view') && (latest.data?.meta.needsAck ?? 0) > 0);
   const cal = useCalendar(month);
 
   const rows: React.ReactNode[] = [];
   for (const s of sheets.data?.data ?? []) rows.push(<ActionRow key={`ts-${s.id}`} tone="danger" icon={<Timer />} title="Time sent back" detail={`Week of ${formatDate(s.weekStart)}${s.decisionNote ? ` · “${s.decisionNote}”` : ''}`} href={`/app/timesheets?week=${s.weekStart}`} cta="Fix" />);
   for (const c of claims.data?.data ?? []) rows.push(<ActionRow key={`ex-${c.id}`} tone="danger" icon={<Receipt />} title="Expense claim sent back" detail={c.title} href={`/app/expenses/${c.id}`} cta="Fix" />);
-  for (const t of tickets.data?.data ?? []) rows.push(<ActionRow key={`tk-${t.id}`} tone="warning" icon={<LifeBuoy />} title={`${t.queue === 'FINANCE' ? 'Finance' : t.queue} needs more information`} detail={`#${t.number} · ${t.subject}`} href={`/app/helpdesk/${t.id}`} cta="Reply" />);
+  for (const t of tickets.data?.data ?? []) rows.push(<ActionRow key={`tk-${t.id}`} tone="warning" icon={<LifeBuoy />} title={`${QUEUE_INFO[t.queue].label} needs more information`} detail={`#${t.number} · ${t.subject}`} href={`/app/helpdesk/${t.id}`} cta="Reply" />);
   for (const a of (assets.data?.current ?? []).filter((x) => !x.acknowledgedAt)) rows.push(<ActionRow key={`as-${a.id}`} tone="info" icon={<PackageCheck />} title={`Confirm you received ${a.asset.tag}`} detail={a.asset.name} href="/app/assets/mine" cta="Confirm" />);
   for (const d of (cal.data?.days ?? []).filter((x) => x.status === 'MISSING_CHECKOUT' && !x.correction).slice(-2)) rows.push(<ActionRow key={`mc-${d.date}`} tone="warning" icon={<CalendarX2 />} title="Missed check-out" detail={formatDate(d.date)} href="/app/attendance" cta="Fix" />);
   for (const a of (acks.data?.data ?? []).filter((x) => x.requiresAck && !x.acknowledgedAt)) rows.push(<ActionRow key={`an-${a.id}`} tone="neutral" icon={<Megaphone />} title="Confirm you’ve read an announcement" detail={a.title} href={`/app/announcements/${a.id}`} cta="Read" />);

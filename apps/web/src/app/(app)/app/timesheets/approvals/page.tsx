@@ -1,6 +1,7 @@
 'use client';
 
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
+import { Emoji } from '@/components/motion/emoji';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { BellRing, Check, ChevronDown, ChevronLeft, ChevronRight, ClipboardCheck, Lock, MessageSquare, ShieldCheck, Undo2, Users, UserX } from 'lucide-react';
@@ -193,7 +194,7 @@ function TeamGrid() {
                       const shown = c.myMinutes || c.minutes;
                       return (
                         <span key={c.date} title={`${longDayLabel(c.date)} · ${st.label}${c.minutes ? ` · ${fmtHours(c.minutes)} logged${c.myMinutes && c.myMinutes !== c.minutes ? `, ${fmtHours(c.myMinutes)} for you` : ''}` : ''}`} className={cn('mx-0.5 rounded-md py-1.5 text-center text-xs font-bold tabular-nums', st.bg, st.fg)}>
-                          {c.state === 'leave' ? '🌴' : c.state === 'none' ? '—' : c.state === 'off' || c.state === 'future' ? '·' : fmtHours(shown).replace(' ', '')}
+                          {c.state === 'leave' ? <Emoji e="🌴" /> : c.state === 'none' ? '—' : c.state === 'off' || c.state === 'future' ? '·' : fmtHours(shown).replace(' ', '')}
                         </span>
                       );
                     })}

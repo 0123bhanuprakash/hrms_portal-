@@ -4,6 +4,8 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { api } from '@/lib/api';
 import { LIVE } from '@/lib/live';
 import { useAccess } from '@/lib/access/use-access';
+import { isLive } from '@/lib/live/socket';
+import { useMayApprove } from '@/lib/company/projects';
 
 // ============================================================
 // Attendance (Phase 3): today, calendar, team, corrections,
@@ -33,7 +35,24 @@ export interface AttendancePolicy {
   fullDayMinutes: number;
   regularisationWindowDays: number;
   webCheckInEnabled: boolean;
+  /** Corrections in a month above this alert lead / manager / HR (no limit) */
+  correctionAlertAt: number;
+  /** Late arrivals in a month that tell the line manager (null = off) */
+  lateAlertAt: number | null;
+  /** Close forgotten check-outs this long after the shift ends (null = off) */
+  autoCloseAfterMinutes: number | null;
+  /** Optional holidays each person may pick per year */
+  optionalHolidayLimit: number;
   timeZone: string;
+}
+
+/** A person's working hours: General (company shift) or an extra shift such as Night. */
+export interface ShiftHours {
+  id: string | null;
+  name: string;
+  start: string;
+  end: string;
+  overnight: boolean;
 }
 
 export interface AttendanceRecord {
@@ -52,6 +71,7 @@ export interface AttendanceRecord {
   /** Start of the session still running */
   openSince: string | null;
   earlyCheckout: boolean;
+  autoClosed?: boolean;
 }
 
 /** One check-in or check-out tap. */
@@ -78,6 +98,7 @@ export interface TodayAttendance {
   nightShift?: boolean;
   /** Last night's shift still running */
   carriedOver?: { date: string; openSince: string } | null;
+  shift?: ShiftHours;
 }
 
 export interface CalendarDay {
@@ -95,6 +116,8 @@ export interface CalendarDay {
   sessions?: number;
   breakMinutes?: number | null;
   earlyCheckout?: boolean;
+  /** The check-out was added automatically (forgotten check-out) */
+  autoClosed?: boolean;
 }
 
 /** Leave touching a day (approved changes the status; pending is shown as a hint). */
@@ -134,6 +157,7 @@ export interface CalendarMonth {
   month: string;
   today: string;
   policy: AttendancePolicy;
+  shift?: ShiftHours;
   days: CalendarDay[];
   summary: AttendanceSummary;
 }
@@ -152,8 +176,34 @@ export interface TeamDay {
     lateMinutes: number | null;
     isManualEntry: boolean;
     leave: DayLeave | null;
+    openSince?: string | null;
+    breakMinutes?: number | null;
+    autoClosed?: boolean;
+    shift?: ShiftHours;
   }>;
   meta: { total: number; page: number; limit: number; totalPages: number };
+}
+
+export interface TeamMonth {
+  month: string;
+  today: string;
+  days: string[];
+  holidays: Array<{ date: string; name: string }>;
+  data: Array<{ employee: PersonLite; days: Array<{ date: string; status: DayStatus; checkIn: string | null; checkOut: string | null; lateMinutes: number | null; leave: string | null }> }>;
+  meta: { total: number; page: number; limit: number; totalPages: number };
+}
+
+export interface Insights {
+  missingCheckout: Array<{ employee: PersonLite; date: string }>;
+  absent: Array<{ employee: PersonLite; dates: string[] }>;
+  lateOften: Array<{ employee: PersonLite; count: number }>;
+  manyCorrections: Array<{ employee: PersonLite; count: number }>;
+  thresholds: { late: number; corrections: number };
+}
+
+export interface ShiftsList {
+  general: { name: string; startTime: string; endTime: string };
+  shifts: Array<{ id: string; name: string; startTime: string; endTime: string; color: string; overnight: boolean; memberCount: number; employees: Array<{ id: string; firstName: string; lastName: string; avatarUrl: string | null; employeeId: string }> }>;
 }
 
 export type CorrectionStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
@@ -172,6 +222,10 @@ export interface Correction {
   reviewedBy: { id: string; firstName: string; lastName: string } | null;
   onBehalfOf: { id: string; firstName: string; lastName: string } | null;
   current: { checkIn: string | null; checkOut: string | null; status: DayStatus } | null;
+  /** For reviewers: corrections that month, over the company's number, last 30 days */
+  monthCount?: number;
+  overLimit?: boolean;
+  recent?: Array<{ date: string; status: DayStatus; late: boolean }>;
 }
 
 export interface Holiday {
@@ -179,6 +233,12 @@ export interface Holiday {
   name: string;
   date: string;
   isOptional: boolean;
+  /** Office locations it is for; empty = everyone */
+  locationIds: string[];
+  /** Optional holiday I picked */
+  chosen?: boolean;
+  /** For everyone, or for my office */
+  appliesToMe?: boolean;
 }
 
 // ─── Presentation ───────────────────────────────────────────
@@ -222,6 +282,13 @@ export function hours(minutes: number | null | undefined): string {
   return `${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2, '0')}m`;
 }
 
+/** Lateness: 25 → "25m", 343 → "5h 43m", 120 → "2h". */
+export function lateBy(minutes: number | null | undefined): string {
+  const m = Math.max(0, Math.round(minutes ?? 0));
+  if (m < 60) return `${m}m`;
+  return m % 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m / 60}h`;
+}
+
 /** "2026-10-02" → "Fri, 2 Oct" */
 export function dayLabel(key: string, opts: Intl.DateTimeFormatOptions = { weekday: 'short', day: 'numeric', month: 'short' }): string {
   return new Date(`${key}T00:00:00Z`).toLocaleDateString(undefined, { ...opts, timeZone: 'UTC' });
@@ -240,6 +307,9 @@ export const attendanceKeys = {
   pendingCount: ['attendance', 'corrections', 'pending-count'] as const,
   policy: ['attendance', 'policy'] as const,
   holidays: (year: number) => ['holidays', year] as const,
+  teamMonth: (q: object) => ['attendance', 'team-month', q] as const,
+  insights: ['attendance', 'insights'] as const,
+  shifts: ['attendance', 'shifts'] as const,
 };
 
 const unwrap = <T,>(r: { data: { data: T } }) => r.data.data;
@@ -284,17 +354,40 @@ export function useCorrections(q: { view: 'mine' | 'review'; status?: Correction
 /** Corrections waiting for me — for the nav badge. Covers delegated approvals too. */
 export function usePendingCorrections() {
   const { hasFeature } = useAccess();
+  // Only people who can approve here ask; the API would answer 0 for everyone else
+  const mayApprove = useMayApprove('attendance.approve');
   // Project leads and line managers approve without a role permission — ask the API
   return useQuery({
     queryKey: attendanceKeys.pendingCount,
     queryFn: async () => unwrap<{ count: number }>(await api.get('/attendance/regularisations/pending-count')).count,
-    enabled: hasFeature('time.attendance'),
-    refetchInterval: 2 * 60_000,
+    enabled: hasFeature('time.attendance') && mayApprove,
+    // Live updates refresh it while connected; poll only when the connection is down
+    refetchInterval: () => (isLive() ? false : 2 * 60_000),
   });
 }
 
 export function usePolicy(enabled = true) {
   return useQuery({ queryKey: attendanceKeys.policy, queryFn: async () => unwrap<AttendancePolicy>(await api.get('/attendance/policy')), enabled });
+}
+
+export function useTeamMonth(q: { month: string; departmentId?: string; search?: string; page?: number }, enabled = true) {
+  return useQuery({
+    queryKey: attendanceKeys.teamMonth(q),
+    queryFn: async () => {
+      const params = Object.fromEntries(Object.entries(q).filter(([, v]) => v !== undefined && v !== ''));
+      return (await api.get('/attendance/team-month', { params })).data.data as TeamMonth;
+    },
+    placeholderData: keepPreviousData,
+    enabled,
+  });
+}
+
+export function useInsights(enabled = true) {
+  return useQuery({ queryKey: attendanceKeys.insights, queryFn: async () => unwrap<Insights>(await api.get('/attendance/insights')), enabled, staleTime: 60_000 });
+}
+
+export function useShifts(enabled = true) {
+  return useQuery({ queryKey: attendanceKeys.shifts, queryFn: async () => unwrap<ShiftsList>(await api.get('/attendance/shifts')), enabled });
 }
 
 export function useHolidays(year: number, enabled = true) {
@@ -336,10 +429,43 @@ export const useUpsertRecord = () =>
 export const useSavePolicy = () =>
   useAttendanceMutation(async (body: Partial<Omit<AttendancePolicy, 'timeZone'>>) => unwrap<AttendancePolicy>(await api.put('/attendance/policy', body)));
 
+/** In-app reminder from a lead / manager / HR. */
+export const useNudge = () =>
+  useMutation({ mutationFn: async (body: { employeeIds: string[]; kind: 'check_in' | 'fix' }) => unwrap<{ sent: number; skipped: number }>(await api.post('/attendance/nudge', body)) });
+
+export const useSaveShift = () =>
+  useAttendanceMutation(async ({ id, ...body }: { id?: string; name: string; startTime: string; endTime: string; color?: string }) =>
+    unwrap<{ id: string }>(id ? await api.patch(`/attendance/shifts/${id}`, body) : await api.post('/attendance/shifts', body)),
+  );
+export const useDeleteShift = () => useAttendanceMutation(async (id: string) => unwrap<{ id: string }>(await api.delete(`/attendance/shifts/${id}`)));
+export const useShiftMembers = () =>
+  useAttendanceMutation(async ({ id, employeeIds }: { id: string; employeeIds: string[] }) => unwrap<unknown>(await api.put(`/attendance/shifts/${id}/members`, { employeeIds })));
+
+/** Pick / un-pick an optional holiday for myself. */
+export function useChooseHoliday() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, choose }: { id: string; choose: boolean }) => unwrap<Holiday[]>(choose ? await api.post(`/holidays/${id}/choose`) : await api.delete(`/holidays/${id}/choose`)),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['holidays'] });
+      void qc.invalidateQueries({ queryKey: attendanceKeys.all });
+      void qc.invalidateQueries({ queryKey: ['leave'] });
+    },
+  });
+}
+
+export function useImportHolidays() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (year: number) => unwrap<{ added: number; skipped: number }>(await api.post('/holidays/import', { year })),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['holidays'] }),
+  });
+}
+
 export function useSaveHoliday() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...body }: { id?: string; name: string; date: string; isOptional: boolean }) =>
+    mutationFn: async ({ id, ...body }: { id?: string; name: string; date: string; isOptional: boolean; locationIds?: string[] }) =>
       unwrap<Holiday>(id ? await api.patch(`/holidays/${id}`, body) : await api.post('/holidays', body)),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['holidays'] });

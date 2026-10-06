@@ -35,6 +35,11 @@ const SELECT = {
   includeNonWorkingDays: true,
   countsAsPresent: true,
   gender: true,
+  blockDuringProbation: true,
+  documentAfterDays: true,
+  sandwichRule: true,
+  negativeBalance: true,
+  carryExpiry: true,
   isActive: true,
   sortOrder: true,
 } satisfies Prisma.LeaveTypeSelect;
@@ -89,6 +94,9 @@ export class LeaveTypesService {
     if (dto.accrual !== 'NONE' && dto.annualQuota <= 0) throw new BadRequestException('Give the yearly quota, or choose "Unlimited"');
     if (dto.annualQuota * 2 !== Math.round(dto.annualQuota * 2)) throw new BadRequestException('Quota must be in half-day steps');
     if (dto.accrual === 'NONE' && dto.carryForward) throw new BadRequestException('Unlimited leave cannot carry forward');
+    if (dto.negativeBalance && dto.accrual === 'NONE') throw new BadRequestException('Unlimited leave has no balance to go below');
+    if ((dto.negativeBalance ?? 0) * 2 !== Math.round((dto.negativeBalance ?? 0) * 2)) throw new BadRequestException('Negative balance must be in half-day steps');
+    if (dto.carryExpiry && !dto.carryForward) throw new BadRequestException('Carried days can only expire when the type carries days forward');
   }
 
   private data(dto: SaveLeaveTypeDto) {
@@ -110,6 +118,11 @@ export class LeaveTypesService {
       includeNonWorkingDays: dto.includeNonWorkingDays ?? false,
       countsAsPresent: dto.countsAsPresent ?? false,
       gender: dto.gender ?? null,
+      blockDuringProbation: dto.blockDuringProbation ?? false,
+      documentAfterDays: dto.documentAfterDays ?? null,
+      sandwichRule: dto.sandwichRule ?? false,
+      negativeBalance: dto.accrual === 'NONE' ? 0 : (dto.negativeBalance ?? 0),
+      carryExpiry: dto.carryForward ? (dto.carryExpiry ?? null) : null,
       isActive: dto.isActive ?? true,
       sortOrder: dto.sortOrder ?? 100,
     };

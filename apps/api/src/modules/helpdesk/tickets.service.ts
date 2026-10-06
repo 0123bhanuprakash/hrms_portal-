@@ -4,11 +4,13 @@ import { Prisma, TicketMessageKind, TicketPriority, TicketQueue, TicketStatus } 
 import { PrismaService } from '../prisma/prisma.service';
 import { holds, type AccessContext } from '../access/access.types';
 import { NotificationsService } from '../notifications/notifications.service';
+import { RealtimeService, room } from '../realtime/realtime.service';
 import { PrivateFilesService } from '../employee-profile/private-files.service';
 import { detectFileType, DOCUMENT_TYPES } from '../employee-profile/file-types';
 import { TicketCategoriesService } from './ticket-categories.service';
+import { HelpdeskTeamsService } from './teams.service';
 import { AUTO_CLOSE_DAYS, QUEUE_LABEL, QUEUE_PERMISSION, QUEUES, dueDates } from './sla';
-import type { AssignDto, CloseDto, CreateTicketDto, MessageDto, ReopenDto, ResolveDto, SummaryQueryDto, TicketQueryDto, UpdateTicketDto } from './dto';
+import type { AssignDto, BulkTicketsDto, CloseDto, CreateTicketDto, MessageDto, ReopenDto, ResolveDto, SummaryQueryDto, TicketQueryDto, UpdateTicketDto } from './dto';
 import { wordsWhere } from '../../common/word-search';
 
 const FILE_MAX_BYTES = 10 * 1024 * 1024;
@@ -34,7 +36,9 @@ const SELECT = {
   ratingComment: true,
   lastActivityAt: true,
   createdAt: true,
-  category: { select: { id: true, name: true } },
+  answers: true,
+  assetId: true,
+  category: { select: { id: true, name: true, icon: true } },
   employee: { select: { id: true, userId: true, employeeId: true, firstName: true, lastName: true, email: true, avatarUrl: true, designation: { select: { name: true } }, department: { select: { name: true } } } },
 } satisfies Prisma.TicketSelect;
 type Row = Prisma.TicketGetPayload<{ select: typeof SELECT }>;
@@ -42,10 +46,13 @@ type Row = Prisma.TicketGetPayload<{ select: typeof SELECT }>;
 const MESSAGE = { id: true, authorId: true, kind: true, body: true, fileName: true, fileMime: true, fileSize: true, createdAt: true } satisfies Prisma.TicketMessageSelect;
 
 /**
- * Helpdesk: employees raise tickets to the IT, HR or Finance queue (never
- * anonymously). Agents of a queue (ticket.handle_<queue>) see, assign, answer
- * and resolve its tickets; the employee can reopen within AUTO_CLOSE_DAYS or
- * close and rate. Nobody works their own ticket as an agent.
+ * Helpdesk: employees raise tickets to the IT, HR, Finance or DevOps queue
+ * (never anonymously). Agents of a queue (ticket.handle_<queue>) see its
+ * tickets. Without a team head anyone in the queue assigns, answers and
+ * resolves; with a head (HelpdeskTeamsService) only the head / backup assign
+ * and members work the tickets assigned to them (anyone may add a note).
+ * The employee can reopen within AUTO_CLOSE_DAYS or close and rate.
+ * Nobody works their own ticket as an agent.
  */
 @Injectable()
 export class TicketsService {
@@ -54,6 +61,8 @@ export class TicketsService {
     private readonly notifications: NotificationsService,
     private readonly files: PrivateFilesService,
     private readonly categories: TicketCategoriesService,
+    private readonly realtime: RealtimeService,
+    private readonly teams: HelpdeskTeamsService,
   ) {}
 
   // ─── Queries ───────────────────────────────────────────────
@@ -112,10 +121,14 @@ export class TicketsService {
       select: MESSAGE,
       orderBy: { createdAt: 'asc' },
     });
-    const names = await this.names(messages.map((m) => m.authorId));
+    const [names, asset] = await Promise.all([
+      this.names(messages.map((m) => m.authorId)),
+      row.assetId ? this.prisma.asset.findFirst({ where: { id: row.assetId, companyId }, select: { id: true, tag: true, name: true } }) : null,
+    ]);
     const [t] = await this.present([row], access);
     return {
       ...t!,
+      asset,
       messages: messages.map((m) => ({ ...m, author: m.authorId ? names.get(m.authorId) ?? null : null, fromAgent: Boolean(m.authorId && m.authorId !== row.employee.userId) })),
     };
   }
@@ -126,14 +139,19 @@ export class TicketsService {
       ? await this.prisma.ticket.count({ where: { companyId, employeeId: access.employee.id, status: { in: [TicketStatus.WAITING, TicketStatus.RESOLVED] } } })
       : 0;
     const queues = this.queuesOf(access);
+    const heads = queues.length ? await this.teams.heads(companyId) : new Map();
+    const leadOf = queues.filter((q) => this.teams.isLead(access, heads.get(q), q));
+    const memberOf = queues.filter((q) => !leadOf.includes(q));
     const queue = queues.length
       ? await this.prisma.ticket.count({
           where: {
             companyId,
-            queue: { in: queues },
             status: { in: [TicketStatus.OPEN, TicketStatus.IN_PROGRESS] },
-            OR: [{ assigneeId: null }, { assigneeId: access.userId }],
             employee: { userId: { not: access.userId } },
+            OR: [
+              ...(leadOf.length ? [{ queue: { in: leadOf }, OR: [{ assigneeId: null }, { assigneeId: access.userId }] }] : []),
+              ...(memberOf.length ? [{ queue: { in: memberOf }, assigneeId: access.userId }] : []),
+            ],
           },
         })
       : 0;
@@ -203,11 +221,13 @@ export class TicketsService {
 
   async create(companyId: string, access: AccessContext, dto: CreateTicketDto, file?: Express.Multer.File) {
     if (!access.employee) throw new BadRequestException('Your account has no employee profile');
-    if (dto.categoryId) {
-      const c = await this.categories.get(companyId, dto.categoryId);
-      if (c.queue !== dto.queue || !c.isActive) throw new BadRequestException('Pick a category from this team');
-    }
-    const priority = dto.priority ?? TicketPriority.MEDIUM;
+    const topic = dto.categoryId ? await this.categories.get(companyId, dto.categoryId) : null;
+    if (topic && (topic.queue !== dto.queue || !topic.isActive)) throw new BadRequestException('Pick a category from this team');
+    const priority = TicketCategoriesService.priorityFor(dto.priority, topic);
+    const { answers, assetId } = await this.categories.readAnswers(companyId, topic, dto.answers, access.employee.id);
+    // A topic may send its tickets straight to one person
+    const routeTo = await this.categories.routeFor(companyId, topic, access.userId);
+    const routeName = routeTo ? (await this.names([routeTo])).get(routeTo) : undefined;
     const id = randomUUID();
     const stored = file ? await this.storeFile(companyId, id, file) : null;
     const now = new Date();
@@ -220,10 +240,18 @@ export class TicketsService {
             data: {
               id, companyId, number: (last?.number ?? 0) + 1, queue: dto.queue, categoryId: dto.categoryId ?? null, employeeId: access.employee!.id,
               subject: dto.subject, description: dto.description, priority, ...dueDates(priority, now), lastActivityAt: now,
+              ...(answers && { answers: answers as unknown as Prisma.InputJsonArray }),
+              ...(assetId && { assetId }),
+              ...(routeTo && { assigneeId: routeTo }),
             },
             select: SELECT,
           });
           await tx.ticketMessage.create({ data: { companyId, ticketId: id, authorId: access.userId, kind: TicketMessageKind.REPLY, body: dto.description, ...(stored ?? {}) } });
+          if (routeTo) {
+            await tx.ticketMessage.create({
+              data: { companyId, ticketId: id, kind: TicketMessageKind.EVENT, body: `Sent straight to ${routeName ? `${routeName.firstName} ${routeName.lastName}` : 'the topic owner'} (topic “${topic!.name}”)`, createdAt: new Date(now.getTime() + 1) },
+            });
+          }
           return t;
         });
       } catch (e) {
@@ -235,12 +263,15 @@ export class TicketsService {
     }
     if (!created) throw new ConflictException('Could not number the ticket — please try again');
     const t = created;
-    void this.notifyQueue(companyId, t, access.userId, {
+    const n = {
       type: 'ticket.created',
       title: `#${t.number} · ${t.employee.firstName} ${t.employee.lastName}: ${t.subject}`,
       body: `${QUEUE_LABEL[t.queue]}${t.category ? ` · ${t.category.name}` : ''} · ${PRIORITY_LABEL[t.priority]} priority`,
       actionLabel: 'Open ticket',
-    });
+    };
+    if (routeTo) void this.notifications.notify({ companyId, userIds: [routeTo], link: `/app/helpdesk/${t.id}`, ...n, title: `New ticket for you — ${n.title}` });
+    else void this.notifyNeedsOwner(companyId, t, access.userId, n);
+    this.live(companyId, t);
     return this.get(companyId, access, t.id);
   }
 
@@ -266,6 +297,7 @@ export class TicketsService {
       title: `#${row.number} reopened by ${row.employee.firstName}: ${row.subject}`,
       body: dto.reason,
     });
+    this.live(companyId, row);
     return this.get(companyId, access, id);
   }
 
@@ -289,6 +321,7 @@ export class TicketsService {
     if (!resolved) {
       void this.notifyAgentSide(companyId, row, access.userId, { type: 'ticket.withdrawn', title: `#${row.number} withdrawn by ${row.employee.firstName}: ${row.subject}`, email: false });
     }
+    this.live(companyId, row);
     return this.get(companyId, access, id);
   }
 
@@ -301,6 +334,7 @@ export class TicketsService {
     if (!agent && (dto.internal || dto.waitForEmployee)) throw new ForbiddenException('Only the team working this ticket can do that');
     if (!agent && row.status === TicketStatus.RESOLVED) throw new BadRequestException('Reopen the ticket to reply');
     if (dto.internal && dto.waitForEmployee) throw new BadRequestException('An internal note can’t ask the employee for anything');
+    if (agent && !dto.internal) this.assertWorks(await this.gate(companyId, access, row), row);
 
     const stored = file ? await this.storeFile(companyId, id, file) : null;
     const now = new Date();
@@ -360,6 +394,7 @@ export class TicketsService {
     } else {
       void this.notifyAgentSide(companyId, row, access.userId, { type: 'ticket.reply', title: `${row.employee.firstName} replied on #${row.number}: ${row.subject}`, body: preview });
     }
+    this.live(companyId, row, { agentsOnly: dto.internal });
     return this.get(companyId, access, id);
   }
 
@@ -368,6 +403,7 @@ export class TicketsService {
   async assign(companyId: string, access: AccessContext, id: string, dto: AssignDto) {
     const row = await this.visible(companyId, access, id);
     this.assertAgent(access, row);
+    if (!(await this.gate(companyId, access, row)).lead) throw new ForbiddenException(`Only the ${QUEUE_LABEL[row.queue]} head assigns tickets`);
     if (row.status === TicketStatus.CLOSED) throw new BadRequestException('This ticket is closed');
     const to = dto.assigneeId ?? null;
     if (to === row.assigneeId) return this.get(companyId, access, id);
@@ -396,12 +432,14 @@ export class TicketsService {
         actionLabel: 'Open ticket',
       });
     }
+    this.live(companyId, row);
     return this.get(companyId, access, id);
   }
 
   async update(companyId: string, access: AccessContext, id: string, dto: UpdateTicketDto) {
     const row = await this.visible(companyId, access, id);
     this.assertAgent(access, row);
+    this.assertWorks(await this.gate(companyId, access, row), row);
     if (row.status === TicketStatus.CLOSED) throw new BadRequestException('This ticket is closed');
     const data: Prisma.TicketUncheckedUpdateInput = {};
     const events: string[] = [];
@@ -434,13 +472,14 @@ export class TicketsService {
       this.prisma.ticketMessage.createMany({ data: events.map((body, i) => ({ companyId, ticketId: id, authorId: access.userId, kind: TicketMessageKind.EVENT, body, createdAt: new Date(now.getTime() + i) })) }),
     ]);
     if (moving) {
-      void this.notifyQueue(companyId, { ...row, queue }, access.userId, {
+      void this.notifyNeedsOwner(companyId, { ...row, queue }, access.userId, {
         type: 'ticket.moved',
         title: `#${row.number} moved to ${QUEUE_LABEL[queue]}: ${row.subject}`,
         body: `From ${row.employee.firstName} ${row.employee.lastName} · ${PRIORITY_LABEL[dto.priority ?? row.priority]} priority`,
         actionLabel: 'Open ticket',
       });
     }
+    this.live(companyId, row, { alsoQueue: queue });
     // An agent who moved it out of their own queues can no longer open it
     return this.queuesOf(access).includes(queue) ? this.get(companyId, access, id) : { id, moved: true, queue };
   }
@@ -448,6 +487,7 @@ export class TicketsService {
   async resolve(companyId: string, access: AccessContext, id: string, dto: ResolveDto) {
     const row = await this.visible(companyId, access, id);
     this.assertAgent(access, row);
+    this.assertWorks(await this.gate(companyId, access, row), row);
     if (!ACTIVE.includes(row.status)) throw new BadRequestException('Only an open ticket can be resolved');
     const now = new Date();
     await this.prisma.$transaction([
@@ -471,10 +511,39 @@ export class TicketsService {
       link: `/app/helpdesk/${id}`,
       actionLabel: 'View and rate',
     });
+    this.live(companyId, row);
     return this.get(companyId, access, id);
   }
 
+  /**
+   * Bulk assign / priority / move. Each ticket runs through the single-ticket
+   * action (same permission and team-head checks); one failure doesn't stop the rest.
+   */
+  async bulk(companyId: string, access: AccessContext, dto: BulkTicketsDto) {
+    const done: string[] = [];
+    const failed: Array<{ id: string; number: number | null; message: string }> = [];
+    for (const id of dto.ids) {
+      try {
+        if (dto.action === 'assign') await this.assign(companyId, access, id, { assigneeId: dto.assigneeId ?? null });
+        else if (dto.action === 'priority') await this.update(companyId, access, id, { priority: dto.priority });
+        else await this.update(companyId, access, id, { queue: dto.queue });
+        done.push(id);
+      } catch (e) {
+        const n = await this.prisma.ticket.findFirst({ where: { id, companyId }, select: { number: true } });
+        failed.push({ id, number: n?.number ?? null, message: e instanceof Error ? e.message : 'Failed' });
+      }
+    }
+    return { done: done.length, failed };
+  }
+
   // ─── Helpers ───────────────────────────────────────────────
+
+  /** Live: queue lists, the requester's list and open ticket pages reload. Internal notes stay with the team. */
+  live(companyId: string, row: { id: string; queue: TicketQueue; employee: { userId: string } }, opts: { agentsOnly?: boolean; alsoQueue?: TicketQueue } = {}) {
+    const rooms = [room.queue(companyId, row.queue), ...(opts.alsoQueue ? [room.queue(companyId, opts.alsoQueue)] : [])];
+    if (!opts.agentsOnly) rooms.push(room.user(row.employee.userId), room.ticket(row.id));
+    this.realtime.changed(rooms, 'helpdesk', { ticketId: row.id });
+  }
 
   queuesOf(access: AccessContext): TicketQueue[] {
     return QUEUES.filter((q) => holds(access, QUEUE_PERMISSION[q]));
@@ -490,6 +559,17 @@ export class TicketsService {
 
   private assertAgent(access: AccessContext, row: Row) {
     if (!this.isAgent(access, row)) throw new ForbiddenException(row.employee.userId === access.userId ? 'You can’t work your own ticket' : `You don’t work the ${QUEUE_LABEL[row.queue]} queue`);
+  }
+
+  /** Team heads: may this agent assign (lead) / work (lead or assignee) this ticket? */
+  private async gate(companyId: string, access: AccessContext, row: Pick<Row, 'queue' | 'assigneeId'>) {
+    const team = (await this.teams.heads(companyId)).get(row.queue);
+    const lead = this.teams.isLead(access, team, row.queue);
+    return { lead, works: lead || row.assigneeId === access.userId };
+  }
+
+  private assertWorks(g: { works: boolean }, row: Pick<Row, 'queue'>) {
+    if (!g.works) throw new ForbiddenException(`This ticket isn’t assigned to you — the ${QUEUE_LABEL[row.queue]} head assigns tickets`);
   }
 
   private assertRequester(access: AccessContext, row: Row) {
@@ -510,10 +590,16 @@ export class TicketsService {
   }
 
   private async present(rows: Row[], access: AccessContext) {
-    const names = await this.names(rows.map((r) => r.assigneeId));
+    const [names, heads] = await Promise.all([
+      this.names(rows.map((r) => r.assigneeId)),
+      access.companyId && rows.length ? this.teams.heads(access.companyId) : Promise.resolve(new Map<TicketQueue, { headId: string | null; backupId: string | null }>()),
+    ]);
     const now = Date.now();
     return rows.map((r) => {
       const agent = this.isAgent(access, r);
+      const team = heads.get(r.queue);
+      const lead = agent && this.teams.isLead(access, team, r.queue);
+      const works = agent && (lead || r.assigneeId === access.userId);
       const mine = r.employee.userId === access.userId;
       const { userId: _u, ...employee } = r.employee;
       const running = r.status === TicketStatus.OPEN || r.status === TicketStatus.IN_PROGRESS;
@@ -526,8 +612,15 @@ export class TicketsService {
         autoCloseAt: r.status === TicketStatus.RESOLVED && r.resolvedAt ? new Date(r.resolvedAt.getTime() + AUTO_CLOSE_DAYS * 86400_000) : null,
         isAgent: agent,
         isMine: mine,
-        canReply: (agent && r.status !== TicketStatus.CLOSED) || (mine && ACTIVE.includes(r.status)),
-        canResolve: agent && ACTIVE.includes(r.status),
+        /** The team has a head who assigns (members work what is assigned to them) */
+        teamHeadId: team?.headId ?? null,
+        /** Agents only: so the assign picker can leave out the person who raised it */
+        requesterUserId: agent ? r.employee.userId : null,
+        canAssign: lead && r.status !== TicketStatus.CLOSED,
+        canWork: works && r.status !== TicketStatus.CLOSED,
+        canNote: agent && r.status !== TicketStatus.CLOSED,
+        canReply: (works && r.status !== TicketStatus.CLOSED) || (mine && ACTIVE.includes(r.status)),
+        canResolve: works && ACTIVE.includes(r.status),
         canReopen: mine && r.status === TicketStatus.RESOLVED,
         canClose: mine && r.status !== TicketStatus.CLOSED,
       };
@@ -544,10 +637,17 @@ export class TicketsService {
     return this.notifications.notify({ companyId, userIds: agents.filter((u) => u !== actorId && u !== row.employee.userId), link: `/app/helpdesk/${row.id}`, ...n });
   }
 
-  /** The assignee (email), or — while unassigned — the whole queue (in-app only). */
+  /** A ticket without an owner: the team head (or backup while the head is away), else everyone in the queue. */
+  private async notifyNeedsOwner(companyId: string, row: Pick<Row, 'id' | 'queue' | 'employee'>, actorId: string, n: { type: string; title: string; body?: string; actionLabel?: string; email?: boolean }) {
+    const { onDuty } = await this.teams.leads(companyId, row.queue);
+    if (!onDuty.length) return this.notifyQueue(companyId, row, actorId, n);
+    return this.notifications.notify({ companyId, userIds: onDuty.filter((u) => u !== actorId && u !== row.employee.userId), link: `/app/helpdesk/${row.id}`, ...n });
+  }
+
+  /** The assignee (email), or — while unassigned — the head / whole queue (in-app only). */
   private notifyAgentSide(companyId: string, row: Row, actorId: string, n: { type: string; title: string; body?: string; email?: boolean }) {
     if (row.assigneeId) return this.notifications.notify({ companyId, userIds: [row.assigneeId].filter((u) => u !== actorId), link: `/app/helpdesk/${row.id}`, actionLabel: 'Open ticket', ...n });
-    return this.notifyQueue(companyId, row, actorId, { ...n, email: false, actionLabel: 'Open ticket' });
+    return this.notifyNeedsOwner(companyId, row, actorId, { ...n, email: false, actionLabel: 'Open ticket' });
   }
 
   private async storeFile(companyId: string, ticketId: string, file: Express.Multer.File) {

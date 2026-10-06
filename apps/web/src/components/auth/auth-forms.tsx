@@ -22,6 +22,7 @@ import { useAuthStore, type AuthUser } from '@/store/useAuthStore';
 import { Button } from '@/components/ui/button';
 import { Field, Input } from '@/components/ui/field';
 import { cn } from '@/lib/cn';
+import { SIGNED_OUT_KEY } from '@/lib/auth/workspace';
 
 // ============================================================
 // Auth forms shared by both portals. They only use theme tokens,
@@ -111,6 +112,15 @@ export function BackLink({ href, children = 'Back to sign in' }: { href: string;
 
 // ─── Sign in ────────────────────────────────────────────────
 
+const SIGNED_OUT_TEXT: Record<string, string> = {
+  inactive: 'Your account was turned off by an administrator. Contact your HR or IT team if you think this is a mistake.',
+  device: 'This device was signed out from another session.',
+  password: 'Your password was changed or reset. Sign in with the new one.',
+  email: 'Your sign-in email changed. Sign in with the new address.',
+  security: 'For your security, this session was ended. Please sign in again.',
+  'signed-out': 'You were signed out. Please sign in again.',
+};
+
 export function LoginForm({
   portal,
   companySlug,
@@ -125,6 +135,19 @@ export function LoginForm({
   emailPlaceholder?: string;
 }) {
   const [error, setError] = useState<string | null>(null);
+  // Why the last session ended, when it was ended live (see LiveConnection) — shown once
+  const [notice, setNotice] = useState<string | null>(null);
+  React.useEffect(() => {
+    try {
+      const why = sessionStorage.getItem(SIGNED_OUT_KEY);
+      if (why) {
+        sessionStorage.removeItem(SIGNED_OUT_KEY);
+        setNotice(SIGNED_OUT_TEXT[why] ?? SIGNED_OUT_TEXT['signed-out']!);
+      }
+    } catch {
+      /* storage blocked — no notice */
+    }
+  }, []);
   const {
     register,
     handleSubmit,
@@ -146,6 +169,12 @@ export function LoginForm({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+      {notice && !error && (
+        <div role="status" className="flex items-start gap-2 rounded-md border border-primary/25 bg-primary/10 px-3 py-2.5 text-[13px] text-foreground animate-in fade-in-0">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          <span>{notice}</span>
+        </div>
+      )}
       <FormError message={error} />
       <Field label="Email" htmlFor="email" error={errors.email?.message}>
         <Input

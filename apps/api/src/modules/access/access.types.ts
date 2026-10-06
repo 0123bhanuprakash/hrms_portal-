@@ -33,6 +33,16 @@ export interface ActiveDelegation {
   employee: { id: string; departmentId: string | null; locationId: string | null } | null;
   /** Delegated permission → the delegator's scope */
   grants: Map<string, AccessScope | null>;
+  /** The approvals handed over (null = all of them) */
+  only: Set<string> | null;
+}
+
+/**
+ * Delegations that cover `permission` (an approval kind). Use this instead of
+ * `access.delegations` wherever a delegate acts for someone in an approver pool.
+ */
+export function covering(access: Pick<AccessContext, 'delegations'>, permission: string): ActiveDelegation[] {
+  return access.delegations.filter((d) => !d.only || d.only.has(permission));
 }
 
 /** Holds a permission directly or by covering for someone. */
