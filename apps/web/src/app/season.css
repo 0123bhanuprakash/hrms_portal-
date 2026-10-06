@@ -1,0 +1,66 @@
+/* ── Seasonal decorations ─────────────────────────────────
+   Small, gentle and only where they are placed (Home banner, previews).
+   html[data-motion='reduce'] and the OS setting stop them (globals.css). */
+
+.sz-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.sz-layer > * { position: absolute; }
+
+/* Fireworks: dots fly out from a point */
+.sz-burst { width: 0; height: 0; }
+.sz-burst i { position: absolute; left: 0; top: 0; width: 5px; height: 5px; border-radius: 50%; opacity: 0; animation: sz-spark 2.8s cubic-bezier(0.15, 0.7, 0.3, 1) infinite; }
+@keyframes sz-spark { 0% { transform: rotate(var(--r)) translateX(0); opacity: 0; } 8% { opacity: 1; } 60% { opacity: 0.9; } 100% { transform: rotate(var(--r)) translateX(var(--d)) translateY(12px); opacity: 0; } }
+
+/* Twinkling stars / sparkles */
+.sz-star { width: 3px; height: 3px; border-radius: 50%; background: #fff; animation: sz-tw 2.4s ease-in-out infinite; }
+@keyframes sz-tw { 50% { opacity: 0.15; transform: scale(0.6); } }
+.sz-sparkle { font-size: 14px; animation: sz-tw 1.8s ease-in-out infinite; }
+
+/* Falling: snow, petals, confetti */
+.sz-fall { top: -16px; animation: sz-fall linear infinite; }
+@keyframes sz-fall { to { transform: translate(var(--x, 20px), 260px) rotate(var(--rot, 0deg)); } }
+.sz-flake { width: 6px; height: 6px; border-radius: 50%; background: #fff; opacity: 0.85; }
+.sz-confetti { width: 7px; height: 11px; border-radius: 2px; }
+
+/* Floating kite / swinging lantern */
+.sz-kite { font-size: 26px; animation: sz-kite 3.2s ease-in-out infinite; }
+@keyframes sz-kite { 0%, 100% { transform: translate(0, 0) rotate(-8deg); } 50% { transform: translate(12px, -10px) rotate(8deg); } }
+.sz-lantern { font-size: 22px; transform-origin: top center; animation: sz-swing 2.6s ease-in-out infinite; }
+@keyframes sz-swing { 0%, 100% { transform: rotate(-7deg); } 50% { transform: rotate(7deg); } }
+
+/* Diyas flicker */
+.sz-diya { font-size: 22px; transform-origin: bottom; animation: sz-flick 1.4s ease-in-out infinite; }
+@keyframes sz-flick { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.12) translateY(-1px); opacity: 0.78; } }
+
+/* Tricolour ribbon slides once along the bottom, then rests */
+.sz-ribbon { left: 0; right: 0; bottom: 0; height: 5px; background: linear-gradient(90deg, #ff9933 33.3%, #ffffff 33.3% 66.6%, #138808 66.6%); animation: sz-ribbon 1.6s ease-out both; }
+@keyframes sz-ribbon { from { transform: translateX(-100%); } }
+
+/* Colour splash blooms */
+.sz-splash { width: 44px; height: 44px; border-radius: 50%; animation: sz-splash 3s ease-out infinite; }
+@keyframes sz-splash { 0% { transform: scale(0); opacity: 0.85; } 70% { opacity: 0.45; } 100% { transform: scale(1.7); opacity: 0; } }
+
+/* Marigold garland across the top */
+.sz-garland { left: 0; right: 0; top: -2px; display: flex; justify-content: space-around; font-size: 14px; }
+.sz-garland span { animation: sz-bob 2.2s ease-in-out infinite; }
+@keyframes sz-bob { 50% { transform: translateY(3px); } }
+
+/* Dandiya sticks clink */
+.sz-dandiya { font-size: 24px; animation: sz-clink 1.2s ease-in-out infinite; }
+@keyframes sz-clink { 0%, 100% { transform: rotate(-12deg); } 50% { transform: rotate(12deg); } }
+
+/* Side popup slides in */
+.sz-pop { animation: sz-pop 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both 0.8s; }
+@keyframes sz-pop { from { transform: translateX(28px); opacity: 0; } }
+
+/* Gold text */
+.sz-gold { background: linear-gradient(90deg, #ffe7a8, #f5b53d, #ffd27a); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+html[data-decor='off'] .sz-layer { display: none; }
+@media (prefers-reduced-motion: reduce) { .sz-layer * { animation: none !important; } }
+html[data-motion='reduce'] .sz-layer * { animation: none !important; }
+
+/* ── Personal accessibility (Preferences → Accessibility) ── */
+html[data-contrast='more'] { --muted-foreground: 222 18% 28%; --border: 222 14% 68%; --input: 222 14% 60%; }
+html.dark[data-contrast='more'] { --muted-foreground: 222 20% 82%; --border: 222 12% 42%; --input: 222 12% 50%; }
+html[data-focus='always'] *:focus { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+html[data-links='underline'] main a { text-decoration: underline; text-underline-offset: 2px; }

@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Emoji } from '@/components/motion/emoji';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { CheckCircle2, Clock, LifeBuoy, Lock, Paperclip, RotateCcw, Send, Star, X, XCircle } from 'lucide-react';
+import { CheckCircle2, Clock, Crown, LifeBuoy, Lock, Paperclip, RotateCcw, Send, Sparkles, Star, X, XCircle } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +13,8 @@ import { Card, EmptyState, ErrorState, Skeleton } from '@/components/ui/feedback
 import { Field, Textarea, inputClass } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { PersonAvatar } from '@/components/profile/person-avatar';
+import { Journey, QUEUE_EMOJI, TargetRing } from '@/components/helpdesk/ticket-visuals';
+import { Burst } from '@/components/motion/motion';
 import {
   PRIORITY,
   QUEUES,
@@ -19,7 +22,9 @@ import {
   STATUS,
   dueText,
   openAttachment,
+  suggestAssignee,
   useAssignTicket,
+  useHelpdeskTeams,
   useCloseTicket,
   usePostMessage,
   useQueueAgents,
@@ -34,9 +39,11 @@ import {
   type TicketMessage,
 } from '@/lib/company/helpdesk';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useTicketLive, useTypingSignal } from '@/lib/live/ticket';
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatDateTime, formatRelative } from '@/lib/format';
 import { cn } from '@/lib/cn';
+import { PersonSelect, Select } from '@/components/ui/pickers';
 
 const ACCEPT = '.pdf,.jpg,.jpeg,.png,.webp,.docx';
 
@@ -52,6 +59,8 @@ function TicketView({ t }: { t: TicketDetail }) {
   const [resolving, setResolving] = useState(false);
   const [reopening, setReopening] = useState(false);
   const [closing, setClosing] = useState(false);
+  const writer = useTicketLive(t.id);
+  const fire = useSolvedMoment(t);
 
   return (
     <div className="space-y-6">
@@ -62,7 +71,7 @@ function TicketView({ t }: { t: TicketDetail }) {
           <span className="flex flex-wrap items-center gap-1.5">
             <Badge tone={STATUS[t.status].tone}>{STATUS[t.status].label}</Badge>
             <Badge tone={PRIORITY[t.priority].tone}>{PRIORITY[t.priority].label} priority</Badge>
-            {t.category && <Badge>{t.category.name}</Badge>}
+            {t.category && <Badge>{t.category.icon ? `${t.category.icon} ` : ""}{t.category.name}</Badge>}
             {t.reopenCount > 0 && <Badge tone="warning">Reopened {t.reopenCount}×</Badge>}
           </span>
         }
@@ -75,6 +84,12 @@ function TicketView({ t }: { t: TicketDetail }) {
         }
       />
 
+      <Card className="relative flex items-center gap-4 px-4 py-3">
+        <span className="text-xl" aria-hidden>{QUEUE_EMOJI[t.queue]}</span>
+        <Journey t={t} className="flex-1" />
+        <span className="pointer-events-none absolute right-1/3 top-1/2"><Burst fire={fire} count={18} spread={120} /></span>
+      </Card>
+
       {t.isMine && t.status === 'RESOLVED' && t.autoCloseAt && (
         <div className="rounded-md border border-success/30 bg-success-soft px-4 py-3 text-sm">
           {QUEUE_INFO[t.queue].label} marked this resolved. If it’s still not fixed, reopen it — otherwise it closes on its own {formatRelative(t.autoCloseAt)}.
@@ -83,8 +98,9 @@ function TicketView({ t }: { t: TicketDetail }) {
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
-          <Thread t={t} />
-          {t.canReply && <Composer t={t} />}
+          {(Boolean(t.answers?.length) || t.asset) && <Answers t={t} />}
+          <Thread t={t} writer={writer} />
+          {(t.canReply || t.canNote) && <Composer t={t} />}
           {t.status === 'CLOSED' && <p className="text-center text-sm text-muted-foreground">This ticket is closed.{t.isMine && ' Raise a new one if you still need help.'}</p>}
         </div>
         <Side t={t} />
@@ -99,32 +115,131 @@ function TicketView({ t }: { t: TicketDetail }) {
 
 // ─── Conversation ───────────────────────────────────────────
 
-function Thread({ t }: { t: TicketDetail }) {
-  const me = useAuthStore((s) => s.user?.id);
+/** The topic's questions as the employee answered them, and the device they picked. */
+function Answers({ t }: { t: TicketDetail }) {
   return (
-    <Card className="divide-y divide-border">
-      {t.messages.map((m) =>
-        m.kind === 'EVENT' ? (
-          <p key={m.id} className="px-5 py-2 text-xs text-muted-foreground">
-            {m.author ? `${m.author.firstName} ${m.author.lastName}` : 'System'} · {m.body.charAt(0).toLowerCase() + m.body.slice(1)} · {formatRelative(m.createdAt)}
-          </p>
-        ) : (
-          <div key={m.id} className={cn('flex gap-3 px-5 py-4', m.kind === 'NOTE' && 'bg-warning-soft/40')}>
-            {m.author ? <PersonAvatar person={m.author} size="sm" /> : <span className="h-8 w-8" />}
-            <div className="min-w-0 flex-1">
-              <p className="flex flex-wrap items-center gap-x-2 text-sm">
-                <span className="font-medium">{m.authorId === me ? 'You' : m.author ? `${m.author.firstName} ${m.author.lastName}` : 'Someone'}</span>
-                {m.fromAgent && <Badge className="px-1.5 py-0 text-2xs">{QUEUE_INFO[t.queue].label}</Badge>}
-                {m.kind === 'NOTE' && <Badge tone="warning" className="px-1.5 py-0 text-2xs"><Lock className="mr-0.5 h-3 w-3" /> Internal note</Badge>}
-                <span className="text-xs text-muted-foreground" title={formatDateTime(m.createdAt)}>{formatRelative(m.createdAt)}</span>
-              </p>
-              <p className="mt-1 whitespace-pre-wrap break-words text-sm">{m.body}</p>
-              {m.fileName && <Attachment ticketId={t.id} m={m} />}
-            </div>
+    <Card className="p-4">
+      <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+        {(t.answers ?? []).map((a) => (
+          <div key={a.label}>
+            <dt className="text-xs text-muted-foreground">{a.label}</dt>
+            <dd className="font-medium">{a.answer}</dd>
           </div>
-        ),
+        ))}
+      </dl>
+      {t.asset && (
+        <Link href={t.isAgent ? `/app/assets/${t.asset.id}` : '/app/assets/mine'} className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs hover:bg-subtle">
+          💻 <span className="font-mono font-semibold">{t.asset.tag}</span> {t.asset.name}
+        </Link>
       )}
     </Card>
+  );
+}
+
+function Thread({ t, writer }: { t: TicketDetail; writer: string | null }) {
+  const me = useAuthStore((s) => s.user?.id);
+  const team = QUEUE_INFO[t.queue].label;
+  return (
+    <Card className="space-y-3 bg-gradient-to-b from-subtle/50 to-transparent p-4 sm:p-5">
+      {t.messages.map((m, i) => {
+        if (m.kind === 'EVENT') return <EventPill key={m.id} m={m} t={t} />;
+        const mine = m.authorId === me;
+        // The reply saved together with "Marked as resolved" is the resolution
+        const resolution = m.kind === 'REPLY' && t.messages[i + 1]?.kind === 'EVENT' && t.messages[i + 1]?.body === 'Marked as resolved';
+        if (resolution) {
+          return (
+            <div key={m.id} className="rounded-xl border border-success/40 bg-success-soft/50 p-4 animate-fade-up">
+              <p className="flex flex-wrap items-center gap-2 text-sm font-semibold">
+                <CheckCircle2 className="h-4 w-4 text-success" /> Resolved by {mine ? 'you' : m.author ? m.author.firstName : team}
+                <span className="text-xs font-normal text-muted-foreground" title={formatDateTime(m.createdAt)}>· {formatRelative(m.createdAt)}</span>
+              </p>
+              <p className="mt-1 whitespace-pre-wrap text-sm"><span className="font-medium">What we did: </span>{m.body}</p>
+              {m.fileName && <Attachment ticketId={t.id} m={m} />}
+            </div>
+          );
+        }
+        if (m.kind === 'NOTE') {
+          return (
+            <div key={m.id} className="rounded-xl border border-dashed border-warning/60 bg-warning-soft/40 px-4 py-3 text-sm">
+              <p className="flex items-center gap-1.5 text-xs font-medium text-warning"><Lock className="h-3.5 w-3.5" /> Internal note · {m.authorId === me ? 'you' : m.author?.firstName ?? 'Someone'} · {formatRelative(m.createdAt)}</p>
+              <p className="mt-1 whitespace-pre-wrap break-words">{m.body}</p>
+              {m.fileName && <Attachment ticketId={t.id} m={m} />}
+            </div>
+          );
+        }
+        return (
+          <div key={m.id} className={cn('flex items-end gap-2', mine && 'flex-row-reverse')}>
+            {!mine && (m.author ? <PersonAvatar person={m.author} size="sm" /> : <span className="h-8 w-8" />)}
+            <div className={cn('max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm shadow-sm', mine ? 'rounded-br-md bg-primary text-primary-foreground' : 'rounded-bl-md border border-border bg-card')}>
+              {!mine && (
+                <p className="mb-0.5 flex items-center gap-1.5 text-xs font-medium">
+                  {m.author ? `${m.author.firstName} ${m.author.lastName}` : 'Someone'}
+                  {m.fromAgent && <Badge className="px-1.5 py-0 text-2xs">{team}</Badge>}
+                </p>
+              )}
+              <p className="whitespace-pre-wrap break-words">{m.body}</p>
+              {m.fileName && <Attachment ticketId={t.id} m={m} />}
+              <p className={cn('mt-1 text-right text-2xs', mine ? 'text-primary-foreground/70' : 'text-muted-foreground')} title={formatDateTime(m.createdAt)}>{formatRelative(m.createdAt)}</p>
+            </div>
+          </div>
+        );
+      })}
+      {writer && <Writing name={writer} />}
+    </Card>
+  );
+}
+
+/** Centered pill for things that happened (picked up, waiting for you, moved…). */
+function EventPill({ m, t }: { m: TicketMessage; t: TicketDetail }) {
+  const me = useAuthStore((s) => s.user?.id);
+  if (m.body === 'Marked as resolved') return null;
+  const waiting = m.body === 'Asked the employee for more information';
+  const who = m.authorId === me ? 'You' : m.author ? m.author.firstName : 'System';
+  const text = waiting && t.isMine ? `⏸ ${who} asked you for more information — the clock is paused until you reply` : `${who} · ${m.body.charAt(0).toLowerCase() + m.body.slice(1)}`;
+  return (
+    <p className={cn('mx-auto w-fit max-w-full rounded-full border px-3 py-1 text-center text-xs', waiting ? 'border-warning/40 bg-warning-soft text-warning' : 'border-border bg-background text-muted-foreground')} title={formatDateTime(m.createdAt)}>
+      {text} · {formatRelative(m.createdAt)}
+    </p>
+  );
+}
+
+/** A soft burst once: when the ticket gets resolved while open, or the requester's first visit after. */
+function useSolvedMoment(t: TicketDetail): number {
+  const [fire, setFire] = useState(0);
+  const last = useRef(t.status);
+  useEffect(() => {
+    const key = `hd-solved-seen:${t.id}`;
+    let seen = true;
+    try {
+      seen = localStorage.getItem(key) === '1';
+    } catch {
+      /* storage blocked — no first-visit burst */
+    }
+    const justResolved = last.current !== 'RESOLVED' && t.status === 'RESOLVED';
+    last.current = t.status;
+    if (t.status === 'RESOLVED' && (justResolved || (t.isMine && !seen))) {
+      setFire((n) => n + 1);
+      try {
+        localStorage.setItem(key, '1');
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [t.id, t.status, t.isMine]);
+  return fire;
+}
+
+/** "Rohit is writing…" — live from the other side of the conversation. */
+function Writing({ name }: { name: string }) {
+  return (
+    <p className="flex items-center gap-2 px-5 py-3 text-xs text-muted-foreground animate-fade-up" role="status" aria-live="polite">
+      <span className="inline-flex gap-1" aria-hidden>
+        {[0, 150, 300].map((d) => (
+          <span key={d} className="h-1.5 w-1.5 rounded-full bg-muted-foreground/70 motion-safe:animate-bounce" style={{ animationDelay: `${d}ms` }} />
+        ))}
+      </span>
+      {name} is writing…
+    </p>
   );
 }
 
@@ -157,12 +272,16 @@ function Composer({ t }: { t: TicketDetail }) {
   const [mode, setMode] = useState<'reply' | 'note'>('reply');
   const [wait, setWait] = useState(false);
   const [file, setFile] = useState<File | null>(null);
-  const note = t.isAgent && mode === 'note';
+  // Not yours yet (the head assigns): internal notes only
+  const notesOnly = !t.canReply && t.canNote;
+  const note = t.isAgent && (mode === 'note' || notesOnly);
+  const typing = useTypingSignal(t.id);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       await post.mutateAsync({ body, internal: note || undefined, waitForEmployee: t.isAgent && !note && wait ? true : undefined, file });
+      typing.done();
       setBody('');
       setFile(null);
       setWait(false);
@@ -175,7 +294,10 @@ function Composer({ t }: { t: TicketDetail }) {
   return (
     <Card className={cn('p-4', note && 'border-warning/40')}>
       <form onSubmit={submit} className="space-y-3">
-        {t.isAgent && (
+        {notesOnly && (
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Lock className="h-3.5 w-3.5" /> This ticket isn’t assigned to you — you can add an internal note for the team. The {QUEUE_INFO[t.queue].label} head assigns tickets.</p>
+        )}
+        {t.isAgent && !notesOnly && (
           <div className="flex gap-1 text-sm">
             {(['reply', 'note'] as const).map((m) => (
               <button key={m} type="button" onClick={() => setMode(m)} className={cn('rounded-md px-2.5 py-1', mode === m ? 'bg-muted font-medium' : 'text-muted-foreground hover:text-foreground')}>
@@ -187,7 +309,12 @@ function Composer({ t }: { t: TicketDetail }) {
         <Textarea
           rows={4}
           value={body}
-          onChange={(e) => setBody(e.target.value)}
+          onChange={(e) => {
+            setBody(e.target.value);
+            // Internal notes stay private — no "is writing" for them
+            if (note) typing.done();
+            else typing.typed();
+          }}
           required
           maxLength={5000}
           placeholder={note ? 'Only your team sees this' : t.isAgent ? 'Write a reply…' : 'Add details or answer the team’s question…'}
@@ -236,7 +363,7 @@ function Side({ t }: { t: TicketDetail }) {
       </Card>
 
       <Card className="space-y-3 p-5 text-sm">
-        <h2 className="text-sm font-semibold">Targets</h2>
+        <div className="flex items-center justify-between"><h2 className="text-sm font-semibold">Targets</h2><TargetRing t={t} size={40} /></div>
         <Target label="First reply" done={t.firstRespondedAt} due={t.firstResponseDueAt} running={running} />
         <Target label="Resolution" done={t.resolvedAt} due={t.resolutionDueAt} running={running} />
         {t.rating !== null && (
@@ -280,7 +407,10 @@ function Target({ label, done, due, running }: { label: string; done: string | n
 function AgentPanel({ t }: { t: TicketDetail }) {
   const router = useRouter();
   const me = useAuthStore((s) => s.user?.id);
-  const agents = useQueueAgents(t.queue);
+  const headed = Boolean(t.teamHeadId);
+  const agents = useQueueAgents(t.queue, t.canAssign && !headed);
+  const teams = useHelpdeskTeams(t.canAssign && headed);
+  const team = teams.data?.teams.find((x) => x.queue === t.queue);
   const cats = useTicketCategories(false);
   const assign = useAssignTicket(t.id);
   const update = useUpdateTicket(t.id);
@@ -293,37 +423,65 @@ function AgentPanel({ t }: { t: TicketDetail }) {
       toast.error(getApiErrorMessage(err, 'Could not update the ticket'));
     }
   };
-  const people = (agents.data ?? []).filter((a) => a.email !== t.employee.email);
+  const people = headed
+    ? (team?.members ?? []).filter((m) => m.inQueue && m.active && m.id !== t.requesterUserId)
+    : (agents.data ?? []).filter((a) => a.email !== t.employee.email);
+  const suggestion = headed && !t.assignee && t.canAssign ? suggestAssignee(team, t.requesterUserId) : null;
+  const label = (a: (typeof people)[number]) => {
+    if (a.id === me) return 'Me';
+    const m = team?.members.find((x) => x.id === a.id);
+    return `${a.firstName} ${a.lastName}${m ? ` — ${m.open} open${m.awayToday ? ' · on leave today' : ''}` : ''}`;
+  };
 
   return (
     <Card className="space-y-3 p-5 text-sm">
-      <Field label="Assignee" htmlFor="tk-assignee">
-        <div className="flex gap-2">
-          <select id="tk-assignee" className={inputClass} value={t.assignee?.id ?? ''} disabled={assign.isPending} onChange={(e) => void run(assign.mutateAsync(e.target.value || null), 'Assignee updated')}>
-            <option value="">Unassigned</option>
-            {people.map((a) => <option key={a.id} value={a.id}>{a.id === me ? 'Me' : `${a.firstName} ${a.lastName}`}</option>)}
-          </select>
-          {t.assignee?.id !== me && me && people.some((a) => a.id === me) && (
-            <Button size="sm" variant="soft" className="h-9 shrink-0" onClick={() => void run(assign.mutateAsync(me), 'It’s yours')}>Take it</Button>
+      {t.canAssign ? (
+        <Field label="Assignee" htmlFor="tk-assignee" hint={headed ? 'You lead this team — you choose who works it.' : undefined}>
+          <div className="flex gap-2">
+            <PersonSelect
+              id="tk-assignee"
+              className="min-w-0 flex-1"
+              value={t.assignee?.id ?? ''}
+              disabled={assign.isPending}
+              onChange={(v) => void run(assign.mutateAsync(v || null), 'Assignee updated')}
+              emptyLabel="Unassigned"
+              people={[
+                ...(t.assignee && !people.some((a) => a.id === t.assignee!.id) ? [t.assignee] : []),
+                ...people.map((a) => ({ ...a, sub: label(a).replace(`${a.firstName} ${a.lastName}`, '').replace(/^\s*[—-]\s*/, '') || null })),
+              ]}
+            />
+            {!headed && t.assignee?.id !== me && me && people.some((a) => a.id === me) && (
+              <Button size="sm" variant="soft" className="h-9 shrink-0" onClick={() => void run(assign.mutateAsync(me), 'It’s yours')}>Take it</Button>
+            )}
+          </div>
+          {suggestion && (
+            <Button size="sm" variant="soft" className="mt-2 w-full justify-start" loading={assign.isPending} onClick={() => void run(assign.mutateAsync(suggestion.id), `Assigned to ${suggestion.firstName}`)}>
+              <Sparkles /> Assign to {suggestion.id === me ? 'me' : suggestion.firstName} <span className="ml-auto text-xs font-normal text-muted-foreground">{suggestion.open} open · free today</span>
+            </Button>
           )}
+        </Field>
+      ) : (
+        <div>
+          <p className="text-xs text-muted-foreground">Assignee</p>
+          <p className="mt-0.5">{t.assignee ? (t.assignee.id === me ? 'You' : `${t.assignee.firstName} ${t.assignee.lastName}`) : <span className="flex items-center gap-1.5 text-muted-foreground"><Crown className="h-3.5 w-3.5" /> Waiting for the {QUEUE_INFO[t.queue].label} head to assign</span>}</p>
         </div>
-      </Field>
+      )}
       <Field label="Priority" htmlFor="tk-prio" hint="Changing it resets the targets from when the ticket was raised.">
-        <select id="tk-prio" className={inputClass} value={t.priority} disabled={update.isPending} onChange={(e) => void run(update.mutateAsync({ priority: e.target.value as Priority }), 'Priority updated')}>
+        <Select id="tk-prio" className={inputClass} value={t.priority} disabled={update.isPending || !t.canWork} onChange={(e) => void run(update.mutateAsync({ priority: e.target.value as Priority }), 'Priority updated')}>
           {(Object.keys(PRIORITY) as Priority[]).map((p) => <option key={p} value={p}>{PRIORITY[p].label}</option>)}
-        </select>
+        </Select>
       </Field>
       <Field label="Topic" htmlFor="tk-topic">
-        <select id="tk-topic" className={inputClass} value={t.category?.id ?? ''} disabled={update.isPending} onChange={(e) => void run(update.mutateAsync({ categoryId: e.target.value || null }), 'Topic updated')}>
+        <Select id="tk-topic" className={inputClass} value={t.category?.id ?? ''} disabled={update.isPending || !t.canWork} onChange={(e) => void run(update.mutateAsync({ categoryId: e.target.value || null }), 'Topic updated')}>
           <option value="">None</option>
           {(cats.data ?? []).filter((c) => c.queue === t.queue).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
+        </Select>
       </Field>
       <Field label="Wrong team?" htmlFor="tk-move">
-        <select id="tk-move" className={inputClass} value="" onChange={(e) => e.target.value && setMoveTo(e.target.value as Queue)}>
+        <Select id="tk-move" className={inputClass} value="" disabled={!t.canWork} onChange={(e) => e.target.value && setMoveTo(e.target.value as Queue)}>
           <option value="">Move to…</option>
           {QUEUES.filter((q) => q !== t.queue).map((q) => <option key={q} value={q}>{QUEUE_INFO[q].label}</option>)}
-        </select>
+        </Select>
       </Field>
       {moveTo && (
         <Modal
@@ -332,7 +490,7 @@ function AgentPanel({ t }: { t: TicketDetail }) {
           busy={update.isPending}
           title={`Move #${t.number} to ${QUEUE_INFO[moveTo].label}?`}
           description="It leaves your queue and loses its assignee and topic. The other team is notified."
-          className="sm:max-w-md"
+          size="sm"
           footer={
             <>
               <Button variant="secondary" onClick={() => setMoveTo(null)}>Cancel</Button>
@@ -364,7 +522,7 @@ function AgentPanel({ t }: { t: TicketDetail }) {
 function TextDialog({ title, description, label, submit, busy, onClose, minLength = 3, danger }: { title: string; description?: string; label: string; submit: (text: string) => Promise<void>; busy: boolean; onClose: () => void; minLength?: number; danger?: boolean }) {
   const [text, setText] = useState('');
   return (
-    <Modal open onClose={onClose} busy={busy} title={title} description={description} className="sm:max-w-md"
+    <Modal open onClose={onClose} busy={busy} title={title} description={description} size="sm"
       footer={<><Button variant="secondary" onClick={onClose} disabled={busy}>Cancel</Button><Button type="submit" form="text-dialog" variant={danger ? 'danger' : 'primary'} loading={busy}>{title.split(' ')[0]}</Button></>}>
       <form id="text-dialog" onSubmit={(e) => { e.preventDefault(); void submit(text); }}>
         <Field label={label} htmlFor="td-text" required><Textarea id="td-text" rows={4} value={text} onChange={(e) => setText(e.target.value)} required minLength={minLength} maxLength={5000} /></Field>
@@ -417,6 +575,8 @@ function ReopenDialog({ t, onClose }: { t: TicketDetail; onClose: () => void }) 
   );
 }
 
+const FACES: Array<[string, string]> = [['😞', 'Bad'], ['🙁', 'Not great'], ['😐', 'Okay'], ['🙂', 'Good'], ['🤩', 'Great']];
+
 function CloseDialog({ t, onClose }: { t: TicketDetail; onClose: () => void }) {
   const close = useCloseTicket(t.id);
   const resolved = t.status === 'RESOLVED';
@@ -432,15 +592,17 @@ function CloseDialog({ t, onClose }: { t: TicketDetail; onClose: () => void }) {
     }
   };
   return (
-    <Modal open onClose={onClose} busy={close.isPending} title={resolved ? 'Close and rate' : 'Withdraw this ticket?'} description={resolved ? `How did ${QUEUE_INFO[t.queue].label} do?` : 'Use this if you no longer need help. It can’t be reopened.'} className="sm:max-w-md"
+    <Modal open onClose={onClose} busy={close.isPending} title={resolved ? 'Close and rate' : 'Withdraw this ticket?'} description={resolved ? `How did ${QUEUE_INFO[t.queue].label} do?` : 'Use this if you no longer need help. It can’t be reopened.'} size="sm"
       footer={<><Button variant="secondary" onClick={onClose} disabled={close.isPending}>Cancel</Button><Button variant={resolved ? 'primary' : 'danger'} loading={close.isPending} onClick={() => void submit()}>{resolved ? 'Close ticket' : 'Withdraw'}</Button></>}>
       {resolved && (
         <div className="space-y-3">
-          <div className="flex gap-1" role="radiogroup" aria-label="Rating">
-            {[1, 2, 3, 4, 5].map((n) => (
-              <button key={n} type="button" role="radio" aria-checked={rating === n} aria-label={`${n} star${n === 1 ? '' : 's'}`} onClick={() => setRating(n)} className={cn('text-3xl leading-none transition-colors', n <= rating ? 'text-warning' : 'text-muted-foreground/30 hover:text-warning/60')}>★</button>
+          <div className="flex justify-center gap-3 py-1" role="radiogroup" aria-label="Rating">
+            {FACES.map(([face, label], i) => (
+              <button key={label} type="button" role="radio" aria-checked={rating === i + 1} aria-label={`${i + 1} — ${label}`} title={label} onClick={() => setRating(i + 1)}
+                className={cn('emo-host hd-face text-4xl leading-none', rating && rating !== i + 1 ? 'opacity-40 grayscale' : '')}><Emoji e={face} fire={rating === i + 1 ? 1 : 0} /></button>
             ))}
           </div>
+          {rating > 0 && <p className="text-center text-sm font-medium">{FACES[rating - 1]![1]}</p>}
           {rating > 0 && <Textarea rows={2} value={comment} onChange={(e) => setComment(e.target.value)} maxLength={1000} placeholder="Anything to add? (optional)" aria-label="Comment" />}
         </div>
       )}

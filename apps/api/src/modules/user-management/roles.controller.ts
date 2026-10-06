@@ -6,6 +6,7 @@ import type { AccessContext } from '../access/access.types';
 import { companyOf } from './company-context';
 import { DuplicateRoleDto, RoleStatusDto, SaveRoleDto } from './dto';
 import { RolesService } from './roles.service';
+import { LiveAccess } from '../realtime/live.decorator';
 
 // ============================================================
 // Company Admin → Roles & Permissions  (/company/roles)
@@ -21,6 +22,7 @@ import { RolesService } from './roles.service';
 @ApiTags('Roles')
 @ApiBearerAuth()
 @RequireFeature('admin.users')
+@LiveAccess('caller')
 @Controller('company/roles')
 export class RolesController {
   constructor(private readonly roles: RolesService) {}
@@ -30,6 +32,13 @@ export class RolesController {
   @ApiOperation({ summary: 'List the roles of your company' })
   list(@TenantCtx() ctx: TenantContext) {
     return this.roles.list(companyOf(ctx));
+  }
+
+  @Get('templates')
+  @RequirePermission('role.view')
+  @ApiOperation({ summary: 'Extra role templates to start a new role from' })
+  templates() {
+    return this.roles.templates();
   }
 
   @Get(':id')

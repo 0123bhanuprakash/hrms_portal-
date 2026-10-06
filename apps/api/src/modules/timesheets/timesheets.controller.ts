@@ -4,8 +4,10 @@ import type { TenantContext } from '../../common/types/request.types';
 import type { AccessContext } from '../access/access.types';
 import { TimesheetsService } from './timesheets.service';
 import { ApproveBlocksDto, BlockDto, CalendarQueryDto, ComplianceQueryDto, CopyDayDto, RecallDto, SendBackDto, SubmitDto, SubmitPreviewQueryDto, TeamQueryDto, TimesheetQueryDto } from './dto';
+import { Live } from '../realtime/live.decorator';
 
 @RequireFeature('work.timesheets')
+@Live('timesheets')
 @Controller('timesheets')
 export class TimesheetsController {
   constructor(private readonly timesheets: TimesheetsService) {}

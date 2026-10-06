@@ -168,3 +168,48 @@ export class UserStatusDto {
   @IsIn([UserStatus.ACTIVE, UserStatus.INACTIVE])
   status!: 'ACTIVE' | 'INACTIVE';
 }
+
+// ─── Users: bulk, invite many, role preview ─────────────────
+
+export class BulkUsersDto {
+  @ApiProperty({ type: [String] })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(100)
+  @IsUUID('all', { each: true })
+  ids!: string[];
+
+  @ApiProperty({ enum: ['add_role', 'remove_role', 'resend_invite', 'deactivate', 'activate'] })
+  @IsIn(['add_role', 'remove_role', 'resend_invite', 'deactivate', 'activate'])
+  action!: 'add_role' | 'remove_role' | 'resend_invite' | 'deactivate' | 'activate';
+
+  @ApiPropertyOptional({ description: 'For add_role / remove_role' })
+  @IsOptional()
+  @IsUUID()
+  roleId?: string;
+}
+
+export class InviteManyDto {
+  @ApiProperty({ type: [String] })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(50)
+  @IsString({ each: true })
+  @MaxLength(200, { each: true })
+  emails!: string[];
+
+  @ApiPropertyOptional({ type: [String], description: 'Defaults to the Employee role' })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsUUID('all', { each: true })
+  roleIds?: string[];
+}
+
+export class PreviewRolesDto {
+  @ApiProperty({ type: [String] })
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsUUID('all', { each: true })
+  roleIds!: string[];
+}

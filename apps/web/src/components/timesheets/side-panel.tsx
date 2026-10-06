@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { blockColor, GENERAL_COLOR } from '@/components/timesheets/week-calendar';
 import { clock, dayLabel, fmtHours, useSaveBlock, type Week } from '@/lib/company/timesheets';
 import { getApiErrorMessage } from '@/lib/errors';
+import { Select } from '@/components/ui/pickers';
 
 interface TimerState {
   projectId: string | null;
@@ -89,10 +90,10 @@ export function TimerCard({ week, onNeedsEdit }: { week: Week; onNeedsEdit: (dat
         </>
       ) : (
         <>
-          <select className="h-8 w-full rounded-md border border-input bg-surface px-2 text-xs" value={projectId ?? ''} onChange={(e) => setProjectId(e.target.value || null)} aria-label="Timer project">
+          <Select className="h-8 w-full rounded-md border border-input bg-surface px-2 text-xs" value={projectId ?? ''} onChange={(e) => setProjectId(e.target.value || null)} aria-label="Timer project">
             {week.projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             <option value="">General</option>
-          </select>
+          </Select>
           <input className="h-8 w-full rounded-md border border-input bg-surface px-2 text-xs" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What are you working on?" maxLength={500} aria-label="Timer description" />
           <Button size="sm" variant="soft" className="w-full" icon={<Play />} onClick={() => { const n = { projectId, description, startedAt: new Date().toISOString() }; writeTimer(id, n); setT(n); }}>Start timer</Button>
         </>

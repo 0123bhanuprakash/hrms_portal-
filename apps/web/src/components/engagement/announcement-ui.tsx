@@ -1,12 +1,14 @@
 'use client';
 
 import React from 'react';
+import { Emoji } from '@/components/motion/emoji';
 import { toast } from 'sonner';
 import { SmilePlus } from 'lucide-react';
 import { ANNOUNCEMENT_REACTIONS, useReactAnnouncement, useRsvp, type Announcement, type Category, type Cover, type Rsvp } from '@/lib/company/engagement';
 import { DropdownMenu } from '@/components/ui/dropdown-menu';
 import { getApiErrorMessage } from '@/lib/errors';
 import { cn } from '@/lib/cn';
+import { MENTION, MentionChip } from '@/components/engagement/mentions';
 
 export const CATEGORIES: Record<Category, { label: string; emoji: string; pill: string; cover: Cover }> = {
   policy: { label: 'Policy', emoji: '📘', pill: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-300', cover: 'indigo' },
@@ -44,12 +46,14 @@ export function readTime(body: string): string {
   return words < 60 ? 'Under a minute' : `${Math.ceil(words / 200)} min read`;
 }
 
-// ─── Formatting: **bold**, *italic*, [text](https://…), "- " bullets ──
+// ─── Formatting: **bold**, *italic*, [text](https://…), "- " bullets, @[Name](id) ──
 
-const INLINE = /(\*\*[^*]+\*\*|\*[^*\s][^*]*\*|\[[^\]]+\]\(https?:\/\/[^)\s]+\)|https?:\/\/[^\s)]+)/g;
+const INLINE = /(@\[[^\]\n]{1,80}\]\([0-9a-f-]{36}\)|\*\*[^*]+\*\*|\*[^*\s][^*]*\*|\[[^\]]+\]\(https?:\/\/[^)\s]+\)|https?:\/\/[^\s)]+)/gi;
 function inline(text: string, key: string): React.ReactNode[] {
   return text.split(INLINE).filter(Boolean).map((part, i) => {
     const k = `${key}-${i}`;
+    const mention = /^@\[([^\]\n]{1,80})\]\([0-9a-f-]{36}\)$/i.exec(part);
+    if (mention) return <MentionChip key={k} name={mention[1]!} />;
     if (part.startsWith('**') && part.endsWith('**')) return <strong key={k}>{part.slice(2, -2)}</strong>;
     if (part.startsWith('*') && part.endsWith('*') && part.length > 2) return <em key={k}>{part.slice(1, -1)}</em>;
     const md = /^\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)$/.exec(part);
@@ -82,10 +86,26 @@ export function RichText({ text, className }: { text: string; className?: string
 
 /** Plain preview text for cards (formatting removed). */
 export function plain(text: string): string {
-  return text.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/^\s*[-•*]\s+/gm, '• ');
+  return text.replace(MENTION, '@$1').replace(/\*\*(.+?)\*\*/g, '$1').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/^\s*[-•*]\s+/gm, '• ');
 }
 
 // ─── Reactions and RSVP ─────────────────────────────────────
+
+/** One reaction: the emoji does its move on hover; a new reaction pops it and floats up 3 copies. */
+function ReactionPill({ emoji, count, mine, className, onReact }: { emoji: string; count: number; mine: boolean; className: string; onReact: () => void }) {
+  const [fire, setFire] = React.useState(0);
+  return (
+    <button
+      type="button"
+      aria-pressed={mine}
+      aria-label={`React ${emoji}`}
+      onClick={() => { if (!mine) setFire((n) => n + 1); onReact(); }}
+      className={cn('emo-host', className, mine ? 'border-primary bg-primary-soft text-primary-soft-foreground' : 'border-border bg-surface hover:bg-subtle')}
+    >
+      <Emoji e={emoji} fire={fire} burst /> <span className="tabular-nums">{count}</span>
+    </button>
+  );
+}
 
 export function ReactionBar({ a, size = 'md' }: { a: Announcement; size?: 'sm' | 'md' }) {
   const react = useReactAnnouncement();
@@ -94,11 +114,7 @@ export function ReactionBar({ a, size = 'md' }: { a: Announcement; size?: 'sm' |
   const pill = cn('inline-flex items-center gap-1 rounded-full border font-semibold transition-colors', size === 'sm' ? 'h-6 px-2 text-[11px]' : 'h-7 px-2.5 text-xs');
   return (
     <div className="flex flex-wrap items-center gap-1.5" onClick={(e) => e.preventDefault()}>
-      {a.reactions.map((r) => (
-        <button key={r.emoji} type="button" aria-pressed={r.mine} onClick={() => go(r.emoji)} className={cn(pill, r.mine ? 'border-primary bg-primary-soft text-primary-soft-foreground' : 'border-border bg-surface hover:bg-subtle')}>
-          {r.emoji} <span className="tabular-nums">{r.count}</span>
-        </button>
-      ))}
+      {a.reactions.map((r) => <ReactionPill key={r.emoji} emoji={r.emoji} count={r.count} mine={r.mine} className={pill} onReact={() => go(r.emoji)} />)}
       <DropdownMenu
         label="Add a reaction"
         align="left"

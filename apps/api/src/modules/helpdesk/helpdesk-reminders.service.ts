@@ -1,16 +1,20 @@
 import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { TicketMessageKind, TicketStatus } from '@prisma/client';
+import { TicketMessageKind, TicketPriority, TicketStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AUTO_CLOSE_DAYS, QUEUE_LABEL, QUEUE_PERMISSION } from './sla';
+import { TicketsService } from './tickets.service';
+import { HelpdeskTeamsService } from './teams.service';
 
 const EVERY_MS = 15 * 60_000;
+/** Urgent / High tickets nobody owns after this long → remind the team head again. */
+const UNASSIGNED_ALERT_MS = 30 * 60_000;
 
 /**
  * Every 15 minutes: tells agents about missed response / resolution targets
- * (once per ticket and target) and closes tickets resolved more than
- * AUTO_CLOSE_DAYS ago.
+ * (once per ticket and target), reminds team heads about Urgent / High tickets
+ * still without an owner, and closes tickets resolved more than AUTO_CLOSE_DAYS ago.
  */
 @Injectable()
 export class HelpdeskRemindersService implements OnApplicationBootstrap, OnModuleDestroy {
@@ -21,6 +25,8 @@ export class HelpdeskRemindersService implements OnApplicationBootstrap, OnModul
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
     private readonly config: ConfigService,
+    private readonly tickets: TicketsService,
+    private readonly teams: HelpdeskTeamsService,
   ) {}
 
   onApplicationBootstrap() {
@@ -49,7 +55,11 @@ export class HelpdeskRemindersService implements OnApplicationBootstrap, OnModul
       const agents = new Map<string, string[]>();
       for (const t of late) {
         const key = `${t.companyId}:${t.queue}`;
-        if (!agents.has(key)) agents.set(key, await this.notifications.companyWideApprovers(t.companyId, QUEUE_PERMISSION[t.queue]));
+        if (!agents.has(key)) {
+          // Unowned tickets: the team head (or backup) when the team has one, else everyone in the queue
+          const { onDuty } = await this.teams.leads(t.companyId, t.queue);
+          agents.set(key, onDuty.length ? onDuty : await this.notifications.companyWideApprovers(t.companyId, QUEUE_PERMISSION[t.queue]));
+        }
         const to = t.assigneeId ? [t.assigneeId] : agents.get(key)!;
         const response = !t.firstRespondedAt && t.firstResponseDueAt < now;
         const resolution = t.resolutionDueAt < now;
@@ -80,15 +90,37 @@ export class HelpdeskRemindersService implements OnApplicationBootstrap, OnModul
         }
       }
 
+      const unowned = await this.prisma.ticket.findMany({
+        where: { status: TicketStatus.OPEN, assigneeId: null, priority: { in: [TicketPriority.URGENT, TicketPriority.HIGH] }, createdAt: { lt: new Date(now.getTime() - UNASSIGNED_ALERT_MS) } },
+        select: { id: true, companyId: true, number: true, queue: true, subject: true, priority: true },
+        take: 500,
+      });
+      for (const t of unowned) {
+        const { onDuty } = await this.teams.leads(t.companyId, t.queue);
+        if (!onDuty.length) continue;
+        warned += await this.notifications.notify({
+          companyId: t.companyId,
+          userIds: onDuty,
+          type: 'ticket.unassigned',
+          title: `#${t.number} still has no owner (${t.priority === TicketPriority.URGENT ? 'Urgent' : 'High'}): ${t.subject}`,
+          body: `Assign it to someone in the ${QUEUE_LABEL[t.queue]} team.`,
+          link: `/app/helpdesk/${t.id}`,
+          actionLabel: 'Assign',
+          email: false,
+          dedupeKey: `ticket-unassigned:${t.id}`,
+        });
+      }
+
       const stale = await this.prisma.ticket.findMany({
         where: { status: TicketStatus.RESOLVED, resolvedAt: { lt: new Date(now.getTime() - AUTO_CLOSE_DAYS * 86400_000) } },
-        select: { id: true, companyId: true },
+        select: { id: true, companyId: true, queue: true, employee: { select: { userId: true } } },
         take: 500,
       });
       for (const t of stale) {
         const { count } = await this.prisma.ticket.updateMany({ where: { id: t.id, status: TicketStatus.RESOLVED }, data: { status: TicketStatus.CLOSED, closedAt: now } });
         if (!count) continue;
         await this.prisma.ticketMessage.create({ data: { companyId: t.companyId, ticketId: t.id, kind: TicketMessageKind.EVENT, body: `Closed automatically ${AUTO_CLOSE_DAYS} days after it was resolved` } });
+        this.tickets.live(t.companyId, t);
         closed++;
       }
     } catch (err) {

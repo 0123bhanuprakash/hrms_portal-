@@ -1,47 +1,59 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
+  AlertTriangle,
+  ChevronDown,
+  Crown,
   IdCard,
   KeyRound,
-  ScanSearch,
   Mail,
   MoreHorizontal,
+  ScanSearch,
   Search,
   ShieldCheck,
+  ShieldMinus,
+  ShieldPlus,
+  Sparkles,
   UserCheck,
   UserPlus,
   Users as UsersIcon,
   UserX,
+  X,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, EmptyState, ErrorState, Pagination, Skeleton, Tabs } from '@/components/ui/feedback';
-import { Field, Input, inputClass } from '@/components/ui/field';
+import { FormError, Input } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { DropdownMenu, type MenuItem } from '@/components/ui/dropdown-menu';
-import { RolePicker } from '@/components/company/role-picker';
+import { CountUp } from '@/components/motion/motion';
+import { PersonAvatar } from '@/components/profile/person-avatar';
+import { RoleChip } from '@/components/admin/role-look';
+import { InviteDialog } from '@/components/admin/invite-dialog';
+import { UserDrawer } from '@/components/admin/user-drawer';
 import { EmployeeProfileFields, emptyProfile, profileBody, type ProfileInput } from '@/components/company/employee-profile-fields';
 import { useAccess } from '@/lib/access/use-access';
 import {
+  useBulkUsers,
   useCompanyUsers,
   useCreateEmployeeProfile,
-  useInviteUser,
   useResendInvite,
   useRoles,
   useSendPasswordReset,
-  useSetUserRoles,
   useSetUserStatus,
+  useUsersInsights,
+  type BulkAction,
   type CompanyUser,
   type UsersQuery,
 } from '@/lib/company/user-management';
 import { getApiErrorMessage } from '@/lib/errors';
-import { formatRelative, initials } from '@/lib/format';
+import { formatRelative } from '@/lib/format';
 import { cn } from '@/lib/cn';
 
 type StatusTab = 'all' | 'ACTIVE' | 'INVITED' | 'INACTIVE';
@@ -67,17 +79,22 @@ export default function UsersPage() {
   const query: UsersQuery = { search: debounced || undefined, roleId: roleId || undefined, status: tab === 'all' ? undefined : tab, page, limit: 20 };
   const users = useCompanyUsers(query);
   const roles = useRoles();
+  const insights = useUsersInsights(can('user.view'));
 
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [editRoles, setEditRoles] = useState<CompanyUser | null>(null);
+  const [open, setOpen] = useState<CompanyUser | null>(null);
   const [confirm, setConfirm] = useState<{ user: CompanyUser; action: 'deactivate' | 'activate' } | null>(null);
   const [profileFor, setProfileFor] = useState<CompanyUser | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkConfirm, setBulkConfirm] = useState<{ action: BulkAction; roleId?: string; label: string } | null>(null);
 
   const resend = useResendInvite();
   const reset = useSendPasswordReset();
   const setStatus = useSetUserStatus();
+  const bulk = useBulkUsers();
 
   useEffect(() => setPage(1), [debounced, roleId, tab]);
+  useEffect(() => setSelected(new Set()), [debounced, roleId, tab, page]);
 
   if (!accessLoading && !can('user.view')) {
     return <EmptyState icon={<ShieldCheck />} title="No access" description="You don't have permission to view users." />;
@@ -90,18 +107,34 @@ export default function UsersPage() {
     { id: 'INVITED', label: 'Invited', count: counts?.invited },
     { id: 'INACTIVE', label: 'Inactive', count: counts?.inactive },
   ];
+  const rows = users.data?.data ?? [];
+  const selectable = rows.filter((u) => !u.isSelf);
+  const allOn = selectable.length > 0 && selectable.every((u) => selected.has(u.id));
+  const toggle = (id: string) =>
+    setSelected((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+
+  const runBulk = async (action: BulkAction, ids: string[], roleIdFor?: string, label = 'Done') => {
+    try {
+      const r = await bulk.mutateAsync({ ids, action, roleId: roleIdFor });
+      if (r.done) toast.success(`${label} · ${r.done} ${r.done === 1 ? 'person' : 'people'}`);
+      for (const f of r.failed.slice(0, 3)) toast.error(`${f.name || 'Someone'}: ${f.error}`);
+      if (r.failed.length > 3) toast.error(`…and ${r.failed.length - 3} more could not be changed`);
+      setSelected(new Set());
+      setBulkConfirm(null);
+    } catch (e) {
+      toast.error(getApiErrorMessage(e, 'Could not change these people'));
+    }
+  };
 
   const actionsFor = (u: CompanyUser): Array<MenuItem | 'separator'> => {
-    const items: Array<MenuItem | 'separator'> = [];
-    if (can('role.view')) {
-      items.push({ label: 'See what they can do', icon: <ScanSearch />, onSelect: () => router.push(`/app/access-explorer?user=${u.id}`) });
-    }
-    if (!u.employee && can('employee.create')) {
-      items.push({ label: 'Add employee profile', icon: <IdCard />, onSelect: () => setProfileFor(u) });
-    }
-    if (can('user.assign_roles')) {
-      items.push({ label: 'Edit roles', icon: <ShieldCheck />, onSelect: () => setEditRoles(u), disabled: u.isSelf, hint: u.isSelf ? "You can't change your own roles" : undefined });
-    }
+    const items: Array<MenuItem | 'separator'> = [{ label: 'Open', icon: <ShieldCheck />, onSelect: () => setOpen(u) }];
+    if (can('role.view')) items.push({ label: 'See what they can do', icon: <ScanSearch />, onSelect: () => router.push(`/app/access-explorer?user=${u.id}`) });
+    if (!u.employee && can('employee.create')) items.push({ label: 'Add employee profile', icon: <IdCard />, onSelect: () => setProfileFor(u) });
     if (u.invited && can('user.invite')) {
       items.push({
         label: 'Resend invite',
@@ -125,7 +158,7 @@ export default function UsersPage() {
       });
     }
     if (can('user.deactivate') && !u.isSelf) {
-      if (items.length) items.push('separator');
+      items.push('separator');
       items.push(
         u.status === 'ACTIVE'
           ? { label: 'Deactivate', icon: <UserX />, danger: true, onSelect: () => setConfirm({ user: u, action: 'deactivate' }) }
@@ -135,6 +168,10 @@ export default function UsersPage() {
     return items;
   };
 
+  const activeRoles = (roles.data ?? []).filter((r) => r.status === 'ACTIVE');
+  const ids = [...selected];
+  const ins = insights.data;
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -142,63 +179,160 @@ export default function UsersPage() {
         title="Users"
         description="Everyone who can sign in to your workspace, and the roles that decide what they can do."
         action={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {can('role.view') && (
               <Button variant="secondary" asChild>
-                <Link href="/app/roles">
-                  <ShieldCheck /> Roles & permissions
-                </Link>
+                <Link href="/app/roles"><ShieldCheck /> Roles & permissions</Link>
               </Button>
             )}
             {can('user.invite') && (
               <Button onClick={() => setInviteOpen(true)}>
-                <UserPlus /> Invite user
+                <UserPlus /> Invite people
               </Button>
             )}
           </div>
         }
       />
 
-      <Card>
+      {/* Count tiles */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 m-stagger">
+        {[
+          { label: 'Active', value: ins?.counts.active, hint: ins ? `${ins.counts.activeThisMonth} signed in this month` : '', tone: 'border-t-success', on: () => setTab('ACTIVE') },
+          { label: 'Invited, not joined', value: ins?.counts.invited, hint: ins?.counts.oldInvites ? `${ins.counts.oldInvites} waiting over 7 days` : 'all recent', tone: 'border-t-info', on: () => setTab('INVITED') },
+          { label: 'Inactive', value: ins?.counts.inactive, hint: 'can’t sign in · data kept', tone: 'border-t-border', on: () => setTab('INACTIVE') },
+          { label: 'Company Admins', value: ins?.counts.admins, hint: 'full access', tone: 'border-t-warning', on: () => setRoleId(activeRoles.find((r) => r.isOwner)?.id ?? '') },
+        ].map((t) => (
+          <button key={t.label} type="button" onClick={t.on} className={cn('rounded-xl border border-border border-t-[3px] bg-surface p-4 text-left shadow-card transition-transform hover:-translate-y-0.5', t.tone)}>
+            <p className="text-2xs font-semibold uppercase tracking-wider text-muted-foreground">{t.label}</p>
+            {t.value === undefined ? <Skeleton className="mt-1 h-8 w-12" /> : <CountUp value={t.value} className="block text-2xl font-semibold tabular-nums" />}
+            <p className="truncate text-xs text-muted-foreground">{t.hint}</p>
+          </button>
+        ))}
+      </div>
+
+      {/* Needs a look */}
+      {ins && (ins.oldInvites.length > 0 || ins.dormant.length > 0 || ins.privateData.people > 0) && (
+        <Card className="space-y-2 p-4">
+          <p className="flex items-center gap-2 text-sm font-semibold"><Sparkles className="h-4 w-4 text-primary" /> Needs a look</p>
+          {ins.oldInvites.length > 0 && (
+            <div className="flex flex-wrap items-center gap-3 rounded-lg bg-info-soft px-3 py-2 text-sm">
+              <Mail className="h-4 w-4 shrink-0 text-info" />
+              <span className="min-w-0 flex-1">
+                <b>{ins.oldInvites.length} invite{ins.oldInvites.length === 1 ? '' : 's'}</b> older than a week — {names(ins.oldInvites.map((x) => x.name))} {ins.oldInvites.length === 1 ? 'hasn’t' : 'haven’t'} signed in.
+              </span>
+              {can('user.invite') && (
+                <Button size="sm" variant="secondary" loading={bulk.isPending && bulk.variables?.action === 'resend_invite'} onClick={() => void runBulk('resend_invite', ins.oldInvites.map((x) => x.id), undefined, 'Invites sent again')}>
+                  Resend {ins.oldInvites.length === 1 ? 'it' : 'all'}
+                </Button>
+              )}
+            </div>
+          )}
+          {ins.dormant.length > 0 && (
+            <div className="flex flex-wrap items-center gap-3 rounded-lg bg-warning-soft px-3 py-2 text-sm">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
+              <span className="min-w-0 flex-1">
+                <b>{ins.dormant[0]!.name}</b> has {ins.dormant[0]!.roles.join(', ')} but hasn’t signed in for {ins.dormant[0]!.days} days
+                {ins.dormantCount > 1 && ` (+${ins.dormantCount - 1} more)`}.
+              </span>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  const u = rows.find((x) => x.id === ins.dormant[0]!.id);
+                  if (u) setOpen(u);
+                  else {
+                    setSearch(ins.dormant[0]!.name);
+                    setTab('all');
+                  }
+                }}
+              >
+                Review access
+              </Button>
+            </div>
+          )}
+          {ins.privateData.people > 0 && can('role.view') && (
+            <div className="flex flex-wrap items-center gap-3 rounded-lg bg-muted px-3 py-2 text-sm">
+              <ShieldCheck className="h-4 w-4 shrink-0 text-primary" />
+              <span className="min-w-0 flex-1">
+                <b>{ins.privateData.people} {ins.privateData.people === 1 ? 'person' : 'people'}</b> can see others’ salary or bank details ({ins.privateData.roles.join(', ')}).
+              </span>
+              <Button size="sm" variant="secondary" asChild>
+                <Link href="/app/access-explorer?tab=sensitive">See who</Link>
+              </Button>
+            </div>
+          )}
+        </Card>
+      )}
+
+      <Card className="overflow-visible">
         <div className="flex flex-col gap-3 border-b border-border px-4 pt-3 sm:flex-row sm:items-end sm:justify-between">
           <Tabs tabs={tabs} value={tab} onChange={setTab} />
-          <div className="flex gap-2 pb-3">
-            <div className="relative w-full sm:w-64">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name or email" className="pl-8" aria-label="Search users" />
-            </div>
-            <select value={roleId} onChange={(e) => setRoleId(e.target.value)} className={cn(inputClass, 'w-44')} aria-label="Filter by role">
-              <option value="">All roles</option>
-              {roles.data?.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
-            </select>
+          <div className="relative w-full pb-3 sm:w-64">
+            <Search className="pointer-events-none absolute left-2.5 top-[calc(50%-6px)] h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name or email" className="pl-8" aria-label="Search users" />
           </div>
         </div>
+
+        {/* Role chips = filter */}
+        <div className="flex flex-wrap items-center gap-1.5 border-b border-border px-4 py-2.5">
+          <span className="mr-1 text-xs text-muted-foreground">Role</span>
+          {activeRoles.map((r) => (
+            <RoleChip key={r.id} role={r} active={roleId === r.id} onClick={() => setRoleId(roleId === r.id ? '' : r.id)}>
+              <span className="opacity-60">{r.userCount}</span>
+            </RoleChip>
+          ))}
+          {roleId && (
+            <button type="button" onClick={() => setRoleId('')} className="ml-1 inline-flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground">
+              <X className="h-3 w-3" /> Clear
+            </button>
+          )}
+        </div>
+
+        {/* Bulk bar */}
+        {selected.size > 0 && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-border bg-primary-soft/60 px-4 py-2 text-sm m-rise">
+            <b className="text-primary">{selected.size} selected</b>
+            {can('user.assign_roles') && (
+              <>
+                <RoleMenu label="Add a role" icon={<ShieldPlus />} roles={activeRoles.filter((r) => !r.isOwner)} onPick={(r) => setBulkConfirm({ action: 'add_role', roleId: r.id, label: `Add ${r.name}` })} />
+                <RoleMenu label="Remove a role" icon={<ShieldMinus />} roles={activeRoles.filter((r) => !r.isOwner)} onPick={(r) => setBulkConfirm({ action: 'remove_role', roleId: r.id, label: `Remove ${r.name}` })} />
+              </>
+            )}
+            {can('user.invite') && (
+              <Button size="sm" variant="secondary" onClick={() => void runBulk('resend_invite', ids, undefined, 'Invites sent again')} loading={bulk.isPending && bulk.variables?.action === 'resend_invite'}>
+                <Mail /> Resend invites
+              </Button>
+            )}
+            {can('user.deactivate') && (
+              <>
+                <Button size="sm" variant="secondary" className="text-destructive" onClick={() => setBulkConfirm({ action: 'deactivate', label: 'Deactivate' })}><UserX /> Deactivate</Button>
+                <Button size="sm" variant="ghost" onClick={() => void runBulk('activate', ids, undefined, 'Activated')}><UserCheck /> Activate</Button>
+              </>
+            )}
+            <button type="button" onClick={() => setSelected(new Set())} className="ml-auto text-xs text-muted-foreground hover:text-foreground">Clear</button>
+          </div>
+        )}
 
         {users.isError ? (
           <ErrorState message={getApiErrorMessage(users.error, 'Could not load users')} onRetry={() => users.refetch()} />
         ) : users.isLoading ? (
-          <div className="space-y-2 p-4">
-            {Array.from({ length: 6 }, (_, i) => (
-              <Skeleton key={i} className="h-12" />
-            ))}
-          </div>
-        ) : !users.data?.data.length ? (
+          <div className="space-y-2 p-4">{Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-12" />)}</div>
+        ) : !rows.length ? (
           <EmptyState
             icon={<UsersIcon />}
             title={search || roleId || tab !== 'all' ? 'No users match' : 'No users yet'}
             description={search || roleId || tab !== 'all' ? 'Try a different search or filter.' : 'Invite your first teammate to get started.'}
-            action={can('user.invite') && !search && !roleId && tab === 'all' ? <Button onClick={() => setInviteOpen(true)}><UserPlus /> Invite user</Button> : undefined}
+            action={can('user.invite') && !search && !roleId && tab === 'all' ? <Button onClick={() => setInviteOpen(true)}><UserPlus /> Invite people</Button> : undefined}
           />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  <th className="px-4 py-3 font-semibold">User</th>
+                  <th className="w-10 px-4 py-3">
+                    <input type="checkbox" aria-label="Select all on this page" className="h-4 w-4 accent-[hsl(var(--primary))]" checked={allOn} onChange={() => setSelected(allOn ? new Set() : new Set(selectable.map((u) => u.id)))} />
+                  </th>
+                  <th className="px-2 py-3 font-semibold">User</th>
                   <th className="hidden px-4 py-3 font-semibold sm:table-cell">Roles</th>
                   <th className="hidden px-4 py-3 font-semibold md:table-cell">Status</th>
                   <th className="hidden px-4 py-3 font-semibold lg:table-cell">Last sign-in</th>
@@ -206,45 +340,43 @@ export default function UsersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {users.data.data.map((u) => {
-                  const items = actionsFor(u);
+                {rows.map((u) => {
+                  const days = u.lastLoginAt ? Math.floor((Date.now() - new Date(u.lastLoginAt).getTime()) / 86_400_000) : null;
                   return (
-                    <tr key={u.id} className={cn('transition-colors hover:bg-muted/50', u.status !== 'ACTIVE' && 'opacity-70')}>
-                      <td className="px-4 py-3">
+                    <tr
+                      key={u.id}
+                      onClick={() => setOpen(u)}
+                      className={cn('cursor-pointer transition-colors hover:bg-muted/50', selected.has(u.id) && 'bg-primary-soft/40', u.status !== 'ACTIVE' && 'opacity-70')}
+                    >
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${u.firstName}`}
+                          className="h-4 w-4 accent-[hsl(var(--primary))] disabled:opacity-30"
+                          disabled={u.isSelf}
+                          checked={selected.has(u.id)}
+                          onChange={() => toggle(u.id)}
+                        />
+                      </td>
+                      <td className="px-2 py-3">
                         <div className="flex items-center gap-3">
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-xs font-semibold text-primary-soft-foreground">
-                            {initials(`${u.firstName} ${u.lastName}`)}
-                          </span>
+                          <PersonAvatar person={u} size="sm" />
                           <div className="min-w-0">
                             <p className="flex items-center gap-1.5 truncate font-medium text-foreground">
                               {u.firstName} {u.lastName}
                               {u.isSelf && <Badge tone="outline">You</Badge>}
+                              {u.isAdmin && <Crown className="h-3.5 w-3.5 text-warning" aria-label="Company Admin" />}
                             </p>
                             <p className="truncate text-xs text-muted-foreground">
                               {u.email}
-                              {u.employee ? (
-                                <span className="ml-1.5 font-mono">· {u.employee.employeeId}</span>
-                              ) : (
-                                <Badge tone="warning" className="ml-1.5" title="Sign-in account only — not in Employees or the org chart">No employee profile</Badge>
-                              )}
+                              {u.employee && <span className="ml-1.5 font-mono">· {u.employee.employeeId}</span>}
                             </p>
-                            {/* Phones: roles under the name instead of their own column */}
-                            <div className="mt-1 flex flex-wrap gap-1 sm:hidden">
-                              {u.roles.map((r) => (
-                                <Badge key={r.id} tone={r.isOwner ? 'warning' : 'primary'}>{r.name}</Badge>
-                              ))}
-                            </div>
+                            <div className="mt-1 flex flex-wrap gap-1 sm:hidden">{u.roles.map((r) => <RoleChip key={r.id} role={r} />)}</div>
                           </div>
                         </div>
                       </td>
                       <td className="hidden px-4 py-3 sm:table-cell">
-                        <div className="flex flex-wrap gap-1">
-                          {u.roles.map((r) => (
-                            <Badge key={r.id} tone={r.isOwner ? 'warning' : r.status === 'ACTIVE' ? 'primary' : 'neutral'}>
-                              {r.name}
-                            </Badge>
-                          ))}
-                        </div>
+                        <div className="flex flex-wrap gap-1">{u.roles.map((r) => <RoleChip key={r.id} role={r} />)}</div>
                       </td>
                       <td className="hidden px-4 py-3 md:table-cell">
                         {u.status !== 'ACTIVE' ? (
@@ -255,19 +387,19 @@ export default function UsersPage() {
                           <Badge tone="success" dot>Active</Badge>
                         )}
                       </td>
-                      <td className="hidden px-4 py-3 text-muted-foreground lg:table-cell">{u.lastLoginAt ? formatRelative(u.lastLoginAt) : 'Never'}</td>
-                      <td className="px-4 py-3 text-right">
-                        {items.length > 0 && (
-                          <DropdownMenu
-                            label={`Actions for ${u.firstName}`}
-                            items={items}
-                            trigger={() => (
-                              <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${u.firstName} ${u.lastName}`}>
-                                <MoreHorizontal />
-                              </Button>
-                            )}
-                          />
-                        )}
+                      <td className={cn('hidden px-4 py-3 lg:table-cell', days !== null && days >= 30 ? 'font-medium text-warning' : 'text-muted-foreground')}>
+                        {u.lastLoginAt ? formatRelative(u.lastLoginAt) : 'Never'}
+                      </td>
+                      <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu
+                          label={`Actions for ${u.firstName}`}
+                          items={actionsFor(u)}
+                          trigger={() => (
+                            <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${u.firstName} ${u.lastName}`}>
+                              <MoreHorizontal />
+                            </Button>
+                          )}
+                        />
                       </td>
                     </tr>
                   );
@@ -284,7 +416,7 @@ export default function UsersPage() {
       </Card>
 
       <InviteDialog open={inviteOpen} onClose={() => setInviteOpen(false)} canChooseRoles={can('user.assign_roles')} canAddEmployee={can('employee.create')} />
-      <EditRolesDialog user={editRoles} onClose={() => setEditRoles(null)} />
+      <UserDrawer user={open} onClose={() => setOpen(null)} onStatus={(u) => setConfirm({ user: u, action: u.status === 'ACTIVE' ? 'deactivate' : 'activate' })} />
       <ProfileDialog user={profileFor} onClose={() => setProfileFor(null)} />
 
       <ConfirmDialog
@@ -309,111 +441,51 @@ export default function UsersPage() {
                 : `${confirm.user.firstName} can sign in again`,
             );
             setConfirm(null);
+            setOpen(null);
           } catch (e) {
             toast.error(getApiErrorMessage(e, 'Could not update the user'));
           }
+        }}
+      />
+
+      <ConfirmDialog
+        isOpen={Boolean(bulkConfirm)}
+        onClose={() => setBulkConfirm(null)}
+        isDanger={bulkConfirm?.action === 'deactivate' || bulkConfirm?.action === 'remove_role'}
+        isLoading={bulk.isPending}
+        title={`${bulkConfirm?.label ?? ''} for ${selected.size} ${selected.size === 1 ? 'person' : 'people'}?`}
+        description={
+          bulkConfirm?.action === 'deactivate'
+            ? 'They are signed out everywhere and can’t sign in until activated again. Their data is kept.'
+            : 'Each person is checked on their own — anyone who can’t be changed is listed after.'
+        }
+        confirmText={bulkConfirm?.label ?? 'Confirm'}
+        onConfirm={async () => {
+          if (bulkConfirm) await runBulk(bulkConfirm.action, ids, bulkConfirm.roleId, bulkConfirm.label);
         }}
       />
     </div>
   );
 }
 
-// ─── Invite ─────────────────────────────────────────────────
+const names = (list: string[]) => (list.length <= 2 ? list.join(' and ') : `${list.slice(0, 2).join(', ')} and ${list.length - 2} more`);
 
-function InviteDialog({ open, onClose, canChooseRoles, canAddEmployee }: { open: boolean; onClose: () => void; canChooseRoles: boolean; canAddEmployee: boolean }) {
-  const roles = useRoles();
-  const invite = useInviteUser();
-  const defaultRole = useMemo(() => roles.data?.find((r) => r.key === 'employee' && r.status === 'ACTIVE'), [roles.data]);
-  const [form, setForm] = useState({ firstName: '', lastName: '', email: '' });
-  const [roleIds, setRoleIds] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [asEmployee, setAsEmployee] = useState(true);
-  const [profile, setProfile] = useState<ProfileInput>(emptyProfile());
-
-  useEffect(() => {
-    if (open) {
-      setAsEmployee(canAddEmployee);
-      setProfile(emptyProfile());
-      setForm({ firstName: '', lastName: '', email: '' });
-      setRoleIds(defaultRole ? [defaultRole.id] : []);
-      setError(null);
-    }
-  }, [open, defaultRole, canAddEmployee]);
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    if (canChooseRoles && !roleIds.length) return setError('Choose at least one role');
-    try {
-      const r = await invite.mutateAsync({ ...form, ...(canChooseRoles && { roleIds }), ...(asEmployee && { employee: profileBody(profile) }) });
-      const who = r.employee ? `${r.firstName} (${r.employee.employeeId})` : r.firstName;
-      toast.success(r.emailSent ? `Invite sent to ${r.email}${r.employee ? ` — ${who} added to Employees` : ''}` : `${who} was added, but the invite email could not be sent`);
-      if (r.employeeError) toast.error(`The account was created, but not the employee profile: ${r.employeeError}. Use “Add employee profile”.`);
-      onClose();
-    } catch (err) {
-      setError(getApiErrorMessage(err, 'Could not invite the user'));
-    }
-  };
-
+function RoleMenu({ label, icon, roles, onPick }: { label: string; icon: React.ReactNode; roles: Array<{ id: string; name: string }>; onPick: (r: { id: string; name: string }) => void }) {
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      busy={invite.isPending}
-      icon={<UserPlus />}
-      title="Invite a user"
-      description="They’ll get an email with a temporary password and choose their own when they first sign in."
-      className="sm:max-w-lg"
-      footer={
-        <>
-          <Button variant="secondary" onClick={onClose} disabled={invite.isPending}>Cancel</Button>
-          <Button type="submit" form="invite-form" loading={invite.isPending}>Send invite</Button>
-        </>
-      }
-    >
-      <form id="invite-form" onSubmit={submit} className="space-y-4" noValidate>
-        {error && <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="First name" htmlFor="inv-first" required>
-            <Input id="inv-first" value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} required autoFocus />
-          </Field>
-          <Field label="Last name" htmlFor="inv-last" required>
-            <Input id="inv-last" value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} required />
-          </Field>
-        </div>
-        <Field label="Work email" htmlFor="inv-email" required>
-          <Input id="inv-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required placeholder="name@company.com" />
-        </Field>
-        <Field
-          label="Roles"
-          hint={canChooseRoles ? 'A person can hold several roles — their access is everything the roles allow combined.' : 'New users start with the Employee role. An admin can add more roles later.'}
-        >
-          {canChooseRoles ? (
-            <RolePicker roles={roles.data} value={roleIds} onChange={setRoleIds} loading={roles.isLoading} />
-          ) : (
-            <div><Badge tone="primary">{defaultRole?.name ?? 'Employee'}</Badge></div>
-          )}
-        </Field>
-        {canAddEmployee && (
-          <div className="space-y-3 rounded-lg border border-border p-3">
-            <label className="flex items-start gap-2 text-sm">
-              <input type="checkbox" className="mt-0.5 accent-[hsl(var(--primary))]" checked={asEmployee} onChange={(e) => setAsEmployee(e.target.checked)} />
-              <span>
-                <span className="font-medium">Also add them as an employee</span>
-                <span className="block text-xs text-muted-foreground">
-                  Creates their employee record (ID, department, manager) so they appear in Employees and the org chart. Untick for sign-in-only accounts, e.g. an external accountant.
-                </span>
-              </span>
-            </label>
-            {asEmployee && <EmployeeProfileFields value={profile} onChange={setProfile} idPrefix="inv" />}
-          </div>
-        )}
-      </form>
-    </Modal>
+    <DropdownMenu
+      align="left"
+      label={label}
+      items={roles.map((r) => ({ label: r.name, onSelect: () => onPick(r) }))}
+      trigger={() => (
+        <Button size="sm" variant="secondary">
+          {icon} {label} <ChevronDown className="h-3 w-3" />
+        </Button>
+      )}
+    />
   );
 }
 
-// ─── Employee profile for an existing account ───────────────
+// ─── Employee profile for an older account ──────────────────
 
 function ProfileDialog({ user, onClose }: { user: CompanyUser | null; onClose: () => void }) {
   const create = useCreateEmployeeProfile();
@@ -446,7 +518,7 @@ function ProfileDialog({ user, onClose }: { user: CompanyUser | null; onClose: (
       icon={<IdCard />}
       title={`Add ${user.firstName} ${user.lastName} as an employee`}
       description="Links an employee record to their existing sign-in. No new account and no email."
-      className="sm:max-w-lg"
+      size="md"
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={create.isPending}>Cancel</Button>
@@ -455,60 +527,8 @@ function ProfileDialog({ user, onClose }: { user: CompanyUser | null; onClose: (
       }
     >
       <div className="space-y-3">
-        {error && <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+        <FormError>{error}</FormError>
         <EmployeeProfileFields value={profile} onChange={setProfile} idPrefix="prof" />
-      </div>
-    </Modal>
-  );
-}
-
-// ─── Edit roles ─────────────────────────────────────────────
-
-function EditRolesDialog({ user, onClose }: { user: CompanyUser | null; onClose: () => void }) {
-  const roles = useRoles();
-  const setRoles = useSetUserRoles();
-  const [roleIds, setRoleIds] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (user) {
-      setRoleIds(user.roles.map((r) => r.id));
-      setError(null);
-    }
-  }, [user]);
-
-  const save = async () => {
-    if (!user) return;
-    if (!roleIds.length) return setError('A user needs at least one role');
-    try {
-      const r = await setRoles.mutateAsync({ id: user.id, roleIds });
-      const parts = [r.changes.added.length && `added ${r.changes.added.join(', ')}`, r.changes.removed.length && `removed ${r.changes.removed.join(', ')}`].filter(Boolean);
-      toast.success(parts.length ? `${user.firstName}: ${parts.join(' · ')}` : 'No changes');
-      onClose();
-    } catch (e) {
-      setError(getApiErrorMessage(e, 'Could not update roles'));
-    }
-  };
-
-  return (
-    <Modal
-      open={Boolean(user)}
-      onClose={onClose}
-      busy={setRoles.isPending}
-      icon={<ShieldCheck />}
-      title={user ? `Roles for ${user.firstName} ${user.lastName}` : 'Roles'}
-      description="Changes apply on their next click — no need for them to sign in again."
-      className="sm:max-w-lg"
-      footer={
-        <>
-          <Button variant="secondary" onClick={onClose} disabled={setRoles.isPending}>Cancel</Button>
-          <Button onClick={save} loading={setRoles.isPending}>Save roles</Button>
-        </>
-      }
-    >
-      <div className="space-y-3">
-        {error && <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
-        <RolePicker roles={roles.data} value={roleIds} onChange={setRoleIds} loading={roles.isLoading} />
       </div>
     </Modal>
   );

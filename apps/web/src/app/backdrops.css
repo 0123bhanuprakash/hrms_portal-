@@ -1,0 +1,562 @@
+/* ============================================================
+   Page backgrounds (components/motion/page-backdrop.tsx)
+   One mood per page family. Colours come from the theme tokens, so
+   every personal theme recolours them. Only transform and opacity
+   animate; blur is static. Nothing faster than 7 s.
+   ============================================================ */
+
+.bd-root {
+  --bd-a1: hsl(var(--primary));
+  --bd-a2: hsl(262 83% 66%);
+  --bd-a3: hsl(173 80% 42%);
+  --bd-tx: hsl(var(--foreground));
+  --bd-bg: hsl(var(--background));
+  --bd-glow: 0.36;
+  position: fixed;
+  inset: 0;
+  /* behind content: the portal root is `isolate`, so this sits above its background only */
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.dark .bd-root {
+  --bd-glow: 0.52;
+}
+.bd-root.bd-contained {
+  position: absolute;
+}
+.bd-root *,
+.bd-root *::before,
+.bd-root *::after {
+  pointer-events: none;
+}
+.bd-layer {
+  position: absolute;
+  inset: 0;
+  animation: bd-in 0.6s ease-out both;
+}
+@keyframes bd-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Calm: one still frame. Hidden tab: paused. (The layer's own fade-in always runs.) */
+.bd-root[data-level='calm'] .bd-layer *,
+html[data-page-hidden] .bd-root .bd-layer * {
+  animation-play-state: paused !important;
+}
+
+/* Layer 1 — ambient base + vignette, on every page */
+.bd-base {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 70% at 50% -10%, color-mix(in srgb, var(--bd-a1) 9%, transparent), transparent 60%);
+}
+.bd-vig {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(130% 100% at 50% 40%, transparent 60%, color-mix(in srgb, var(--bd-bg) 70%, #000 30%) 100%);
+  opacity: 0.06;
+}
+.dark .bd-vig {
+  opacity: 0.35;
+}
+.bd-root[data-mood='quiet'] .bd-base,
+.bd-root[data-mood='quiet'] .bd-vig {
+  display: none;
+}
+
+/* aurora — home */
+.bd-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: calc(var(--bd-glow) * 0.7);
+  will-change: transform;
+}
+.bd-b1 {
+  width: 46vw;
+  height: 36vw;
+  left: 6%;
+  top: -18vw;
+  background: var(--bd-a1);
+  animation: bd-drift1 38s ease-in-out infinite alternate;
+}
+.bd-b2 {
+  width: 40vw;
+  height: 32vw;
+  right: -10vw;
+  top: 2vw;
+  background: var(--bd-a2);
+  animation: bd-drift2 46s ease-in-out infinite alternate;
+}
+.bd-b3 {
+  width: 38vw;
+  height: 28vw;
+  left: 34%;
+  bottom: -18vw;
+  background: var(--bd-a3);
+  opacity: calc(var(--bd-glow) * 0.5);
+  animation: bd-drift3 52s ease-in-out infinite alternate;
+}
+@keyframes bd-drift1 {
+  to {
+    transform: translate(14vw, 8vw) scale(1.15);
+  }
+}
+@keyframes bd-drift2 {
+  to {
+    transform: translate(-12vw, 7vw) scale(0.9);
+  }
+}
+@keyframes bd-drift3 {
+  to {
+    transform: translate(10vw, -6vw) scale(1.1);
+  }
+}
+
+/* constellation — people */
+.bd-pt {
+  position: absolute;
+  bottom: -10px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--bd-a1) 70%, #fff);
+  opacity: 0;
+  animation: bd-rise linear infinite;
+}
+@keyframes bd-rise {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  15% {
+    opacity: var(--bd-glow);
+  }
+  85% {
+    opacity: calc(var(--bd-glow) * 0.8);
+  }
+  100% {
+    transform: translateY(-105vh);
+    opacity: 0;
+  }
+}
+.bd-halo {
+  position: absolute;
+  left: 18%;
+  top: -12vh;
+  width: 56vw;
+  height: 34vh;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--bd-a1) 40%, transparent), transparent);
+  opacity: var(--bd-glow);
+  animation: bd-breathe 9s ease-in-out infinite;
+}
+@keyframes bd-breathe {
+  50% {
+    opacity: calc(var(--bd-glow) * 0.55);
+    transform: scale(1.06);
+  }
+}
+
+/* light sweep + dial — attendance & timesheets */
+.bd-sweep {
+  position: absolute;
+  top: -60%;
+  left: 0;
+  width: 30%;
+  height: 220%;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--bd-a1) 9%, transparent), transparent);
+  transform: rotate(18deg) translateX(-160%);
+  animation: bd-sweep 14s cubic-bezier(0.45, 0, 0.2, 1) infinite;
+}
+.dark .bd-sweep {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
+}
+@keyframes bd-sweep {
+  0%,
+  30% {
+    transform: rotate(18deg) translateX(-160%);
+  }
+  75%,
+  100% {
+    transform: rotate(18deg) translateX(480%);
+  }
+}
+.bd-dial {
+  position: absolute;
+  right: -160px;
+  top: -160px;
+  width: 520px;
+  height: 520px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0 70%, color-mix(in srgb, var(--bd-a1) 55%, transparent) 88%, transparent 100%);
+  -webkit-mask: radial-gradient(closest-side, transparent 86%, #000 87%, #000 100%);
+  mask: radial-gradient(closest-side, transparent 86%, #000 87%, #000 100%);
+  opacity: var(--bd-glow);
+  animation: bd-spin 60s linear infinite;
+}
+.bd-dial2 {
+  position: absolute;
+  right: -100px;
+  top: -100px;
+  width: 400px;
+  height: 400px;
+  border-radius: 50%;
+  border: 1px dashed color-mix(in srgb, var(--bd-tx) 12%, transparent);
+}
+@keyframes bd-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* horizon — leave, who's off, holidays */
+.bd-hz1,
+.bd-hz2 {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 340px;
+}
+.bd-hz1 {
+  background: linear-gradient(180deg, color-mix(in srgb, #f59e0b 26%, transparent), color-mix(in srgb, #ec4899 12%, transparent) 45%, transparent);
+}
+.bd-hz2 {
+  background: linear-gradient(180deg, color-mix(in srgb, #38bdf8 26%, transparent), color-mix(in srgb, var(--bd-a2) 12%, transparent) 45%, transparent);
+  animation: bd-dawn 24s ease-in-out infinite alternate;
+}
+@keyframes bd-dawn {
+  from {
+    opacity: 0;
+  }
+}
+.bd-sun {
+  position: absolute;
+  left: 64%;
+  top: 200px;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, #fbbf24 42%, transparent), transparent);
+  opacity: var(--bd-glow);
+  animation: bd-sunrise 24s ease-in-out infinite alternate;
+}
+@keyframes bd-sunrise {
+  to {
+    transform: translateY(-90px);
+  }
+}
+
+/* blueprint grid + spotlight — projects */
+.bd-grid {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(color-mix(in srgb, var(--bd-tx) 20%, transparent) 1px, transparent 1.2px);
+  background-size: 22px 22px;
+  -webkit-mask: radial-gradient(70% 80% at 55% 25%, #000, transparent);
+  mask: radial-gradient(70% 80% at 55% 25%, #000, transparent);
+  opacity: 0.5;
+}
+.bd-spot {
+  position: absolute;
+  width: 480px;
+  height: 480px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--bd-a1) 36%, transparent), transparent);
+  opacity: var(--bd-glow);
+  left: 10%;
+  top: -80px;
+  animation: bd-roam 48s ease-in-out infinite alternate;
+}
+@keyframes bd-roam {
+  33% {
+    transform: translate(40vw, 60px);
+  }
+  66% {
+    transform: translate(20vw, 32vh);
+  }
+  100% {
+    transform: translate(52vw, 22vh);
+  }
+}
+
+/* mesh — expenses */
+.bd-mesh {
+  position: absolute;
+  inset: -50%;
+  background: radial-gradient(25% 30% at 30% 35%, color-mix(in srgb, #10b981 55%, transparent), transparent 70%),
+    radial-gradient(22% 28% at 68% 42%, color-mix(in srgb, var(--bd-a3) 45%, transparent), transparent 70%),
+    radial-gradient(26% 26% at 52% 70%, color-mix(in srgb, var(--bd-a1) 30%, transparent), transparent 70%);
+  opacity: var(--bd-glow);
+  filter: blur(30px);
+  animation: bd-spin 90s linear infinite;
+}
+.bd-coin {
+  position: absolute;
+  bottom: -10px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, #10b981 60%, transparent);
+  opacity: 0;
+  animation: bd-rise linear infinite;
+}
+
+/* studio light — assets */
+.bd-cone {
+  position: absolute;
+  left: 50%;
+  top: -40px;
+  width: 1000px;
+  height: 640px;
+  margin-left: -380px;
+  background: radial-gradient(50% 60% at 50% 0%, color-mix(in srgb, var(--bd-tx) 9%, transparent), transparent 70%);
+  animation: bd-flicker 7s ease-in-out infinite;
+}
+@keyframes bd-flicker {
+  50% {
+    opacity: 0.7;
+  }
+}
+.bd-floor {
+  position: absolute;
+  left: 15%;
+  right: 5%;
+  bottom: -160px;
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--bd-a1) 26%, transparent), transparent);
+  opacity: var(--bd-glow);
+}
+.bd-bok {
+  position: absolute;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--bd-a1) 35%, transparent);
+  filter: blur(2px);
+  opacity: calc(var(--bd-glow) * 0.55);
+  animation: bd-bob ease-in-out infinite alternate;
+}
+@keyframes bd-bob {
+  to {
+    transform: translate(30px, -40px);
+  }
+}
+
+/* signal rings — helpdesk */
+.bd-core {
+  position: absolute;
+  right: 40px;
+  top: 30px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--bd-a3) 45%, transparent), transparent);
+  opacity: var(--bd-glow);
+}
+.bd-rings {
+  position: absolute;
+  right: 100px;
+  top: 90px;
+}
+.bd-rings i {
+  position: absolute;
+  left: -190px;
+  top: -190px;
+  width: 380px;
+  height: 380px;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--bd-a3) 55%, transparent);
+  opacity: 0;
+  animation: bd-ring 9s ease-out infinite;
+}
+.bd-rings i:nth-child(2) {
+  animation-delay: -3s;
+}
+.bd-rings i:nth-child(3) {
+  animation-delay: -6s;
+}
+@keyframes bd-ring {
+  0% {
+    transform: scale(0.25);
+    opacity: calc(var(--bd-glow) * 1.2);
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+/* floaters — announcements & kudos */
+.bd-warm {
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  top: -260px;
+  height: 560px;
+  background: radial-gradient(50% 50% at 30% 50%, color-mix(in srgb, #f59e0b 20%, transparent), transparent),
+    radial-gradient(40% 50% at 75% 40%, color-mix(in srgb, #ec4899 16%, transparent), transparent);
+  opacity: var(--bd-glow);
+  animation: bd-breathe 12s ease-in-out infinite;
+}
+.bd-fl {
+  position: absolute;
+  bottom: -40px;
+  opacity: 0;
+  font-style: normal;
+  animation: bd-float linear infinite;
+}
+.bd-fl-c {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--bd-a1) 50%, transparent);
+}
+.bd-fl-q {
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--bd-a2) 28%, transparent);
+}
+.bd-fl-h {
+  font-size: 16px;
+  line-height: 16px;
+  color: color-mix(in srgb, #ec4899 55%, transparent);
+}
+@keyframes bd-float {
+  0% {
+    transform: translateY(0) rotate(0);
+    opacity: 0;
+  }
+  12% {
+    opacity: var(--bd-glow);
+  }
+  88% {
+    opacity: calc(var(--bd-glow) * 0.85);
+  }
+  100% {
+    transform: translateY(-110vh) rotate(200deg);
+    opacity: 0;
+  }
+}
+
+/* data waves — reports */
+.bd-waves {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 200%;
+  height: 240px;
+  animation: bd-wave 34s linear infinite;
+}
+.bd-waves2 {
+  animation-duration: 52s;
+  opacity: 0.6;
+  bottom: -20px;
+}
+@keyframes bd-wave {
+  to {
+    transform: translateX(-50%);
+  }
+}
+.bd-waves path {
+  fill: none;
+  stroke-width: 1.5;
+}
+.bd-w-a {
+  stroke: color-mix(in srgb, var(--bd-a1) 40%, transparent);
+}
+.bd-w-b {
+  stroke: color-mix(in srgb, var(--bd-a2) 30%, transparent);
+}
+.bd-w-c {
+  stroke: color-mix(in srgb, var(--bd-a3) 35%, transparent);
+}
+
+/* quiet — settings, roles: no motion */
+.bd-qgrad {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--bd-a1) 6%, transparent), transparent 40%, color-mix(in srgb, var(--bd-a2) 4%, transparent));
+}
+.bd-noise {
+  position: absolute;
+  inset: 0;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* night pulse — Super Admin */
+.bd-night {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, color-mix(in srgb, #3b82f6 10%, transparent), transparent 70%);
+}
+.dark .bd-night {
+  background: linear-gradient(180deg, color-mix(in srgb, #1e3a8a 30%, transparent), transparent 70%);
+}
+.bd-star {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: var(--bd-tx);
+  opacity: 0.22;
+  animation: bd-twinkle ease-in-out infinite alternate;
+}
+@keyframes bd-twinkle {
+  to {
+    opacity: 0.04;
+  }
+}
+.bd-pulse {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 60px;
+  width: 100%;
+  height: 120px;
+}
+.bd-pulse path {
+  fill: none;
+  stroke-width: 1.6;
+  vector-effect: non-scaling-stroke;
+}
+.bd-pulse-track {
+  stroke: color-mix(in srgb, #38bdf8 20%, transparent);
+}
+.bd-pulse-run {
+  stroke: #38bdf8;
+  stroke-dasharray: 90 1400;
+  animation: bd-run 7s linear infinite;
+}
+@keyframes bd-run {
+  from {
+    stroke-dashoffset: 1490;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* hero — sign-in */
+.bd-big .bd-blob {
+  filter: blur(90px);
+  opacity: var(--bd-glow);
+}
+
+/* Phones: fewer particles, smaller blur */
+@media (max-width: 640px) {
+  .bd-pt:nth-child(2n),
+  .bd-fl:nth-child(2n),
+  .bd-coin:nth-child(2n),
+  .bd-star:nth-child(2n) {
+    display: none;
+  }
+  .bd-blob {
+    filter: blur(50px);
+  }
+}

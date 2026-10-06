@@ -62,7 +62,7 @@ async function login(email, password) {
  */
 async function makeCompany(slug, people, { password = 'E2E-Test-2026!', timezone = 'Asia/Kolkata' } = {}) {
   const enterprise = await prisma.plan.findUniqueOrThrow({ where: { key: 'enterprise' }, include: { features: true } });
-  const company = await prisma.company.create({ data: { name: slug, slug, email: `x@${slug}.test`, planId: enterprise.id, settings: { create: { timezone } } } });
+  const company = await prisma.company.create({ data: { name: slug, slug, email: `x@${slug}.test`, planId: enterprise.id, settings: { create: { timezone } }, branding: { create: { displayName: slug } } } });
   const templates = await prisma.role.findMany({ where: { isTemplate: true }, include: { rolePermissions: true } });
   const roles = {};
   for (const t of templates) {
@@ -137,6 +137,7 @@ async function dropCompany(slug) {
     () => prisma.employeeHierarchy.deleteMany({ where: { companyId: id } }),
     () => prisma.employee.updateMany({ where: { companyId: id }, data: { reportingManagerId: null } }),
     () => prisma.employee.deleteMany({ where: { companyId: id } }),
+    () => prisma.workShift.deleteMany({ where: { companyId: id } }),
     () => prisma.departmentHierarchy.deleteMany({ where: { companyId: id } }),
     () => prisma.department.deleteMany({ where: { companyId: id } }),
     () => prisma.officeLocation.deleteMany({ where: { companyId: id } }),

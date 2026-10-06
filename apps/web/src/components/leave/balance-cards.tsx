@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { History, Infinity as InfinityIcon, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, ErrorState, Skeleton } from '@/components/ui/feedback';
-import { Field, Input, Textarea } from '@/components/ui/field';
+import { Field, Input, Textarea, FormError } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { ACCRUAL_LABEL, days, useAdjustBalance, useBalanceHistory, useLeaveBalances, type LeaveBalance } from '@/lib/company/leave';
 import { getApiErrorMessage } from '@/lib/errors';
@@ -101,7 +101,7 @@ function AdjustDialog({ balance, employeeId, year, onClose }: { balance: LeaveBa
       icon={<SlidersHorizontal />}
       title={`Adjust ${balance.leaveType.name}`}
       description={`Currently ${balance.available} available for ${year}. Use a negative number to take days away.`}
-      className="sm:max-w-md"
+      size="sm"
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={adjust.isPending}>Cancel</Button>
@@ -110,7 +110,7 @@ function AdjustDialog({ balance, employeeId, year, onClose }: { balance: LeaveBa
       }
     >
       <form id="adjust-form" onSubmit={submit} className="space-y-3">
-        {error && <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+        <FormError>{error}</FormError>
         <Field label="Days" htmlFor="adj-days" required hint="e.g. 2 for comp-off, -1 for encashment">
           <Input id="adj-days" type="number" step="0.5" value={amount} onChange={(e) => setAmount(e.target.value)} required />
         </Field>
@@ -125,7 +125,7 @@ function AdjustDialog({ balance, employeeId, year, onClose }: { balance: LeaveBa
 function HistoryDialog({ balance, onClose }: { balance: LeaveBalance; onClose: () => void }) {
   const q = useBalanceHistory(balance.balanceId);
   return (
-    <Modal open onClose={onClose} icon={<History />} title={`${balance.leaveType.name} adjustments`} className="sm:max-w-md" footer={<Button variant="secondary" onClick={onClose}>Close</Button>}>
+    <Modal open onClose={onClose} icon={<History />} title={`${balance.leaveType.name} adjustments`} size="sm" footer={<Button variant="secondary" onClick={onClose}>Close</Button>}>
       {q.isLoading ? (
         <Skeleton className="h-20 w-full" />
       ) : !q.data?.length ? (

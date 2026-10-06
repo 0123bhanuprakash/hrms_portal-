@@ -44,7 +44,7 @@ function Reports() {
     ...(utilOn ? [{ key: 'utilisation', tab: 'utilisation', title: 'Utilisation', text: 'Allocation, logged & billable hours by week', icon: <Gauge />, tone: 'bg-info-soft text-info' }] : []),
     ...([
       hasFeature('ops.expenses') && (can('expense.finance') || can('expense.hr')) && { key: 'expenses', href: '/app/expenses/payments', icon: <Receipt />, title: 'Expense spend', text: 'Claimed, approved and paid — by category, person and project.', tone: 'bg-warning-soft text-warning' },
-      hasFeature('ops.helpdesk') && ['ticket.handle_it', 'ticket.handle_hr', 'ticket.handle_finance'].some(can) && { key: 'helpdesk', href: '/app/helpdesk/queue', icon: <Headset />, title: 'Helpdesk performance', text: 'Open, overdue, on-time % and ratings per queue.', tone: 'bg-destructive-soft text-destructive' },
+      hasFeature('ops.helpdesk') && ['ticket.handle_it', 'ticket.handle_hr', 'ticket.handle_finance', 'ticket.handle_devops'].some(can) && { key: 'helpdesk', href: '/app/helpdesk/queue', icon: <Headset />, title: 'Helpdesk performance', text: 'Open, overdue, on-time % and ratings per queue.', tone: 'bg-destructive-soft text-destructive' },
       hasFeature('ops.assets') && (can('asset.manage') || scopeOf('asset.view') === 'company') && { key: 'assets', href: '/app/assets', icon: <HardDrive />, title: 'Asset register', text: 'What the company owns, who has it, warranties.', tone: 'bg-muted text-foreground' },
     ] as Array<LibraryItem | false>).filter((x): x is LibraryItem => Boolean(x)),
   ];

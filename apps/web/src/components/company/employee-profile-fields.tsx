@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
-import { Field, Input, inputClass } from '@/components/ui/field';
-import { useDepartments, useDesignations, useLocations, useOrgChart } from '@/lib/company/org';
+import { Field } from '@/components/ui/field';
+import { useDepartments, useDesignations, useLocations, usePeoplePicker } from '@/lib/company/org';
+import { DateInput, PersonSelect, SearchSelect } from '@/components/ui/pickers';
 
 export interface ProfileInput {
   joiningDate: string;
@@ -34,38 +35,26 @@ export function EmployeeProfileFields({ value, onChange, idPrefix }: { value: Pr
   const departments = useDepartments();
   const designations = useDesignations();
   const locations = useLocations();
-  const chart = useOrgChart();
+  const chart = usePeoplePicker();
   const set = <K extends keyof ProfileInput>(k: K, v: ProfileInput[K]) => onChange({ ...value, [k]: v });
   const id = (k: string) => `${idPrefix}-${k}`;
 
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       <Field label="Joining date" htmlFor={id('join')} required>
-        <Input id={id('join')} type="date" value={value.joiningDate} onChange={(e) => set('joiningDate', e.target.value)} required />
+        <DateInput id={id('join')} value={value.joiningDate} onChange={(e) => set('joiningDate', e.target.value)} required />
       </Field>
       <Field label="Department" htmlFor={id('dept')}>
-        <select id={id('dept')} className={inputClass} value={value.departmentId} onChange={(e) => set('departmentId', e.target.value)}>
-          <option value="">— None</option>
-          {departments.data?.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-        </select>
+        <SearchSelect id={id('dept')} value={value.departmentId} onChange={(v) => set('departmentId', v)} emptyLabel="— None" searchPlaceholder="Search departments…" options={(departments.data ?? []).map((d) => ({ value: d.id, label: d.name }))} />
       </Field>
       <Field label="Job title" htmlFor={id('title')}>
-        <select id={id('title')} className={inputClass} value={value.designationId} onChange={(e) => set('designationId', e.target.value)}>
-          <option value="">— None</option>
-          {designations.data?.map((d) => <option key={d.id} value={d.id}>{d.name}{d.orgLevel ? ` (${d.orgLevel.name})` : ''}</option>)}
-        </select>
+        <SearchSelect id={id('title')} value={value.designationId} onChange={(v) => set('designationId', v)} emptyLabel="— None" searchPlaceholder="Search job titles…" options={(designations.data ?? []).map((d) => ({ value: d.id, label: d.name, sub: d.orgLevel?.name ?? null }))} />
       </Field>
       <Field label="Reporting manager" htmlFor={id('mgr')}>
-        <select id={id('mgr')} className={inputClass} value={value.reportingManagerId} onChange={(e) => set('reportingManagerId', e.target.value)}>
-          <option value="">— Nobody (top of the organisation)</option>
-          {chart.data?.employees.map((m) => <option key={m.id} value={m.id}>{m.firstName} {m.lastName}{m.designation ? ` — ${m.designation.name}` : ''}</option>)}
-        </select>
+        <PersonSelect id={id('mgr')} value={value.reportingManagerId} onChange={(v) => set('reportingManagerId', v)} emptyLabel="— Nobody (top of the organisation)" people={(chart.data?.employees ?? []).map((m) => ({ ...m, sub: m.designation?.name ?? null }))} />
       </Field>
       <Field label="Location" htmlFor={id('loc')} className="sm:col-span-2">
-        <select id={id('loc')} className={inputClass} value={value.locationId} onChange={(e) => set('locationId', e.target.value)}>
-          <option value="">{locations.data?.some((l) => l.isDefault) ? '— Default location' : '— None'}</option>
-          {locations.data?.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-        </select>
+        <SearchSelect id={id('loc')} value={value.locationId} onChange={(v) => set('locationId', v)} emptyLabel={locations.data?.some((l) => l.isDefault) ? '— Default location' : '— None'} options={(locations.data ?? []).map((l) => ({ value: l.id, label: l.name }))} />
       </Field>
     </div>
   );

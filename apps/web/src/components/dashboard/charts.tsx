@@ -6,6 +6,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useUiState, useUiStateReady } from '@/lib/preferences/ui-state';
 import { Donut, MiniBars, Ring, type Slice, type Tone } from '@/components/dashboard/widgets';
 import { cn } from '@/lib/cn';
+import { CountUp } from '@/components/motion/motion';
 
 // ============================================================
 // "View as": every chart card can be shown in a few styles. The
@@ -115,13 +116,17 @@ export function TrendChart({ points, area, tone = 'primary', height = 120, label
   const min = Math.min(0, ...vals);
   const xy = points.map((p, i) => [pad + (i * (w - pad * 2)) / Math.max(1, points.length - 1), pad + (1 - (p.value - min) / (max - min || 1)) * (h - pad * 2)] as const);
   const d = xy.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`).join(' ');
+  const end = xy.at(-1);
   return (
     <div>
-      <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className={cn('w-full', TEXT[tone])} style={{ height: h }} role="img" aria-label={`${label}: ${points.map((p) => `${p.label} ${p.value}`).join(', ')}`}>
-        {[0.25, 0.5, 0.75].map((f) => <line key={f} x1={0} x2={w} y1={pad + f * (h - pad * 2)} y2={pad + f * (h - pad * 2)} stroke="currentColor" strokeOpacity={0.08} vectorEffect="non-scaling-stroke" />)}
-        {area && <path className="m-fade" d={`${d} L${xy.at(-1)![0]} ${h} L${xy[0]![0]} ${h} Z`} fill="currentColor" fillOpacity={0.14} />}
-        <path className="m-line" style={{ ['--m-len' as string]: 1400 }} d={d} fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-      </svg>
+      <div className="relative">
+        <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className={cn('w-full', TEXT[tone])} style={{ height: h }} role="img" aria-label={`${label}: ${points.map((p) => `${p.label} ${p.value}`).join(', ')}`}>
+          {[0.25, 0.5, 0.75].map((f) => <line key={f} x1={0} x2={w} y1={pad + f * (h - pad * 2)} y2={pad + f * (h - pad * 2)} stroke="currentColor" strokeOpacity={0.08} vectorEffect="non-scaling-stroke" />)}
+          {area && <path className="m-fade" d={`${d} L${xy.at(-1)![0]} ${h} L${xy[0]![0]} ${h} Z`} fill="currentColor" fillOpacity={0.14} />}
+          <path className="m-line" d={d} fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+        </svg>
+        {end && <span className={cn('m-dotpop pointer-events-none absolute -ml-[5px] -mt-[5px] h-2.5 w-2.5 rounded-full bg-current ring-4 ring-surface', TEXT[tone])} style={{ left: `${(end[0] / w) * 100}%`, top: end[1] }} aria-hidden />}
+      </div>
       <div className="mt-1 flex justify-between text-2xs text-muted-foreground">
         {points.map((p, i) => <span key={i} title={p.title}>{p.label}</span>)}
       </div>
@@ -140,7 +145,7 @@ export function HBars({ rows, tone = 'primary' }: { rows: Array<{ label: string;
           <div className="h-2 overflow-hidden rounded-full bg-muted">
             <div className={cn('m-fill-w h-full rounded-full', FILL[r.tone ?? tone])} style={{ width: `${((r.value / (r.max ?? top)) * 100).toFixed(1)}%`, animationDelay: `${i * 60}ms` }} />
           </div>
-          <span className="text-right text-xs font-semibold tabular-nums">{r.right ?? r.value}</span>
+          <span className="text-right text-xs font-semibold tabular-nums">{r.right ?? <CountUp value={r.value} />}</span>
         </div>
       ))}
     </div>
@@ -195,7 +200,7 @@ export function RingsRow({ items }: { items: Array<{ label: string; value: numbe
       {items.map((it) => (
         <div key={it.label} className="flex flex-col items-center gap-1.5">
           <Ring value={it.value} max={it.max} size={84} stroke={9} tone={it.tone} label={`${it.label}: ${it.value} of ${it.max}`}>
-            <span className="text-base font-bold tabular-nums">{it.center ?? it.value}</span>
+            <span className="text-base font-bold tabular-nums">{it.center ?? <CountUp value={it.value} />}</span>
           </Ring>
           <span className="max-w-[7rem] truncate text-xs text-muted-foreground">{it.label}</span>
         </div>

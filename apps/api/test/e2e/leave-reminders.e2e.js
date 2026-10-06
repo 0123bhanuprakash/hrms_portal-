@@ -37,7 +37,7 @@ async function cleanup() {
     await p.attendanceRecord.create({ data: { companyId: c.id, employeeId: fine.id, date: day, checkIn: new Date('2026-10-05T04:00:00Z'), checkOut: new Date('2026-10-05T13:00:00Z'), workingMinutes: 540, status: 'PRESENT' } });
     const emails = [];
     const config = { get: (k) => (k === 'webUrl' ? 'http://localhost:3000' : undefined) };
-    const notifications = new NotificationsService(p, { queueNotification: async (d) => emails.push(d) }, config);
+    const notifications = new NotificationsService(p, { queueNotification: async (d) => emails.push(d) }, config, new (require(require('path').resolve('dist/apps/api/src/modules/realtime/realtime.service.js')).RealtimeService)());
     const job = new AttendanceRemindersService(p, new AttendancePolicyService(p), notifications, config);
     const before = await job.run(early);
     const mine = () => p.notification.findMany({ where: { user: { companyId: c.id } } });

@@ -3,7 +3,7 @@
 import React from 'react';
 import { toast } from 'sonner';
 import { Check } from 'lucide-react';
-import type { MenuStyle, ThemeTokens } from '@hrms/types';
+import type { BackdropLevel, BackdropPack, MenuStyle, ThemeTokens } from '@hrms/types';
 import { Card, CardHeader, Skeleton } from '@/components/ui/feedback';
 import { ThemeThumbnail } from '@/components/theme/theme-card';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -14,6 +14,8 @@ import { Button } from '@/components/ui/button';
 import { useResetUiState } from '@/lib/preferences/ui-state';
 import { MOMENT_GROUPS, useMomentsOff } from '@/components/motion/moments';
 import { cn } from '@/lib/cn';
+import { Backdrop } from '@/components/motion/page-backdrop';
+import { BACKDROP_LEVEL_INFO, BACKDROP_PACK_INFO } from '@/lib/preferences/backdrop';
 
 // ============================================================
 // An employee's own colour theme and menu style — only what the
@@ -23,7 +25,8 @@ import { cn } from '@/lib/cn';
 
 export const MENU_STYLE_INFO: Record<MenuStyle, { label: string; text: string }> = {
   classic: { label: 'Classic', text: 'The full menu with every section open' },
-  rail: { label: 'Rail', text: 'Slim icon strip; sections open beside it' },
+  glide: { label: 'Glide', text: 'A floating card that folds to icons' },
+  peek: { label: 'Peek', text: 'Icons that open over the page on hover' },
   floating: { label: 'Floating', text: 'A rounded card with a quick menu search' },
   collapsible: { label: 'Collapsible', text: 'Sections fold away; yours stays open' },
 };
@@ -117,9 +120,17 @@ export function MenuStyleSketch({ style }: { style: MenuStyle }) {
   const line = (w: string, on = false) => <span className={cn('block h-1.5 rounded-full', on ? 'bg-primary' : 'bg-muted-foreground/30')} style={{ width: w }} />;
   return (
     <span className="flex h-20 w-full overflow-hidden rounded-md border border-border bg-canvas" aria-hidden>
-      {style === 'rail' ? (
-        <span className="flex w-6 flex-col items-center gap-1.5 bg-sidebar py-2">
+      {style === 'glide' ? (
+        <span className="m-1.5 flex w-14 flex-col gap-1 rounded-lg border border-border bg-sidebar p-1.5 shadow-card">
+          {line('70%')}
+          {line('80%', true)}
+          <span className="ml-1.5 flex flex-col gap-1 border-l border-border pl-1.5">{line('85%')}{line('70%')}</span>
+          {line('60%')}
+        </span>
+      ) : style === 'peek' ? (
+        <span className="relative flex w-6 flex-col items-center gap-1.5 bg-sidebar py-2">
           {[0, 1, 2, 3, 4].map((i) => <span key={i} className={cn('h-2.5 w-2.5 rounded-sm', i === 1 ? 'bg-primary' : 'bg-muted-foreground/30')} />)}
+          <span className="absolute left-full top-4 ml-0.5 flex w-11 flex-col gap-1 rounded-md bg-sidebar p-1.5 shadow-dialog">{line('85%', true)}{line('70%')}{line('80%')}</span>
         </span>
       ) : style === 'floating' ? (
         <span className="m-1.5 flex w-14 flex-col gap-1.5 rounded-lg bg-sidebar p-1.5 shadow-card">
@@ -291,6 +302,76 @@ export function MomentsCard({ platform = false }: { platform?: boolean }) {
             {p.label}
           </a>
         ))}
+      </div>
+    </Card>
+  );
+}
+
+/**
+ * The living background behind each page: which style (pack), and how lively.
+ * `platform`: the Super Admin console — no company defaults.
+ */
+export function BackdropCard({ platform = false }: { platform?: boolean }) {
+  const companyId = useAuthStore((s) => s.companyId);
+  const theme = useCompanyTheme(platform ? null : companyId);
+  const prefs = usePreferences();
+  const { save, pending } = usePersonalSave();
+  if (!prefs.data) return null;
+  const rules = theme.data?.personalization;
+  const packDefault: BackdropPack = (!platform && rules?.defaultBackdropPack) || 'signature';
+  const levelDefault: BackdropLevel = (!platform && rules?.defaultBackdropLevel) || 'lively';
+  const pack = prefs.data.backdropPack ?? packDefault;
+  const level = prefs.data.backdropLevel ?? levelDefault;
+  const def = platform ? 'Default' : 'Company default';
+  const choosePack = (p: BackdropPack) => save({ backdropPack: p === packDefault ? null : p }, p === 'simple' ? 'Plain backgrounds on' : `${BACKDROP_PACK_INFO[p].label} backgrounds on`);
+
+  return (
+    <Card>
+      <CardHeader
+        title="Page backgrounds"
+        description={`A soft, living background behind every page — each style has its own mood for every section (Home, People, Leave, Expenses…). ${def}: ${BACKDROP_PACK_INFO[packDefault].label}${packDefault === 'simple' ? '' : `, ${BACKDROP_LEVEL_INFO[levelDefault].label.toLowerCase()}`}.`}
+      />
+      <div className="space-y-4 px-5 pb-5">
+        <div>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">Style</p>
+          <div role="radiogroup" aria-label="Background style" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {(Object.keys(BACKDROP_PACK_INFO) as BackdropPack[]).map((p) => (
+              <Tile key={p} label={BACKDROP_PACK_INFO[p].label} selected={pack === p} disabled={pending} onClick={() => pack !== p && choosePack(p)}>
+                <span className="relative isolate block h-20 overflow-hidden rounded-md border border-border bg-background">
+                  <Backdrop mood="aurora" pack={p} contained level={level === 'off' ? 'calm' : level} timeZone={prefs.data.timezone} />
+                </span>
+                <span className="px-0.5">
+                  <span className="block font-semibold">
+                    {BACKDROP_PACK_INFO[p].label}
+                    {p === packDefault && <span className="ml-1.5 text-2xs font-medium text-muted-foreground">Default</span>}
+                  </span>
+                  <span className="block text-xs text-muted-foreground">{BACKDROP_PACK_INFO[p].text}</span>
+                </span>
+              </Tile>
+            ))}
+          </div>
+        </div>
+        {pack === 'simple' ? (
+          <p className="text-xs text-muted-foreground">Simple keeps every page plain, with nothing moving. Pick another style to choose how lively it is.</p>
+        ) : (
+          <div>
+            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">How lively</p>
+            <div role="radiogroup" aria-label="How lively" className="grid grid-cols-3 gap-3">
+              {(Object.keys(BACKDROP_LEVEL_INFO) as BackdropLevel[]).map((l) => (
+                <Tile key={l} label={BACKDROP_LEVEL_INFO[l].label} selected={level === l} disabled={pending} onClick={() => level !== l && save({ backdropLevel: l === levelDefault ? null : l }, `Backgrounds: ${BACKDROP_LEVEL_INFO[l].label.toLowerCase()}`)}>
+                  <span className="px-0.5">
+                    <span className="block font-semibold">
+                      {BACKDROP_LEVEL_INFO[l].label}
+                      {l === levelDefault && <span className="ml-1.5 text-2xs font-medium text-muted-foreground">Default</span>}
+                    </span>
+                    <span className="block text-xs text-muted-foreground">{BACKDROP_LEVEL_INFO[l].text}</span>
+                  </span>
+                </Tile>
+              ))}
+            </div>
+            {prefs.data.reduceMotion && level === 'lively' && <p className="mt-2 text-xs text-muted-foreground">“Reduce motion” is on, so backgrounds stay still.</p>}
+          </div>
+        )}
       </div>
     </Card>
   );

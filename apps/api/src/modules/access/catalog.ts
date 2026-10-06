@@ -183,7 +183,7 @@ export const CATALOG: CatalogModule[] = [
       {
         key: 'ops.helpdesk',
         label: 'Helpdesk',
-        description: 'Employees raise tickets to IT, HR or Finance; each team works its own queue with response targets.',
+        description: 'Employees raise tickets to IT, HR, Finance or DevOps; each team works its own queue with response targets. A team head can assign the work.',
         stage: 'ga',
         permissions: [
           p('ticket.view', 'View own tickets', SELF),
@@ -191,6 +191,8 @@ export const CATALOG: CatalogModule[] = [
           p('ticket.handle_it', 'Work the IT queue', [], { requires: ['ticket.view'], description: 'See, assign, answer and resolve IT tickets; manage IT categories.' }),
           p('ticket.handle_hr', 'Work the HR queue', [], { requires: ['ticket.view'], sensitive: true, description: 'See, assign, answer and resolve HR tickets; manage HR categories.' }),
           p('ticket.handle_finance', 'Work the Finance queue', [], { requires: ['ticket.view'], description: 'See, assign, answer and resolve Finance tickets; manage Finance categories.' }),
+          p('ticket.handle_devops', 'Work the DevOps queue', [], { requires: ['ticket.view'], description: 'See, assign, answer and resolve DevOps tickets (servers, deployments, CI/CD, cloud access); manage DevOps categories.' }),
+          p('ticket.manage_teams', 'Choose helpdesk team heads', [], { requires: ['ticket.view'], description: 'Pick the head and backup of each helpdesk team. The head gets new tickets and assigns them.' }),
         ],
       },
       {
@@ -307,6 +309,7 @@ export const CATALOG: CatalogModule[] = [
           p('settings.view', 'View company settings'),
           p('settings.manage', 'Change company settings', [], { requires: ['settings.view'] }),
           p('branding.manage', 'Manage branding & theme'),
+          p('theme.seasonal', 'Manage seasonal themes', [], { description: 'Plan festival looks (Diwali, New Year…) that switch on and back by themselves.' }),
         ],
       },
       {
@@ -448,7 +451,7 @@ export const ROLE_TEMPLATES: Array<{ key: string; name: string; description: str
       ['payslip.view', 'company'], ['payroll.view'], ['salary.view', 'company'], ['salary.edit', 'company'],
       ['report.view', 'company'], ['report.export', 'company'],
       ['user.view'], ['user.invite'], ['user.edit'], ['user.deactivate'], ['role.view'],
-      ['settings.view'],
+      ['settings.view'], ['theme.seasonal'],
     ],
   },
   {
@@ -496,6 +499,12 @@ export const ROLE_TEMPLATES: Array<{ key: string; name: string; description: str
     grants: [...SELF_SERVICE, ['expense.view', 'company'], ['expense.finance'], ['expense.manage'], ['ticket.handle_finance']],
   },
   {
+    key: 'devops',
+    name: 'DevOps',
+    description: 'Works the DevOps helpdesk queue (servers, deployments, CI/CD, cloud access).',
+    grants: [...SELF_SERVICE, ['ticket.handle_devops']],
+  },
+  {
     key: 'pmo',
     name: 'PMO',
     description: 'Project management office: creates projects, allocates people (role, team lead, allocation %) and sees logged hours.',
@@ -506,5 +515,63 @@ export const ROLE_TEMPLATES: Array<{ key: string; name: string; description: str
     name: 'Employee',
     description: 'Self-service: own profile, attendance, leave and payslips.',
     grants: SELF_SERVICE,
+  },
+];
+
+/**
+ * Starting points for new roles ("Start from a template" on Roles). Not created
+ * for companies — the admin picks one, adjusts it and saves it as a normal role.
+ */
+export const EXTRA_ROLE_TEMPLATES: Array<{ key: string; name: string; description: string; grants: Grant[] }> = [
+  {
+    key: 'recruiter',
+    name: 'Recruiter',
+    description: 'Adds new joiners, uploads their documents and sees the org chart and people reports.',
+    grants: [
+      ...SELF_SERVICE,
+      ['employee.view', 'company'], ['employee.create'], ['employee.import'],
+      ['document.view', 'company'], ['document.upload', 'company'],
+      ['report.view', 'company'], ['user.view'], ['user.invite'],
+    ],
+  },
+  {
+    key: 'payroll_officer',
+    name: 'Payroll officer',
+    description: 'Salaries, payslips and payroll runs, with the attendance and leave they depend on.',
+    grants: [
+      ...SELF_SERVICE,
+      ['employee.view', 'company'], ['employee.view_private', 'company'],
+      ['salary.view', 'company'], ['salary.edit', 'company'], ['payslip.view', 'company'],
+      ['payroll.view'], ['payroll.run'],
+      ['attendance.view', 'company'], ['leave.view', 'company'],
+      ['report.view', 'company'], ['report.export', 'company'],
+    ],
+  },
+  {
+    key: 'office_admin',
+    name: 'Office admin',
+    description: 'Runs the office: assets, holidays, announcements and the IT desk.',
+    grants: [
+      ...SELF_SERVICE,
+      ['employee.view', 'company'], ['asset.view', 'company'], ['asset.manage'],
+      ['holiday.manage'], ['announcement.post'], ['ticket.handle_it'],
+    ],
+  },
+  {
+    key: 'auditor',
+    name: 'Auditor (view only)',
+    description: 'Can look at everything across the company but change nothing.',
+    grants: [
+      ...SELF_SERVICE,
+      ['employee.view', 'company'], ['document.view', 'company'], ['attendance.view', 'company'], ['leave.view', 'company'],
+      ['shift.view', 'company'], ['expense.view', 'company'], ['asset.view', 'company'], ['timesheet.view', 'company'],
+      ['report.view', 'company'], ['user.view'], ['role.view'], ['settings.view'], ['audit.view'],
+    ],
+  },
+  {
+    key: 'intern',
+    name: 'Intern',
+    description: 'Self-service for interns: attendance, leave, timesheets and tickets — no pay screens.',
+    grants: SELF_SERVICE.filter(([k]) => k !== 'payslip.view' && k !== 'salary.view'),
   },
 ];

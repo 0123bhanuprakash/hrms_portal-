@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Chart motion — reports</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+@property --n { syntax: '<integer>'; inherits: false; initial-value: 0; }
+*{box-sizing:border-box;margin:0}
+.wrap{--bg:#F6F6FB;--card:#fff;--border:#E6E6F0;--fg:#17172B;--mut:#6B6B85;--track:#EEEEF5;--cy:6s;font-family:Manrope,system-ui,sans-serif;background:var(--bg);color:var(--fg);min-height:100vh;padding:36px 40px}
+.wrap.dark{--bg:#0F0F1A;--card:#181826;--border:#2A2A3D;--fg:#ECECF6;--mut:#9A9AB5;--track:#26263A}
+h1{font-size:28px;font-weight:800;letter-spacing:-.02em}
+.sub{color:var(--mut);font-size:14px;margin-top:6px;max-width:900px;line-height:1.5}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:28px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.card h3{font-size:14px;font-weight:800;display:flex;align-items:center;gap:8px}
+.card h3 i{font-style:normal;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin-left:auto}
+.stage{min-height:170px;display:flex;align-items:flex-end;justify-content:center;position:relative}
+.how{font-size:12.5px;color:var(--mut);line-height:1.5;border-top:1px dashed var(--border);padding-top:10px}
+.how b{color:var(--fg)}
+.where{display:flex;flex-wrap:wrap;gap:6px}
+.where span{font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px;background:var(--track);color:var(--mut)}
+.lbl{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
+.count{counter-reset:n var(--n);animation:count var(--cy) cubic-bezier(.2,.8,.2,1) infinite;animation-delay:var(--d,0s)}
+.count::after{content:counter(n)}
+@keyframes count{0%{--n:0}22%{--n:var(--to)}100%{--n:var(--to)}}
+/* bars rise, a little spring at the top */
+.bars{display:flex;align-items:flex-end;gap:12px;height:150px}
+.bars .b{width:30px;display:flex;flex-direction:column;align-items:center;gap:6px}
+.bars .b em{font-style:normal;font-size:11px;font-weight:800;opacity:0;animation:fadeup var(--cy) ease infinite;animation-delay:calc(var(--i)*70ms + .35s)}
+.bars .b span{width:100%;border-radius:8px 8px 3px 3px;background:linear-gradient(180deg,var(--c,#4F46E5),color-mix(in srgb,var(--c,#4F46E5) 70%,#fff));transform-origin:bottom;animation:rise var(--cy) cubic-bezier(.3,1.45,.5,1) infinite;animation-delay:calc(var(--i)*70ms)}
+.bars .b small{font-size:10.5px;color:var(--mut);font-weight:700}
+@keyframes rise{0%{transform:scaleY(0)}14%{transform:scaleY(1)}88%{transform:scaleY(1);opacity:1}97%{transform:scaleY(1);opacity:0}100%{transform:scaleY(0);opacity:0}}
+@keyframes fadeup{0%,4%{opacity:0;transform:translateY(6px)}16%{opacity:1;transform:none}88%{opacity:1}97%,100%{opacity:0}}
+/* lines draw, a dot rides the tip */
+.draw{stroke-dasharray:1;stroke-dashoffset:1;animation:draw var(--cy) cubic-bezier(.45,0,.2,1) infinite;animation-delay:var(--d,0s)}
+@keyframes draw{0%{stroke-dashoffset:1;opacity:1}24%{stroke-dashoffset:0}88%{stroke-dashoffset:0;opacity:1}97%,100%{stroke-dashoffset:0;opacity:0}}
+.area{animation:area var(--cy) ease infinite}
+@keyframes area{0%,14%{opacity:0;transform:translateY(10px)}30%{opacity:1;transform:none}88%{opacity:1}97%,100%{opacity:0}}
+.rider{offset-rotate:0deg;animation:ride var(--cy) cubic-bezier(.45,0,.2,1) infinite}
+@keyframes ride{0%{offset-distance:0%;opacity:1}24%{offset-distance:100%}88%{offset-distance:100%;opacity:1}97%,100%{offset-distance:100%;opacity:0}}
+.halo{transform-box:fill-box;transform-origin:center;animation:halo var(--cy) ease-out infinite}
+@keyframes halo{0%,24%{transform:scale(1);opacity:0}26%{opacity:.5}40%{transform:scale(3);opacity:0}100%{opacity:0}}
+.pill{position:absolute;font-size:11px;font-weight:800;color:#fff;padding:3px 8px;border-radius:99px;opacity:0;animation:pop var(--cy) cubic-bezier(.3,1.6,.5,1) infinite;animation-delay:var(--d,0s)}
+@keyframes pop{0%,22%{opacity:0;transform:scale(.4)}30%{opacity:1;transform:scale(1)}88%{opacity:1}97%,100%{opacity:0}}
+/* donut segments sweep one after another */
+.seg{stroke-dasharray:0 100;animation:seg var(--cy) cubic-bezier(.5,0,.2,1) infinite;animation-delay:var(--d)}
+@keyframes seg{0%{stroke-dasharray:0 100}14%{stroke-dasharray:var(--len) 100}88%{stroke-dasharray:var(--len) 100;opacity:1}97%,100%{stroke-dasharray:var(--len) 100;opacity:0}}
+.legend{display:flex;flex-direction:column;gap:7px;font-size:12px}
+.legend div{display:flex;align-items:center;gap:8px;opacity:0;animation:fadeup var(--cy) ease infinite;animation-delay:var(--d)}
+.legend i{width:9px;height:9px;border-radius:3px;background:var(--c)}
+.legend b{margin-left:auto;font-variant-numeric:tabular-nums}
+.dotpop{transform-box:fill-box;transform-origin:center;opacity:0;animation:pop var(--cy) cubic-bezier(.3,1.6,.5,1) infinite;animation-delay:var(--d,0s)}
+/* rings fill with spring */
+.ring{stroke-dasharray:0 100;animation:ring var(--cy) cubic-bezier(.3,1.25,.5,1) infinite;animation-delay:var(--d,0s)}
+@keyframes ring{0%{stroke-dasharray:0 100}22%{stroke-dasharray:var(--len) 100}88%{stroke-dasharray:var(--len) 100;opacity:1}97%,100%{stroke-dasharray:var(--len) 100;opacity:0}}
+/* horizontal bars */
+.hb{display:flex;flex-direction:column;gap:10px;width:100%}
+.hb .r{display:grid;grid-template-columns:86px 1fr 34px;align-items:center;gap:10px;font-size:12px}
+.hb .t{height:10px;border-radius:99px;background:var(--track);overflow:hidden}
+.hb .t span{display:block;height:100%;border-radius:99px;background:var(--c);transform-origin:left;animation:grow var(--cy) cubic-bezier(.3,1.2,.5,1) infinite;animation-delay:calc(var(--i)*90ms)}
+.hb .v{font-weight:800;text-align:right;font-variant-numeric:tabular-nums}
+@keyframes grow{0%{transform:scaleX(0)}16%{transform:scaleX(1)}88%{transform:scaleX(1);opacity:1}97%{opacity:0}100%{transform:scaleX(0);opacity:0}}
+/* stacked bar: segments fill in order */
+.stack{display:flex;height:22px;border-radius:99px;overflow:hidden;background:var(--track);width:100%}
+.stack span{height:100%;background:var(--c);transform-origin:left;transform:scaleX(0);animation:grow var(--cy) cubic-bezier(.5,0,.2,1) infinite;animation-delay:var(--d)}
+/* meter with a shine */
+.meter{height:12px;border-radius:99px;background:var(--track);overflow:hidden;width:100%;position:relative}
+.meter span{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#4F46E5,#8B5CF6);transform-origin:left;animation:grow var(--cy) cubic-bezier(.3,1.1,.5,1) infinite;position:relative;overflow:hidden}
+.meter span::after{content:'';position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,#ffffff99 50%,transparent 70%);transform:translateX(-100%);animation:shine var(--cy) ease infinite}
+@keyframes shine{0%,18%{transform:translateX(-100%)}32%,100%{transform:translateX(100%)}}
+/* heat cells pop in a diagonal wave */
+.heat{display:grid;grid-template-columns:repeat(12,1fr);gap:4px;width:100%}
+.heat i{aspect-ratio:1;border-radius:4px;background:var(--c);animation:cell var(--cy) cubic-bezier(.3,1.6,.5,1) infinite;animation-delay:calc((var(--x) + var(--y))*35ms)}
+@keyframes cell{0%{transform:scale(0);opacity:0}10%{transform:scale(1);opacity:1}88%{transform:scale(1);opacity:1}97%,100%{transform:scale(.6);opacity:0}}
+/* countdown ring drains and warms up */
+.drain{stroke-dasharray:100 100;animation:drain var(--cy) linear infinite}
+@keyframes drain{0%{stroke-dasharray:100 100;stroke:#16A34A}45%{stroke:#16A34A}65%{stroke:#F59E0B}85%{stroke-dasharray:12 100;stroke:#E11D48}100%{stroke-dasharray:12 100;stroke:#E11D48}}
+.tick{animation:tick var(--cy) steps(1) infinite}
+@keyframes tick{0%{color:#16A34A}65%{color:#F59E0B}85%,100%{color:#E11D48}}
+/* data change: bars morph from old to new values */
+.morph .b span{animation:morph var(--cy) cubic-bezier(.5,0,.2,1) infinite;transform:none;height:var(--h1)}
+@keyframes morph{0%,40%{height:var(--h1)}52%,90%{height:var(--h2)}100%{height:var(--h1)}}
+.seg2{display:inline-flex;border:1px solid var(--border);border-radius:9px;padding:2px;font-size:11px;font-weight:800}
+.seg2 span{padding:4px 9px;border-radius:7px}
+.seg2 span:first-child{animation:segA var(--cy) steps(1) infinite}
+.seg2 span:last-child{animation:segB var(--cy) steps(1) infinite}
+@keyframes segA{0%{background:#4F46E5;color:#fff}40%,100%{background:transparent;color:var(--mut)}}
+@keyframes segB{0%{background:transparent;color:var(--mut)}40%,90%{background:#4F46E5;color:#fff}91%,100%{background:transparent;color:var(--mut)}}
+/* KPI tile */
+.kpi{display:flex;flex-direction:column;gap:6px;padding:14px;border-radius:14px;border:1px solid var(--border);background:var(--card);position:relative;overflow:hidden}
+.kpi .big{font-size:30px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;padding:2px 8px;border-radius:99px;width:max-content;opacity:0;animation:slidein var(--cy) cubic-bezier(.3,1.5,.5,1) infinite;animation-delay:var(--d,.5s)}
+@keyframes slidein{0%,8%{opacity:0;transform:translateX(-10px)}20%{opacity:1;transform:none}88%{opacity:1}97%,100%{opacity:0}}
+/* hover state sample */
+.hover{position:absolute;left:50%;top:6px;transform:translateX(-50%);background:var(--fg);color:var(--bg);font-size:11px;font-weight:700;padding:6px 9px;border-radius:9px;white-space:nowrap;box-shadow:0 8px 20px #0003}
+/* reports page */
+.app{display:flex;min-height:100vh}
+.side{flex:0 0 232px;background:#13131F;border-right:1px solid var(--border);padding:18px 12px;display:flex;flex-direction:column;gap:4px}
+.side .it{height:34px;border-radius:9px;display:flex;align-items:center;padding:0 12px;font-size:13px;color:#9A9AB5}
+.side .it.on{background:#24244A;color:#C7C6FF;font-weight:800}
+.main{flex:1;padding:28px 34px;display:flex;flex-direction:column;gap:20px;min-width:0;animation:pagein var(--cy) ease infinite}
+@keyframes pagein{0%{opacity:.4}3%{opacity:1}}
+.row{display:flex;gap:16px}
+.fb{display:flex;gap:8px}
+.fb span{height:34px;border-radius:10px;border:1px solid var(--border);background:var(--card);padding:0 12px;display:flex;align-items:center;font-size:12.5px;font-weight:700;color:var(--mut)}
+.tl{display:grid;grid-template-columns:150px 1fr;gap:8px 14px;align-items:center;font-size:12px}
+.tl .track{position:relative;height:14px;border-radius:99px;background:var(--track)}
+.tl .track span{position:absolute;top:0;bottom:0;border-radius:99px;background:var(--c)}
+.axis{display:flex;justify-content:space-between;font-size:10.5px;color:var(--mut);margin-left:164px}
+</style>
+<div class="wrap dark" style="padding:0"><div class="app">
+    <div class="side"><div style="display:flex;align-items:center;gap:10px;padding:4px 8px 16px"><span style="width:32px;height:32px;border-radius:9px;background:#4F46E5;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px">AP</span><b style="color:#fff;font-size:14px">aakash-portal</b></div><div class="it">Home</div><div class="it">My profile</div><div class="it on">Reports & analytics</div><div class="it">People</div><div class="it">Employees</div><div class="it">Leave</div><div class="it">Attendance</div><div class="it">Projects</div></div>
+    <div class="main">
+      <div style="display:flex;align-items:flex-end;gap:16px"><div><span class="lbl">Reports</span><h1 style="margin-top:4px">People overview</h1></div><div class="fb" style="margin-left:auto"><span>Last 6 months ▾</span><span>All teams ▾</span><span>All locations ▾</span></div></div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px"><div class="kpi"><span class="lbl">Headcount</span><span class="big"><span class="count" style="--to:274;--d:0.1s"></span></span><span class="chip" style="background:color-mix(in srgb,#16A34A 18%,transparent);color:#16A34A;--d:0.45s">+26 this quarter</span></div><div class="kpi"><span class="lbl">Joined</span><span class="big"><span class="count" style="--to:102;--d:0.18s"></span></span><span class="chip" style="background:color-mix(in srgb,#4F46E5 18%,transparent);color:#4F46E5;--d:0.53s">May – Oct</span></div><div class="kpi"><span class="lbl">Left</span><span class="big"><span class="count" style="--to:30;--d:0.26s"></span></span><span class="chip" style="background:color-mix(in srgb,#E11D48 18%,transparent);color:#E11D48;--d:0.61s">2.4% a month</span></div><div class="kpi"><span class="lbl">Avg. present</span><span class="big"><span class="count" style="--to:91;--d:0.33999999999999997s"></span></span><span class="chip" style="background:color-mix(in srgb,#0EA5E9 18%,transparent);color:#0EA5E9;--d:0.69s">% of working days</span></div></div>
+      <div class="row">
+        <div class="card" style="flex:1.4"><h3>Joiners, leavers and headcount<i>Rise + draw</i></h3><div style="position:relative;width:560px;height:230px">
+    <div style="position:absolute;left:0;right:0;bottom:20px;height:210px;display:flex"><div style="flex:1;display:flex;align-items:flex-end;justify-content:center;gap:5px"><div class="bars" style="height:auto;gap:5px"><div class="b" style="--i:0;--c:#16A34A;width:16px"><span style="height:48px"></span></div><div class="b" style="--i:0;--c:#E11D48;width:16px"><span style="height:16px"></span></div></div></div><div style="flex:1;display:flex;align-items:flex-end;justify-content:center;gap:5px"><div class="bars" style="height:auto;gap:5px"><div class="b" style="--i:1;--c:#16A34A;width:16px"><span style="height:72px"></span></div><div class="b" style="--i:1;--c:#E11D48;width:16px"><span style="height:24px"></span></div></div></div><div style="flex:1;display:flex;align-items:flex-end;justify-content:center;gap:5px"><div class="bars" style="height:auto;gap:5px"><div class="b" style="--i:2;--c:#16A34A;width:16px"><span style="height:36px"></span></div><div class="b" style="--i:2;--c:#E11D48;width:16px"><span style="height:12px"></span></div></div></div><div style="flex:1;display:flex;align-items:flex-end;justify-content:center;gap:5px"><div class="bars" style="height:auto;gap:5px"><div class="b" style="--i:3;--c:#16A34A;width:16px"><span style="height:88px"></span></div><div class="b" style="--i:3;--c:#E11D48;width:16px"><span style="height:20px"></span></div></div></div><div style="flex:1;display:flex;align-items:flex-end;justify-content:center;gap:5px"><div class="bars" style="height:auto;gap:5px"><div class="b" style="--i:4;--c:#16A34A;width:16px"><span style="height:60px"></span></div><div class="b" style="--i:4;--c:#E11D48;width:16px"><span style="height:32px"></span></div></div></div><div style="flex:1;display:flex;align-items:flex-end;justify-content:center;gap:5px"><div class="bars" style="height:auto;gap:5px"><div class="b" style="--i:5;--c:#16A34A;width:16px"><span style="height:104px"></span></div><div class="b" style="--i:5;--c:#E11D48;width:16px"><span style="height:16px"></span></div></div></div></div>
+    <svg width="560" height="210" style="position:absolute;left:0;top:0;overflow:visible"><path class="draw" pathLength="1" d="M47,64 C93.5,64 93.5,57 140,57 C186.5,57 186.5,53 233,53 C280,53 280,43 327,43 C373.5,43 373.5,39 420,39 C466.5,39 466.5,26 513,26" fill="none" stroke="#8B5CF6" stroke-width="3" stroke-linecap="round" style="--d:.35s"/><circle cx="47" cy="64" r="4" fill="#181826" stroke="#8B5CF6" stroke-width="2.5" class="dotpop" style="--d:0.35s"/><circle cx="140" cy="57" r="4" fill="#181826" stroke="#8B5CF6" stroke-width="2.5" class="dotpop" style="--d:0.47s"/><circle cx="233" cy="53" r="4" fill="#181826" stroke="#8B5CF6" stroke-width="2.5" class="dotpop" style="--d:0.59s"/><circle cx="327" cy="43" r="4" fill="#181826" stroke="#8B5CF6" stroke-width="2.5" class="dotpop" style="--d:0.71s"/><circle cx="420" cy="39" r="4" fill="#181826" stroke="#8B5CF6" stroke-width="2.5" class="dotpop" style="--d:0.83s"/><circle cx="513" cy="26" r="4" fill="#181826" stroke="#8B5CF6" stroke-width="2.5" class="dotpop" style="--d:0.95s"/></svg>
+    <div style="position:absolute;left:0;right:0;bottom:0;display:flex;font-size:11px;color:var(--mut)"><span style="flex:1;text-align:center">May</span><span style="flex:1;text-align:center">Jun</span><span style="flex:1;text-align:center">Jul</span><span style="flex:1;text-align:center">Aug</span><span style="flex:1;text-align:center">Sep</span><span style="flex:1;text-align:center">Oct</span></div>
+    <div class="hover" style="left:420px;top:55px"><b>Sep</b> · 15 joined · 8 left · 252 people</div>
+  </div><div class="legend" style="flex-direction:row;gap:18px"><div style="--c:#16A34A;--d:0.6s"><i></i>Joined</div><div style="--c:#E11D48;--d:0.7s"><i></i>Left</div><div style="--c:#8B5CF6;--d:0.8s"><i></i>Headcount</div></div></div>
+        <div class="card" style="flex:1"><h3>Who works where<i>Sweep</i></h3><div style="display:flex;align-items:center;gap:22px;padding:14px 0"><div style="position:relative;width:170px;height:170px;flex:none"><svg width="170" height="170"><circle cx="85" cy="85" r="74" fill="none" stroke="var(--track)" stroke-width="22"/><circle class="seg" pathLength="100" cx="85" cy="85" r="74" fill="none" stroke="#4F46E5" stroke-width="22" stroke-linecap="butt" stroke-dashoffset="0" transform="rotate(-90 85 85)" style="--len:40.07591240875913;--d:0s"/><circle class="seg" pathLength="100" cx="85" cy="85" r="74" fill="none" stroke="#0EA5E9" stroke-width="22" stroke-linecap="butt" stroke-dashoffset="-40.87591240875913" transform="rotate(-90 85 85)" style="--len:20.36788321167883;--d:0.327007299270073s"/><circle class="seg" pathLength="100" cx="85" cy="85" r="74" fill="none" stroke="#8B5CF6" stroke-width="22" stroke-linecap="butt" stroke-dashoffset="-62.04379562043796" transform="rotate(-90 85 85)" style="--len:15.25839416058394;--d:0.49635036496350365s"/><circle class="seg" pathLength="100" cx="85" cy="85" r="74" fill="none" stroke="#F59E0B" stroke-width="22" stroke-linecap="butt" stroke-dashoffset="-78.1021897810219" transform="rotate(-90 85 85)" style="--len:10.87883211678832;--d:0.6248175182481752s"/><circle class="seg" pathLength="100" cx="85" cy="85" r="74" fill="none" stroke="#EC4899" stroke-width="22" stroke-linecap="butt" stroke-dashoffset="-89.78102189781023" transform="rotate(-90 85 85)" style="--len:9.418978102189781;--d:0.7182481751824819s"/></svg><div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><b style="font-size:28px"><span class="count" style="--to:274;--d:0.3s"></span></b><span class="lbl">people</span></div></div><div class="legend" style="flex:1"><div style="--c:#4F46E5;--d:0.35s"><i></i>Engineering<b>112</b></div><div style="--c:#0EA5E9;--d:0.47s"><i></i>Sales<b>58</b></div><div style="--c:#8B5CF6;--d:0.59s"><i></i>Support<b>44</b></div><div style="--c:#F59E0B;--d:0.71s"><i></i>Finance<b>32</b></div><div style="--c:#EC4899;--d:0.83s"><i></i>HR<b>28</b></div></div></div></div>
+      </div>
+      <div class="row">
+        <div class="card" style="flex:1.4"><h3>Daily attendance · October<i>Stacked bars rise</i></h3><div class="stage" style="height:210px;justify-content:flex-start"><div class="bars" style="gap:7px;height:180px"><div class="b" style="--i:0;width:22px"><div style="display:flex;flex-direction:column;width:100%;gap:2px"><span style="height:6px;--c:#E11D48;border-radius:4px"></span><span style="height:14px;--c:#F59E0B;border-radius:4px"></span><span style="height:120px;--c:#16A34A;border-radius:4px"></span></div><small>1</small></div><div class="b" style="--i:1;width:22px"><div style="display:flex;flex-direction:column;width:100%;gap:2px"><span style="height:11px;--c:#E11D48;border-radius:4px"></span><span style="height:21px;--c:#F59E0B;border-radius:4px"></span><span style="height:107px;--c:#16A34A;border-radius:4px"></span></div><small>2</small></div><div class="b" style="--i:2;width:22px"><div style="display:flex;flex-direction:column;width:100%;gap:2px"><span style="height:7px;--c:#E11D48;border-radius:4px"></span><span style="height:16px;--c:#F59E0B;border-radius:4px"></span><span style="height:94px;--c:#16A34A;border-radius:4px"></span></div><small>3</small></div><div class="b" style="--i:3;width:22px"><div style="display:flex;flex-direction:column;width:100%;gap:2px"><span style="height:12px;--c:#E11D48;border-radius:4px"></span><span style="height:23px;--c:#F59E0B;border-radius:4px"></span><span style="height:111px;--c:#16A34A;border-radius:4px"></span></div><small>4</small></div><div class="b" style="--i:4;width:22px"><div style="display:flex;flex-direction:column;width:100%;gap:2px"><span style="height:8px;--c:#E11D48;border-radius:4px"></span><span style="height:18px;--c:#F59E0B;border-radius:4px"></span><span style="height:98px;--c:#16A34A;border-radius:4px"></span></div><small>5</small></div><div class="b" style="--i:5;width:22px"><div style="display:flex;flex-direction:column;width:100%;gap:2px"><span style="height:13px;--c:#E11D48;border-radius:4px"></span><span style="height:25px;--c:#F59E0B;border-radius:4px"></span><span style="height:115px;--c:#16A34A;border-radius:4px"></span></div><small>6</small></div><div class="b" style="--i:6;width:22px"><div style="display:flex;flex-direction:column;width:100%;gap:2px"><span style="height:9px;--c:#E11D48;border-radius:4px"></span><span style="height:20px;--c:#F59E0B;border-radius:4px"></span><span style="height:102px;--c:#16A34A;border-radius:4px"></span></div><small>7</small></div><div class="b" style="--i:7;width:22px"><div style="display:flex;flex-direction:column;width:100%;gap:2px"><span style="height:14px;--c:#E11D48;border-radius:4px"></span><span style="height:15px;--c:#F59E0B;border-radius:4px"></span><span style="height:119px;--c:#16A34A;border-radius:4px"></span></div><small>8</small></div><div class="b" style="--i:8;width:22px"><div style="display:flex;flex-direction:column;width:100%;gap:2px"><span style="height:10px;--c:#E11D48;border-radius:4px"></span><span style="height:22px;--c:#F59E0B;border-radius:4px"></span><span style="height:106px;--c:#16A34A;border-radius:4px"></span></div><small>9</small></div><div class="b" style="--i:9;width:22px"><div style="display:flex;flex-direction:column;width:100%;gap:2px"><span style="height:6px;--c:#E11D48;border-radius:4px"></span><span style="height:17px;--c:#F59E0B;border-radius:4px"></span><span style="height:93px;--c:#16A34A;border-radius:4px"></span></div><small>10</small></div><div class="b" style="--i:10;width:22px"><div style="display:flex;flex-direction:column;width:100%;gap:2px"><span style="height:11px;--c:#E11D48;border-radius:4px"></span><span style="height:24px;--c:#F59E0B;border-radius:4px"></span><span style="height:110px;--c:#16A34A;border-radius:4px"></span></div><small>11</small></div><div class="b" style="--i:11;width:22px"><div style="display:flex;flex-direction:column;width:100%;gap:2px"><span style="height:7px;--c:#E11D48;border-radius:4px"></span><span style="height:19px;--c:#F59E0B;border-radius:4px"></span><span style="height:97px;--c:#16A34A;border-radius:4px"></span></div><small>12</small></div><div class="b" style="--i:12;width:22px"><div style="display:flex;flex-direction:column;width:100%;gap:2px"><span style="height:12px;--c:#E11D48;border-radius:4px"></span><span style="height:14px;--c:#F59E0B;border-radius:4px"></span><span style="height:114px;--c:#16A34A;border-radius:4px"></span></div><small>13</small></div><div class="b" style="--i:13;width:22px"><div style="display:flex;flex-direction:column;width:100%;gap:2px"><span style="height:8px;--c:#E11D48;border-radius:4px"></span><span style="height:21px;--c:#F59E0B;border-radius:4px"></span><span style="height:101px;--c:#16A34A;border-radius:4px"></span></div><small>14</small></div></div></div><div class="legend" style="flex-direction:row;gap:18px"><div style="--c:#16A34A;--d:0.7s"><i></i>Present</div><div style="--c:#F59E0B;--d:0.7999999999999999s"><i></i>On leave</div><div style="--c:#E11D48;--d:0.8999999999999999s"><i></i>Absent</div></div></div>
+        <div class="card" style="flex:1"><h3>Leave taken by type<i>Grow</i></h3><div class="hb" style="padding-top:10px"><div class="r" style="--i:0"><span>Casual</span><div class="t"><span style="width:88%;--c:#4F46E5"></span></div><span class="v"><span class="count" style="--to:412;--d:0s"></span></span></div><div class="r" style="--i:1"><span>Sick</span><div class="t"><span style="width:54%;--c:#0EA5E9"></span></div><span class="v"><span class="count" style="--to:251;--d:0.09s"></span></span></div><div class="r" style="--i:2"><span>Earned</span><div class="t"><span style="width:40%;--c:#8B5CF6"></span></div><span class="v"><span class="count" style="--to:186;--d:0.18s"></span></span></div><div class="r" style="--i:3"><span>WFH</span><div class="t"><span style="width:33%;--c:#F59E0B"></span></div><span class="v"><span class="count" style="--to:154;--d:0.27s"></span></span></div><div class="r" style="--i:4"><span>Unpaid</span><div class="t"><span style="width:9%;--c:#E11D48"></span></div><span class="v"><span class="count" style="--to:41;--d:0.36s"></span></span></div></div></div>
+      </div>
+      <div class="card"><h3>The order things move in · first 1.8 seconds<i>Choreography</i></h3><div class="tl"><span>Page fades in</span><div class="track"><span style="left:0%;width:8.333333333333332%;--c:#6B6B85"></span></div><span>Numbers count up</span><div class="track"><span style="left:5.555555555555555%;width:55.55555555555556%;--c:#4F46E5"></span></div><span>Change chips slide in</span><div class="track"><span style="left:25%;width:16.666666666666664%;--c:#4F46E5"></span></div><span>Bars rise (staggered)</span><div class="track"><span style="left:13.88888888888889%;width:50%;--c:#16A34A"></span></div><span>Lines draw</span><div class="track"><span style="left:19.444444444444446%;width:72.22222222222221%;--c:#8B5CF6"></span></div><span>Donut sweeps</span><div class="track"><span style="left:16.666666666666664%;width:50%;--c:#0EA5E9"></span></div><span>Legends + labels</span><div class="track"><span style="left:33.33333333333333%;width:22.22222222222222%;--c:#F59E0B"></span></div></div><div class="axis"><span>0 ms</span><span>300 ms</span><span>600 ms</span><span>900 ms</span><span>1200 ms</span><span>1500 ms</span><span>1800 ms</span></div></div>
+    </div>
+  </div></div></x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1240}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

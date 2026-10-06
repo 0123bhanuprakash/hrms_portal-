@@ -30,6 +30,7 @@ import {
 import { useAuthStore } from '@/store/useAuthStore';
 import { changePasswordPath, useAuthHydrated, withNext } from '@/lib/auth/portal';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { LiveConnection, LiveDot } from '@/components/live/live-connection';
 import { DropdownMenu } from '@/components/ui/dropdown-menu';
 import { Tooltip } from '@/components/ui/tooltip';
 import { Kbd } from '@/components/ui/badge';
@@ -37,14 +38,15 @@ import { CommandMenu, NAV_SHORTCUTS, ShortcutsDialog } from '@/components/super-
 import { useOpenQueueDashboard, useSystemStatus, useThemeSettings } from '@/lib/admin/queries';
 import { ThemeStyle } from '@/components/theme/theme-style';
 import { DisplayPreferences } from '@/components/preferences/display-preferences';
-import { ClassicNav, CollapsibleNav, FloatingNav, RailNav, type SidebarGroup } from '@/components/layout/sidebar-nav';
+import { CollapsibleNav, FloatingNav, type SidebarGroup } from '@/components/layout/sidebar-nav';
 import { usePreferences, type UserPreferences } from '@/lib/company/queries';
 import { ReauthDialog, useIdleSignOut } from '@/components/super-admin/account-guards';
 import { resolveTheme } from '@/lib/theme/presets';
-import type { MenuStyle, ThemeTokens } from '@hrms/types';
+import { MENU_STYLES, type MenuStyle, type ThemeTokens } from '@hrms/types';
 import { getApiErrorMessage } from '@/lib/errors';
 import { initials } from '@/lib/format';
 import { cn } from '@/lib/cn';
+import { PageBackdrop } from '@/components/motion/page-backdrop';
 
 const NAV_GROUPS: SidebarGroup[] = [
   { label: 'Overview', icon: LayoutDashboard, items: [{ name: 'Dashboard', href: '/super-admin', icon: LayoutDashboard, exact: true }] },
@@ -79,7 +81,7 @@ function useMenuStyle(prefs: UserPreferences | undefined, userId: string | undef
     if (!userId) return;
     try {
       if (style) localStorage.setItem(key, style);
-      else setCached(localStorage.getItem(key) as MenuStyle | null);
+      else setCached((MENU_STYLES as readonly string[]).includes(localStorage.getItem(key) ?? '') ? (localStorage.getItem(key) as MenuStyle) : null);
     } catch {
       /* storage unavailable */
     }
@@ -244,12 +246,12 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
   }
 
   const fullName = `${user!.firstName} ${user!.lastName}`;
-  // Classic can be collapsed to icons; Rail is always icons
-  const rail = menuStyle === 'rail';
-  const compact = rail || (menuStyle === 'classic' && collapsed);
+  // Classic can be collapsed to icons
+  const compact = menuStyle === 'classic' && collapsed;
 
   return (
-    <div className="flex min-h-screen bg-canvas text-foreground">
+    <div className="isolate flex min-h-screen bg-canvas text-foreground">
+      <PageBackdrop platform />
       <PortalTheme enabled />
       <DisplayPreferences />
       {mobileOpen && (
@@ -261,7 +263,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
         className={cn(
           'fixed inset-y-0 left-0 z-40 flex flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width,transform] duration-200 ease-out',
           'lg:sticky lg:top-0 lg:h-screen lg:translate-x-0',
-          rail ? 'lg:w-[84px]' : compact ? 'lg:w-[60px]' : 'lg:w-60',
+          compact ? 'lg:w-[60px]' : 'lg:w-60',
           menuStyle === 'floating' && 'lg:top-3 lg:m-3 lg:mr-0 lg:h-[calc(100vh-1.5rem)] lg:rounded-2xl lg:border lg:shadow-card',
           mobileOpen ? 'w-60 translate-x-0' : 'w-60 -translate-x-full',
         )}
@@ -302,12 +304,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
           </Tooltip>
         </div>
 
-        {menuStyle === 'rail' ? (
-          <>
-            <ClassicNav groups={NAV_GROUPS} pathname={pathname} className="lg:hidden" />
-            <RailNav groups={NAV_GROUPS} pathname={pathname} className="hidden lg:flex" />
-          </>
-        ) : menuStyle === 'floating' ? (
+        {menuStyle === 'floating' ? (
           <FloatingNav groups={NAV_GROUPS} pathname={pathname} />
         ) : menuStyle === 'collapsible' ? (
           <CollapsibleNav groups={NAV_GROUPS} pathname={pathname} />
@@ -400,6 +397,8 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
             <Breadcrumbs pathname={pathname} />
           </div>
           <div className="flex items-center gap-1.5">
+            <LiveConnection />
+            <LiveDot className="mr-0.5" />
             <SystemPill />
             <QueueButton />
             <Tooltip content="Search" shortcut="Ctrl K">

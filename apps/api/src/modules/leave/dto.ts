@@ -14,6 +14,7 @@ import {
   Min,
   MinLength,
   NotEquals,
+  ValidateIf,
 } from 'class-validator';
 import { Gender, HalfDaySession, LeaveAccrual, LeaveStatus, LeaveTypeCategory } from '@prisma/client';
 
@@ -42,6 +43,12 @@ export class SaveLeaveTypeDto {
   @IsOptional() @IsBoolean() includeNonWorkingDays?: boolean;
   @IsOptional() @IsBoolean() countsAsPresent?: boolean;
   @IsOptional() @IsEnum(Gender) gender?: Gender | null;
+  @IsOptional() @IsBoolean() blockDuringProbation?: boolean;
+  @IsOptional() @ValidateIf((_, v) => v !== null) @IsInt() @Min(0) @Max(365) documentAfterDays?: number | null;
+  @IsOptional() @IsBoolean() sandwichRule?: boolean;
+  @IsOptional() @IsNumber() @Min(0) @Max(30) negativeBalance?: number;
+  /** "MM-DD" — carried days not used by then lapse; null = never */
+  @IsOptional() @ValidateIf((_, v) => v !== null) @Matches(/^(0[1-9]|1[0-2])-(0[1-9]|[12]d|3[01])$/, { message: 'carryExpiry must be MM-DD' }) carryExpiry?: string | null;
   @IsOptional() @IsBoolean() isActive?: boolean;
   @IsOptional() @IsInt() @Min(0) @Max(1000) sortOrder?: number;
 }
@@ -89,6 +96,14 @@ export class DecideLeaveDto {
 
 export class CancelLeaveDto {
   @IsOptional() @Transform(blankToNull) @IsString() @MaxLength(500) reason?: string | null;
+}
+
+export class AskQuestionDto {
+  @Transform(trim) @IsString() @MinLength(3) @MaxLength(500) question!: string;
+}
+
+export class YearQueryDto {
+  @IsOptional() @Type(() => Number) @IsInt() @Min(2000) @Max(2100) year?: number;
 }
 
 export class LeaveCalendarQueryDto {

@@ -6,10 +6,12 @@ import { holds, type AccessContext } from '../access/access.types';
 import { ExpenseCategoriesService } from './categories.service';
 import { ExpenseClaimsService } from './claims.service';
 import { BulkApproveDto, ClaimQueryDto, CommentDto, DecideClaimDto, PayClaimDto, RejectClaimDto, ReportQueryDto, SaveCategoryDto, SaveClaimDto, SaveItemDto } from './dto';
+import { Live } from '../realtime/live.decorator';
 
 const receipt = FileInterceptor('receipt', { limits: { fileSize: 10 * 1024 * 1024, files: 1 } });
 
 @RequireFeature('ops.expenses')
+@Live('expenses')
 @Controller('expenses')
 export class ExpensesController {
   constructor(

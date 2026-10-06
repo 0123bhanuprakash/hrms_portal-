@@ -27,6 +27,7 @@ import { getApiErrorMessage } from '@/lib/errors';
 import { formatDate, formatDateTime, formatRelative, humanizeAction, initials } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import { daysSince, securityChecks } from './security-section';
+import { Select } from '@/components/ui/pickers';
 
 const COVERS = {
   gold: 'radial-gradient(120% 140% at 0% 0%, #F7D79A 0%, #E9B45A 35%, #B7791F 70%, #7A4B0B 100%)',
@@ -181,14 +182,14 @@ function DetailsCard({ o }: { o: AccountOverview }) {
       )}
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Time zone" htmlFor="tz">
-          <select id="tz" className={inputClass} value={prefs.data?.timezone ?? 'Asia/Kolkata'} onChange={(e) => updatePrefs.mutate({ timezone: e.target.value }, { onSuccess: () => toast.success('Time zone saved') })}>
+          <Select id="tz" className={inputClass} value={prefs.data?.timezone ?? 'Asia/Kolkata'} onChange={(e) => updatePrefs.mutate({ timezone: e.target.value }, { onSuccess: () => toast.success('Time zone saved') })}>
             {TIMEZONES.map((t) => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
-          </select>
+          </Select>
         </Field>
         <Field label="Date format" htmlFor="df">
-          <select id="df" className={inputClass} value={prefs.data?.dateFormat ?? 'DD/MM/YYYY'} onChange={(e) => updatePrefs.mutate({ dateFormat: e.target.value }, { onSuccess: () => toast.success('Date format saved') })}>
+          <Select id="df" className={inputClass} value={prefs.data?.dateFormat ?? 'DD/MM/YYYY'} onChange={(e) => updatePrefs.mutate({ dateFormat: e.target.value }, { onSuccess: () => toast.success('Date format saved') })}>
             {DATE_FORMATS.map((d) => <option key={d.value} value={d.value}>{d.example}</option>)}
-          </select>
+          </Select>
         </Field>
       </div>
       <div className="flex justify-end gap-2">

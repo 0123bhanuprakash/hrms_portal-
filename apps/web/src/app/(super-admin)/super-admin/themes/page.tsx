@@ -280,7 +280,7 @@ export default function ThemesPage() {
         busy={updateSettings.isPending}
         title={picker ? `Theme for ${SCOPES[picker].label.toLowerCase()}` : ''}
         description={picker ? SCOPES[picker].description : undefined}
-        className="max-w-xl"
+        size="lg"
       >
         <div className="grid max-h-[55vh] grid-cols-2 gap-2.5 overflow-y-auto pr-1">
           {all.map((item) => {

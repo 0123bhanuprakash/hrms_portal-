@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
+import { Emoji } from '@/components/motion/emoji';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
@@ -35,6 +36,7 @@ import { useMyCard } from '@/lib/company/profile';
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatDate, formatRelative } from '@/lib/format';
 import { cn } from '@/lib/cn';
+import { DateInput, PersonSelect } from '@/components/ui/pickers';
 
 type Tab = 'overview' | 'team' | 'milestones' | 'updates';
 
@@ -300,7 +302,7 @@ function Milestones({ p, onEdit, compact }: { p: ProjectPlan; onEdit: (m: Milest
   const [removing, setRemoving] = useState<Milestone | null>(null);
   const meId = useMyCard().data?.employee?.id;
   const toggle = (m: Milestone) =>
-    update.mutate({ id: m.id, done: !m.doneAt }, { onSuccess: () => toast.success(m.doneAt ? 'Reopened' : `“${m.title}” done 🎉`), onError: (e) => toast.error(getApiErrorMessage(e, 'Could not update')) });
+    update.mutate({ id: m.id, done: !m.doneAt }, { onSuccess: () => toast.success(m.doneAt ? 'Reopened' : <>“{m.title}” done <Emoji e="🎉" play="appear" /></>), onError: (e) => toast.error(getApiErrorMessage(e, 'Could not update')) });
   return (
     <Card>
       <CardHeader icon={<Flag />} title="Milestones" action={p.canPlan && <Button size="sm" variant="ghost" onClick={() => onEdit('new')}><Plus /> Add</Button>} />
@@ -380,12 +382,9 @@ function MilestoneDialog({ p, value, onClose }: { p: ProjectPlan; value: Milesto
     >
       <div className="grid gap-3 sm:grid-cols-[1fr_160px]">
         <Field label="Title" htmlFor="ms-title" required><Input id="ms-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} placeholder="e.g. UAT sign-off" autoFocus /></Field>
-        <Field label="Due" htmlFor="ms-due" required><Input id="ms-due" type="date" value={dueDate} min={p.startDate} max={p.endDate ?? undefined} onChange={(e) => setDueDate(e.target.value)} /></Field>
+        <Field label="Due" htmlFor="ms-due" required><DateInput id="ms-due" value={dueDate} min={p.startDate} max={p.endDate ?? undefined} onChange={(e) => setDueDate(e.target.value)} /></Field>
         <Field label="Owner" htmlFor="ms-owner" hint="They can tick it done themselves." className="sm:col-span-2">
-          <select id="ms-owner" className={inputClass} value={owner} onChange={(e) => setOwner(e.target.value)}>
-            <option value="">— Nobody</option>
-            {people.map((x) => <option key={x.id} value={x.id}>{x.firstName} {x.lastName}</option>)}
-          </select>
+          <PersonSelect id="ms-owner" value={owner} onChange={setOwner} emptyLabel="— Nobody" people={people} />
         </Field>
       </div>
     </Modal>
@@ -546,7 +545,7 @@ function OpenRoles({ p }: { p: ProjectPlan }) {
           <div className="grid gap-3 sm:grid-cols-[1fr_110px_160px]">
             <Field label="Role" htmlFor="or-title" required><Input id="or-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={80} placeholder="e.g. QA engineer" autoFocus /></Field>
             <Field label="Allocation" htmlFor="or-alloc"><Input id="or-alloc" type="number" min={5} max={100} step={5} value={allocation} onChange={(e) => setAllocation(Number(e.target.value))} /></Field>
-            <Field label="From" htmlFor="or-from"><Input id="or-from" type="date" value={fromDate} min={p.startDate} max={p.endDate ?? undefined} onChange={(e) => setFromDate(e.target.value)} /></Field>
+            <Field label="From" htmlFor="or-from"><DateInput id="or-from" value={fromDate} min={p.startDate} max={p.endDate ?? undefined} onChange={(e) => setFromDate(e.target.value)} /></Field>
           </div>
         </Modal>
       )}

@@ -15,8 +15,9 @@ export const QUEUE_PERMISSION: Record<TicketQueue, string> = {
   IT: 'ticket.handle_it',
   HR: 'ticket.handle_hr',
   FINANCE: 'ticket.handle_finance',
+  DEVOPS: 'ticket.handle_devops',
 };
-export const QUEUE_LABEL: Record<TicketQueue, string> = { IT: 'IT', HR: 'HR', FINANCE: 'Finance' };
+export const QUEUE_LABEL: Record<TicketQueue, string> = { IT: 'IT', HR: 'HR', FINANCE: 'Finance', DEVOPS: 'DevOps' };
 export const QUEUES = Object.keys(QUEUE_PERMISSION) as TicketQueue[];
 
 export function dueDates(priority: TicketPriority, from: Date) {

@@ -5,18 +5,19 @@ import { toast } from 'sonner';
 import { ChevronLeft, ChevronRight, Mail, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
-import { Field, Input, inputClass } from '@/components/ui/field';
+import { Field, Input, inputClass, FormError } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
 import { PersonAvatar } from '@/components/profile/person-avatar';
 import { tintFor } from '@/components/people/photo-card';
 import { ProductArt } from '@/components/assets/product-art';
 import { useKitPreview } from '@/lib/company/assets';
-import { useCreateEmployee, useDepartments, useDesignations, useLocations, useOrgChart } from '@/lib/company/org';
+import { useCreateEmployee, useDepartments, useDesignations, useLocations, usePeoplePicker } from '@/lib/company/org';
 import { useNextEmployeeId } from '@/lib/company/lifecycle';
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatDate, initials } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import { addDaysKey, addMonthsKey } from './lifecycle-ui';
+import { DateInput, PersonSelect, Select } from '@/components/ui/pickers';
 
 const STEPS = ['Basics', 'Job', 'Manager', 'Review'] as const;
 const DRAFT_KEY = 'hrms:add-employee-draft';
@@ -65,7 +66,7 @@ export function AddEmployeeWizard({ open, onClose }: { open: boolean; onClose: (
   const departments = useDepartments();
   const designations = useDesignations();
   const locations = useLocations();
-  const chart = useOrgChart();
+  const chart = usePeoplePicker();
   const nextId = useNextEmployeeId(open);
   const [step, setStep] = useState(0);
   const [d, setD] = useState<Draft>(blank());
@@ -185,7 +186,7 @@ export function AddEmployeeWizard({ open, onClose }: { open: boolean; onClose: (
             <button type="button" className="font-semibold underline" onClick={() => { writeDraft(null); setRestored(false); setD(blank(locations.data?.find((l) => l.isDefault)?.id ?? '')); }}>Start over</button>
           </p>
         )}
-        {error && <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+        <FormError>{error}</FormError>
 
         <div className="grid gap-6 md:grid-cols-[1fr_220px]">
           <div className="space-y-4">
@@ -202,30 +203,30 @@ export function AddEmployeeWizard({ open, onClose }: { open: boolean; onClose: (
             {step === 1 && (
               <>
                 <Field label="Job title" htmlFor="w-title">
-                  <select id="w-title" className={inputClass} value={d.designationId} onChange={(e) => set('designationId', e.target.value)}>
+                  <Select id="w-title" className={inputClass} value={d.designationId} onChange={(e) => set('designationId', e.target.value)}>
                     <option value="">— Not set</option>
                     {designations.data?.map((x) => <option key={x.id} value={x.id}>{x.name}{x.orgLevel ? ` (${x.orgLevel.name})` : ''}</option>)}
-                  </select>
+                  </Select>
                 </Field>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Department" htmlFor="w-dept">
-                    <select id="w-dept" className={inputClass} value={d.departmentId} onChange={(e) => set('departmentId', e.target.value)}>
+                    <Select id="w-dept" className={inputClass} value={d.departmentId} onChange={(e) => set('departmentId', e.target.value)}>
                       <option value="">— None</option>
                       {departments.data?.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
-                    </select>
+                    </Select>
                   </Field>
                   <Field label="Location" htmlFor="w-loc">
-                    <select id="w-loc" className={inputClass} value={d.locationId} onChange={(e) => set('locationId', e.target.value)}>
+                    <Select id="w-loc" className={inputClass} value={d.locationId} onChange={(e) => set('locationId', e.target.value)}>
                       <option value="">— None</option>
                       {locations.data?.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
-                    </select>
+                    </Select>
                   </Field>
                   <Field label="Type" htmlFor="w-type">
-                    <select id="w-type" className={inputClass} value={d.employmentType} onChange={(e) => set('employmentType', e.target.value)}>
+                    <Select id="w-type" className={inputClass} value={d.employmentType} onChange={(e) => set('employmentType', e.target.value)}>
                       {TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                    </select>
+                    </Select>
                   </Field>
-                  <Field label="Joining date" htmlFor="w-join" required><Input id="w-join" type="date" value={d.joiningDate} onChange={(e) => set('joiningDate', e.target.value)} /></Field>
+                  <Field label="Joining date" htmlFor="w-join" required><DateInput id="w-join" value={d.joiningDate} onChange={(e) => set('joiningDate', e.target.value)} /></Field>
                 </div>
                 <Field label="Probation" htmlFor="w-prob">
                   <div id="w-prob" className="flex flex-wrap items-center gap-2" role="radiogroup">
@@ -234,7 +235,7 @@ export function AddEmployeeWizard({ open, onClose }: { open: boolean; onClose: (
                         {l}
                       </button>
                     ))}
-                    {d.probation === 'custom' && <Input type="date" className="h-8 w-40" value={d.probationEnd} min={d.joiningDate} onChange={(e) => set('probationEnd', e.target.value)} aria-label="Probation end date" />}
+                    {d.probation === 'custom' && <DateInput className="h-8 w-40" value={d.probationEnd} min={d.joiningDate} onChange={(e) => set('probationEnd', e.target.value)} aria-label="Probation end date" />}
                     {probationEnd && <span className="text-xs text-muted-foreground">ends {formatDate(probationEnd)}</span>}
                   </div>
                 </Field>
@@ -243,10 +244,7 @@ export function AddEmployeeWizard({ open, onClose }: { open: boolean; onClose: (
             {step === 2 && (
               <>
                 <Field label="Reporting manager" htmlFor="w-mgr" hint="Approves their leave and timesheets, and sees them under “my team”.">
-                  <select id="w-mgr" className={inputClass} value={d.reportingManagerId} onChange={(e) => set('reportingManagerId', e.target.value)}>
-                    <option value="">— Nobody (top of the organisation)</option>
-                    {managers.map((m) => <option key={m.id} value={m.id}>{m.firstName} {m.lastName}{m.designation ? ` — ${m.designation.name}` : ''}</option>)}
-                  </select>
+                  <PersonSelect id="w-mgr" value={d.reportingManagerId} onChange={(v) => set('reportingManagerId', v)} emptyLabel="— Nobody (top of the organisation)" people={managers.map((m) => ({ ...m, sub: m.designation?.name ?? null }))} />
                 </Field>
                 {suggested.length > 0 && (
                   <div>

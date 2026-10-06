@@ -19,10 +19,23 @@ export interface RoleSummary {
   userCount: number;
   createdAt: string;
   updatedAt: string;
+  /** Permissions per catalog module (people, time, work…) */
+  modules?: Record<string, number>;
+  sensitiveCount?: number;
+  /** First few active people holding it */
+  holders?: Array<{ id: string; firstName: string; lastName: string }>;
 }
 
 export interface RoleDetail extends RoleSummary {
   grants: Record<string, AccessScope | null>;
+  holders: Array<{ id: string; firstName: string; lastName: string }>;
+}
+
+export interface RoleTemplate {
+  key: string;
+  name: string;
+  description: string;
+  grants: Array<{ key: string; scope: AccessScope | null }>;
 }
 
 export interface RoleChanges {
@@ -70,6 +83,8 @@ export const umKeys = {
   role: (id: string) => ['company', 'roles', id] as const,
   users: (q: UsersQuery) => ['company', 'users', q] as const,
   usersAll: ['company', 'users'] as const,
+  insights: ['company', 'users', 'insights'] as const,
+  templates: ['company', 'roles', 'templates'] as const,
   user: (id: string) => ['company', 'user', id] as const,
 };
 
@@ -197,3 +212,73 @@ export const useResendInvite = () =>
 
 export const useSendPasswordReset = () =>
   useUserMutation(async (id: string) => unwrap<{ email: string }>(await api.post(`/company/users/${id}/reset-password`)));
+
+// ─── Users: insights, bulk, invite many, preview, history ───
+
+export interface UsersInsights {
+  counts: { active: number; activeThisMonth: number; invited: number; oldInvites: number; inactive: number; admins: number };
+  oldInvites: Array<{ id: string; name: string; days: number }>;
+  dormant: Array<{ id: string; name: string; days: number; roles: string[] }>;
+  dormantCount: number;
+  privateData: { people: number; roles: string[] };
+}
+
+export const useUsersInsights = (enabled = true) =>
+  useQuery({ queryKey: umKeys.insights, queryFn: async () => unwrap<UsersInsights>(await api.get('/company/users/insights')), enabled });
+
+export type BulkAction = 'add_role' | 'remove_role' | 'resend_invite' | 'deactivate' | 'activate';
+export const useBulkUsers = () =>
+  useUserMutation(async (body: { ids: string[]; action: BulkAction; roleId?: string }) =>
+    unwrap<{ done: number; failed: Array<{ id: string; name: string; error: string }> }>(await api.post('/company/users/bulk', body)),
+  );
+
+export const useInviteMany = () =>
+  useUserMutation(async (body: { emails: string[]; roleIds?: string[] }) =>
+    unwrap<{ invited: number; results: Array<{ email: string; ok: boolean; id?: string; emailSent?: boolean; error?: string }> }>(await api.post('/company/users/invite-many', body)),
+  );
+
+export interface PermissionChange {
+  key: string;
+  label: string;
+  sensitive: boolean;
+  scope: AccessScope | null;
+  from?: AccessScope;
+}
+export interface RolesPreview {
+  becomesOwner: boolean;
+  losesOwner: boolean;
+  added: PermissionChange[];
+  removed: PermissionChange[];
+  widened: PermissionChange[];
+  narrowed: PermissionChange[];
+  sensitiveAdded: number;
+  permissionCount: { before: number; after: number };
+}
+
+/** What changes for a person if their roles become `roleIds` (only asked when they differ). */
+export const useRolesPreview = (userId: string | null, roleIds: string[], enabled: boolean) =>
+  useQuery({
+    queryKey: ['company', 'user', userId, 'preview', [...roleIds].sort()],
+    queryFn: async () => unwrap<RolesPreview>(await api.post(`/company/users/${userId}/roles/preview`, { roleIds })),
+    enabled: Boolean(userId) && enabled,
+    placeholderData: keepPreviousData,
+  });
+
+export interface UserHistoryItem {
+  id: string;
+  action: string;
+  at: string;
+  by: string | null;
+  added: string[];
+  removed: string[];
+  status: string | null;
+}
+export const useUserHistory = (userId: string | null, enabled = true) =>
+  useQuery({
+    queryKey: ['company', 'user', userId, 'history'],
+    queryFn: async () => unwrap<UserHistoryItem[]>(await api.get(`/company/users/${userId}/history`)),
+    enabled: Boolean(userId) && enabled,
+  });
+
+export const useRoleTemplates = () =>
+  useQuery({ queryKey: umKeys.templates, queryFn: async () => unwrap<RoleTemplate[]>(await api.get('/company/roles/templates')), staleTime: Infinity });

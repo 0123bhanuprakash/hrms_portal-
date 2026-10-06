@@ -4,11 +4,12 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Mail, Pencil, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Field, Input, inputClass } from '@/components/ui/field';
+import { Field, Input, inputClass, FormError } from '@/components/ui/field';
 import { Drawer } from '@/components/ui/modal';
-import { useCreateEmployee, useDepartments, useDesignations, useLocations, useOrgChart, useUpdateEmployee, type Employee } from '@/lib/company/org';
+import { useCreateEmployee, useDepartments, useDesignations, useLocations, useUpdateEmployee, type Employee, usePeoplePicker } from '@/lib/company/org';
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatDate } from '@/lib/format';
+import { DateInput, PersonSelect, Select } from '@/components/ui/pickers';
 
 const label = (s: string) => s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, ' ');
 
@@ -44,7 +45,7 @@ export function EmployeeDrawer({
   const departments = useDepartments();
   const designations = useDesignations();
   const locations = useLocations();
-  const chart = useOrgChart();
+  const chart = usePeoplePicker();
   const [form, setForm] = useState<Form | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -121,7 +122,7 @@ export function EmployeeDrawer({
       }
     >
       <form id="employee-form" onSubmit={submit} className="space-y-4">
-        {error && <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+        <FormError>{error}</FormError>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="First name" htmlFor="e-first" required><Input id="e-first" value={form.firstName} onChange={(e) => set('firstName', e.target.value)} required disabled={lock} autoFocus={isAdd} /></Field>
           <Field label="Last name" htmlFor="e-last" required><Input id="e-last" value={form.lastName} onChange={(e) => set('lastName', e.target.value)} required disabled={lock} /></Field>
@@ -131,46 +132,43 @@ export function EmployeeDrawer({
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Phone" htmlFor="e-phone"><Input id="e-phone" value={form.phone} onChange={(e) => set('phone', e.target.value)} /></Field>
-          <Field label="Joining date" htmlFor="e-join" required><Input id="e-join" type="date" value={form.joiningDate} onChange={(e) => set('joiningDate', e.target.value)} required disabled={!isAdd} /></Field>
+          <Field label="Joining date" htmlFor="e-join" required><DateInput id="e-join" value={form.joiningDate} onChange={(e) => set('joiningDate', e.target.value)} required disabled={!isAdd} /></Field>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Department" htmlFor="e-dept">
-            <select id="e-dept" className={inputClass} value={form.departmentId} onChange={(e) => set('departmentId', e.target.value)} disabled={lock}>
+            <Select id="e-dept" className={inputClass} value={form.departmentId} onChange={(e) => set('departmentId', e.target.value)} disabled={lock}>
               <option value="">— None</option>
               {departments.data?.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-            </select>
+            </Select>
           </Field>
           <Field label="Job title" htmlFor="e-title">
-            <select id="e-title" className={inputClass} value={form.designationId} onChange={(e) => set('designationId', e.target.value)} disabled={lock}>
+            <Select id="e-title" className={inputClass} value={form.designationId} onChange={(e) => set('designationId', e.target.value)} disabled={lock}>
               <option value="">— None</option>
               {designations.data?.map((d) => <option key={d.id} value={d.id}>{d.name}{d.orgLevel ? ` (${d.orgLevel.name})` : ''}</option>)}
-            </select>
+            </Select>
           </Field>
         </div>
         <Field label="Reporting manager" htmlFor="e-mgr" hint="Decides who sees them under “direct / all reports” access.">
-          <select id="e-mgr" className={inputClass} value={form.reportingManagerId} onChange={(e) => set('reportingManagerId', e.target.value)} disabled={lock}>
-            <option value="">— Nobody (top of the organisation)</option>
-            {managers.map((m) => <option key={m.id} value={m.id}>{m.firstName} {m.lastName}{m.designation ? ` — ${m.designation.name}` : ''}</option>)}
-          </select>
+          <PersonSelect id="e-mgr" value={form.reportingManagerId} onChange={(v) => set('reportingManagerId', v)} disabled={lock} emptyLabel="— Nobody (top of the organisation)" people={managers.map((m) => ({ ...m, sub: m.designation?.name ?? null }))} />
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Location" htmlFor="e-loc">
-            <select id="e-loc" className={inputClass} value={form.locationId} onChange={(e) => set('locationId', e.target.value)} disabled={lock}>
+            <Select id="e-loc" className={inputClass} value={form.locationId} onChange={(e) => set('locationId', e.target.value)} disabled={lock}>
               <option value="">— None</option>
               {locations.data?.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
+            </Select>
           </Field>
           <Field label="Employment type" htmlFor="e-type">
-            <select id="e-type" className={inputClass} value={form.employmentType} onChange={(e) => set('employmentType', e.target.value)} disabled={lock}>
+            <Select id="e-type" className={inputClass} value={form.employmentType} onChange={(e) => set('employmentType', e.target.value)} disabled={lock}>
               {['FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERN'].map((t) => <option key={t} value={t}>{label(t)}</option>)}
-            </select>
+            </Select>
           </Field>
         </div>
         {!isAdd && (
           <Field label="Status" htmlFor="e-status" hint="Notice period and leaving are in the row’s ⋯ menu.">
-            <select id="e-status" className={inputClass} value={form.employmentStatus} onChange={(e) => set('employmentStatus', e.target.value)} disabled={lock}>
+            <Select id="e-status" className={inputClass} value={form.employmentStatus} onChange={(e) => set('employmentStatus', e.target.value)} disabled={lock}>
               {['ACTIVE', 'PROBATION', 'ON_LEAVE', ...(['ACTIVE', 'PROBATION', 'ON_LEAVE'].includes(form.employmentStatus) ? [] : [form.employmentStatus])].map((s) => <option key={s} value={s}>{label(s)}</option>)}
-            </select>
+            </Select>
           </Field>
         )}
         {isAdd && (

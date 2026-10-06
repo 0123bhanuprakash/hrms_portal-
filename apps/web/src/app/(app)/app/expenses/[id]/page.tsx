@@ -31,6 +31,7 @@ import {
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatDate, formatRelative } from '@/lib/format';
 import { cn } from '@/lib/cn';
+import { ViewingNow } from '@/components/live/viewing-now';
 
 const RECEIPT_TYPES = '.pdf,.jpg,.jpeg,.png,.webp,.docx';
 
@@ -85,7 +86,10 @@ export default function ClaimPage() {
 
   return (
     <div className="space-y-4">
-      <div>{back}</div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {back}
+        {!own && <ViewingNow kind="expense" id={c.id} />}
+      </div>
       <Card className="space-y-4 p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">

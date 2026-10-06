@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { Emoji } from '@/components/motion/emoji';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { BarChart3, Heart, Pencil, Plus, Search, Send, ShieldCheck, Sparkles, Trophy, X } from 'lucide-react';
@@ -167,15 +168,9 @@ function Composer({ values, pickRequest }: { values: KudosValue[]; pickRequest: 
     return () => clearTimeout(t);
   }, [search]);
   const results = useDirectory({ search: debounced, limit: 6 }, debounced.length >= 2);
-  // "Send kudos" from the directory: /app/kudos?to=<employee id> starts with that person picked
-  const [toId] = useState(() => (typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('to')));
-  const preset = usePersonCard(toId);
+  // "Send kudos" from home, the directory or a profile: /app/kudos?to=<employee id>[,<id>…] starts with those people picked
+  const [toIds] = useState(() => (typeof window === 'undefined' ? [] : (new URLSearchParams(window.location.search).get('to') ?? '').split(',').filter(Boolean).slice(0, 10)));
   const add = (p: Picked) => setPicked((cur) => (cur.some((x) => x.id === p.id) || p.id === me.data?.employee?.id ? cur : [...cur, p]));
-  useEffect(() => {
-    const p = preset.data;
-    if (p) add({ id: p.id, firstName: p.firstName, lastName: p.lastName, avatarUrl: p.avatarUrl });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preset.data, me.data]);
   useEffect(() => {
     if (pickRequest) add(pickRequest);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -186,7 +181,7 @@ function Composer({ values, pickRequest }: { values: KudosValue[]; pickRequest: 
     e.preventDefault();
     try {
       await give.mutateAsync({ recipientIds: picked.map((p) => p.id), message, valueId });
-      toast.success(`Kudos sent to ${picked.map((p) => p.firstName).join(', ')} 🎉`);
+      toast.success(<>Kudos sent to {picked.map((p) => p.firstName).join(', ')} <Emoji e="🎉" play="appear" /></>);
       setPicked([]);
       setMessage('');
       setValueId(null);
@@ -197,6 +192,7 @@ function Composer({ values, pickRequest }: { values: KudosValue[]; pickRequest: 
 
   return (
     <Card>
+      {toIds.map((id) => <PresetPerson key={id} id={id} meId={me.data?.employee?.id} onReady={add} />)}
       <form onSubmit={send} className="space-y-3 p-5">
         <div className="flex flex-wrap items-center gap-2 rounded-lg border border-input bg-surface px-2 py-1.5 focus-within:ring-2 focus-within:ring-ring">
           <Heart className="h-4 w-4 text-pink-500" />
@@ -286,7 +282,7 @@ function ValuesDialog({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <Modal open onClose={onClose} icon={<Sparkles />} title="Company values" description="People tag kudos with these." className="sm:max-w-lg" footer={<Button variant="secondary" onClick={onClose}>Close</Button>}>
+    <Modal open onClose={onClose} icon={<Sparkles />} title="Company values" description="People tag kudos with these." size="md" footer={<Button variant="secondary" onClick={onClose}>Close</Button>}>
       {editing ? (
         <form onSubmit={submit} className="grid gap-3 sm:grid-cols-[80px_1fr]">
           <Field label="Emoji" htmlFor="kv-emoji"><Input id="kv-emoji" value={editing.emoji} onChange={(e) => setEditing({ ...editing, emoji: e.target.value })} maxLength={8} required /></Field>
@@ -320,4 +316,15 @@ function ValuesDialog({ onClose }: { onClose: () => void }) {
       )}
     </Modal>
   );
+}
+
+/** Adds a person named in ?to= once their card loads. */
+function PresetPerson({ id, meId, onReady }: { id: string; meId?: string; onReady: (p: Picked) => void }) {
+  const card = usePersonCard(id);
+  useEffect(() => {
+    const p = card.data;
+    if (p) onReady({ id: p.id, firstName: p.firstName, lastName: p.lastName, avatarUrl: p.avatarUrl });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [card.data, meId]);
+  return null;
 }

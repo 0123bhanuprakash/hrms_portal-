@@ -45,6 +45,8 @@ const TITLES = [
   ['HR Executive', 'Member'],
   ['Sales Executive', 'Member'],
   ['Finance Officer', 'Member'],
+  ['DevOps Lead', 'Team Lead'],
+  ['DevOps Engineer', 'Member'],
 ];
 const LOCATIONS = [
   { name: 'Bengaluru HQ', city: 'Bengaluru', state: 'Karnataka', isDefault: true },
@@ -64,6 +66,9 @@ const PEOPLE = [
   ['Meena', 'Joshi', 'meena', 'Sales Manager', 'SALES', 'Mumbai Office', ['employee', 'manager'], 'vikram'],
   ['Rahul', 'Das', 'rahul', 'Sales Executive', 'SALES', 'Mumbai Office', ['employee'], 'meena'],
   ['Pooja', 'Reddy', 'pooja', 'Finance Officer', 'FIN', 'Bengaluru HQ', ['employee', 'payroll_officer'], 'vikram'],
+  // DevOps helpdesk team: Dev is the head, Arjun works under him
+  ['Dev', 'Menon', 'dev', 'DevOps Lead', 'ENG', 'Bengaluru HQ', ['employee', 'devops'], 'ravi'],
+  ['Arjun', 'Nair', 'arjun', 'DevOps Engineer', 'ENG', 'Bengaluru HQ', ['employee', 'devops'], 'dev'],
 ];
 const HEADS = { OPS: 'vikram', ENG: 'ravi', HR: 'hema', SALES: 'meena', FIN: 'pooja' };
 const PAYROLL_OFFICER = {
@@ -195,6 +200,7 @@ async function main() {
   await seedEngagement(companyId, empOf, created);
   await seedAssets(companyId, empOf, created);
   await seedHelpdesk(companyId, empOf, created);
+  await seedHelpdeskTeams(companyId, empOf);
   await seedTimesheets(companyId, empOf, created);
   return created;
 }
@@ -409,6 +415,7 @@ const TICKET_CATEGORIES = [
   ['IT', 'Laptop / hardware'], ['IT', 'Software & installs'], ['IT', 'Access & passwords'], ['IT', 'Email & accounts'], ['IT', 'Network / VPN'], ['IT', 'Other'],
   ['HR', 'Leave & attendance'], ['HR', 'Letters & documents'], ['HR', 'Policies'], ['HR', 'Benefits & insurance'], ['HR', 'Profile changes'], ['HR', 'Other'],
   ['FINANCE', 'Salary & payslip'], ['FINANCE', 'Reimbursements'], ['FINANCE', 'Tax & investment proofs'], ['FINANCE', 'Other'],
+  ['DEVOPS', 'Cloud access'], ['DEVOPS', 'Deployments & releases'], ['DEVOPS', 'Repo & CI/CD access'], ['DEVOPS', 'Servers & databases'], ['DEVOPS', 'Other'],
 ];
 const SLA = { URGENT: [1, 8], HIGH: [4, 24], MEDIUM: [8, 72], LOW: [24, 120] };
 // [requester, queue, category, subject, description, priority, status, hours ago, agent, thread: [who ('emp' | 'agent'), kind, body, hours ago]]
@@ -418,6 +425,21 @@ const TICKETS = [
   ['rahul', 'FINANCE', 'Reimbursements', 'September travel reimbursement not received', 'My Mumbai client-visit claim was approved two weeks ago but I haven’t received the money yet.', 'MEDIUM', 'WAITING', 30, 'pooja', [['agent', 'REPLY', 'Hi Rahul, could you share the claim title or the date you submitted it? I can’t find an approved claim under your name for September.', 26]]],
   ['sara', 'IT', 'Software & installs', 'Figma licence for design reviews', 'I review UI designs with the product team and need edit access in Figma.', 'LOW', 'RESOLVED', 60, 'karan', [['agent', 'REPLY', 'Added you to the company Figma team with an editor seat. Please log out and back in.', 30]]],
 ];
+
+/** DevOps topics and team heads — safe to re-run; never overrides heads the company already chose. */
+async function seedHelpdeskTeams(companyId, empOf) {
+  await prisma.ticketCategory.createMany({
+    data: TICKET_CATEGORIES.map(([queue, name], i) => ({ companyId, queue, name, sortOrder: name === 'Other' ? 90 : (i + 1) * 10 })),
+    skipDuplicates: true,
+  });
+  const userOf = async (local) => (empOf[local] ? (await prisma.employee.findUnique({ where: { id: empOf[local] }, select: { userId: true } }))?.userId : null);
+  const heads = { IT: 'karan', HR: 'hema', FINANCE: 'pooja', DEVOPS: 'dev' };
+  for (const [queue, local] of Object.entries(heads)) {
+    const headId = await userOf(local);
+    if (!headId || (await prisma.helpdeskTeam.count({ where: { companyId, queue } }))) continue;
+    await prisma.helpdeskTeam.create({ data: { companyId, queue, headId } });
+  }
+}
 
 async function seedHelpdesk(companyId, empOf, created) {
   if (await prisma.ticket.count({ where: { companyId } })) return;

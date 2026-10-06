@@ -1,4 +1,7 @@
-import React from 'react';
+'use client';
+
+import React, { useEffect, useRef } from 'react';
+import { AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/cn';
 
 export const inputClass = cn(
@@ -34,7 +37,8 @@ export function Field({ label, htmlFor, error, hint, required, className, aside,
       </div>
       {children}
       {error ? (
-        <p role="alert" className="text-xs font-medium text-destructive animate-in fade-in-0 slide-in-from-top-0.5">
+        <p role="alert" key={error} className="m-shake flex items-start gap-1 text-xs font-medium text-destructive">
+          <AlertCircle className="mt-px h-3.5 w-3.5 shrink-0" />
           {error}
         </p>
       ) : hint ? (
@@ -92,6 +96,29 @@ export function ColorInput({ value, onChange, id }: { value: string; onChange: (
         invalid={!valid}
         className="font-mono uppercase"
       />
+    </div>
+  );
+}
+
+/**
+ * Form-level error (usually from the server). Shakes once and scrolls into
+ * view so it is never missed at the top of a long form.
+ */
+export function FormError({ children, className }: { children?: React.ReactNode; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (children) ref.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [children]);
+  if (!children) return null;
+  return (
+    <div
+      ref={ref}
+      role="alert"
+      key={typeof children === 'string' ? children : undefined}
+      className={cn('m-shake flex items-start gap-2 rounded-lg border border-destructive/25 bg-destructive/10 px-3 py-2 text-sm text-destructive', className)}
+    >
+      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+      <span className="min-w-0">{children}</span>
     </div>
   );
 }

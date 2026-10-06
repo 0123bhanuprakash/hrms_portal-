@@ -10,6 +10,7 @@ import { inputClass } from '@/components/ui/field';
 import { useReportingPreview, useSetReportingLine, type ChartEmployee, type ReportingPreview } from '@/lib/company/org';
 import { getApiErrorMessage } from '@/lib/errors';
 import { cn } from '@/lib/cn';
+import { Select } from '@/components/ui/pickers';
 
 export interface MoveRequest {
   employee: ChartEmployee;
@@ -75,7 +76,7 @@ export function MoveDialog({
       icon={<GitBranch />}
       title={`Change manager for ${name}`}
       description="Everyone who reports to them moves along. Access that follows reporting lines updates immediately."
-      className="sm:max-w-xl"
+      size="lg"
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={save.isPending}>Cancel</Button>
@@ -86,7 +87,7 @@ export function MoveDialog({
       <div className="space-y-4">
         <label className="block space-y-1.5">
           <span className="text-[13px] font-medium">New manager</span>
-          <select
+          <Select
             className={inputClass}
             value={managerId === undefined ? '' : managerId ?? '__top'}
             onChange={(ev) => setManagerId(ev.target.value === '' ? undefined : ev.target.value === '__top' ? null : ev.target.value)}
@@ -101,7 +102,7 @@ export function MoveDialog({
                   {x.designation ? ` — ${x.designation.name}` : ''}
                 </option>
               ))}
-          </select>
+          </Select>
         </label>
 
         {managerId !== undefined && (preview.isPending || !result) && (

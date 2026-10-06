@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Time — plan</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F6F7FB}
+.app{display:flex;min-height:100vh;font-family:Manrope,system-ui,sans-serif;color:#111827;background:#F6F7FB;position:relative}
+.sb{flex:0 0 240px;background:#FFFFFF;border-right:1px solid #E5E7EF;display:flex;flex-direction:column}
+.sb-h{display:flex;gap:10px;align-items:center;padding:14px}
+.logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#E9416A,#7A2BD9);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px}
+.sb-h b{display:block;font-size:14px}.sb-h span{font-size:11px;color:#6B7280}
+.sb-g{padding:12px 14px 3px;font-size:10.5px;font-weight:700;letter-spacing:.07em;color:#9CA3AF}
+.sb-i{display:flex;align-items:center;gap:10px;height:34px;margin:0 10px;padding:0 10px;border-radius:7px;font-size:13.5px;color:#374151}
+.sb-i svg{color:#9CA3AF}.sb-i.on{background:#EEF0FF;color:#3730A3;font-weight:700}.sb-i.on svg{color:#4F46E5}
+.col{flex:1;min-width:0;display:flex;flex-direction:column}
+.hdr{height:56px;border-bottom:1px solid #E5E7EF;display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:rgba(255,255,255,.7)}
+.crumb{font-size:13.5px;color:#6B7280}.crumb b{color:#111827}
+.main{padding:24px 30px 40px;display:flex;flex-direction:column;gap:16px}
+.eyebrow{font-size:12.5px;color:#4F46E5;font-weight:700}
+h1{margin:2px 0 0;font-size:26px;font-weight:800;letter-spacing:-.02em}
+.sub{color:#6B7280;font-size:14px;margin-top:3px}
+.row{display:flex;align-items:center;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 14px;border-radius:9px;border:1px solid #E5E7EF;background:#fff;color:#111827;font-size:13px;font-weight:700;white-space:nowrap}
+.btn.pri{background:#4F46E5;border-color:#4F46E5;color:#fff}.btn.sm{height:30px;padding:0 10px;font-size:12px}
+.card{background:#fff;border:1px solid #E5E7EF;border-radius:14px;box-shadow:0 1px 2px rgba(17,24,39,.04)}
+.sec{padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.sec h3{margin:0;font-size:14.5px;display:flex;align-items:center;gap:8px}.sec h3 svg{color:#6B7280}
+.sec h3 .r{margin-left:auto;font-size:12px;font-weight:500;color:#6B7280}
+.mut{color:#6B7280}.xs{font-size:12px}
+.tabs{display:flex;gap:4px;background:#fff;border:1px solid #E5E7EF;border-radius:11px;padding:4px;width:max-content}
+.tabs span{display:flex;align-items:center;gap:7px;padding:7px 14px;border-radius:8px;font-size:13px;color:#6B7280;font-weight:600}
+.tabs span.on{background:#4F46E5;color:#fff}
+.fbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:9px;border:1px solid #E5E7EF;background:#fff;font-size:12.5px;font-weight:600;color:#374151}
+.chip.on{border-color:#C7C9F7;background:#EEF0FF;color:#3730A3}
+.seg{display:flex;border:1px solid #E5E7EF;border-radius:9px;overflow:hidden;background:#fff}.seg span{padding:7px 11px;font-size:12px;font-weight:600;color:#6B7280}.seg span.on{background:#111827;color:#fff}
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.kpi{padding:14px 16px;display:flex;flex-direction:column;gap:3px;position:relative;overflow:hidden}
+.kpi span.l{font-size:12px;color:#6B7280}.kpi b.v{font-size:25px;font-weight:800;letter-spacing:-.02em}
+.delta{font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;gap:2px}
+.d-up{color:#059669}.d-dn{color:#DC2626}.d-flat{color:#6B7280}
+.kpi svg.sp{position:absolute;right:12px;bottom:12px}
+.hl{display:flex;gap:12px;padding:12px 14px;border-radius:12px;border:1px solid #E5E7EF;background:#fff;align-items:flex-start}
+.hl .ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.g21{display:grid;grid-template-columns:1.5fr 1fr;gap:16px}.g12{display:grid;grid-template-columns:1fr 1.4fr;gap:16px}
+.lib{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid #EEF0F5;border-radius:12px;background:#F8F9FC}
+.lib .ic{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none}
+.bar{height:8px;border-radius:99px;background:#EEF0F5;overflow:hidden}.bar i{display:block;height:100%;border-radius:99px;transform-origin:left;animation:fw 1s cubic-bezier(.2,.8,.2,1) both}
+@keyframes fw{from{transform:scaleX(0)}}
+.chart polyline,.chart path.ln{stroke-dasharray:3000;animation:draw 1.6s ease both}@keyframes draw{from{stroke-dashoffset:3000}}
+.heat{display:grid;gap:3px}.heat i{display:block;border-radius:4px;aspect-ratio:1}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#6B7280;padding:8px 10px;border-bottom:1px solid #E5E7EF}
+td{padding:9px 10px;border-bottom:1px solid #EEF0F5}
+.av{width:28px;height:28px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;color:#fff;flex:none}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.p-ok{background:#E6F6F0;color:#059669}.p-warn{background:#FEF3E2;color:#D97706}.p-bad{background:#FDECEC;color:#DC2626}.p-pri{background:#EEF0FF;color:#3730A3}.p-neu{background:#EEF0F5;color:#6B7280}
+.dim{position:absolute;inset:0;background:rgba(17,24,39,.35);z-index:4}
+.drawer{position:absolute;top:0;right:0;bottom:0;width:440px;background:#fff;border-left:1px solid #E5E7EF;z-index:5;display:flex;flex-direction:column;box-shadow:-24px 0 50px -20px rgba(0,0,0,.35)}
+.modal{position:absolute;left:50%;top:150px;transform:translateX(-50%);width:480px;background:#fff;border:1px solid #E5E7EF;border-radius:16px;z-index:5;box-shadow:0 30px 60px -20px rgba(0,0,0,.4)}
+.fld{display:flex;flex-direction:column;gap:5px;font-size:12.5px}.fld label{font-weight:700}
+.inp{height:36px;border:1px solid #E5E7EF;border-radius:9px;padding:0 11px;display:flex;align-items:center;font-size:13px;gap:8px;background:#fff}
+
+.ph{position:relative;overflow:hidden;border-radius:14px;flex:none}
+.ph svg{display:block}
+.st{position:absolute;display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:800;padding:3px 8px;border-radius:99px;background:rgba(255,255,255,.92);box-shadow:0 2px 6px rgba(0,0,0,.12)}
+.st i{width:7px;height:7px;border-radius:50%;display:inline-block}
+.pc{display:flex;flex-direction:column;overflow:hidden;transition:transform .25s,box-shadow .25s}
+.pc:hover{transform:translateY(-4px);box-shadow:0 18px 36px -18px rgba(17,24,39,.35)}
+.pc .body{padding:12px 14px 14px;display:flex;flex-direction:column;gap:4px}
+.pc b.n{font-size:15px}.pc .role{font-size:12.5px;color:#6B7280}
+.tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:#F8F9FC;border:1px solid #EEF0F5;color:#374151}
+.acts{display:flex;gap:6px;padding:0 14px 14px}
+.acts span{flex:1;height:30px;border-radius:8px;border:1px solid #E5E7EF;display:flex;align-items:center;justify-content:center;gap:5px;font-size:12px;font-weight:700;color:#374151}
+.rail{display:flex;flex-direction:column;gap:2px;position:sticky;top:0;font-size:10.5px;font-weight:800;color:#9CA3AF;text-align:center}
+.rail span{padding:1px 0}.rail span.on{color:#4F46E5}
+.hlstrip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.hlc{padding:14px 16px;display:flex;align-items:center;gap:12px}
+.stack{display:flex}.stack .ph{border:2.5px solid #fff;margin-left:-10px;border-radius:50%}.stack .ph:first-child{margin-left:0}
+.search{display:flex;align-items:center;gap:8px;height:42px;padding:0 14px;border:1px solid #E5E7EF;border-radius:12px;background:#fff;flex:1;color:#6B7280;font-size:14px;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+.wall{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px}
+.grp{display:flex;flex-direction:column;gap:10px}
+.grp h3{margin:0;font-size:15px;display:flex;align-items:center;gap:10px}
+.mini{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid #EEF0F5;border-radius:12px;background:#fff}
+
+.sb-i .nb{font-size:10.5px;font-weight:800;background:#4F46E5;color:#fff;border-radius:99px;padding:1px 7px}
+.new{display:inline-flex;font-size:9.5px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:99px;background:#DCFCE7;color:#166534;vertical-align:middle;margin-left:6px}
+.notes{padding:12px 14px;display:flex;flex-direction:column;gap:6px;background:#F8F9FC}
+.k-new,.k-old,.k-q{display:inline-block;min-width:44px;font-size:9.5px;font-weight:900;text-transform:uppercase;letter-spacing:.05em;margin-right:6px}
+.k-new{color:#16A34A}.k-old{color:#6B7280}.k-q{color:#D97706}
+.xst{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}.tbl th{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#6B7280;text-align:left;padding:8px 10px;background:#F8F9FC;border-bottom:1px solid #E5E7EF}.tbl td{padding:9px 10px;border-bottom:1px solid #EEF0F5;vertical-align:middle}
+.tgl{width:34px;height:20px;border-radius:99px;background:#4F46E5;position:relative;flex:none;display:inline-block}.tgl:after{content:'';position:absolute;right:3px;top:3px;width:14px;height:14px;border-radius:50%;background:#fff}.tgl.off{background:#D1D5DB}.tgl.off:after{right:auto;left:3px}
+.fld{display:flex;flex-direction:column;gap:5px}.fld label{font-size:12px;font-weight:700}.inp{border:1px solid #E5E7EF;border-radius:10px;padding:8px 11px;font-size:13px;background:#fff;display:flex;align-items:center;gap:8px}
+.av{border-radius:50%;overflow:hidden;flex:none;display:inline-block}
+.stack{display:flex}.stack .ph{border:2px solid #fff;margin-left:-8px}.stack .ph:first-child{margin-left:0}
+.dot{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex:none}
+.ln{flex:1;height:2px;border-radius:2px;min-width:14px}
+.step{display:flex;align-items:center;gap:6px;font-size:11px}
+.sec2{padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.lbl{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#6B7280}
+.num{font-size:24px;font-weight:800;letter-spacing:-.02em}
+.kbd{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 4px;border-radius:5px;border:1px solid #E5E7EF;border-bottom-width:2px;font-size:10px;font-weight:800;color:#374151;background:#fff}
+
+/* hours ruler (06:00–22:00) */
+.rul{position:relative;height:22px}
+.rul span{position:absolute;top:0;font-size:9.5px;color:#6B7280;font-weight:700;transform:translateX(-50%)}
+.trk{position:relative;height:16px;border-radius:6px;background:#F8F9FC;border:1px solid #EEF0F5}
+.blk{position:absolute;top:2px;bottom:2px;border-radius:4px}
+.shift{position:absolute;top:-4px;bottom:-4px;border-left:1.5px dashed #4F46E555;border-right:1.5px dashed #4F46E555;background:#4F46E508}
+.nowl{position:absolute;top:-6px;bottom:-6px;width:2px;background:#DC2626;border-radius:2px;animation:nowm 8s ease-in-out infinite alternate}
+.nowl:before{content:'';position:absolute;top:-4px;left:-3px;width:8px;height:8px;border-radius:50%;background:#DC2626}
+@keyframes nowm{to{transform:translateX(6px)}}
+
+/* motion */
+@keyframes pop{from{opacity:0;transform:translateY(8px) scale(.97)}}
+.stg>*{animation:pop .5s cubic-bezier(.2,.8,.2,1) both}
+.stg>*:nth-child(2){animation-delay:.05s}.stg>*:nth-child(3){animation-delay:.1s}.stg>*:nth-child(4){animation-delay:.15s}.stg>*:nth-child(5){animation-delay:.2s}.stg>*:nth-child(6){animation-delay:.25s}.stg>*:nth-child(7){animation-delay:.3s}.stg>*:nth-child(n+8){animation-delay:.35s}
+@keyframes ringd{from{stroke-dashoffset:var(--c)}}
+.ring circle.v{animation:ringd 1.4s cubic-bezier(.2,.8,.2,1) both}
+@keyframes pulse{0%{box-shadow:0 0 0 0 #05966966}100%{box-shadow:0 0 0 14px #05966900}}
+.live{width:9px;height:9px;border-radius:50%;background:#059669;display:inline-block;animation:pulse 1.8s ease-out infinite}
+@keyframes grow{from{transform:scaleY(0)}}
+.hb{transform-origin:bottom;animation:grow .9s cubic-bezier(.2,.8,.2,1) both}
+@keyframes wbar{from{transform:scaleX(0)}}
+.wb{transform-origin:left;animation:wbar 1s cubic-bezier(.2,.8,.2,1) both}
+</style>
+</helmet>
+<div class="app"><aside class="sb">
+<div class="sb-h"><span class="logo">AP</span><span><b>aakash-portal</b><span>HR workspace</span></span></div>
+<div class="sb-g">OVERVIEW</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Home</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M16 10h2M16 14h2"/><circle cx="9" cy="11" r="2"/><path d="M6 16.5a3.5 3.5 0 0 1 6 0"/></svg>My profile</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>Reports &amp; analytics</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v2M8 2v2"/><circle cx="12" cy="11" r="3"/><path d="M7 20a5 5 0 0 1 10 0"/></svg>People</div>
+<div class="sb-g">ORGANIZATION ›</div><div class="sb-g">ENGAGEMENT ›</div><div class="sb-g">WORK ›</div><div class="sb-g">EXPENSES ›</div><div class="sb-g">ASSETS ›</div>
+<div class="sb-g">TIME</div><div class="sb-i on"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg><span style="flex:1">My attendance</span></div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg><span style="flex:1">Team attendance</span></div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg><span style="flex:1">Attendance approvals</span><span class="nb">3</span></div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg><span style="flex:1">My leave</span></div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5M16 2v4M8 2v4M3 10h5"/><circle cx="16" cy="16" r="6"/><path d="M16 14v2.2l1.6 1"/></svg><span style="flex:1">Leave approvals</span><span class="nb">4</span></div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M3 10h18M8 2v4M17 14h-6M13 18H7M7 14h.01M17 18h.01"/></svg><span style="flex:1">Who’s off</span></div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/></svg><span style="flex:1">Holidays</span></div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><span style="flex:1">Attendance settings</span></div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5 6.3 6.3a2.4 2.4 0 0 1 0 3.4L17 19"/><path d="M9.6 5.6A2 2 0 0 0 8.2 5H4a1 1 0 0 0-1 1v4.2a2 2 0 0 0 .6 1.4l5.8 5.8a2.4 2.4 0 0 0 3.4 0l3.6-3.6a2.4 2.4 0 0 0 0-3.4Z"/><circle cx="6.5" cy="9.5" r=".5"/></svg><span style="flex:1">Leave types</span></div>
+</aside><div class="col"><header class="hdr"><div class="crumb">Time &nbsp;›&nbsp; <b>Overview</b></div><div class="row mut xs"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span style="width:34px;height:20px;border-radius:99px;background:#E5E7EF;display:inline-block"></span></div></header><main class="main">
+<div class="row" style="align-items:flex-end"><div style="flex:1"><div class="eyebrow">Time</div><h1>Time — plan</h1><div class="sub">The 9 Time pages stay where they are in the menu (sidebar and top bar unchanged). Each gets a fresh layout, live visuals and a few new features.</div></div></div>
+<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px" class="stg"><div class="card sec2" style="border-top:3px solid #4F46E5"><span style="color:#4F46E5"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg></span><b style="font-size:14px">My attendance</b><div class="xs mut">Live ring + day line, hours on every day, missed-punch fix, insights</div></div><div class="card sec2" style="border-top:3px solid #059669"><span style="color:#059669"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg></span><b style="font-size:14px">Team attendance</b><div class="xs mut">Presence strip, live timeline, month grid, needs attention + nudge</div></div><div class="card sec2" style="border-top:3px solid #0284C7"><span style="color:#0284C7"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg></span><b style="font-size:14px">Attendance approvals</b><div class="xs mut">Before → after on a time line, bulk approve, last 30 days, shortcuts</div></div><div class="card sec2" style="border-top:3px solid #0D9488"><span style="color:#0D9488"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg></span><b style="font-size:14px">My leave</b><div class="xs mut">Next-trip hero, balance rings, lapse warning, long-weekend planner, my year</div></div><div class="card sec2" style="border-top:3px solid #D97706"><span style="color:#D97706"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg></span><b style="font-size:14px">Apply for leave</b><div class="xs mut">Type cards, drag dates, teammates off, live day count, approvers, drafts</div></div><div class="card sec2" style="border-top:3px solid #DB2777"><span style="color:#DB2777"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5M16 2v4M8 2v4M3 10h5"/><circle cx="16" cy="16" r="6"/><path d="M16 14v2.2l1.6 1"/></svg></span><b style="font-size:14px">Leave approvals</b><div class="xs mut">Mini calendar with who else is off, clash warning, coverage, ask a question</div></div><div class="card sec2" style="border-top:3px solid #7C3AED"><span style="color:#7C3AED"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M3 10h18M8 2v4M17 14h-6M13 18H7M7 14h.01M17 18h.01"/></svg></span><b style="font-size:14px">Who’s off</b><div class="xs mut">Away-today hero, timeline view, team-in capacity row, .ics, birthdays layer</div></div><div class="card sec2" style="border-top:3px solid #C2410C"><span style="color:#C2410C"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/></svg></span><b style="font-size:14px">Holidays</b><div class="xs mut">Next-holiday countdown, year view, per location, optional picks, import</div></div><div class="card sec2" style="border-top:3px solid #4F46E5"><span style="color:#4F46E5"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span><b style="font-size:14px">Attendance settings</b><div class="xs mut">Drag the shift, grace / late zones, try-it preview, auto close, shifts</div></div><div class="card sec2" style="border-top:3px solid #D97706"><span style="color:#D97706"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5 6.3 6.3a2.4 2.4 0 0 1 0 3.4L17 19"/><path d="M9.6 5.6A2 2 0 0 0 8.2 5H4a1 1 0 0 0-1 1v4.2a2 2 0 0 0 .6 1.4l5.8 5.8a2.4 2.4 0 0 0 3.4 0l3.6-3.6a2.4 2.4 0 0 0 0-3.4Z"/><circle cx="6.5" cy="9.5" r=".5"/></svg></span><b style="font-size:14px">Leave types</b><div class="xs mut">Policy sentence, usage, probation / document / sandwich rules, year-end</div></div></div>
+<div class="g3">
+  <div class="card sec2"><b>Ideas used</b><div class="xs">• Live timelines (Gantt bars with a “now” line) — like Deputy / Rippling</div><div class="xs">• Balance rings and a 12-month year view</div><div class="xs">• Team-coverage checks while applying and approving</div><div class="xs">• Long-weekend planner from the holiday list</div><div class="xs">• Plain-English policy sentence (Notion / Linear style settings)</div><div class="xs">• Keyboard shortcuts and bulk actions for approvers</div></div>
+  <div class="card sec2"><b>Build size (rough)</b><div class="xs"><b>UI only (no API change):</b> <span class="mut">My attendance, Team today/timeline, Who’s off timeline, Holidays hero, approval visuals</span></div><div class="xs"><b>Small API:</b> <span class="mut">Month grid, last 30 days, coverage, drafts, nudge, try-it preview, year-end preview</span></div><div class="xs"><b>Bigger:</b> <span class="mut">Multiple shifts, per-location + optional holidays, new leave rules, auto close</span></div></div>
+  <div class="card sec2"><b>Your answers</b><div class="xs"><b>1.</b> Corrections: no limit — insight to higher-ups when someone goes over 8 a month</div><div class="xs"><b>2.</b> Nudge: team lead, manager and HR</div><div class="xs"><b>3.</b> Too many people off: warning only</div><div class="xs"><b>4.</b> Shifts: add a Night shift</div><div class="xs"><b>5.</b> Optional holidays: 5 for now, set by the company</div><div class="xs"><b>6.</b> New leave rules: all of them, as settings HR can tune</div><div class="xs"><b>7.</b> Employees see their own team on Who’s off</div></div>
+</div></main></div></div></x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

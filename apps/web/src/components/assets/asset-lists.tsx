@@ -214,7 +214,7 @@ function DecideDialog({ value, onClose }: { value: { r: AssetRequest; approve: b
       icon={value.approve ? <Check /> : <X />}
       title={`${value.approve ? 'Approve' : 'Reject'} ${r.employee.firstName}’s ${r.type.name.toLowerCase()} request`}
       description={value.approve ? `You’re approving as ${as.toLowerCase()}. ${next ? `Next: ${next.label}.` : 'That’s the last step — IT can hand it over.'}` : `${r.employee.firstName} will see your reason.`}
-      className="sm:max-w-md"
+      size="sm"
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={busy}>Cancel</Button>

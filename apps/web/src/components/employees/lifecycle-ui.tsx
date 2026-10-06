@@ -6,7 +6,7 @@ import { CalendarClock, CheckCircle2, Circle, ClipboardList, DoorOpen, Plus, Rot
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Modal, Drawer } from '@/components/ui/modal';
-import { Field, Input, inputClass } from '@/components/ui/field';
+import { Field, Input, inputClass, FormError } from '@/components/ui/field';
 import { Skeleton } from '@/components/ui/feedback';
 import {
   EXIT_REASONS,
@@ -27,6 +27,7 @@ import type { EmployeeStage } from '@/lib/company/org';
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatDate, formatRelative } from '@/lib/format';
 import { cn } from '@/lib/cn';
+import { DateInput, Select } from '@/components/ui/pickers';
 
 const short = (d: string) => new Date(`${d.slice(0, 10)}T00:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -74,7 +75,7 @@ export function ProfileMeter({ percent, className }: { percent: number | null | 
   return (
     <span className={cn('inline-flex items-center gap-2', className)} title={`Profile ${percent}% complete`}>
       <span className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
-        <span className={cn('block h-full rounded-full', tone)} style={{ width: `${percent}%` }} />
+        <span className={cn('m-fill-w block h-full rounded-full', tone)} style={{ width: `${percent}%` }} />
       </span>
       <span className="text-xs tabular-nums text-muted-foreground">{percent}%</span>
     </span>
@@ -172,7 +173,7 @@ export function LifecycleDialog({ action, person, onClose }: { action: Lifecycle
       }
     >
       <div className="space-y-4">
-        {error && <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+        <FormError>{error}</FormError>
         {action === 'extend' && (
           <>
             <div className="flex flex-wrap gap-2">
@@ -185,18 +186,18 @@ export function LifecycleDialog({ action, person, onClose }: { action: Lifecycle
                 );
               })}
             </div>
-            <Field label="New end date" htmlFor="lc-date" required><Input id="lc-date" type="date" value={date} min={addDaysKey(1)} onChange={(e) => setDate(e.target.value)} /></Field>
+            <Field label="New end date" htmlFor="lc-date" required><DateInput id="lc-date" value={date} min={addDaysKey(1)} onChange={(e) => setDate(e.target.value)} /></Field>
           </>
         )}
         {(action === 'notice' || action === 'left') && (
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Last day" htmlFor="lc-date" required>
-              <Input id="lc-date" type="date" value={date} max={action === 'left' ? addDaysKey(0) : undefined} onChange={(e) => setDate(e.target.value)} />
+              <DateInput id="lc-date" value={date} max={action === 'left' ? addDaysKey(0) : undefined} onChange={(e) => setDate(e.target.value)} />
             </Field>
             <Field label="Reason" htmlFor="lc-reason">
-              <select id="lc-reason" className={inputClass} value={reason} onChange={(e) => setReason(e.target.value as ExitReason)}>
+              <Select id="lc-reason" className={inputClass} value={reason} onChange={(e) => setReason(e.target.value as ExitReason)}>
                 {EXIT_REASONS.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
-              </select>
+              </Select>
             </Field>
           </div>
         )}

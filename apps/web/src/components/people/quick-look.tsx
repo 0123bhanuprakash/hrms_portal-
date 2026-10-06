@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { EmojiText } from '@/components/motion/emoji';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
@@ -111,9 +112,9 @@ export function QuickLook({ id, onClose, onOpen, canOpenProfile }: { id: string 
               )}
 
               <div className="grid grid-cols-2 gap-2.5">
-                {c.birthday && <Fact label="🎂 Birthday" value={md(c.birthday)} />}
-                <Fact label="🏆 Work anniversary" value={`${md(c.anniversary.date.slice(5))} · ${c.anniversary.years} year${c.anniversary.years === 1 ? '' : 's'}`} />
-                <Fact label="💛 Kudos received" value={`${c.kudos.total}${c.kudos.thisMonth ? ` · ${c.kudos.thisMonth} this month` : ''}`} />
+                {c.birthday && <Fact label={<EmojiText text="🎂 Birthday" />} value={md(c.birthday)} />}
+                <Fact label={<EmojiText text="🏆 Work anniversary" />} value={`${md(c.anniversary.date.slice(5))} · ${c.anniversary.years} year${c.anniversary.years === 1 ? '' : 's'}`} />
+                <Fact label={<EmojiText text="💛 Kudos received" />} value={`${c.kudos.total}${c.kudos.thisMonth ? ` · ${c.kudos.thisMonth} this month` : ''}`} />
               </div>
 
               <section>
@@ -138,7 +139,7 @@ export function QuickLook({ id, onClose, onOpen, canOpenProfile }: { id: string 
   );
 }
 
-function Fact({ label, value }: { label: string; value: string }) {
+function Fact({ label, value }: { label: React.ReactNode; value: string }) {
   return (
     <div className="rounded-xl border border-border bg-muted/30 px-3 py-2.5">
       <p className="text-xs text-muted-foreground">{label}</p>

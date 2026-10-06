@@ -1,0 +1,1825 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Admin.dc.html": {
+      "expand": "fill",
+      "h": 1640,
+      "is_interactive": true,
+      "title": "Final · Company Admin / HR home — try the chart “View as” switch",
+      "w": 1440,
+      "x": 3040,
+      "y": 0
+    },
+    "Atmosphere.dc.html": {
+      "expand": "fill",
+      "h": 1500,
+      "title": "Atmosphere — moments like the sky (live)",
+      "w": 1440,
+      "x": 1520,
+      "y": 4100
+    },
+    "CAAnnounceCompose.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Company · New announcement — type, cover, rich text, audience count, confirm-by date, schedule, phone preview",
+      "w": 1440,
+      "x": 1520,
+      "y": 18900
+    },
+    "CAAnnounceCovers.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Announcements · Covers — colours, animated scenes, 3D art, upload image / short video / Lottie, focal point, motion leve",
+      "w": 1440,
+      "x": 0,
+      "y": 20500
+    },
+    "CAAnnounceDetail.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Company · Announcement detail — reactions, confirm, reach funnel, by department, nudge people",
+      "w": 1440,
+      "x": 3040,
+      "y": 18900
+    },
+    "CAAnnounceFeed2.dc.html": {
+      "expand": "fill",
+      "h": 1340,
+      "title": "Announcements · Employee feed — greeting, catch-up stories, animated hero carousel, grouped by day, rich cards per type,",
+      "w": 1440,
+      "x": 1520,
+      "y": 20500
+    },
+    "CAAnnouncePost2.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Announcements · Post — animated cover, reading progress, event countdown + .ics, seen by, more like this; phone story mo",
+      "w": 1440,
+      "x": 3040,
+      "y": 20500
+    },
+    "CAAnnouncements.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Company · Announcements — pinned hero, types, unread / to-confirm, coming-up events, poster stats",
+      "w": 1440,
+      "x": 0,
+      "y": 18900
+    },
+    "CAAssetDetail.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Assets · Asset detail — bought, warranty, repairs, history, specs, documents (QR label coming soon)",
+      "w": 1440,
+      "x": 0,
+      "y": 31900
+    },
+    "CAAssetKits.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Assets · Starter kits — who gets what (rules add up), new joiners to prepare (reserved / to order), kit in the add-emplo",
+      "w": 1440,
+      "x": 0,
+      "y": 33300
+    },
+    "CAAssetMotion.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Assets · Animation ideas (live) — hand-over unboxing, kit packing, request tracker, loan countdown, low stock, all confi",
+      "w": 1440,
+      "x": 3040,
+      "y": 33300
+    },
+    "CAAssetProducts.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Assets · Product animations (live) — laptop lid opens & boots, phone lights up, monitor powers on, ID card flips, headse",
+      "w": 1440,
+      "x": 1520,
+      "y": 33300
+    },
+    "CAAssetRegister.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Assets · Register — KPIs, list / by person / by type, bulk actions, needs attention (incl. loans due), stock; QR coming",
+      "w": 1440,
+      "x": 4560,
+      "y": 30500
+    },
+    "CAAssetRequest.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Assets · Request something — catalog with stock, keep or loan (return date), for me / my team, team lead → manager → HR",
+      "w": 1440,
+      "x": 1520,
+      "y": 30500
+    },
+    "CAAssetRequests.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Assets · Requests — queue with steps (team lead → manager → HR → IT head) & stock, hand over: best match, condition, che",
+      "w": 1440,
+      "x": 3040,
+      "y": 30500
+    },
+    "CAAssetReturns.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Assets · Returns & yearly check — leavers’ assets to collect, “do you still have it?” campaign",
+      "w": 1440,
+      "x": 1520,
+      "y": 31900
+    },
+    "CAAssetTypes.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Assets · Types — prefix, icon, replace after, warranty, keep-in-stock, extra fields, hand-over checklist, requestable, l",
+      "w": 1440,
+      "x": 3040,
+      "y": 31900
+    },
+    "CAAssetWhoSees.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Assets · Who sees and does what — Employee, Line manager, IT head, HR, Company admin",
+      "w": 1440,
+      "x": 4560,
+      "y": 31900
+    },
+    "CAAssetsMine.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Assets · My assets — cards (kept & on loan), confirm hand-over, report a problem (IT ticket), swap / return, request tra",
+      "w": 1440,
+      "x": 0,
+      "y": 30500
+    },
+    "CAEmployeeProfile.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Company · Employee profile — header with actions, at-a-glance numbers, employment history, profile checklist",
+      "w": 1440,
+      "x": 3040,
+      "y": 17200
+    },
+    "CAEmployees.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Company · Employees — lifecycle counts, needs attention, richer table with profile %, bulk actions",
+      "w": 1440,
+      "x": 0,
+      "y": 17200
+    },
+    "CAEmployeesLifecycle.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Company · Employees — lifecycle board (joining → probation → active → notice → left) + add-employee steps",
+      "w": 1440,
+      "x": 1520,
+      "y": 17200
+    },
+    "CAExpenseApprovals.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Expenses · Approvals — flags (over limit, duplicate, no receipt), bulk-approve clean claims, receipt beside items, per-i",
+      "w": 1440,
+      "x": 4560,
+      "y": 27400
+    },
+    "CAExpenseCategories.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Expenses · Categories — per-item & monthly limits, receipt rule, over-limit with a reason; every claim manager → Finance",
+      "w": 1440,
+      "x": 3040,
+      "y": 28800
+    },
+    "CAExpenseEditor.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Expenses · Claim editor — receipt drop, inline policy checks, over-limit allowed with a reason, who approves (manager →",
+      "w": 1440,
+      "x": 1520,
+      "y": 27400
+    },
+    "CAExpensePayments.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Expenses · Payments (Finance) — COMING SOON — grouped by person, payment batch → bank file → mark paid (today: mark each",
+      "w": 1440,
+      "x": 0,
+      "y": 28800
+    },
+    "CAExpenseReports.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Expenses · Spend reports — monthly trend, re-billable vs company, category, team, project, exceptions",
+      "w": 1440,
+      "x": 1520,
+      "y": 28800
+    },
+    "CAExpenseTracker.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Expenses · Claim tracker — steps with names & times, lowered amounts explained, Q&A without sending back, history",
+      "w": 1440,
+      "x": 3040,
+      "y": 27400
+    },
+    "CAExpenseWhoSees.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Expenses · Who sees and does what — Employee, Team lead/PM, Line manager, HR, Finance, Company admin",
+      "w": 1440,
+      "x": 4560,
+      "y": 28800
+    },
+    "CAExpensesMine.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Expenses · My expenses — month summary, claim cards with live step tracker, limits left this month, monthly bills, paid-",
+      "w": 1440,
+      "x": 0,
+      "y": 27400
+    },
+    "CAKudos.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Company · Kudos — composer with values, filters, add-my-thanks, most thanked, your badges",
+      "w": 1440,
+      "x": 4560,
+      "y": 18900
+    },
+    "CAKudosInsights.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Company · Recognition insights (HR) — trend, values, who thanks whom, not thanked in 90 days",
+      "w": 1440,
+      "x": 6080,
+      "y": 18900
+    },
+    "CAMyProjects.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Projects · My projects (employee) — my allocation, my lead/approver, latest update, coming milestones, who’s away",
+      "w": 1440,
+      "x": 6080,
+      "y": 22200
+    },
+    "CAOrganisation.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Company · Organisation — photo org chart with zoom & focus, team panel, org health, departments",
+      "w": 1440,
+      "x": 4560,
+      "y": 17200
+    },
+    "CAPeople.dc.html": {
+      "expand": "fill",
+      "h": 1360,
+      "title": "Company · People — photo cards, who’s in today, new / birthday / away highlights, A–Z",
+      "w": 1440,
+      "x": 0,
+      "y": 15400
+    },
+    "CAPeopleQuick.dc.html": {
+      "expand": "fill",
+      "h": 1300,
+      "title": "Company · People — quick look: reporting line, teammates, birthday, kudos",
+      "w": 1440,
+      "x": 3040,
+      "y": 15400
+    },
+    "CAPeopleTeams.dc.html": {
+      "expand": "fill",
+      "h": 1300,
+      "title": "Company · People — teams view (photo walls by department) + compact list",
+      "w": 1440,
+      "x": 1520,
+      "y": 15400
+    },
+    "CAProjectDetail.dc.html": {
+      "expand": "fill",
+      "h": 1440,
+      "title": "Projects · Project detail — roadmap, weekly PM status updates, milestones with owners, team & approvals, open roles",
+      "w": 1440,
+      "x": 3040,
+      "y": 22200
+    },
+    "CAProjects.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Projects · Portfolio — KPIs, health from milestones + schedule + staffing, next milestone, team, last PM update",
+      "w": 1440,
+      "x": 0,
+      "y": 22200
+    },
+    "CAProjectsTimeline.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Projects · Timeline — Gantt with milestones and today line, overlaps to watch",
+      "w": 1440,
+      "x": 1520,
+      "y": 22200
+    },
+    "CAReports.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Company · Reports — overview: compare to last month, what changed, headcount waterfall, report library",
+      "w": 1440,
+      "x": 0,
+      "y": 13700
+    },
+    "CAReportsPeople.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Company · Reports — people: trend, levels, leavers heat table, coming up, click-through to people",
+      "w": 1440,
+      "x": 1520,
+      "y": 13700
+    },
+    "CAReportsTime.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Company · Reports — attendance calendar, late by weekday, leave balances, utilisation by week, schedule email",
+      "w": 1440,
+      "x": 3040,
+      "y": 13700
+    },
+    "CAResourcePlanner.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Projects · Resource planner (PMO) — weekly allocation heatmap, fix-this-first, find someone free",
+      "w": 1440,
+      "x": 4560,
+      "y": 22200
+    },
+    "CATimesheetApprovals.dc.html": {
+      "expand": "fill",
+      "h": 1240,
+      "title": "Timesheets · Team approvals (lead) — people × days grid, only your project’s blocks, approve days or week, send back wit",
+      "w": 1440,
+      "x": 0,
+      "y": 25600
+    },
+    "CATimesheetLog.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Timesheets · Log work — drag a time range, pick one of my projects, describe the work; overlaps blocked, billable from t",
+      "w": 1440,
+      "x": 1520,
+      "y": 24200
+    },
+    "CATimesheetReport.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Timesheets · Report — hours by project (billable/investment vs planned), planned vs logged per person, searchable entrie",
+      "w": 1440,
+      "x": 1520,
+      "y": 25600
+    },
+    "CATimesheetRules.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "title": "Timesheets · Rules (HR/admin) — time ranges, no overlaps, lead → PM → line manager routing, attendance checks, reminders",
+      "w": 1440,
+      "x": 3040,
+      "y": 25600
+    },
+    "CATimesheetSubmit.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Timesheets · Submit — sends every unsent day up to today, checks against attendance, goes to each project lead; partly a",
+      "w": 1440,
+      "x": 3040,
+      "y": 24200
+    },
+    "CATimesheetWeek.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Timesheets · My week (Tempo-style) — calendar of work blocks per project, attendance line, timer, my projects, gaps to f",
+      "w": 1440,
+      "x": 0,
+      "y": 24200
+    },
+    "ChartStyles.dc.html": {
+      "expand": "fill",
+      "h": 1500,
+      "is_interactive": true,
+      "title": "Chart styles — choose how you see your data (works)",
+      "w": 1440,
+      "x": 1520,
+      "y": 2100
+    },
+    "CheckInSessions.dc.html": {
+      "expand": "fill",
+      "h": 820,
+      "title": "Check in & out many times a day + early check-out",
+      "w": 1440,
+      "x": 6080,
+      "y": 4100
+    },
+    "ComponentIdeas.dc.html": {
+      "expand": "fill",
+      "h": 1260,
+      "title": "Component ideas from other products",
+      "w": 1440,
+      "x": 3040,
+      "y": 4100
+    },
+    "EmployeeDark.dc.html": {
+      "expand": "fill",
+      "h": 1660,
+      "title": "Final · Employee home (dark)",
+      "w": 1440,
+      "x": 1520,
+      "y": 0
+    },
+    "HeroArt.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "title": "Hero art options — instead of the orb / globe",
+      "w": 1440,
+      "x": 0,
+      "y": 2100
+    },
+    "JoinersLeavers.dc.html": {
+      "expand": "fill",
+      "h": 1360,
+      "title": "Joiners & leavers — four engaging designs",
+      "w": 1440,
+      "x": 0,
+      "y": 4100
+    },
+    "Main.dc.html": {
+      "expand": "fill",
+      "h": 1660,
+      "title": "Final · Employee home",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "MotionFinal.dc.html": {
+      "expand": "fill",
+      "h": 1500,
+      "title": "Final animation set + effect on speed",
+      "w": 1440,
+      "x": 4560,
+      "y": 2100
+    },
+    "SACompanies.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "title": "Super Admin · Companies — list with health, usage, attention and bulk actions",
+      "w": 1440,
+      "x": 0,
+      "y": 6100
+    },
+    "SACompaniesCards.dc.html": {
+      "expand": "fill",
+      "h": 1380,
+      "title": "Super Admin · Companies — card view + onboarding pipeline",
+      "w": 1440,
+      "x": 1520,
+      "y": 6100
+    },
+    "SACompanyPanel.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "title": "Super Admin · Companies — click a company: side panel",
+      "w": 1440,
+      "x": 3040,
+      "y": 6100
+    },
+    "SAPlanEditor.dc.html": {
+      "expand": "fill",
+      "h": 1500,
+      "title": "Super Admin · Plans — editor with “who’s affected” before saving",
+      "w": 1440,
+      "x": 3040,
+      "y": 7900
+    },
+    "SAPlans.dc.html": {
+      "expand": "fill",
+      "h": 1500,
+      "title": "Super Admin · Plans — tier cards, summary, upgrade candidates, trials",
+      "w": 1440,
+      "x": 0,
+      "y": 7900
+    },
+    "SAPlansCompare.dc.html": {
+      "expand": "fill",
+      "h": 1640,
+      "title": "Super Admin · Plans — compare grid with real use",
+      "w": 1440,
+      "x": 1520,
+      "y": 7900
+    },
+    "SAProfile.dc.html": {
+      "expand": "fill",
+      "h": 1060,
+      "title": "Super Admin · Profile — account: cover, security score, details, your recent actions",
+      "w": 1440,
+      "x": 0,
+      "y": 11800
+    },
+    "SAProfileActivity.dc.html": {
+      "expand": "fill",
+      "h": 1300,
+      "title": "Super Admin · Profile — sign-in activity, platform admins, appearance, shortcuts",
+      "w": 1440,
+      "x": 3040,
+      "y": 11800
+    },
+    "SAProfileSecurity.dc.html": {
+      "expand": "fill",
+      "h": 1380,
+      "title": "Super Admin · Profile — security: 2-step sign-in, recovery codes, password, devices, protection",
+      "w": 1440,
+      "x": 1520,
+      "y": 11800
+    },
+    "SASystem.dc.html": {
+      "expand": "fill",
+      "h": 1320,
+      "title": "Super Admin · System — health & speed: 90-day uptime, traffic, slowest pages",
+      "w": 1440,
+      "x": 0,
+      "y": 9900
+    },
+    "SASystemData.dc.html": {
+      "expand": "fill",
+      "h": 1340,
+      "title": "Super Admin · System — data & delivery: database, files, jobs, email log",
+      "w": 1440,
+      "x": 1520,
+      "y": 9900
+    },
+    "SASystemReady.dc.html": {
+      "expand": "fill",
+      "h": 1300,
+      "title": "Super Admin · System — readiness checklist, maintenance mode, sign-in safety, tools",
+      "w": 1440,
+      "x": 3040,
+      "y": 9900
+    },
+    "SuperAdmin.dc.html": {
+      "expand": "fill",
+      "h": 1160,
+      "is_interactive": true,
+      "title": "Final · Super Admin overview",
+      "w": 1440,
+      "x": 4560,
+      "y": 0
+    },
+    "ThemeAdaptive.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Animations follow the theme",
+      "w": 1440,
+      "x": 3040,
+      "y": 2100
+    },
+    "WhosOffCalendar.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "is_interactive": true,
+      "title": "Who’s off calendar (try it) + company icon options",
+      "w": 1440,
+      "x": 4560,
+      "y": 4100
+    },
+    "BgOverview.dc.html": {
+      "expand": "fill",
+      "h": 860,
+      "title": "Backgrounds · Overview — one 3-layer system, 13 moods, rules for subtlety, speed and readability",
+      "w": 1440,
+      "x": 0,
+      "y": 35000
+    },
+    "BgHome.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Backgrounds · Aurora — Home & dashboards",
+      "w": 1440,
+      "x": 0,
+      "y": 36360
+    },
+    "BgPeople.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Backgrounds · Constellation — People, profiles & employees",
+      "w": 1440,
+      "x": 1520,
+      "y": 36360
+    },
+    "BgTime.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Backgrounds · Light sweep & dial — Attendance & timesheets",
+      "w": 1440,
+      "x": 3040,
+      "y": 36360
+    },
+    "BgLeave.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Backgrounds · Calm horizon — Leave, who’s off & holidays",
+      "w": 1440,
+      "x": 4560,
+      "y": 36360
+    },
+    "BgProjects.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Backgrounds · Blueprint spotlight — Projects & planning",
+      "w": 1440,
+      "x": 0,
+      "y": 37220
+    },
+    "BgMoney.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Backgrounds · Emerald mesh — Expenses & payments",
+      "w": 1440,
+      "x": 1520,
+      "y": 37220
+    },
+    "BgAssets.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Backgrounds · Studio light — Assets",
+      "w": 1440,
+      "x": 3040,
+      "y": 37220
+    },
+    "BgHelpdesk.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Backgrounds · Signal rings — Helpdesk",
+      "w": 1440,
+      "x": 4560,
+      "y": 37220
+    },
+    "BgEngage.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Backgrounds · Warm floaters — Announcements & kudos",
+      "w": 1440,
+      "x": 0,
+      "y": 38080
+    },
+    "BgReports.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Backgrounds · Data waves — Reports & analytics",
+      "w": 1440,
+      "x": 1520,
+      "y": 38080
+    },
+    "BgQuiet.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Backgrounds · Quiet paper — Settings, roles & admin forms",
+      "w": 1440,
+      "x": 3040,
+      "y": 38080
+    },
+    "BgSuperAdmin.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Backgrounds · Night pulse — Super Admin console",
+      "w": 1440,
+      "x": 4560,
+      "y": 38080
+    },
+    "BgSignIn.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Backgrounds · Hero aurora — Sign-in & welcome",
+      "w": 1440,
+      "x": 0,
+      "y": 38940
+    },
+    "BgSettings.dc.html": {
+      "expand": "fill",
+      "h": 460,
+      "title": "Backgrounds · Control — Lively / Calm / Off per person, company default, how it’s built",
+      "w": 1440,
+      "x": 1520,
+      "y": 38940
+    },
+    "BgPacks.dc.html": {
+      "expand": "fill",
+      "h": 1060,
+      "title": "Backgrounds · Packs — Signature (default), Terra, Prism; Preferences picker + same section in three packs",
+      "w": 1440,
+      "x": 0,
+      "y": 40300
+    },
+    "TerraOverview.dc.html": {
+      "expand": "fill",
+      "h": 860,
+      "title": "Terra pack · Overview — all 13 moods",
+      "w": 1440,
+      "x": 0,
+      "y": 41660
+    },
+    "TerraHome.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Terra · Time-of-day sky — Home & dashboards",
+      "w": 1440,
+      "x": 0,
+      "y": 42820
+    },
+    "TerraPeople.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Terra · Fireflies — People, profiles & employees",
+      "w": 1440,
+      "x": 1520,
+      "y": 42820
+    },
+    "TerraTime.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Terra · Sun path — Attendance & timesheets",
+      "w": 1440,
+      "x": 3040,
+      "y": 42820
+    },
+    "TerraLeave.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Terra · Clouds & hills — Leave, who’s off & holidays",
+      "w": 1440,
+      "x": 4560,
+      "y": 42820
+    },
+    "TerraProjects.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Terra · Contour map — Projects & planning",
+      "w": 1440,
+      "x": 0,
+      "y": 43680
+    },
+    "TerraMoney.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Terra · Dappled light — Expenses & payments",
+      "w": 1440,
+      "x": 1520,
+      "y": 43680
+    },
+    "TerraAssets.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Terra · Zen garden — Assets",
+      "w": 1440,
+      "x": 3040,
+      "y": 43680
+    },
+    "TerraHelp.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Terra · Lighthouse — Helpdesk",
+      "w": 1440,
+      "x": 4560,
+      "y": 43680
+    },
+    "TerraEngage.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Terra · Petal breeze — Announcements & kudos",
+      "w": 1440,
+      "x": 0,
+      "y": 44540
+    },
+    "TerraReports.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Terra · Mountain ridges — Reports & analytics",
+      "w": 1440,
+      "x": 1520,
+      "y": 44540
+    },
+    "TerraQuiet.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Terra · Linen — Settings, roles & admin forms",
+      "w": 1440,
+      "x": 3040,
+      "y": 44540
+    },
+    "TerraSa.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Terra · Northern lights — Super Admin console",
+      "w": 1440,
+      "x": 4560,
+      "y": 44540
+    },
+    "TerraSignin.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Terra · Golden hour — Sign-in & welcome",
+      "w": 1440,
+      "x": 0,
+      "y": 45400
+    },
+    "PrismOverview.dc.html": {
+      "expand": "fill",
+      "h": 860,
+      "title": "Prism pack · Overview — all 13 moods",
+      "w": 1440,
+      "x": 0,
+      "y": 46760
+    },
+    "PrismHome.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Prism · Light beams — Home & dashboards",
+      "w": 1440,
+      "x": 0,
+      "y": 47920
+    },
+    "PrismPeople.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Prism · Bauhaus shapes — People, profiles & employees",
+      "w": 1440,
+      "x": 1520,
+      "y": 47920
+    },
+    "PrismTime.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Prism · Chronograph — Attendance & timesheets",
+      "w": 1440,
+      "x": 3040,
+      "y": 47920
+    },
+    "PrismLeave.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Prism · Striped sun — Leave, who’s off & holidays",
+      "w": 1440,
+      "x": 4560,
+      "y": 47920
+    },
+    "PrismProjects.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Prism · Isometric build — Projects & planning",
+      "w": 1440,
+      "x": 0,
+      "y": 48780
+    },
+    "PrismMoney.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Prism · Facets — Expenses & payments",
+      "w": 1440,
+      "x": 1520,
+      "y": 48780
+    },
+    "PrismAssets.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Prism · Wireframe cubes — Assets",
+      "w": 1440,
+      "x": 3040,
+      "y": 48780
+    },
+    "PrismHelp.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Prism · Radar — Helpdesk",
+      "w": 1440,
+      "x": 4560,
+      "y": 48780
+    },
+    "PrismEngage.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Prism · Memphis confetti — Announcements & kudos",
+      "w": 1440,
+      "x": 0,
+      "y": 49640
+    },
+    "PrismReports.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Prism · Equaliser — Reports & analytics",
+      "w": 1440,
+      "x": 1520,
+      "y": 49640
+    },
+    "PrismQuiet.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Prism · Swiss grid — Settings, roles & admin forms",
+      "w": 1440,
+      "x": 3040,
+      "y": 49640
+    },
+    "PrismSa.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Prism · Grid horizon — Super Admin console",
+      "w": 1440,
+      "x": 4560,
+      "y": 49640
+    },
+    "PrismSignin.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Prism · Prism — Sign-in & welcome",
+      "w": 1440,
+      "x": 0,
+      "y": 50500
+    },
+    "CAHelpOverview.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "title": "Helpdesk · What changes — today vs new for every screen, motion ideas, reply targets",
+      "w": 1440,
+      "x": 0,
+      "y": 51700
+    },
+    "CAHelpMine.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Helpdesk · My tickets — “How can we help?” search with quick answers, team cards, ticket cards with SLA ring + journey line",
+      "w": 1440,
+      "x": 1520,
+      "y": 51700
+    },
+    "CAHelpRaise.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Helpdesk · Raise a ticket — team → topic → details, topic questions, link a device, “these may help”, who will help",
+      "w": 1440,
+      "x": 3040,
+      "y": 51700
+    },
+    "CAHelpThread.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Helpdesk · Ticket conversation — chat style, journey, paused clock, “what we did”, rate with faces, typing dots",
+      "w": 1440,
+      "x": 4560,
+      "y": 51700
+    },
+    "CAHelpQueue.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Helpdesk · Ticket queue — KPIs, SLA burn bars, saved views, bulk actions, preview panel, team load, keyboard",
+      "w": 1440,
+      "x": 0,
+      "y": 53000
+    },
+    "CAHelpBoard.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Helpdesk · Ticket queue (Board) — lanes New / Working / Waiting / Resolved, drag to take & move",
+      "w": 1440,
+      "x": 1520,
+      "y": 53000
+    },
+    "CAHelpDesk.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Helpdesk · Agent desk — conversation, internal note, person’s devices & recent tickets, merge similar",
+      "w": 1440,
+      "x": 3040,
+      "y": 53000
+    },
+    "CAHelpTopics.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "title": "Helpdesk · Ticket topics — per team, icons, priority, auto-assign, quick answer, use count, drag to reorder",
+      "w": 1440,
+      "x": 1520,
+      "y": 54300
+    },
+    "CAHelpTopicEdit.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Helpdesk · Topic editor — routing, own targets, questions to ask, quick answer, live employee preview",
+      "w": 1440,
+      "x": 3040,
+      "y": 54300
+    },
+    "CAHelpMotion.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "title": "Helpdesk · Animation ideas (live, light + dark) — paper plane, SLA ring, journey, typing, solved, faces, new row, overdue, drag, all clear",
+      "w": 1440,
+      "x": 4560,
+      "y": 54300
+    },
+    "CAHelpWhoSees.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "title": "Helpdesk · Who sees and does what — Employee, IT / HR / Finance teams, Company admin",
+      "w": 1440,
+      "x": 0,
+      "y": 55600
+    },
+    "CAHelpTeams.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Helpdesk · Teams & heads — IT, HR, Finance + DevOps; head gets new tickets and assigns to people under them; backup; nothing gets stuck",
+      "w": 1440,
+      "x": 4560,
+      "y": 53000
+    },
+    "CAHelpLive.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "title": "Whole app · Live updates (WebSocket) — what becomes live, pop-ups, bell, connection status, how it works",
+      "w": 1440,
+      "x": 0,
+      "y": 54300
+    },
+    "EmojiMotion.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Whole app · Emoji animations — every emoji the app uses with its own move; click / hover / appear; Lively, Calm, Off",
+      "w": 1440,
+      "x": 0,
+      "y": 57500
+    },
+    "EmojiInPlace.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Whole app · Emoji animations in place — kudos & announcement reactions, ribbons, chips, toasts, empty states, helpdesk faces (light + dark)",
+      "w": 1440,
+      "x": 1520,
+      "y": 57500
+    },
+    "CATimeOverview.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "title": "Time · Plan — 9 pages, what’s new on each, ideas used, build size, questions",
+      "w": 1440,
+      "x": 0,
+      "y": 59400
+    },
+    "CATimeMine.dc.html": {
+      "expand": "fill",
+      "h": 1400,
+      "title": "Time · My attendance — live ring + day line, hours per day, missed check-out fix, insights, Week / Month / Year",
+      "w": 1440,
+      "x": 0,
+      "y": 60500
+    },
+    "CATimeTeam.dc.html": {
+      "expand": "fill",
+      "h": 1300,
+      "title": "Time · Team attendance — presence strip, live timeline with “now”, needs attention + nudge, month grid",
+      "w": 1440,
+      "x": 1520,
+      "y": 60500
+    },
+    "CATimeApprovals.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Time · Attendance approvals — before → after on a time line, bulk approve, last 30 days, shortcuts",
+      "w": 1440,
+      "x": 3040,
+      "y": 60500
+    },
+    "CALeaveMine.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Time · My leave — next trip countdown, balance rings, lapse warning, long-weekend planner, my year",
+      "w": 1440,
+      "x": 4560,
+      "y": 60500
+    },
+    "CALeaveApply.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Time · Apply for leave — type cards, drag dates, teammates off, live count, approvers, document, drafts",
+      "w": 1440,
+      "x": 0,
+      "y": 62020
+    },
+    "CALeaveApprovals.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Time · Leave approvals — mini calendar with who else is off, clash warning, coverage, ask a question",
+      "w": 1440,
+      "x": 1520,
+      "y": 62020
+    },
+    "CALeaveWhosOff.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Time · Who’s off — away today, timeline view, team-in capacity, .ics, birthdays layer",
+      "w": 1440,
+      "x": 3040,
+      "y": 62020
+    },
+    "CATimeHolidays.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Time · Holidays — next holiday countdown, year view, per location, optional picks, import, long weekends",
+      "w": 1440,
+      "x": 4560,
+      "y": 62020
+    },
+    "CATimeSettings.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Time · Attendance settings — drag the shift, grace / late zones, try-it preview, auto close, more shifts",
+      "w": 1440,
+      "x": 0,
+      "y": 63540
+    },
+    "CALeaveTypes.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Time · Leave types — policy sentence, usage, new rules (probation, document, sandwich), year-end preview",
+      "w": 1440,
+      "x": 1520,
+      "y": 63540
+    },
+    "CATimeMotion.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Time · Animation ideas (live) — check-in ring, now line, missed punch, calendar fill, plane take-off, count-up, flip clock, confetti",
+      "w": 1440,
+      "x": 3040,
+      "y": 63540
+    },
+    "CATimeWhoSees.dc.html": {
+      "expand": "fill",
+      "h": 940,
+      "title": "Time · Who sees and does what — employee, team lead / PM, line manager, HR, company admin",
+      "w": 1440,
+      "x": 4560,
+      "y": 63540
+    },
+    "CAAdmOverview.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Administration · Plan — 3 pages + popup forms, ideas, build size, questions",
+      "w": 1440,
+      "x": 0,
+      "y": 65500
+    },
+    "CAAdmUsers.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Administration · Users — count tiles, needs a look, role-colour filter, bulk actions",
+      "w": 1440,
+      "x": 0,
+      "y": 66600
+    },
+    "CAAdmPerson.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "title": "Administration · Users → person drawer — roles as tick cards, “if you add HR” preview, reach, covering",
+      "w": 1440,
+      "x": 1520,
+      "y": 66600
+    },
+    "CAAdmInvite.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "title": "Administration · Invite — sections, role chips, live preview, invite many",
+      "w": 1440,
+      "x": 3040,
+      "y": 66600
+    },
+    "CAAdmRoles.dc.html": {
+      "expand": "fill",
+      "h": 1240,
+      "title": "Administration · Roles — colour, heat strip per module, who holds it, compare, grid, templates",
+      "w": 1440,
+      "x": 4560,
+      "y": 66600
+    },
+    "CAAdmRoleEditor.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Administration · Role editor — module rail, scope ladder, plain words, change list",
+      "w": 1440,
+      "x": 0,
+      "y": 68120
+    },
+    "CAAdmCompare.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "title": "Administration · Compare roles + all-roles grid",
+      "w": 1440,
+      "x": 1520,
+      "y": 68120
+    },
+    "CAAdmExplorerPerson.dc.html": {
+      "expand": "fill",
+      "h": 1050,
+      "title": "Administration · Access explorer — what can someone do: reach rings, why-path",
+      "w": 1440,
+      "x": 3040,
+      "y": 68120
+    },
+    "CAAdmExplorerWho.dc.html": {
+      "expand": "fill",
+      "h": 1140,
+      "title": "Administration · Access explorer — who can access someone + sensitive data check",
+      "w": 1440,
+      "x": 4560,
+      "y": 68120
+    },
+    "CAAdmMotion.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Administration · Animation ideas (live)",
+      "w": 1440,
+      "x": 0,
+      "y": 69640
+    },
+    "CAAdmWhoSees.dc.html": {
+      "expand": "fill",
+      "h": 640,
+      "title": "Administration · Who sees and does what",
+      "w": 1440,
+      "x": 1520,
+      "y": 69640
+    },
+    "CAFormsReview.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "title": "Popup forms · Review — 10 problems found across ~80 popups",
+      "w": 1440,
+      "x": 3040,
+      "y": 69640
+    },
+    "CAFormsKit.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Popup forms · New form kit — fits screen, sizes, people picker, inline errors, keep typing, keyboard, dates, done",
+      "w": 1440,
+      "x": 4560,
+      "y": 69640
+    },
+    "CAFormsRedone.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Popup forms · Three real forms before → after (asset hand-over, reject, phone sheet)",
+      "w": 1440,
+      "x": 0,
+      "y": 71160
+    },
+    "CASetOverview.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Settings · Plan — 4 pages, what’s new, build size, questions",
+      "w": 1440,
+      "x": 0,
+      "y": 72700
+    },
+    "CASetBranding.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Settings · Branding — brand kit with live previews (tab, menu, sign-in, email), colours from logo",
+      "w": 1440,
+      "x": 0,
+      "y": 73800
+    },
+    "CASetTheme.dc.html": {
+      "expand": "fill",
+      "h": 1240,
+      "title": "Settings · Theme studio — real-screen preview, light + dark side by side, easy-to-read checks, before/after",
+      "w": 1440,
+      "x": 1520,
+      "y": 73800
+    },
+    "CASetThemeMore.dc.html": {
+      "expand": "fill",
+      "h": 980,
+      "title": "Settings · Theme — versions + restore, seasonal theme, what employees can change",
+      "w": 1440,
+      "x": 3040,
+      "y": 73800
+    },
+    "CASetDelegation.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Settings · Delegation — going away banner, best covers, team timeline, hand over",
+      "w": 1440,
+      "x": 4560,
+      "y": 73800
+    },
+    "CASetDelegationMore.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "title": "Settings · Delegation — welcome-back recap, covering card, company timeline",
+      "w": 1440,
+      "x": 0,
+      "y": 75320
+    },
+    "CASetPreferences.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Settings · Preferences — index + search, saved as you go, look + region, live preview",
+      "w": 1440,
+      "x": 1520,
+      "y": 75320
+    },
+    "CASetPrefMore.dc.html": {
+      "expand": "fill",
+      "h": 980,
+      "title": "Settings · Preferences — notifications per topic, quiet hours, home order, accessibility",
+      "w": 1440,
+      "x": 3040,
+      "y": 75320
+    },
+    "CASetMotion.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Settings · Animation ideas (live)",
+      "w": 1440,
+      "x": 4560,
+      "y": 75320
+    },
+    "CASetWhoSees.dc.html": {
+      "expand": "fill",
+      "h": 560,
+      "title": "Settings · Who sees and does what",
+      "w": 1440,
+      "x": 0,
+      "y": 76840
+    },
+    "CASeasonYear.dc.html": {
+      "expand": "fill",
+      "h": 1380,
+      "title": "Seasonal themes · Plan the year — year strip, 11 national festivals + your own, holiday-list suggestion",
+      "w": 1440,
+      "x": 0,
+      "y": 78100
+    },
+    "CASeasonEdit.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "title": "Seasonal themes · Make a season — dates, every year, colours, decoration, greeting, who sees it, live preview",
+      "w": 1440,
+      "x": 1520,
+      "y": 78100
+    },
+    "CASeasonEmployees.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "title": "Seasonal themes · What employees see — Home banner, decorations, sign-in page, first-visit toast, turn off",
+      "w": 1440,
+      "x": 3040,
+      "y": 78100
+    },
+    "CASeasonRules.dc.html": {
+      "expand": "fill",
+      "h": 820,
+      "title": "Seasonal themes · How seasons work — rules + questions",
+      "w": 1440,
+      "x": 0,
+      "y": 79600
+    },
+    "CASeasonMotion.dc.html": {
+      "expand": "fill",
+      "h": 760,
+      "title": "Seasonal themes · Decoration ideas (live)",
+      "w": 1440,
+      "x": 1520,
+      "y": 79600
+    },
+    "CANewYearLight.dc.html": {
+      "expand": "fill",
+      "h": 1100,
+      "title": "Seasonal preview · New Year — Home, light mode (real size)",
+      "w": 1440,
+      "x": 0,
+      "y": 81200
+    },
+    "CANewYearDark.dc.html": {
+      "expand": "fill",
+      "h": 1100,
+      "title": "Seasonal preview · New Year — Home, dark mode (real size)",
+      "w": 1440,
+      "x": 1520,
+      "y": 81200
+    },
+    "CANewYearSignin.dc.html": {
+      "expand": "fill",
+      "h": 700,
+      "title": "Seasonal preview · New Year — sign-in page + phone (light & dark)",
+      "w": 1440,
+      "x": 3040,
+      "y": 81200
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-10-03T22:27:26Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "notes": {
+    "n1": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Final dashboards — balanced layout, living hero, the animations you picked",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "n10": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Company · Employees & Organisation — list, lifecycle, profile, org chart",
+      "w": 240,
+      "x": 0,
+      "y": 16900
+    },
+    "n11": {
+      "kind": "title1",
+      "maxW": 7600,
+      "text": "Company · Announcements & Kudos — feed, composer, reach, kudos wall, recognition insights",
+      "w": 240,
+      "x": 0,
+      "y": 18600
+    },
+    "n12": {
+      "kind": "title1",
+      "maxW": 4600,
+      "text": "Announcements, round 2 — animated & 3D covers, fuller employee feed, immersive post",
+      "w": 240,
+      "x": 0,
+      "y": 20200
+    },
+    "n13": {
+      "kind": "title1",
+      "maxW": 7600,
+      "text": "Company · Projects — portfolio, timeline, project detail, resource planner, my projects",
+      "w": 240,
+      "x": 0,
+      "y": 21900
+    },
+    "n14": {
+      "kind": "title1",
+      "maxW": 4500,
+      "text": "Company · Timesheets (Tempo-style) — my week, log work, submit, team approvals, report, rules",
+      "w": 240,
+      "x": 0,
+      "y": 23900
+    },
+    "n15": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Company · Expenses — my expenses, claim editor, tracker, approvals, payments, spend reports, categories, who sees what",
+      "w": 240,
+      "x": 0,
+      "y": 27100
+    },
+    "n16": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Company · Assets — my assets, request catalog, requests & hand-over, register, asset detail, returns & yearly check, types, who sees what",
+      "w": 240,
+      "x": 0,
+      "y": 30200
+    },
+    "n2": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Hero art · chart styles · theme-adaptive motion · speed",
+      "w": 240,
+      "x": 0,
+      "y": 1800
+    },
+    "n3": {
+      "kind": "title1",
+      "maxW": 7520,
+      "text": "Next round — joiners & leavers, atmosphere, component ideas, who’s off calendar, check-in sessions",
+      "w": 240,
+      "x": 0,
+      "y": 3800
+    },
+    "n4": {
+      "kind": "title1",
+      "maxW": 4480,
+      "text": "Super Admin · Companies — richer list, cards, company panel",
+      "w": 240,
+      "x": 0,
+      "y": 5800
+    },
+    "n5": {
+      "kind": "title1",
+      "maxW": 4480,
+      "text": "Super Admin · Plans — tier cards, compare grid, editor with impact preview",
+      "w": 240,
+      "x": 0,
+      "y": 7600
+    },
+    "n6": {
+      "kind": "title1",
+      "maxW": 4480,
+      "text": "Super Admin · System — health & speed, data & delivery, readiness & tools",
+      "w": 240,
+      "x": 0,
+      "y": 9600
+    },
+    "n7": {
+      "kind": "title1",
+      "maxW": 4480,
+      "text": "Super Admin · Profile & security — account, 2-step sign-in, activity & appearance",
+      "w": 240,
+      "x": 0,
+      "y": 11500
+    },
+    "n8": {
+      "kind": "title1",
+      "maxW": 4480,
+      "text": "Company · Reports & analytics — overview, people, attendance & utilisation",
+      "w": 240,
+      "x": 0,
+      "y": 13400
+    },
+    "n9": {
+      "kind": "title1",
+      "maxW": 4480,
+      "text": "Company · People directory — photo cards, teams, quick look",
+      "w": 240,
+      "x": 0,
+      "y": 15100
+    },
+    "n17": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Ambient backgrounds — same pages, a different living backdrop per page family (aurora, constellation, light sweep, horizon, blueprint, mesh, studio, rings, floaters, waves, quiet, night pulse, hero)",
+      "w": 240,
+      "x": 0,
+      "y": 34700
+    },
+    "n18": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Background packs — pick one in Preferences: Signature (default) · Terra (nature) · Prism (geometry). Every section changes at once.",
+      "w": 240,
+      "x": 0,
+      "y": 40000
+    },
+    "n19": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Terra pack — nature: time-of-day sky, fireflies, sun path, clouds, contour map, dappled light, zen garden, lighthouse, petals, ridges, linen, northern lights, golden hour",
+      "w": 240,
+      "x": 0,
+      "y": 41360
+    },
+    "n20": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Prism pack — geometry: light beams, Bauhaus shapes, chronograph, striped sun, isometric build, facets, wire cubes, radar, Memphis, equaliser, Swiss grid, grid horizon, prism",
+      "w": 240,
+      "x": 0,
+      "y": 46460
+    },
+    "n21": {
+      "kind": "title1",
+      "maxW": 7600,
+      "text": "Company · Time — my attendance, team attendance, approvals, my leave, apply, leave approvals, who’s off, holidays, attendance settings, leave types",
+      "w": 240,
+      "x": 0,
+      "y": 59100
+    },
+    "n22": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Whole app · Emoji animations — every emoji gets its own move (click, hover, appear), in place, light + dark",
+      "w": 240,
+      "x": 0,
+      "y": 57200
+    },
+    "n23": {
+      "kind": "title1",
+      "maxW": 7600,
+      "text": "Company · Administration — users, person drawer, invite, roles, role editor, compare, access explorer + popup forms review and new form kit",
+      "w": 240,
+      "x": 0,
+      "y": 65200
+    },
+    "n24": {
+      "kind": "title1",
+      "maxW": 7600,
+      "text": "Company · Settings — branding, theme studio, versions, delegation, preferences, notifications",
+      "w": 240,
+      "x": 0,
+      "y": 72400
+    },
+    "n25": {
+      "kind": "title1",
+      "maxW": 7600,
+      "text": "Company · Seasonal themes — plan the year, make a season, what employees see, rules, decorations",
+      "w": 240,
+      "x": 0,
+      "y": 77800
+    },
+    "n26": {
+      "kind": "title1",
+      "maxW": 7600,
+      "text": "Seasonal preview · New Year — Home light, Home dark, sign-in page + phone",
+      "w": 240,
+      "x": 0,
+      "y": 80900
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "EmployeeDark.dc.html",
+    "Admin.dc.html",
+    "SuperAdmin.dc.html",
+    "HeroArt.dc.html",
+    "ChartStyles.dc.html",
+    "ThemeAdaptive.dc.html",
+    "MotionFinal.dc.html",
+    "JoinersLeavers.dc.html",
+    "Atmosphere.dc.html",
+    "ComponentIdeas.dc.html",
+    "WhosOffCalendar.dc.html",
+    "CheckInSessions.dc.html",
+    "SACompanies.dc.html",
+    "SACompaniesCards.dc.html",
+    "SACompanyPanel.dc.html",
+    "SAPlans.dc.html",
+    "SAPlansCompare.dc.html",
+    "SAPlanEditor.dc.html",
+    "SASystem.dc.html",
+    "SASystemData.dc.html",
+    "SASystemReady.dc.html",
+    "SAProfile.dc.html",
+    "SAProfileSecurity.dc.html",
+    "SAProfileActivity.dc.html",
+    "CAReports.dc.html",
+    "CAReportsPeople.dc.html",
+    "CAReportsTime.dc.html",
+    "CAPeople.dc.html",
+    "CAPeopleTeams.dc.html",
+    "CAPeopleQuick.dc.html",
+    "CAEmployees.dc.html",
+    "CAEmployeesLifecycle.dc.html",
+    "CAEmployeeProfile.dc.html",
+    "CAOrganisation.dc.html",
+    "CAAnnouncements.dc.html",
+    "CAAnnounceCompose.dc.html",
+    "CAAnnounceDetail.dc.html",
+    "CAKudos.dc.html",
+    "CAKudosInsights.dc.html",
+    "CAAnnounceCovers.dc.html",
+    "CAAnnounceFeed2.dc.html",
+    "CAAnnouncePost2.dc.html",
+    "CAProjects.dc.html",
+    "CAProjectsTimeline.dc.html",
+    "CAProjectDetail.dc.html",
+    "CAResourcePlanner.dc.html",
+    "CAMyProjects.dc.html",
+    "CATimesheetWeek.dc.html",
+    "CATimesheetLog.dc.html",
+    "CATimesheetSubmit.dc.html",
+    "CATimesheetApprovals.dc.html",
+    "CATimesheetReport.dc.html",
+    "CATimesheetRules.dc.html",
+    "CAExpensesMine.dc.html",
+    "CAExpenseEditor.dc.html",
+    "CAExpenseTracker.dc.html",
+    "CAExpenseApprovals.dc.html",
+    "CAExpensePayments.dc.html",
+    "CAExpenseReports.dc.html",
+    "CAExpenseCategories.dc.html",
+    "CAExpenseWhoSees.dc.html",
+    "CAAssetsMine.dc.html",
+    "CAAssetRequest.dc.html",
+    "CAAssetRequests.dc.html",
+    "CAAssetRegister.dc.html",
+    "CAAssetDetail.dc.html",
+    "CAAssetReturns.dc.html",
+    "CAAssetTypes.dc.html",
+    "CAAssetWhoSees.dc.html",
+    "CAAssetKits.dc.html",
+    "CAAssetProducts.dc.html",
+    "CAAssetMotion.dc.html",
+    "BgOverview.dc.html",
+    "BgHome.dc.html",
+    "BgPeople.dc.html",
+    "BgTime.dc.html",
+    "BgLeave.dc.html",
+    "BgProjects.dc.html",
+    "BgMoney.dc.html",
+    "BgAssets.dc.html",
+    "BgHelpdesk.dc.html",
+    "BgEngage.dc.html",
+    "BgReports.dc.html",
+    "BgQuiet.dc.html",
+    "BgSuperAdmin.dc.html",
+    "BgSignIn.dc.html",
+    "BgSettings.dc.html",
+    "BgPacks.dc.html",
+    "TerraOverview.dc.html",
+    "TerraHome.dc.html",
+    "TerraPeople.dc.html",
+    "TerraTime.dc.html",
+    "TerraLeave.dc.html",
+    "TerraProjects.dc.html",
+    "TerraMoney.dc.html",
+    "TerraAssets.dc.html",
+    "TerraHelp.dc.html",
+    "TerraEngage.dc.html",
+    "TerraReports.dc.html",
+    "TerraQuiet.dc.html",
+    "TerraSa.dc.html",
+    "TerraSignin.dc.html",
+    "PrismOverview.dc.html",
+    "PrismHome.dc.html",
+    "PrismPeople.dc.html",
+    "PrismTime.dc.html",
+    "PrismLeave.dc.html",
+    "PrismProjects.dc.html",
+    "PrismMoney.dc.html",
+    "PrismAssets.dc.html",
+    "PrismHelp.dc.html",
+    "PrismEngage.dc.html",
+    "PrismReports.dc.html",
+    "PrismQuiet.dc.html",
+    "PrismSa.dc.html",
+    "PrismSignin.dc.html",
+    "CAHelpOverview.dc.html",
+    "CAHelpMine.dc.html",
+    "CAHelpRaise.dc.html",
+    "CAHelpThread.dc.html",
+    "CAHelpQueue.dc.html",
+    "CAHelpBoard.dc.html",
+    "CAHelpDesk.dc.html",
+    "CAHelpTopics.dc.html",
+    "CAHelpTopicEdit.dc.html",
+    "CAHelpMotion.dc.html",
+    "CAHelpWhoSees.dc.html",
+    "CAHelpTeams.dc.html",
+    "CAHelpLive.dc.html",
+    "EmojiMotion.dc.html",
+    "EmojiInPlace.dc.html",
+    "CATimeOverview.dc.html",
+    "CATimeMine.dc.html",
+    "CATimeTeam.dc.html",
+    "CATimeApprovals.dc.html",
+    "CALeaveMine.dc.html",
+    "CALeaveApply.dc.html",
+    "CALeaveApprovals.dc.html",
+    "CALeaveWhosOff.dc.html",
+    "CATimeHolidays.dc.html",
+    "CATimeSettings.dc.html",
+    "CALeaveTypes.dc.html",
+    "CATimeMotion.dc.html",
+    "CATimeWhoSees.dc.html",
+    "CAAdmOverview.dc.html",
+    "CAAdmUsers.dc.html",
+    "CAAdmPerson.dc.html",
+    "CAAdmInvite.dc.html",
+    "CAAdmRoles.dc.html",
+    "CAAdmRoleEditor.dc.html",
+    "CAAdmCompare.dc.html",
+    "CAAdmExplorerPerson.dc.html",
+    "CAAdmExplorerWho.dc.html",
+    "CAAdmMotion.dc.html",
+    "CAAdmWhoSees.dc.html",
+    "CAFormsReview.dc.html",
+    "CAFormsKit.dc.html",
+    "CAFormsRedone.dc.html",
+    "CASetOverview.dc.html",
+    "CASetBranding.dc.html",
+    "CASetTheme.dc.html",
+    "CASetThemeMore.dc.html",
+    "CASetDelegation.dc.html",
+    "CASetDelegationMore.dc.html",
+    "CASetPreferences.dc.html",
+    "CASetPrefMore.dc.html",
+    "CASetMotion.dc.html",
+    "CASetWhoSees.dc.html",
+    "CASeasonYear.dc.html",
+    "CASeasonEdit.dc.html",
+    "CASeasonEmployees.dc.html",
+    "CASeasonRules.dc.html",
+    "CASeasonMotion.dc.html",
+    "CANewYearLight.dc.html",
+    "CANewYearDark.dc.html",
+    "CANewYearSignin.dc.html"
+  ],
+  "pages": [],
+  "title": "HRMS final dashboards"
+}

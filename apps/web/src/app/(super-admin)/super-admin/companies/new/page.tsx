@@ -36,6 +36,7 @@ import { rebrandTheme } from '@/lib/theme/generate';
 import { getApiErrorMessage } from '@/lib/errors';
 import { slugify } from '@/lib/format';
 import { cn } from '@/lib/cn';
+import { Select } from '@/components/ui/pickers';
 
 const STEPS = [
   { id: 'company', label: 'Company', icon: Building2 },
@@ -276,11 +277,11 @@ export default function OnboardCompanyPage() {
                   htmlFor="plan"
                   hint={plan ? `${plan.features.length} features · ${formatLimit(plan.limits.maxEmployees)} employees — change anytime on the company's Plan & features tab` : 'Decides which features the company can use'}
                 >
-                  <select id="plan" value={planId} onChange={(e) => setPlanId(e.target.value)} className={inputClass}>
+                  <Select id="plan" value={planId} onChange={(e) => setPlanId(e.target.value)} className={inputClass}>
                     {activePlans.map((p) => (
                       <option key={p.id} value={p.id}>{p.name}{p.description ? ` — ${p.description}` : ''}</option>
                     ))}
-                  </select>
+                  </Select>
                 </Field>
               </>
             )}

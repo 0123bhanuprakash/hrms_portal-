@@ -36,3 +36,6 @@ export function loginPathFor(user: Pick<AuthUser, 'isSuperAdmin'> | null | undef
   const slug = rememberedWorkspace();
   return slug ? `/login?company=${slug}` : '/login';
 }
+
+/** Why a session was ended live (set by LiveConnection, shown once on the sign-in form). */
+export const SIGNED_OUT_KEY = 'hrms:signed-out';

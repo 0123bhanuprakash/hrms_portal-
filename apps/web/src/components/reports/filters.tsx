@@ -8,6 +8,7 @@ import { useDepartments, useLocations } from '@/lib/company/org';
 import { addDays, todayKey } from '@/lib/company/timesheets';
 import type { ReportFilters } from '@/lib/company/reports';
 import { cn } from '@/lib/cn';
+import { Select } from '@/components/ui/pickers';
 
 export type Period = '7d' | 'month' | 'quarter' | 'year' | 'custom';
 const PERIODS: Array<{ key: Exclude<Period, 'custom'>; label: string }> = [
@@ -114,19 +115,19 @@ export function FilterBar({ value, onChange, showPeriod = true }: { value: Repor
       {departments.data && departments.data.length > 0 && (
         <label className="relative">
           <Building2 className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <select aria-label="Department" value={value.departmentId ?? ''} onChange={(e) => onChange({ dept: e.target.value || null })} className={cn(inputClass, 'h-9 w-auto pl-8 text-xs font-semibold', value.departmentId && 'border-primary/40 text-primary')}>
+          <Select aria-label="Department" value={value.departmentId ?? ''} onChange={(e) => onChange({ dept: e.target.value || null })} className={cn(inputClass, 'h-9 w-auto pl-8 text-xs font-semibold', value.departmentId && 'border-primary/40 text-primary')}>
             <option value="">All departments</option>
             {departments.data.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-          </select>
+          </Select>
         </label>
       )}
       {locations.data && locations.data.length > 0 && (
         <label className="relative">
           <MapPin className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <select aria-label="Location" value={value.locationId ?? ''} onChange={(e) => onChange({ loc: e.target.value || null })} className={cn(inputClass, 'h-9 w-auto pl-8 text-xs font-semibold', value.locationId && 'border-primary/40 text-primary')}>
+          <Select aria-label="Location" value={value.locationId ?? ''} onChange={(e) => onChange({ loc: e.target.value || null })} className={cn(inputClass, 'h-9 w-auto pl-8 text-xs font-semibold', value.locationId && 'border-primary/40 text-primary')}>
             <option value="">All locations</option>
             {locations.data.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-          </select>
+          </Select>
         </label>
       )}
       {(value.departmentId || value.locationId) && (

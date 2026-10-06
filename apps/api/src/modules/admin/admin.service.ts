@@ -24,6 +24,7 @@ import {
   UpdateCompanyAdminStatusDto,
   UpdateCompanyStatusDto,
 } from './dto/admin-company.dto';
+import { RealtimeService } from '../realtime/realtime.service';
 
 // ============================================================
 // AdminService — Super Admin platform operations
@@ -59,6 +60,7 @@ export class AdminService {
     private readonly healthService: HealthService,
     private readonly emailService: EmailService,
     private readonly companyRoles: CompanyRolesService,
+    private readonly realtime: RealtimeService,
   ) {}
 
   // ─── Platform ──────────────────────────────────────────────
@@ -432,6 +434,7 @@ export class AdminService {
       }),
     ]);
 
+    this.realtime.signOut(userId, {}, 'password');
     await this.sendWelcomeEmail(company, admin, tempPassword);
 
     return { id: admin.id, email: admin.email, message: 'Invite re-sent with a new temporary password' };

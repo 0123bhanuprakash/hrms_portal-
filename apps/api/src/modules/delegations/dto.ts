@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsDateString, IsIn, IsOptional, IsString, IsUUID, Matches, MaxLength } from 'class-validator';
+import { DELEGABLE_PERMISSIONS } from '../access/catalog';
 
 export class CreateDelegationDto {
   @ApiProperty({ description: 'User who covers the approvals' })
@@ -20,9 +21,24 @@ export class CreateDelegationDto {
   @IsDateString()
   endsAt!: string;
 
+  @ApiPropertyOptional({ description: 'Which approvals to hand over (default: all of them)', example: ['leave.approve'] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsIn(DELEGABLE_PERMISSIONS, { each: true })
+  permissions?: string[];
+
   @ApiPropertyOptional({ example: 'Annual leave' })
   @IsOptional()
   @IsString()
   @MaxLength(200)
   reason?: string;
+}
+
+export class RangeQueryDto {
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  from!: string;
+
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  to!: string;
 }

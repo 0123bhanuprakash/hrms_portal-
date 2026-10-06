@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { EmojiText } from '@/components/motion/emoji';
 import Link from 'next/link';
 import { Heart, Mail, MapPin, Network } from 'lucide-react';
 import type { DirectoryPerson, Today, TodayStatus } from '@/lib/company/profile';
@@ -63,7 +64,7 @@ export function PhotoCard({ person, onOpen }: { person: DirectoryPerson; onOpen:
       <button type="button" onClick={onOpen} className="relative block aspect-[4/3] w-full overflow-hidden text-left" aria-label={`Quick look at ${person.firstName} ${person.lastName}`}>
         <Photo person={person} rounded="" className="h-full w-full transition-transform duration-500 group-hover:scale-[1.04]" textClass="text-4xl" />
         {person.today && <StatusPill today={person.today} className="absolute bottom-2 left-2" />}
-        {ribbon && <span className="absolute right-2 top-2 rounded-full bg-surface/95 px-2 py-0.5 text-[10.5px] font-bold text-foreground shadow-card">{ribbon}</span>}
+        {ribbon && <span className="absolute right-2 top-2 rounded-full bg-surface/95 px-2 py-0.5 text-[10.5px] font-bold text-foreground shadow-card"><EmojiText text={ribbon} play="appear" /></span>}
       </button>
       <div className="flex flex-1 flex-col gap-1 px-3.5 pb-2 pt-3">
         <button type="button" onClick={onOpen} className="truncate text-left font-semibold hover:text-primary">{person.firstName} {person.lastName}</button>

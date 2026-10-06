@@ -135,11 +135,20 @@ export function useCapacity(employeeId: string | undefined, q: { from?: string; 
  * leading / managing a project, or having direct reports (line manager).
  */
 export function useIsApprover(permission: 'leave.approve' | 'attendance.approve') {
+  return useMayApprove(permission);
+}
+
+/**
+ * May approve something in a module: holds one of its approve permissions, covers
+ * for someone, leads or manages a project, or has direct reports. Keeps approval
+ * calls (pending counts, review lists) out of plain employees' browsers.
+ */
+export function useMayApprove(...permissions: string[]) {
   const { can, access } = useAccess();
   const mine = useMyProjects();
   const me = useMyCard();
   return (
-    can(permission) ||
+    permissions.some((p) => can(p)) ||
     Boolean(access?.delegations.length) ||
     Boolean(mine.data?.some((a) => a.active && (a.role === 'TEAM_LEAD' || a.role === 'MANAGER'))) ||
     (me.data?.employee?.directReportCount ?? 0) > 0

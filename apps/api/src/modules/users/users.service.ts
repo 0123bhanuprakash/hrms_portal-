@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { UpdatePreferencesDto } from './dto/update-preferences.dto';
 import { Prisma } from '@prisma/client';
 import { mergeUiState } from './ui-state';
+import { NOTIFICATION_TOPICS } from '../notifications/topics';
 
 @Injectable()
 export class UsersService {
@@ -113,9 +114,32 @@ export class UsersService {
    */
   async updatePreferences(userId: string, dto: UpdatePreferencesDto) {
     await this.assertPersonalizationAllowed(userId, dto);
+    // Topic choices merge into what is saved; unknown topics / keys are dropped
+    let notificationTopics: Prisma.InputJsonObject | undefined;
+    if (dto.notificationTopics) {
+      const saved = ((await this.prisma.userPreferences.findUnique({ where: { userId }, select: { notificationTopics: true } }))?.notificationTopics ?? {}) as Record<string, { app?: boolean; email?: boolean }>;
+      const merged: Record<string, { app?: boolean; email?: boolean }> = { ...saved };
+      for (const t of NOTIFICATION_TOPICS) {
+        const c = dto.notificationTopics[t.key];
+        if (!c) continue;
+        merged[t.key] = {
+          ...merged[t.key],
+          ...(typeof c.app === 'boolean' && { app: c.app }),
+          ...(typeof c.email === 'boolean' && { email: c.email }),
+        };
+      }
+      notificationTopics = merged as Prisma.InputJsonObject;
+    }
+    const notify = {
+      ...(notificationTopics && { notificationTopics }),
+      ...(dto.quietHours && { quietHours: { ...dto.quietHours } }),
+      ...(dto.dailySummary !== undefined && { dailySummary: dto.dailySummary }),
+    };
     const personal = {
       ...(dto.colorTheme !== undefined && { colorTheme: dto.colorTheme }),
       ...(dto.menuStyle !== undefined && { menuStyle: dto.menuStyle }),
+      ...(dto.backdropPack !== undefined && { backdropPack: dto.backdropPack }),
+      ...(dto.backdropLevel !== undefined && { backdropLevel: dto.backdropLevel }),
     };
     return this.prisma.userPreferences.upsert({
       where: { userId },
@@ -136,10 +160,12 @@ export class UsersService {
         ...(dto.idleTimeoutMinutes !== undefined && { idleTimeoutMinutes: dto.idleTimeoutMinutes }),
         ...(dto.reauthForRisky !== undefined && { reauthForRisky: dto.reauthForRisky }),
         ...personal,
+        ...notify,
       },
       create: {
         userId,
         ...personal,
+        ...notify,
         theme: dto.theme || 'system',
         timezone: dto.timezone || 'Asia/Kolkata',
         dateFormat: dto.dateFormat || 'DD/MM/YYYY',

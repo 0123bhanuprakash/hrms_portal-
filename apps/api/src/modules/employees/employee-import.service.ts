@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EntitlementService } from '../access/entitlement.service';
 import { EmployeesService } from './employees.service';
 import type { ImportRowDto } from './dto/import-employees.dto';
+import { RealtimeService } from '../realtime/realtime.service';
 
 type Status = 'ok' | 'warning' | 'error';
 
@@ -38,6 +39,7 @@ export class EmployeeImportService {
     private readonly prisma: PrismaService,
     private readonly employees: EmployeesService,
     private readonly entitlements: EntitlementService,
+    private readonly realtime: RealtimeService,
   ) {}
 
   async preview(companyId: string, rows: ImportRowDto[]) {
@@ -158,7 +160,7 @@ export class EmployeeImportService {
     };
   }
 
-  async import(companyId: string, rows: ImportRowDto[], sendInvites = true) {
+  async import(companyId: string, rows: ImportRowDto[], sendInvites = true, progress?: { userId: string; id: string }) {
     const preview = await this.preview(companyId, rows);
     if (preview.limit.exceeded) {
       throw new BadRequestException(
@@ -169,6 +171,18 @@ export class EmployeeImportService {
     const created = new Map<number, string>(); // row → employee id
     const failed: Array<{ row: number; name: string; error: string }> = [];
     const skipped = preview.rows.filter((p) => p.status === 'error').map((p) => ({ row: p.row, name: p.name, reasons: p.messages }));
+
+    // Live progress bar on the importer's page
+    let done = 0;
+    let sentAt = 0;
+    const tick = (force = false) => {
+      if (!progress) return;
+      const now = Date.now();
+      if (!force && now - sentAt < 250) return;
+      sentAt = now;
+      this.realtime.progress(progress.userId, { id: progress.id, done, total: todo.length, label: 'Importing people' });
+    };
+    tick(true);
 
     // Managers first: repeatedly take rows whose in-file manager is already created
     const pending = [...todo];
@@ -201,6 +215,8 @@ export class EmployeeImportService {
         } catch (err) {
           failed.push({ row: p.row, name: p.name, error: (err as { message?: string }).message ?? 'Failed' });
         }
+        done++;
+        tick(done === todo.length);
       }
     }
     this.logger.log(`Import for company ${companyId}: ${created.size} created, ${skipped.length} skipped, ${failed.length} failed`);

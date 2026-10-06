@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sidebar — Glide</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0}
+.w{--bg:#F4F4F8;--side:#FFFFFF;--card:#FFFFFF;--border:#E7E7EF;--fg:#16162A;--mut:#74748C;--soft:#F1F0FB;--pri:#5B4FE9;--priS:#EEECFF;--line:#DCDCE8;font-family:Manrope,system-ui,sans-serif;color:var(--fg);background:var(--bg);min-height:100vh;padding:34px 40px}
+.w.dark{--bg:#0E0E16;--side:#16161F;--card:#1B1B26;--border:#2A2A3A;--fg:#ECECF5;--mut:#8F8FA8;--soft:#22222F;--pri:#8B80FF;--priS:#2A2650;--line:#33334A}
+h1{font-size:26px;font-weight:800;letter-spacing:-.02em}
+.sub{color:var(--mut);font-size:14px;margin-top:6px;max-width:980px;line-height:1.5}
+.lbl{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
+.row{display:flex;gap:28px;align-items:flex-start;margin-top:26px}
+.cap{display:flex;flex-direction:column;gap:10px}
+.cap>b{font-size:12px;letter-spacing:.06em;color:var(--mut)}
+/* app frame */
+.frame{display:flex;gap:14px;height:820px;border-radius:22px;background:var(--bg);border:1px solid var(--border);padding:14px;overflow:hidden;position:relative}
+.page{flex:1;display:flex;flex-direction:column;gap:14px;min-width:0}
+.top{height:44px;display:flex;align-items:center;gap:10px;color:var(--mut);font-size:13px}
+.ph{background:var(--card);border:1px solid var(--border);border-radius:16px}
+/* Glide sidebar */
+.gl{width:262px;flex:none;background:var(--side);border:1px solid var(--border);border-radius:20px;box-shadow:0 10px 30px -18px #1a1a4a33;display:flex;flex-direction:column;padding:14px 12px;gap:6px;position:relative}
+.gl .brand{display:flex;align-items:center;gap:10px;padding:2px 4px 8px}
+.gl .logo{width:34px;height:34px;border-radius:11px;background:linear-gradient(135deg,var(--pri),#9B5CF6);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex:none}
+.gl .handle{position:absolute;right:-12px;top:22px;width:24px;height:24px;border-radius:50%;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--mut);box-shadow:0 2px 6px #0000001a}
+.gl .srch{display:flex;align-items:center;gap:8px;height:38px;border-radius:11px;border:1px solid var(--border);padding:0 10px;color:var(--mut);font-size:13px;margin-bottom:6px}
+.kbd{font-size:10px;font-weight:700;border:1px solid var(--border);border-radius:5px;padding:1px 5px;color:var(--mut);background:var(--bg)}
+.gl .sec{padding:10px 8px 4px}
+.it{display:flex;align-items:center;gap:10px;height:38px;border-radius:11px;padding:0 10px;font-size:13.5px;font-weight:600;color:var(--mut);position:relative}
+.it svg{flex:none}
+.it.on{background:var(--soft);color:var(--fg)}
+.it.on>svg{color:var(--pri)}
+.it .ch{margin-left:auto;color:var(--mut)}
+.cnt{margin-left:auto;font-size:10.5px;font-weight:800;min-width:20px;height:18px;border-radius:99px;background:var(--pri);color:#fff;display:flex;align-items:center;justify-content:center;padding:0 6px}
+/* tree lines under an open group */
+.tree{position:relative;margin:2px 0 4px 26px;padding-left:14px;display:flex;flex-direction:column;gap:2px}
+.tree::before{content:'';position:absolute;left:0;top:-4px;bottom:16px;width:1.5px;background:var(--line);border-radius:2px}
+.tree .s{position:relative;height:32px;display:flex;align-items:center;padding:0 10px;border-radius:9px;font-size:13px;color:var(--mut);font-weight:600}
+.tree .s::before{content:'';position:absolute;left:-14px;top:50%;width:12px;height:12px;margin-top:-12px;border-left:1.5px solid var(--line);border-bottom:1.5px solid var(--line);border-bottom-left-radius:8px}
+.tree .s.on{background:var(--soft);color:var(--fg)}
+.tree .s.on::after{content:'';position:absolute;left:-17px;top:50%;width:7px;height:7px;margin-top:-4px;border-radius:50%;background:var(--pri);box-shadow:0 0 0 3px var(--priS)}
+.me{margin-top:auto;display:flex;align-items:center;gap:10px;padding:10px 8px 2px;border-top:1px solid var(--border)}
+.av{width:32px;height:32px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff}
+/* folded */
+.gl.fold{width:76px;align-items:center;padding:14px 10px}
+.gl.fold .it{width:46px;justify-content:center;padding:0}
+.fly{position:absolute;left:84px;width:236px;background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 18px 40px -16px #1a1a4a55;padding:10px 10px 10px 8px;z-index:3}
+.fly .t{font-size:12px;font-weight:800;padding:2px 8px 8px;display:flex;align-items:center;gap:8px}
+.fly .tree{margin-left:12px}
+.tip{position:absolute;left:84px;background:var(--fg);color:var(--bg);font-size:12px;font-weight:700;padding:6px 10px;border-radius:8px;white-space:nowrap}
+.tip::before{content:'';position:absolute;left:-4px;top:50%;margin-top:-4px;width:8px;height:8px;background:var(--fg);transform:rotate(45deg)}
+.dot{position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:#E5484D;border:2px solid var(--side)}
+/* live motion demo */
+.live .gl{animation:gw 7s cubic-bezier(.65,0,.25,1) infinite;overflow:hidden}
+@keyframes gw{0%,8%{width:76px}22%,62%{width:262px}76%,100%{width:76px}}
+.live .txt{white-space:nowrap;animation:gt 7s ease infinite}
+@keyframes gt{0%,12%{opacity:0;transform:translateX(-6px)}24%,58%{opacity:1;transform:none}66%,100%{opacity:0;transform:translateX(-6px)}}
+.live .tree{animation:gtree 7s ease infinite;transform-origin:top;overflow:hidden}
+@keyframes gtree{0%,24%{max-height:0;opacity:0}36%,58%{max-height:200px;opacity:1}68%,100%{max-height:0;opacity:0}}
+.live .pill{position:absolute;left:12px;right:12px;height:38px;border-radius:11px;background:var(--soft);animation:gp 7s cubic-bezier(.5,1.4,.5,1) infinite;z-index:0}
+@keyframes gp{0%,30%{top:var(--a)}40%,100%{top:var(--b)}}
+.live .it{z-index:1;background:transparent!important}
+.live .handle svg{animation:gh 7s ease infinite}
+@keyframes gh{0%,15%{transform:rotate(0)}22%,62%{transform:rotate(180deg)}76%,100%{transform:rotate(0)}}
+.frames{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:22px}
+.fr{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px;min-height:340px}
+.fr .r svg{flex:none}
+.fr .stub{min-height:230px}
+.fr .stub{display:flex;gap:8px;flex:1}
+.fr .bar{background:var(--side);border:1px solid var(--border);border-radius:14px;padding:10px 8px;display:flex;flex-direction:column;gap:6px;overflow:hidden}
+.fr .r{display:flex;align-items:center;gap:8px;height:28px;border-radius:8px;padding:0 7px;color:var(--mut);font-size:11.5px;font-weight:600;white-space:nowrap}
+.fr .r.on{background:var(--soft);color:var(--fg)}
+.fr p{font-size:12px;color:var(--mut);line-height:1.45}
+.fr p b{color:var(--fg)}
+.tl{display:grid;grid-template-columns:170px 1fr;gap:8px 14px;align-items:center;font-size:12px;margin-top:8px}
+.tl .tr{position:relative;height:12px;border-radius:99px;background:var(--soft)}
+.tl .tr span{position:absolute;top:0;bottom:0;border-radius:99px;background:var(--c)}
+/* Peek (hover) */
+.peek{width:68px;flex:none;background:var(--side);border:1px solid var(--border);border-radius:18px;display:flex;flex-direction:column;align-items:center;padding:12px 8px;gap:4px;position:relative}
+.peek .it{width:46px;justify-content:center;padding:0}
+.peek.open{position:absolute;left:14px;top:14px;bottom:14px;width:252px;align-items:stretch;padding:12px;z-index:4;box-shadow:24px 0 60px -20px #00000088}
+.peek.open .it{width:auto;justify-content:flex-start;padding:0 10px}
+.pinrow{margin-top:auto;display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;color:var(--mut);padding:8px 10px;border-top:1px solid var(--border)}
+.sw{margin-left:auto;width:34px;height:20px;border-radius:99px;background:var(--line);position:relative}
+.sw::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff}
+.sw.on{background:var(--pri)}.sw.on::after{left:16px}
+.dim{position:absolute;inset:14px 14px 14px 90px;border-radius:16px;background:#00000040}
+/* phone */
+.phone{width:330px;height:680px;border-radius:40px;border:9px solid #111;background:var(--bg);overflow:hidden;position:relative;flex:none}
+.pick{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.opt{border:1.5px solid var(--border);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:8px;background:var(--card)}
+.opt.on{border-color:var(--pri);box-shadow:0 0 0 3px var(--priS)}
+.sk{height:86px;border-radius:9px;background:var(--bg);border:1px solid var(--border);display:flex;gap:5px;padding:5px;overflow:hidden}
+.sk i{display:block;border-radius:4px;background:var(--line)}
+.new{font-size:9.5px;font-weight:800;color:#fff;background:var(--pri);border-radius:99px;padding:1px 6px;margin-left:6px}
+.note{font-size:12.5px;color:var(--mut);line-height:1.55;max-width:560px}
+.note b{color:var(--fg)}
+</style>
+<div class="w"><h1>Glide — the new sidebar (replaces Rail)</h1>
+  <p class="sub">A floating card, like the Dribbble shot. <b>Open:</b> sections fold out with thin tree lines to their pages, counts sit on the right, a <b>Pinned</b> area holds your own shortcuts. <b>Folded:</b> one icon per section — hover shows its name, click pops its pages out in a small card with the same tree lines. The round handle on the edge folds / unfolds it (also <span class="kbd">Ctrl</span> <span class="kbd">\</span>).</p>
+  <div class="row">
+    <div class="cap" style="flex:1.25"><b>OPEN · “TIME” SECTION OPEN, ON “MY LEAVE”</b><div class="frame"><div class="gl">
+    <div class="brand"><span class="logo">AP</span><span class="txt" style="line-height:1.2"><b style="font-size:14px">aakash-portal</b><br><span style="font-size:11px;color:var(--mut)">People first</span></span></div>
+    <span class="handle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="m15 18-6-6 6-6"/></svg></span>
+    <div class="srch"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><span class="txt">Search menu</span><span class="kbd" style="margin-left:auto">Ctrl K</span></div>
+    <div class="sec lbl txt">Main</div><div class="it"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg><span class="txt">Overview</span><span class="ch"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="m9 18 6-6-6-6"/></svg></span></div><div class="it"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg><span class="txt">Organization</span><span class="ch"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="m9 18 6-6-6-6"/></svg></span></div><div class="it"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg><span class="txt">Engagement</span><span class="cnt">1</span></div><div class="it"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9l-.8-1.2A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/></svg><span class="txt">Work</span><span class="ch"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="m9 18 6-6-6-6"/></svg></span></div><div class="sec lbl txt">More</div><div class="it"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"/><path d="M8 7h8M8 11h8M8 15h5"/></svg><span class="txt">Expenses</span><span class="cnt">2</span></div><div class="it"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M21 8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg><span class="txt">Assets</span><span class="ch"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="m9 18 6-6-6-6"/></svg></span></div><div class="it"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><path d="m4.9 4.9 4.3 4.3M14.8 14.8l4.3 4.3M14.8 9.2l4.3-4.3M4.9 19.1l4.3-4.3"/></svg><span class="txt">Helpdesk</span><span class="cnt">7</span></div><div class="it on"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><span class="txt">Time</span><span class="ch"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="m6 9 6 6 6-6"/></svg></span></div><div class="tree"><div class="s"><span>My attendance</span></div><div class="s on"><span>My leave</span></div><div class="s"><span>Leave approvals</span><span class="cnt" style="margin-left:auto">3</span></div><div class="s"><span>Who’s off</span></div><div class="s"><span>Holidays</span></div></div><div class="it"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M20 13c0 5-3.5 7.5-7.7 9a1 1 0 0 1-.7 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.2-2.7a1.2 1.2 0 0 1 1.6 0C14.5 3.8 17 5 19 5a1 1 0 0 1 1 1z"/></svg><span class="txt">Administration</span><span class="ch"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="m9 18 6-6-6-6"/></svg></span></div><div class="sec lbl txt">Pinned</div><div class="it"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg><span class="txt">Who’s off</span></div><div class="me"><span class="av" style="background:#E0577A">BP</span><span class="txt" style="line-height:1.2;flex:1;min-width:0"><b style="font-size:13px">Bhanu Prakash</b><br><span style="font-size:11px;color:var(--mut)">HR Manager</span></span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="m6 9 6 6 6-6"/></svg></div></div><div class="page"><div class="top">Home <span style="opacity:.5">›</span> <b style="color:var(--fg)">My leave</b><span style="margin-left:auto;display:flex;gap:10px"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg></span></div>
+  <div class="ph" style="height:96px;padding:18px 20px"><div class="lbl">Time</div><div style="font-size:22px;font-weight:800;margin-top:6px">My leave</div></div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px"><div class="ph" style="height:96px"></div><div class="ph" style="height:96px"></div><div class="ph" style="height:96px"></div><div class="ph" style="height:96px"></div></div>
+  <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:12px;flex:1"><div class="ph"></div><div class="ph"></div></div></div></div></div>
+    <div class="cap" style="flex:1"><b>FOLDED · “TIME” PAGES POPPED OUT · TOOLTIP ON HOVER</b><div class="frame"><div class="gl fold">
+    <div class="brand"><span class="logo">AP</span></div>
+    <span class="handle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="m9 18 6-6-6-6"/></svg></span>
+    <div class="it"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></div>
+    <div style="height:1px;width:28px;background:var(--border);margin:8px 0"></div><div class="it" style="position:relative"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></div><div class="it" style="position:relative"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg></div><div class="it" style="position:relative"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg><span class="dot"></span></div><div class="it" style="position:relative"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9l-.8-1.2A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/></svg></div><div style="height:1px;width:28px;background:var(--border);margin:8px 0"></div><div class="it" style="position:relative"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"/><path d="M8 7h8M8 11h8M8 15h5"/></svg><span class="dot"></span></div><div class="it" style="position:relative"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M21 8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg></div><div class="it" style="position:relative"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><path d="m4.9 4.9 4.3 4.3M14.8 14.8l4.3 4.3M14.8 9.2l4.3-4.3M4.9 19.1l4.3-4.3"/></svg><span class="dot"></span></div><div class="it on" style="position:relative"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><span class="dot"></span></div><div class="it" style="position:relative"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M20 13c0 5-3.5 7.5-7.7 9a1 1 0 0 1-.7 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.2-2.7a1.2 1.2 0 0 1 1.6 0C14.5 3.8 17 5 19 5a1 1 0 0 1 1 1z"/></svg></div><div class="me"><span class="av" style="background:#E0577A">BP</span></div></div>
+      <div class="fly" style="top:458px"><div class="t"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Time</div><div class="tree"><div class="s"><span>My attendance</span></div><div class="s on"><span>My leave</span></div><div class="s"><span>Leave approvals</span><span class="cnt" style="margin-left:auto">3</span></div><div class="s"><span>Who’s off</span></div><div class="s"><span>Holidays</span></div></div></div>
+      <div class="tip" style="top:333px">Expenses · 2 waiting</div>
+      <div class="page"><div class="top">Home <span style="opacity:.5">›</span> <b style="color:var(--fg)">My leave</b><span style="margin-left:auto;display:flex;gap:10px"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg></span></div>
+  <div class="ph" style="height:96px;padding:18px 20px"><div class="lbl">Time</div><div style="font-size:22px;font-weight:800;margin-top:6px">My leave</div></div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px"><div class="ph" style="height:96px"></div><div class="ph" style="height:96px"></div><div class="ph" style="height:96px"></div><div class="ph" style="height:96px"></div></div>
+  <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:12px;flex:1"><div class="ph"></div><div class="ph"></div></div></div></div></div>
+  </div></div></x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1060}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

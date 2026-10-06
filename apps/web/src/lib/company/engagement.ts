@@ -214,6 +214,10 @@ export interface AnnouncementsQuery {
   limit?: number;
 }
 
+/** The latest few (sidebar badge + Home card share this one request). */
+// Home card (moving list), nav badge and "needs action" share one request
+export const HOME_ANNOUNCEMENTS: AnnouncementsQuery = { limit: 8 };
+
 export function useAnnouncements(q: AnnouncementsQuery, enabled = true) {
   const { hasFeature, can } = useAccess();
   return useQuery({

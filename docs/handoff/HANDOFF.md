@@ -89,8 +89,16 @@ Tests: `assets.e2e.js` 46/46, `assets-plus.e2e.js` 64/64, **full suite all green
 
 ## 5. What's next
 
-The user goes module by module through the sidebar. Done in this cycle: Projects, Timesheets, Expenses, Assets.
+**Open right now: ambient page backgrounds** — see `memory/ambient-backgrounds.md`.
+- ✅ BUILT but **NOT COMMITTED** (in the working tree): the 13 "Signature" background moods in the app, Preferences → *Page backgrounds* card (style + Lively/Calm/Off), Settings → Theme company defaults, API fields + migration `20261021100000_page_backdrops` (already applied to the dev DB). Web type-check/lint + API unit tests pass; full e2e not yet re-run. Checked in the browser in dark mode on Home, People, Leave, Projects, Expenses, Assets, Helpdesk, Reports; light mode only partly.
+- Files: `apps/web/src/components/motion/page-backdrop.tsx`, `apps/web/src/app/backdrops.css`, `apps/web/src/lib/preferences/backdrop.ts` (route → mood), layouts `(app)/layout.tsx` + `(super-admin)/layout.tsx` (root div `isolate` + `<PageBackdrop/>`; backdrop sits at z-index -1), `components/auth/auth-shells.tsx` (sign-in hero), `components/preferences/personal-look.tsx` (`BackdropCard`), `components/theme/employee-choices.tsx` (admin defaults), API `users`/`companies` prefs + `themes/personalization.ts`, `packages/types/src/theme.ts`.
+- ⏭ NEXT: user wants **2 new background packs** (pick one in Preferences → every section gets a completely new mood). Proposed from web research: **Terra** (nature: time-of-day sky, topographic contour lines, fireflies, lighthouse, petals, mountain ridges, northern lights) and **Prism** (geometry: Linear-style light beams, grids, Bauhaus circles, radar sweep, equaliser bars). Design them as canvas rows first (like build-backgrounds.js), get approval, then build.
+- To finish first: run `pnpm --filter @hrms/api test:e2e`, check light mode, then commit + merge to main when the user asks.
+
+The user goes module by module through the sidebar. Done in this cycle: Projects, Timesheets, Expenses, Assets, Ambient backgrounds.
 **Most likely next request: "Helpdesk" enhancements** (Plan B order was Announcements → Expenses → Assets → Helpdesk), then others the user names (Attendance, Leave, People, Reports…).
+**Planned (user asked 2026-10-07): full API + access audit** — see `memory/api-access-audit.md`. Sign in as employee, manager and admin and record every call each makes (no call outside the role); check every route without `@RequirePermission` only returns the caller's own data; find list queries with no limit/pagination that can grow; check naming/REST consistency and over-fetching (e.g. `/reports/people` one big bundle). First leak already fixed: the 5 pending-count calls now go only to approvers (`useMayApprove` in `apps/web/src/lib/company/projects.ts`).
+
 Bigger roadmap (from `memory/next-session-plan.md` + `memory/ui-roadmap-phases.md`): UI phase 2 (enhance every module's UI, then 2–3 whole-UI themes), phase 3 fonts, step 8 "getting ready for real users". Parked: Payroll, Redis, 2FA, Super Admin "What's new" + Support inbox.
 
 ---
@@ -113,7 +121,7 @@ Artifacts on claude.ai belong to the account that made them; a different Claude 
    Edit access lets the new profile keep updating the same canvas.
 3. Download/export from the artifact page if you want a personal copy.
 
-Canvas rows so far: dashboards/home, motion, atmosphere, Super Admin (companies, plans, system, profile), Company · Announcements, Kudos, People, Employees, Organisation, Projects, Reports, Timesheets, Expenses, Assets.
+Canvas rows so far: dashboards/home, motion, atmosphere, Super Admin (companies, plans, system, profile), Company · Announcements, Kudos, People, Employees, Organisation, Projects, Reports, Timesheets, Expenses, Assets, Ambient backgrounds.
 
 ---
 

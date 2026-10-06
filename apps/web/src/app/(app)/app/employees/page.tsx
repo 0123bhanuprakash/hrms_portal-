@@ -45,11 +45,12 @@ import { AddEmployeeWizard } from '@/components/employees/add-employee-wizard';
 import { EmployeeBoard } from '@/components/employees/employee-board';
 import { ChecklistDrawer, LifecycleDialog, ProfileMeter, StagePill, type LifecycleAction, type LifecycleTarget } from '@/components/employees/lifecycle-ui';
 import { useAccess, SCOPE_LABELS } from '@/lib/access/use-access';
-import { useDepartments, useEmployees, useLocations, useOrgChart, type Employee, type EmployeesQuery, type EmployeeStage } from '@/lib/company/org';
+import { useDepartments, useEmployees, useLocations, type Employee, type EmployeesQuery, type EmployeeStage, usePeoplePicker } from '@/lib/company/org';
 import { downloadEmployeesCsv, exitReasonLabel, tenure, useBulkEmployees, useLifecycleSummary, type AttentionItem } from '@/lib/company/lifecycle';
 import { useUiState } from '@/lib/preferences/ui-state';
 import { getApiErrorMessage } from '@/lib/errors';
 import { cn } from '@/lib/cn';
+import { Select } from '@/components/ui/pickers';
 
 type View = 'table' | 'board';
 const isView = (v: unknown): v is View => v === 'table' || v === 'board';
@@ -130,7 +131,7 @@ function EmployeesContent() {
   const summary = useLifecycleSummary(!ownOnly && !accessLoading && can('employee.view'));
   const departments = useDepartments();
   const locations = useLocations();
-  const chart = useOrgChart();
+  const chart = usePeoplePicker();
   const managers = useMemo(() => (chart.data?.employees ?? []).filter((e) => e.directReports > 0).sort((a, b) => a.firstName.localeCompare(b.firstName)), [chart.data]);
 
   if (!accessLoading && !can('employee.view')) {
@@ -254,14 +255,14 @@ function EmployeesContent() {
                 <FilterSelect icon={<MapPin />} label="Location" value={f.locationId} onChange={(v) => setF({ ...f, locationId: v })} options={(locations.data ?? []).map((l) => [l.id, l.name])} />
                 <FilterSelect label="Type" value={f.employmentType} onChange={(v) => setF({ ...f, employmentType: v })} options={TYPES.map(([v, l]) => [v, l])} />
                 <FilterSelect icon={<Users />} label="Manager" value={f.managerId} onChange={(v) => setF({ ...f, managerId: v })} options={[['none', 'No manager'], ...managers.map((m) => [m.id, `${m.firstName} ${m.lastName}`] as [string, string])]} />
-                <select value={f.sort} onChange={(e) => setF({ ...f, sort: e.target.value as Filters['sort'] })} className={cn(inputClass, 'h-9 w-auto text-xs')} aria-label="Sort">
+                <Select value={f.sort} onChange={(e) => setF({ ...f, sort: e.target.value as Filters['sort'] })} className={cn(inputClass, 'h-9 w-auto text-xs')} aria-label="Sort">
                   <option value="recent">Recently added</option>
                   <option value="name">Name A–Z</option>
                   <option value="joined_desc">Newest joiners</option>
                   <option value="joined">Longest serving</option>
                   <option value="probation">Probation ends</option>
                   {seesExits && <option value="last_day">Last day</option>}
-                </select>
+                </Select>
                 {filtered && (
                   <Button variant="ghost" size="sm" onClick={() => setF({ ...NO_FILTERS })}><X /> Clear</Button>
                 )}
@@ -487,15 +488,15 @@ function AttentionCard({ items, onAct, canEditOthers }: { items: AttentionItem[]
 
 function FilterSelect({ label, value, onChange, options, icon }: { label: string; value: string; onChange: (v: string) => void; options: Array<[string, string]>; icon?: React.ReactNode }) {
   return (
-    <label className={cn('relative inline-flex h-9 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-colors [&_svg]:size-3.5', value ? 'border-primary bg-primary-soft text-primary-soft-foreground' : 'border-border bg-surface text-muted-foreground hover:text-foreground')}>
+    <div className={cn('relative inline-flex h-9 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-colors [&_svg]:size-3.5', value ? 'border-primary bg-primary-soft text-primary-soft-foreground' : 'border-border bg-surface text-muted-foreground hover:text-foreground')}>
       {icon}
       <span className="max-w-[9rem] truncate">{value ? options.find((o) => o[0] === value)?.[1] ?? label : label}</span>
       <span aria-hidden>▾</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0" aria-label={label}>
+      <Select value={value} onChange={(e) => onChange(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0" aria-label={label}>
         <option value="">Any {label.toLowerCase()}</option>
         {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-      </select>
-    </label>
+      </Select>
+    </div>
   );
 }
 
@@ -581,10 +582,10 @@ function BulkDialog({ action, ids, onClose, onDone, managers, departments, locat
       }
     >
       <Field label={meta.label} htmlFor="bulk-value">
-        <select id="bulk-value" className={inputClass} value={value} onChange={(e) => setValue(e.target.value)}>
+        <Select id="bulk-value" className={inputClass} value={value} onChange={(e) => setValue(e.target.value)}>
           <option value="">{meta.none}</option>
           {meta.options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-        </select>
+        </Select>
       </Field>
     </Modal>
   );

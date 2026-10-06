@@ -6,7 +6,7 @@ import { CalendarDays, Clock, LogIn, LogOut, PartyPopper } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, Skeleton } from '@/components/ui/feedback';
-import { STATUS_META, clock, hours, useToday } from '@/lib/company/attendance';
+import { STATUS_META, clock, hours, useToday, lateBy } from '@/lib/company/attendance';
 import { DayTimeline, SessionList, isWorking, liveWorked, useCheckActions } from '@/components/attendance/sessions';
 
 /** Live clock + one-tap check in / out for today. */
@@ -53,7 +53,7 @@ export function CheckInCard({ showCalendarLink = true }: { showCalendarLink?: bo
             {r?.checkIn && <span>First in {clock(r.checkIn, tz)}</span>}
             {r?.checkOut && !working && <span>· Out {clock(r.checkOut, tz)}</span>}
             {(r?.sessions ?? 0) > 1 && <span>· {r!.sessions} sessions</span>}
-            {(r?.lateMinutes ?? 0) > 0 && <Badge tone="warning">Late by {r!.lateMinutes} min</Badge>}
+            {(r?.lateMinutes ?? 0) > 0 && <Badge tone="warning">Late by {lateBy(r!.lateMinutes)}</Badge>}
           </div>
         </div>
         <div className="flex shrink-0 flex-col items-stretch gap-2 sm:items-end">

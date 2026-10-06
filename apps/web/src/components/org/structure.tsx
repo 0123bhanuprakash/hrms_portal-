@@ -33,6 +33,7 @@ import {
 } from '@/lib/company/org';
 import { getApiErrorMessage } from '@/lib/errors';
 import { cn } from '@/lib/cn';
+import { PersonSelect, Select } from '@/components/ui/pickers';
 
 const fail = (fallback: string) => (e: unknown) => toast.error(getApiErrorMessage(e, fallback));
 
@@ -193,16 +194,13 @@ function DepartmentDialog({
           </Field>
         </div>
         <Field label="Parent department" htmlFor="d-parent" hint="Leave empty for a top-level department.">
-          <select id="d-parent" className={inputClass} value={form.parentDepartmentId} onChange={(e) => setForm({ ...form, parentDepartmentId: e.target.value })}>
+          <Select id="d-parent" className={inputClass} value={form.parentDepartmentId} onChange={(e) => setForm({ ...form, parentDepartmentId: e.target.value })}>
             <option value="">— None (top level)</option>
             {departments.filter((d) => d.id !== value.id).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-          </select>
+          </Select>
         </Field>
         <Field label="Department head" htmlFor="d-head">
-          <select id="d-head" className={inputClass} value={form.headEmployeeId} onChange={(e) => setForm({ ...form, headEmployeeId: e.target.value })}>
-            <option value="">— Not set</option>
-            {people.map((p) => <option key={p.id} value={p.id}>{p.firstName} {p.lastName}</option>)}
-          </select>
+          <PersonSelect id="d-head" value={form.headEmployeeId} onChange={(v) => setForm({ ...form, headEmployeeId: v })} emptyLabel="— Not set" people={people} />
         </Field>
       </form>
     </Modal>
@@ -403,10 +401,10 @@ function TitleDialog({ value, levels, onClose }: { value: Partial<Designation> |
           <Input id="t-name" value={name} onChange={(e) => setName(e.target.value)} required autoFocus placeholder="e.g. Engineering Lead" />
         </Field>
         <Field label="Level" htmlFor="t-level" hint={levels.length ? undefined : 'Create org levels first to place titles at a level.'}>
-          <select id="t-level" className={inputClass} value={levelId} onChange={(e) => setLevelId(e.target.value)}>
+          <Select id="t-level" className={inputClass} value={levelId} onChange={(e) => setLevelId(e.target.value)}>
             <option value="">— No level</option>
             {levels.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-          </select>
+          </Select>
         </Field>
       </form>
     </Modal>

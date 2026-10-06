@@ -36,7 +36,7 @@ export function Spark({ values, className, width = 64, height = 22 }: { values: 
   const pts = values.map((v, i) => `${((i * width) / Math.max(1, values.length - 1)).toFixed(1)},${(height - 2 - (v / max) * (height - 4)).toFixed(1)}`).join(' ');
   return (
     <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className={cn('shrink-0', className)} aria-hidden>
-      <polyline points={pts} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="m-line" style={{ ['--m-len' as string]: 200 }} />
+      <polyline points={pts} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="m-line" />
     </svg>
   );
 }

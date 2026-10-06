@@ -3,6 +3,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/useAuthStore';
+import { isLive } from '@/lib/live/socket';
 
 // ============================================================
 // The signed-in user's notification inbox.
@@ -29,14 +30,14 @@ export const notificationKeys = {
   list: (q: object) => ['notifications', 'list', q] as const,
 };
 
-/** Unread count for the bell; polls every minute and on window focus. */
+/** Unread count for the bell: pushed live; polls every minute only while the live connection is down. */
 export function useUnreadCount() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   return useQuery({
     queryKey: notificationKeys.unread,
     queryFn: async () => ((await api.get('/notifications/unread-count')).data.data as { count: number }).count,
     enabled: isAuthenticated,
-    refetchInterval: 60_000,
+    refetchInterval: () => (isLive() ? false : 60_000),
     refetchOnWindowFocus: true,
   });
 }

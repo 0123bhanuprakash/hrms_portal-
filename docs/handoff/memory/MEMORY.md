@@ -11,3 +11,13 @@
 - [Timesheet decisions](timesheet-decisions.md) — time ranges only, no overlaps, project lead approves, submit any unsent days
 - [Expense decisions](expense-decisions.md) — HR approves every claim, over-limit with reason, payments only upcoming
 - [Asset decisions](asset-decisions.md) — QR later, yearly check, temporary loans, manager approves + requests for team
+- [Ambient backgrounds](ambient-backgrounds.md) — Signature backgrounds BUILT (uncommitted); Signature, Terra, Prism + Simple all BUILT (uncommitted)
+- [Design canvas link](design-canvas-link.md) — new canvas artifact URL, republish steps, hrms-designer agent
+- [Helpdesk design](helpdesk-design.md) — 13 CAHelp* boards; answers: DevOps team, heads assign, WebSocket live, priority targets
+- [Emoji animations](emoji-animations.md) — BUILT 2026-10-06 (uncommitted): <Emoji> + emoji-motion.css, wired app-wide
+- [Live updates](live-updates.md) — WebSocket (Socket.IO) BUILT 2026-10-05, uncommitted; rooms, events, next steps
+- [Time module design](time-module-design.md) — Time module BUILT 2026-10-06 (uncommitted) — see note
+- [Everyone is an employee](everyone-is-employee.md) — admin = employee #1 automatically; invited users get profiles; self-create button
+- [Admin + forms design](admin-forms-design.md) — Administration + popup-form kit BUILT 2026-10-06 (uncommitted)
+- [Settings design](settings-design.md) — Settings round + seasonal themes BUILT 2026-10-06 (uncommitted)
+- [Perf findings](perf-findings.md) — fixes 1–5 DONE (turbo dev, light pending count, deduped calls, /org/people, quicker motion)

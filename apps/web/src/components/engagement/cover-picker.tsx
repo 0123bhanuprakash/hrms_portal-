@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
+import { Emoji } from '@/components/motion/emoji';
 import { toast } from 'sonner';
 import { Box, Film, ImageIcon, Move, Palette, Sparkles, Trash2, Upload, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -134,7 +135,7 @@ export function CoverPicker({
           <div className="flex flex-wrap items-center gap-1">
             <span className="mr-1 text-xs text-muted-foreground">Or an emoji instead of 3D art:</span>
             {EMOJIS.map((e) => (
-              <button key={e} type="button" aria-pressed={value.coverEmoji === e && !value.coverArt} onClick={() => onChange({ coverEmoji: e, coverArt: null })} className={cn('flex h-8 w-8 items-center justify-center rounded-lg text-lg', value.coverEmoji === e && !value.coverArt ? 'bg-primary-soft ring-1 ring-primary/40' : 'hover:bg-subtle')}>{e}</button>
+              <button key={e} type="button" aria-pressed={value.coverEmoji === e && !value.coverArt} onClick={() => onChange({ coverEmoji: e, coverArt: null })} className={cn('emo-host flex h-8 w-8 items-center justify-center rounded-lg text-lg', value.coverEmoji === e && !value.coverArt ? 'bg-primary-soft ring-1 ring-primary/40' : 'hover:bg-subtle')}><Emoji e={e} /></button>
             ))}
           </div>
         </div>

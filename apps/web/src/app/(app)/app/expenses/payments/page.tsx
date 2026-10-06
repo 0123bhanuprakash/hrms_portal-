@@ -7,13 +7,14 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, EmptyState, Skeleton, Tabs } from '@/components/ui/feedback';
-import { Input } from '@/components/ui/field';
+
 import { StatCard } from '@/components/ui/stat-card';
 import { ClaimList } from '@/components/expenses/claim-list';
 import { PayDialog } from '@/components/expenses/claim-dialogs';
 import { useAccess } from '@/lib/access/use-access';
 import { downloadExpensesCsv, money, useClaims, useExpenseReport, type Claim } from '@/lib/company/expenses';
 import { getApiErrorMessage } from '@/lib/errors';
+import { DateInput } from '@/components/ui/pickers';
 
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
@@ -104,8 +105,8 @@ function Report() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-2">
-        <label className="text-xs text-muted-foreground">From<Input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} className="mt-1 w-40" /></label>
-        <label className="text-xs text-muted-foreground">To<Input type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} className="mt-1 w-40" /></label>
+        <label className="text-xs text-muted-foreground">From<DateInput value={from} max={to} onChange={(e) => setFrom(e.target.value)} className="mt-1 w-40" /></label>
+        <label className="text-xs text-muted-foreground">To<DateInput value={to} min={from} onChange={(e) => setTo(e.target.value)} className="mt-1 w-40" /></label>
         <Button
           variant="secondary"
           className="ml-auto"

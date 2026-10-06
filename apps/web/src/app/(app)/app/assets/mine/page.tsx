@@ -1,5 +1,6 @@
 'use client';
 
+import { NoProfile } from '@/components/profile/no-profile';
 import React, { useCallback, useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -48,7 +49,7 @@ export default function MyAssetsPage() {
   const doneUnbox = useCallback(() => setUnbox(null), []);
 
   if (!accessLoading && !allowed) return <EmptyState icon={<ShieldCheck />} title="Assets aren’t available" />;
-  if (me.isSuccess && !me.data?.employee) return <EmptyState icon={<UserRound />} title="No employee profile" description="Assets are handed to employees." />;
+  if (me.isSuccess && !me.data?.employee) return <NoProfile what="Assets are handed to employees." />;
 
   const confirm = async (a: HeldAsset) => {
     try {
@@ -183,7 +184,7 @@ function ReturnAskDialog({ held, onClose }: { held: HeldAsset | null; onClose: (
       icon={<RotateCcw />}
       title={`Return ${held.asset.tag}`}
       description="IT is told you want to hand it back and will arrange a time. It stays with you until they take it."
-      className="sm:max-w-md"
+      size="sm"
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>

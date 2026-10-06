@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Check, IndianRupee, Paperclip, Receipt, Wallet, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Field, Input, Textarea, inputClass } from '@/components/ui/field';
+import { Field, Input, Textarea, inputClass, FormError } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import {
   STAGE_LABEL,
@@ -19,6 +19,7 @@ import {
   type ExpenseItem,
 } from '@/lib/company/expenses';
 import { getApiErrorMessage } from '@/lib/errors';
+import { DateInput, Select } from '@/components/ui/pickers';
 
 const todayKey = () => {
   const d = new Date();
@@ -88,7 +89,7 @@ export function ItemDialog({ claimId, value, onClose, file, note }: { claimId: s
       icon={<Receipt />}
       title={editing ? 'Edit item' : 'Add an expense'}
       description={note}
-      className="sm:max-w-lg"
+      size="md"
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={save.isPending}>Cancel</Button>
@@ -97,14 +98,14 @@ export function ItemDialog({ claimId, value, onClose, file, note }: { claimId: s
       }
     >
       <form id="item-form" onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
-        {error && <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive sm:col-span-2">{error}</p>}
+        <FormError className="sm:col-span-2">{error}</FormError>
         <Field label="Category" htmlFor="it-cat" required hint={[cat?.maxPerItemPaise ? `up to ${money(cat.maxPerItemPaise)} per item` : null, limit ? `${money(Math.max(0, limit.capPaise - usedBefore))} left this month` : null].filter(Boolean).join(' · ') || cat?.description || undefined}>
-          <select id="it-cat" className={inputClass} value={f.categoryId} onChange={(e) => setF({ ...f, categoryId: e.target.value })} required>
+          <Select id="it-cat" className={inputClass} value={f.categoryId} onChange={(e) => setF({ ...f, categoryId: e.target.value })} required>
             {cats.data?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          </Select>
         </Field>
         <Field label="Date" htmlFor="it-date" required>
-          <Input id="it-date" type="date" value={f.date} max={todayKey()} onChange={(e) => setF({ ...f, date: e.target.value })} required />
+          <DateInput id="it-date" value={f.date} max={todayKey()} onChange={(e) => setF({ ...f, date: e.target.value })} required />
         </Field>
         <Field label="What was it for" htmlFor="it-desc" required className="sm:col-span-2">
           <Input id="it-desc" value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} required minLength={2} maxLength={300} placeholder="e.g. Cab from airport to client office" />
@@ -200,7 +201,7 @@ export function ApproveDialog({ claim, onClose }: { claim: Claim | null; onClose
       icon={<Check />}
       title={`Approve as ${STAGE_LABEL[claim.decideStage ?? 'MANAGER']}`}
       description={`${claim.employee.firstName} ${claim.employee.lastName} · ${claim.title}`}
-      className="sm:max-w-2xl"
+      size="lg"
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={approve.isPending}>Cancel</Button>
@@ -295,7 +296,7 @@ export function RejectDialog({ claim, onClose }: { claim: Claim | null; onClose:
       icon={<X />}
       title="Send this claim back?"
       description="The employee can fix it and submit again."
-      className="sm:max-w-md"
+      size="sm"
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={reject.isPending}>Cancel</Button>
@@ -342,7 +343,7 @@ export function PayDialog({ claim, onClose }: { claim: Claim | null; onClose: ()
       icon={<Wallet />}
       title={`Mark ${money(claim.totals.approvedPaise)} paid`}
       description={`${claim.employee.firstName} ${claim.employee.lastName} · ${claim.title}`}
-      className="sm:max-w-md"
+      size="sm"
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={pay.isPending}>Cancel</Button>
@@ -365,7 +366,7 @@ export function PayDialog({ claim, onClose }: { claim: Claim | null; onClose: ()
       }
     >
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Paid on" htmlFor="pay-date" required><Input id="pay-date" type="date" value={date} max={todayKey()} onChange={(e) => setDate(e.target.value)} /></Field>
+        <Field label="Paid on" htmlFor="pay-date" required><DateInput id="pay-date" value={date} max={todayKey()} onChange={(e) => setDate(e.target.value)} /></Field>
         <Field label="Payment reference" htmlFor="pay-ref" required hint="e.g. UTR / transaction ID"><Input id="pay-ref" value={ref} onChange={(e) => setRef(e.target.value)} maxLength={100} /></Field>
       </div>
     </Modal>

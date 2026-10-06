@@ -4,11 +4,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { AlertTriangle, CheckCircle2, Loader2, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Field, Input, inputClass } from '@/components/ui/field';
+import { Field, Input, inputClass, FormError } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
-import { useOrgChart } from '@/lib/company/org';
+import { usePeoplePicker } from '@/lib/company/org';
 import { ROLE_LABEL, useCapacity, useSaveMember, type Assignment, type ProjectDetail, type ProjectRole } from '@/lib/company/projects';
 import { getApiErrorMessage } from '@/lib/errors';
+import { DateInput, PersonSelect, Select } from '@/components/ui/pickers';
 
 interface Form {
   employeeId: string;
@@ -24,7 +25,7 @@ interface Form {
 /** Assign someone (or edit an assignment): role, team lead, allocation % with live free capacity. */
 export function MemberDialog({ project, value, onClose, preset }: { project: ProjectDetail; value: Assignment | 'new' | null; onClose: () => void; preset?: { employeeId: string; allocation?: number; startDate?: string } }) {
   const save = useSaveMember(project.id);
-  const chart = useOrgChart();
+  const chart = usePeoplePicker();
   const [f, setF] = useState<Form>({ employeeId: '', role: 'MEMBER', leadEmployeeId: '', allocation: 100, nightShift: false, billed: true, startDate: project.startDate, endDate: project.endDate ?? '' });
   const client = (project as ProjectDetail & { type?: string }).type === 'CLIENT';
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +52,7 @@ export function MemberDialog({ project, value, onClose, preset }: { project: Pro
     [project.members, f.employeeId],
   );
   const people = useMemo(
-    () => (chart.data?.employees ?? []).filter((e) => e.employmentStatus !== 'TERMINATED').sort((a, b) => a.firstName.localeCompare(b.firstName)),
+    () => [...(chart.data?.employees ?? [])].sort((a, b) => a.firstName.localeCompare(b.firstName)),
     [chart.data],
   );
 
@@ -90,7 +91,7 @@ export function MemberDialog({ project, value, onClose, preset }: { project: Pro
       busy={save.isPending}
       icon={<UserPlus />}
       title={editing ? `Edit ${editing.employee.firstName}’s assignment` : `Assign someone to ${project.name}`}
-      className="sm:max-w-lg"
+      size="md"
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={save.isPending}>Cancel</Button>
@@ -99,31 +100,23 @@ export function MemberDialog({ project, value, onClose, preset }: { project: Pro
       }
     >
       <form id="member-form" onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
-        {error && <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive sm:col-span-2">{error}</p>}
+        <FormError className="sm:col-span-2">{error}</FormError>
         <Field label="Person" htmlFor="pm-person" required className="sm:col-span-2">
-          <select id="pm-person" className={inputClass} value={f.employeeId} onChange={(e) => set('employeeId', e.target.value)} disabled={Boolean(editing)} required>
-            <option value="">Choose someone…</option>
-            {people.map((p) => (
-              <option key={p.id} value={p.id}>{p.firstName} {p.lastName}{p.designation ? ` — ${p.designation.name}` : ''}</option>
-            ))}
-          </select>
+          <PersonSelect id="pm-person" value={f.employeeId} onChange={(v) => set('employeeId', v)} disabled={Boolean(editing)} placeholder="Choose someone" people={people.map((p) => ({ ...p, sub: p.designation?.name ?? null }))} />
         </Field>
         <Field label="Role on the project" htmlFor="pm-role">
-          <select id="pm-role" className={inputClass} value={f.role} onChange={(e) => set('role', e.target.value as ProjectRole)}>
+          <Select id="pm-role" className={inputClass} value={f.role} onChange={(e) => set('role', e.target.value as ProjectRole)}>
             <option value="MEMBER">Member</option>
             <option value="TEAM_LEAD">Team lead</option>
             <option value="MANAGER">Project manager</option>
-          </select>
+          </Select>
         </Field>
         <Field label="Team lead" htmlFor="pm-lead" hint={f.role === 'MEMBER' ? 'Approves their leave first' : 'Only members have a team lead'}>
-          <select id="pm-lead" className={inputClass} value={f.role === 'MEMBER' ? f.leadEmployeeId : ''} onChange={(e) => set('leadEmployeeId', e.target.value)} disabled={f.role !== 'MEMBER'}>
-            <option value="">None — goes to the PM</option>
-            {leads.map((l) => <option key={l.id} value={l.employee.id}>{l.employee.firstName} {l.employee.lastName}</option>)}
-          </select>
+          <PersonSelect id="pm-lead" value={f.role === 'MEMBER' ? f.leadEmployeeId : ''} onChange={(v) => set('leadEmployeeId', v)} disabled={f.role !== 'MEMBER'} emptyLabel="None — goes to the PM" people={leads.map((l) => l.employee)} />
         </Field>
-        <Field label="From" htmlFor="pm-start" required><Input id="pm-start" type="date" value={f.startDate} min={project.startDate} max={project.endDate ?? undefined} onChange={(e) => set('startDate', e.target.value)} required /></Field>
+        <Field label="From" htmlFor="pm-start" required><DateInput id="pm-start" value={f.startDate} min={project.startDate} max={project.endDate ?? undefined} onChange={(e) => set('startDate', e.target.value)} required /></Field>
         <Field label="Until" htmlFor="pm-end" hint={project.endDate ? undefined : 'Blank = ongoing'}>
-          <Input id="pm-end" type="date" value={f.endDate} min={f.startDate} max={project.endDate ?? undefined} onChange={(e) => set('endDate', e.target.value)} />
+          <DateInput id="pm-end" value={f.endDate} min={f.startDate} max={project.endDate ?? undefined} onChange={(e) => set('endDate', e.target.value)} />
         </Field>
         <Field label="Allocation" htmlFor="pm-alloc" required className="sm:col-span-2">
           <div className="flex items-center gap-3">

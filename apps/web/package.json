@@ -4,7 +4,7 @@
   "private": true,
   "description": "HRMS Portal — Next.js Frontend App",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbo",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -38,6 +38,7 @@
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.54.1",
     "recharts": "^2.15.4",
+    "socket.io-client": "^4.8.4",
     "sonner": "^1.7.1",
     "tailwind-merge": "^2.5.5",
     "zod": "^3.24.2",

@@ -11,28 +11,50 @@
   from { opacity: 0; transform: translateY(14px) scale(0.985); }
   to { opacity: 1; transform: none; }
 }
-.m-stagger > * { animation: m-rise 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-.m-stagger > *:nth-child(2) { animation-delay: 60ms; }
-.m-stagger > *:nth-child(3) { animation-delay: 120ms; }
-.m-stagger > *:nth-child(4) { animation-delay: 180ms; }
-.m-stagger > *:nth-child(5) { animation-delay: 240ms; }
-.m-stagger > *:nth-child(6) { animation-delay: 300ms; }
-.m-stagger > *:nth-child(n + 7) { animation-delay: 340ms; }
-.m-rise { animation: m-rise 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+/* Quick on purpose: every page switch plays this, so the last card is in place by ~0.5 s */
+.m-stagger > * { animation: m-rise 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.m-stagger > *:nth-child(2) { animation-delay: 30ms; }
+.m-stagger > *:nth-child(3) { animation-delay: 60ms; }
+.m-stagger > *:nth-child(4) { animation-delay: 90ms; }
+.m-stagger > *:nth-child(5) { animation-delay: 120ms; }
+.m-stagger > *:nth-child(6) { animation-delay: 150ms; }
+.m-stagger > *:nth-child(n + 7) { animation-delay: 170ms; }
+.m-rise { animation: m-rise 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 
-/* ── Fills: bars, meters, rings ──────────────────────────────── */
+/* ── Charts: bars, meters, rings, lines ──────────────────────────
+   Each plays once, when it first scrolls into view: MotionVisibility marks
+   unseen ones [data-wait] (paused). After that, a new value glides to its
+   place (transitions) instead of replaying from zero. */
+[data-wait] { animation-play-state: paused !important; }
 @keyframes m-fill-w { from { transform: scaleX(0); } }
-.m-fill-w { transform-origin: left; animation: m-fill-w 1.1s cubic-bezier(0.2, 0.8, 0.2, 1) 0.15s both; }
+.m-fill-w { transform-origin: left; animation: m-fill-w 0.9s cubic-bezier(0.3, 1.2, 0.5, 1) 0.1s both; transition: width 0.6s cubic-bezier(0.5, 0, 0.2, 1), left 0.6s cubic-bezier(0.5, 0, 0.2, 1); }
 @keyframes m-grow-y { from { transform: scaleY(0); } }
-.m-grow-y { transform-origin: bottom; animation: m-grow-y 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.m-grow-y { transform-origin: bottom; animation: m-grow-y 0.8s cubic-bezier(0.3, 1.4, 0.5, 1) both; transition: height 0.6s cubic-bezier(0.5, 0, 0.2, 1); }
 @keyframes m-draw { from { stroke-dasharray: 0 1000; } }
-.m-draw { animation: m-draw 1.3s cubic-bezier(0.2, 0.8, 0.2, 1) 0.2s both; }
-@keyframes m-line { from { stroke-dashoffset: var(--m-len, 1000); } to { stroke-dashoffset: 0; } }
-.m-line { stroke-dasharray: var(--m-len, 1000); animation: m-line 1.4s ease 0.1s both; }
+.m-draw { animation: m-draw 1.1s cubic-bezier(0.3, 1.15, 0.5, 1) 0.15s both; transition: stroke-dasharray 0.7s cubic-bezier(0.5, 0, 0.2, 1), stroke 0.6s; }
+/* donut slices sweep round one after another (delay set inline) */
+.m-sweep { animation: m-draw 0.6s cubic-bezier(0.5, 0, 0.3, 1) both; transition: stroke-dasharray 0.6s cubic-bezier(0.5, 0, 0.2, 1), stroke-dashoffset 0.6s cubic-bezier(0.5, 0, 0.2, 1); }
+/* lines draw left to right (a wipe, so it works for any stroke, stretched or not) */
+@keyframes m-line { from { clip-path: inset(-20% 100% -20% 0); } to { clip-path: inset(-20% -2% -20% 0); } }
+.m-line { animation: m-line 1.2s cubic-bezier(0.45, 0, 0.2, 1) 0.1s both; }
 @keyframes m-fade { from { opacity: 0; } }
-.m-fade { animation: m-fade 0.8s ease 0.6s both; }
+.m-fade { animation: m-fade 0.7s ease 0.5s both; }
 @keyframes m-pop { from { opacity: 0; transform: scale(0.8); } }
 .m-pop { animation: m-pop 0.4s cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+/* the last point pops once the line reaches it */
+@keyframes m-dot { 0% { opacity: 0; transform: scale(0); } 70% { transform: scale(1.4); } 100% { opacity: 1; transform: scale(1); } }
+.m-dotpop { transform-box: fill-box; transform-origin: center; animation: m-dot 0.45s ease-out 1.15s both; }
+/* legend rows / labels arrive with their part of the chart */
+@keyframes m-legend { from { opacity: 0; transform: translateY(4px); } }
+.m-legend > * { animation: m-legend 0.4s ease both; animation-delay: calc(0.25s + var(--i, 0) * 0.1s); }
+/* grid cells pop in a wave (set --i to the cell's position) */
+@keyframes m-cell { from { opacity: 0; transform: scale(0.3); } }
+.m-cell { animation: m-cell 0.45s cubic-bezier(0.3, 1.6, 0.5, 1) both; animation-delay: calc(var(--i, 0) * 10ms); }
+/* progress meters: one soft shine passes over once they have filled */
+.m-shine-once { position: relative; overflow: hidden; }
+.m-shine-once::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, hsl(0 0% 100% / 0.5) 50%, transparent 70%); transform: translateX(-100%); animation: m-shine-once 0.9s ease 1.05s both; }
+@keyframes m-shine-once { to { transform: translateX(100%); } }
+[data-wait]::after, [data-wait]::before { animation-play-state: paused !important; }
 
 /* ── Hover lift (tiles, quick actions) ───────────────────────── */
 .m-lift { transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s; }
@@ -181,13 +203,46 @@
 .m-layers > i:nth-child(3) { background: hsl(var(--surface)); --z: 20px; animation-delay: 0.4s; }
 @keyframes m-layer { 0%, 100% { transform: translateZ(0); } 50% { transform: translateZ(var(--z)); } }
 
-/* ── Light/dark switch ───────────────────────────────────────── */
-.m-switch { position: relative; width: 52px; height: 28px; border-radius: 99px; border: 1px solid hsl(var(--border)); background: hsl(var(--muted)); transition: background 0.35s; overflow: hidden; }
-.m-switch > span { position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; border-radius: 50%; background: #f5b443; box-shadow: 0 0 10px #f5b44399; transition: transform 0.45s cubic-bezier(0.5, 1.6, 0.5, 1), background 0.35s, box-shadow 0.35s; }
-.m-switch > span::after { content: ''; position: absolute; width: 16px; height: 16px; border-radius: 50%; top: -3px; right: -16px; background: hsl(var(--muted)); transition: right 0.45s ease, background 0.35s; }
-.m-switch[aria-checked='true'] { background: #1b1d2b; }
-.m-switch[aria-checked='true'] > span { transform: translateX(24px); background: #e8e9f3; box-shadow: 0 0 8px #e8e9f355; }
-.m-switch[aria-checked='true'] > span::after { right: -4px; background: #1b1d2b; }
+/* ── Light/dark switch: the sun folds its rays into a crescent moon ── */
+.m-switch { position: relative; width: 52px; height: 28px; border-radius: 99px; border: 1px solid hsl(var(--border)); background: linear-gradient(180deg, #cfe6ff, #eef6ff); transition: background 0.5s, border-color 0.5s; overflow: hidden; }
+.m-switch[aria-checked='true'] { background: linear-gradient(180deg, #121426, #1f2238); border-color: #2c3050; }
+.m-switch-knob { position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; transition: transform 0.6s cubic-bezier(0.5, 1.5, 0.5, 1); }
+.m-switch-knob > b { position: absolute; inset: 5px; border-radius: 50%; overflow: hidden; background: #f5b443; box-shadow: 0 0 10px #f5b443aa; transition: inset 0.5s cubic-bezier(0.5, 1.5, 0.5, 1), background 0.5s, box-shadow 0.5s; }
+.m-switch-knob > b::after { content: ''; position: absolute; width: 100%; height: 100%; top: -28%; left: 110%; border-radius: 50%; background: #1a1c30; transition: left 0.55s cubic-bezier(0.4, 0, 0.2, 1) 0.08s; }
+.m-switch-knob > i { position: absolute; left: 50%; top: 50%; width: 2px; height: 4px; margin: -2px 0 0 -1px; border-radius: 2px; background: #f5b443; transform: rotate(var(--a)) translateY(-9px); transition: transform 0.5s cubic-bezier(0.5, 1.5, 0.5, 1), opacity 0.35s; }
+.m-switch[aria-checked='true'] .m-switch-knob { transform: translateX(24px) rotate(-20deg); }
+.m-switch[aria-checked='true'] .m-switch-knob > b { inset: 2px; background: #e8e9f3; box-shadow: 0 0 9px #e8e9f366; }
+.m-switch[aria-checked='true'] .m-switch-knob > b::after { left: 38%; }
+.m-switch[aria-checked='true'] .m-switch-knob > i { transform: rotate(calc(var(--a) + 120deg)) translateY(-3px) scale(0); opacity: 0; }
+.m-switch:hover .m-switch-knob > i { transform: rotate(calc(var(--a) + 22deg)) translateY(-10px); }
+.m-switch[aria-checked='true']:hover .m-switch-knob > i { transform: rotate(calc(var(--a) + 120deg)) translateY(-3px) scale(0); }
+.m-switch-stars i { position: absolute; width: 2px; height: 2px; border-radius: 50%; background: #fff; opacity: 0; transform: scale(0); transition: opacity 0.4s, transform 0.4s; }
+.m-switch-stars i:nth-child(1) { left: 9px; top: 7px; }
+.m-switch-stars i:nth-child(2) { left: 18px; top: 15px; width: 1.5px; height: 1.5px; }
+.m-switch-stars i:nth-child(3) { left: 8px; top: 18px; width: 1.5px; height: 1.5px; }
+.m-switch[aria-checked='true'] .m-switch-stars i { opacity: 0.9; transform: scale(1); }
+.m-switch[aria-checked='true'] .m-switch-stars i:nth-child(1) { transition-delay: 0.2s; }
+.m-switch[aria-checked='true'] .m-switch-stars i:nth-child(2) { transition-delay: 0.3s; }
+.m-switch[aria-checked='true'] .m-switch-stars i:nth-child(3) { transition-delay: 0.4s; animation: m-star-blink 2.4s ease-in-out 1s infinite; }
+@keyframes m-star-blink { 50% { opacity: 0.25; } }
+
+/* ── Theme change: the new look spreads out from the switch in a soft circle ── */
+@property --vt-r { syntax: '<length>'; inherits: false; initial-value: 0px; }
+html.m-reveal::view-transition-old(root), html.m-reveal::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+html.m-reveal::view-transition-new(root) {
+  -webkit-mask-image: radial-gradient(circle at var(--vt-x) var(--vt-y), #000 calc(var(--vt-r) - 56px), transparent var(--vt-r));
+  mask-image: radial-gradient(circle at var(--vt-x) var(--vt-y), #000 calc(var(--vt-r) - 56px), transparent var(--vt-r));
+  animation: m-reveal 0.75s cubic-bezier(0.6, 0, 0.3, 1) both;
+}
+@keyframes m-reveal { from { --vt-r: 0px; } to { --vt-r: var(--vt-max); } }
+.m-reveal-glow { position: fixed; inset: 0; z-index: 9999; pointer-events: none; view-transition-name: theme-glow; }
+html.m-reveal::view-transition-new(theme-glow) { animation: none; }
+/* The ring of light rides the edge of the circle */
+html.m-reveal::view-transition-group(theme-glow) {
+  background: radial-gradient(circle at var(--vt-x) var(--vt-y), transparent calc(var(--vt-r) - 120px), rgb(var(--vt-tint) / 0.28) calc(var(--vt-r) - 64px), rgb(var(--vt-tint) / 0.55) calc(var(--vt-r) - 34px), transparent calc(var(--vt-r) - 8px));
+  animation: m-reveal 0.75s cubic-bezier(0.6, 0, 0.3, 1) both, m-reveal-glow 0.75s ease-in both;
+}
+@keyframes m-reveal-glow { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
 
 /* Pause any loop while the tab is hidden (set by MotionVisibility) */
 html[data-hidden] .m-ticker > ul, html[data-hidden] .m-pulse::before, html[data-hidden] .m-pulse::after, html[data-hidden] .m-sun, html[data-hidden] .m-cloud, html[data-hidden] .m-confetti i, html[data-hidden] .m-medal > * { animation-play-state: paused; }
@@ -368,3 +423,117 @@ html[data-hidden] .m-balloon, html[data-hidden] .m-firework i, html[data-hidden]
 .pa-ring b { position: relative; z-index: 1; font-size: 11px; font-weight: 800; }
 .pa-ring.overdue { animation: pa-shake .5s ease-in-out 2; }
 @keyframes pa-shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+
+/* ── Time pages (components/time/visuals.tsx) ── */
+@keyframes tm-ring { from { stroke-dasharray: 0 1000; } }
+.tm-ring { animation: tm-ring 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes tm-now { 50% { opacity: 0.55; } }
+.tm-now { animation: tm-now 2.4s ease-in-out infinite; }
+@keyframes tm-flip { from { transform: rotateX(90deg); opacity: 0; } }
+.tm-flip { display: inline-block; animation: tm-flip 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes tm-plane { 0% { transform: translate(-50%, 0) rotate(0); opacity: 1; } 80% { transform: translate(140px, -120px) rotate(-22deg); opacity: 1; } 100% { transform: translate(180px, -150px) rotate(-24deg); opacity: 0; } }
+.tm-plane { animation: tm-plane 1.4s cubic-bezier(0.5, 0, 0.3, 1) both; }
+@keyframes tm-wobble { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-5deg); } 50% { transform: rotate(4deg); } 75% { transform: rotate(-2deg); } }
+.tm-wobble { animation: tm-wobble 0.7s ease-in-out 0.4s 2; }
+@keyframes tm-live { 0% { box-shadow: 0 0 0 0 hsl(var(--success) / 0.5); } 100% { box-shadow: 0 0 0 10px hsl(var(--success) / 0); } }
+.tm-live { animation: tm-live 1.8s ease-out infinite; }
+@keyframes tm-fly { 0% { transform: translate(-30px, 16px) rotate(-8deg); opacity: 0; } 15% { opacity: 1; } 70% { transform: translate(60px, -4px) rotate(-14deg); opacity: 1; } 100% { transform: translate(150px, -26px) rotate(-18deg); opacity: 0; } }
+.tm-fly { animation: tm-fly 9s ease-in-out infinite; }
+@keyframes tm-sway { to { transform: rotate(-8deg) translateY(-6px); } }
+.tm-sway { animation: tm-sway 4s ease-in-out infinite alternate; }
+
+/* ── Helpdesk ─────────────────────────────────────────────────
+   Journey dot breathes slowly; rings draw in; the paper plane flies
+   once on "Send"; rating faces grow on hover. ─────────────────── */
+@keyframes hd-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0.35); }
+  50% { box-shadow: 0 0 0 6px hsl(var(--primary) / 0); }
+}
+.hd-breathe { animation: hd-breathe 3.2s ease-in-out infinite; }
+.hd-breathe[data-tone='warning'] { animation-name: hd-breathe-warn; }
+@keyframes hd-breathe-warn {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--warning) / 0.4); }
+  50% { box-shadow: 0 0 0 6px hsl(var(--warning) / 0); }
+}
+html[data-hidden] .hd-breathe { animation-play-state: paused; }
+
+@keyframes hd-plane {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0deg) scale(0.6); }
+  15% { opacity: 1; transform: translate(0, 0) rotate(-8deg) scale(1); }
+  70% { opacity: 1; transform: translate(var(--hd-x, 220px), var(--hd-y, -120px)) rotate(14deg) scale(0.9); }
+  100% { opacity: 0; transform: translate(calc(var(--hd-x, 220px) * 1.15), calc(var(--hd-y, -120px) * 1.15)) rotate(18deg) scale(0.4); }
+}
+.hd-plane { animation: hd-plane 1.1s cubic-bezier(0.4, 0, 0.2, 1) both; }
+@keyframes hd-fold { to { opacity: 0; transform: scale(0.94) translateY(6px); } }
+.hd-fold { animation: hd-fold 0.35s ease both; }
+@keyframes hd-catch {
+  0%, 100% { transform: scale(1); }
+  40% { transform: scale(1.08); box-shadow: 0 0 0 8px hsl(var(--primary) / 0.15); }
+}
+.hd-catch { animation: hd-catch 0.7s ease 0.75s both; }
+
+.hd-face { transition: transform 0.2s cubic-bezier(0.3, 1.5, 0.5, 1), opacity 0.2s, filter 0.2s; }
+.hd-face:hover { transform: scale(1.2) translateY(-2px); }
+.hd-face[aria-checked='true'] { transform: scale(1.3); }
+
+@keyframes hd-overdue {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--destructive) / 0); }
+  50% { box-shadow: 0 0 0 5px hsl(var(--destructive) / 0.14); }
+}
+.hd-overdue { animation: hd-overdue 4s ease-in-out infinite; }
+html[data-hidden] .hd-overdue { animation-play-state: paused; }
+
+/* ── Forms + Administration ─────────────────────────────── */
+@keyframes m-shake { 0%, 100% { transform: none; } 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
+.m-shake { animation: m-shake 0.45s ease 1; }
+@keyframes adm-ripple { 0% { transform: scale(0.45); opacity: 0.85; } 100% { transform: scale(1.04); opacity: 0; } }
+.adm-ripple { animation: adm-ripple 2.6s ease-out infinite; }
+@keyframes adm-shimmer { from { background-position: -160px 0; } to { background-position: 260px 0; } }
+.adm-shimmer {
+  background-image: linear-gradient(100deg, transparent 30%, hsl(var(--warning) / 0.18) 50%, transparent 70%);
+  background-size: 220px 100%;
+  background-repeat: no-repeat;
+  animation: adm-shimmer 2.6s linear infinite;
+}
+@keyframes adm-warn { 0% { box-shadow: 0 0 0 0 hsl(var(--warning) / 0.5); } 100% { box-shadow: 0 0 0 9px hsl(var(--warning) / 0); } }
+.adm-warn { animation: adm-warn 0.9s ease-out 1; }
+@keyframes adm-land { 0% { opacity: 0; transform: translateY(-6px) scale(0.6); } 70% { transform: scale(1.08); } 100% { opacity: 1; transform: none; } }
+.adm-land { animation: adm-land 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes adm-step { from { opacity: 0; transform: translateX(-8px); } }
+.adm-step > * { animation: adm-step 0.4s ease both; }
+.adm-step > *:nth-child(2) { animation-delay: 0.12s; } .adm-step > *:nth-child(3) { animation-delay: 0.24s; }
+.adm-step > *:nth-child(4) { animation-delay: 0.36s; } .adm-step > *:nth-child(5) { animation-delay: 0.48s; }
+.adm-step > *:nth-child(6) { animation-delay: 0.6s; } .adm-step > *:nth-child(7) { animation-delay: 0.72s; }
+@keyframes adm-draw { from { stroke-dashoffset: var(--len, 400); } to { stroke-dashoffset: 0; } }
+.adm-draw { stroke-dasharray: var(--len, 400); animation: adm-draw 1.1s ease both; }
+
+/* Nothing animates while the browser tab is hidden (saves CPU and battery) */
+html[data-hidden] *, html[data-hidden] *::before, html[data-hidden] *::after { animation-play-state: paused !important; }
+
+/* ── Page on its way (components/layout/pending-nav.tsx): fills fast, then crawls ── */
+@keyframes m-nav-progress { 0% { width: 0; } 30% { width: 55%; } 100% { width: 92%; } }
+.m-nav-progress { animation: m-nav-progress 6s cubic-bezier(0.1, 0.7, 0.2, 1) both; }
+
+/* ── Glide + Peek menus (components/layout/tree-nav.tsx) ───────────── */
+/* pages hang off their section on thin tree lines */
+.m-nav-tree { position: relative; margin: 2px 0 4px 20px; padding-left: 14px; display: flex; flex-direction: column; gap: 2px; animation: m-nav-tree 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.m-nav-tree::before { content: ''; position: absolute; left: 0; top: -2px; bottom: 16px; width: 1.5px; border-radius: 2px; background: hsl(var(--sidebar-border)); transform-origin: top; animation: m-nav-line 0.3s ease-out both; }
+.m-nav-tree > li { position: relative; }
+.m-nav-tree > li::before { content: ''; position: absolute; left: -14px; top: 50%; width: 11px; height: 11px; margin-top: -11px; border-left: 1.5px solid hsl(var(--sidebar-border)); border-bottom: 1.5px solid hsl(var(--sidebar-border)); border-bottom-left-radius: 8px; }
+.m-nav-tree > li[data-on]::after { content: ''; position: absolute; left: -17.5px; top: 50%; width: 7px; height: 7px; margin-top: -3.5px; border-radius: 50%; background: hsl(var(--primary)); box-shadow: 0 0 0 3px hsl(var(--primary) / 0.18); }
+@keyframes m-nav-tree { from { opacity: 0; transform: translateY(-4px); } }
+@keyframes m-nav-line { from { transform: scaleY(0); } }
+/* labels slide in when the menu opens up from icons */
+.m-nav-labels > * { animation: m-nav-label 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.m-nav-labels > :nth-child(2) { animation-delay: 15ms; }
+.m-nav-labels > :nth-child(3) { animation-delay: 30ms; }
+.m-nav-labels > :nth-child(4) { animation-delay: 45ms; }
+.m-nav-labels > :nth-child(5) { animation-delay: 60ms; }
+.m-nav-labels > :nth-child(6) { animation-delay: 75ms; }
+.m-nav-labels > :nth-child(n + 7) { animation-delay: 90ms; }
+@keyframes m-nav-label { from { opacity: 0; transform: translateX(-6px); } }
+/* Glide: the card widens / narrows with a soft spring */
+.m-glide { transition: width 0.32s cubic-bezier(0.3, 1.15, 0.5, 1), transform 0.2s ease-out; }
+.m-glide-handle svg { transition: transform 0.26s ease; }
+/* Peek: opens over the page */
+.m-peek { transition: width 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.18s, transform 0.2s ease-out; }

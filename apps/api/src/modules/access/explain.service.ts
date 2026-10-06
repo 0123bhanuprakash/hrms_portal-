@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { UserStatus } from '@prisma/client';
+import { EmploymentStatus, UserStatus } from '@prisma/client';
 import type { AccessScope } from '@hrms/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { AccessService } from './access.service';
@@ -82,8 +82,19 @@ export class ExplainService {
         ])
       : null;
 
+    // Reach rings: how many people sit at each distance from them
+    const working = { companyId, employmentStatus: { not: EmploymentStatus.TERMINATED } };
+    const [department, company] = await Promise.all([
+      ctx.employee?.departmentId ? this.prisma.employee.count({ where: { ...working, departmentId: ctx.employee.departmentId } }) : Promise.resolve(0),
+      this.prisma.employee.count({ where: working }),
+    ]);
+    const widest = ctx.isOwner
+      ? 'company'
+      : [...ctx.grants.values()].reduce<AccessScope | null>((w, s) => (s && (!w || SCOPE_ORDER.indexOf(s) > SCOPE_ORDER.indexOf(w)) ? s : w), null);
+
     return {
       user: { id: row.id, name: `${row.firstName} ${row.lastName}`, email: row.email, status: row.status },
+      reach: { self: row.employee ? 1 : 0, direct: team?.[0] ?? 0, team: team?.[1] ?? 0, department, company, widest },
       isOwner: ctx.isOwner,
       roles: ctx.roles,
       employee: row.employee ? { id: row.employee.id, directReports: team![0], allReports: team![1] } : null,
@@ -181,6 +192,43 @@ export class ExplainService {
       featureEnabled,
       people,
     };
+  }
+
+  // ─── Sensitive data check ─────────────────────────────────
+
+  /**
+   * "Who can see private data?" — for every sensitive permission (features the
+   * company has), the people who hold it for someone other than themselves.
+   */
+  async sensitiveCheck(companyId: string) {
+    const users = await this.prisma.user.findMany({
+      where: { companyId, status: UserStatus.ACTIVE },
+      select: { ...ACCESS_USER_SELECT, firstName: true, lastName: true, email: true },
+      orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
+    });
+    const perms = CATALOG.flatMap((m) =>
+      m.features.filter((f) => f.stage !== 'coming_soon').flatMap((f) => f.permissions.filter((p) => p.sensitive).map((p) => ({ ...p, feature: f.key, featureLabel: f.label }))),
+    );
+    const holders = new Map<string, Array<{ userId: string; name: string; email: string; scope: AccessScope | null; sources: Source[] }>>();
+    let features: Set<string> | null = null;
+    for (const u of users) {
+      const ctx = await this.access.resolve(u);
+      features ??= ctx.features;
+      let sources: Map<string, Source[]> | null = null;
+      for (const p of perms) {
+        if (!ctx.grants.has(p.key)) continue;
+        const scope = ctx.grants.get(p.key) ?? null;
+        if (scope === 'own') continue; // everyone sees their own salary / payslip
+        sources ??= await this.sourcesFor(u, ctx);
+        holders.set(p.key, [
+          ...(holders.get(p.key) ?? []),
+          { userId: u.id, name: `${u.firstName} ${u.lastName}`.trim(), email: u.email, scope, sources: sources.get(p.key) ?? [] },
+        ]);
+      }
+    }
+    return perms
+      .filter((p) => !features || features.has(p.feature))
+      .map((p) => ({ key: p.key, label: p.label, feature: p.featureLabel, holders: holders.get(p.key) ?? [] }));
   }
 
   // ─── Helpers ──────────────────────────────────────────────

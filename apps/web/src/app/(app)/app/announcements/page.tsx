@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Emoji } from '@/components/motion/emoji';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { BarChart3, CalendarDays, CalendarPlus, CheckCheck, CheckCircle2, ChevronLeft, ChevronRight, Clock, FileText, Flame, Heart, Megaphone, Paperclip, Pin, Plus, Search, ShieldCheck } from 'lucide-react';
@@ -73,7 +74,7 @@ export default function AnnouncementsPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-semibold text-primary">Engagement · Announcements</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-[28px]">{greeting()}{firstName ? `, ${firstName}` : ''} 👋</h1>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-[28px]">{greeting()}{firstName ? `, ${firstName}` : ''} <Emoji e="👋" play="appear" /></h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {meta?.unread ? `${meta.unread} update${meta.unread === 1 ? '' : 's'} since you last looked` : 'You’re all caught up'}
             {meta?.needsAck ? ` — ${meta.needsAck} need${meta.needsAck === 1 ? 's' : ''} your confirmation` : ''}
@@ -124,7 +125,7 @@ export default function AnnouncementsPage() {
           ) : !rows.length && !featured.length ? (
             <EmptyState
               icon={<Megaphone />}
-              title={drafts ? 'No drafts' : plainFeed ? 'No announcements yet' : filter !== 'all' ? 'You’re all caught up 🎉' : 'Nothing matches'}
+              title={drafts ? 'No drafts' : plainFeed ? 'No announcements yet' : filter !== 'all' ? <>You’re all caught up <Emoji e="🎉" play="appear" /></> : 'Nothing matches'}
               action={canPost && filter === 'all' ? <Button asChild><Link href="/app/announcements/new"><Plus /> New announcement</Link></Button> : undefined}
             />
           ) : (
@@ -451,32 +452,24 @@ function DateTile({ iso }: { iso: string }) {
   );
 }
 
-/** 👋 with a little float-up burst. */
+/** 👋 waves on hover; waving floats up 3 little hands. */
 function WaveButton({ a }: { a: Announcement }) {
   const react = useReactAnnouncement();
-  const [bursts, setBursts] = useState<number[]>([]);
+  const [fire, setFire] = useState(0);
   const mine = a.reactions.find((r) => r.emoji === '👋')?.mine;
   return (
-    <span className="relative">
-      {bursts.map((b) => (
-        <span key={b} className="pointer-events-none absolute -top-2 left-3 text-lg motion-safe:animate-[sc-burst_1.1s_ease-out_forwards]" style={{ ['--x' as string]: '6px', ['--y' as string]: '-40px' } as React.CSSProperties} aria-hidden>👋</span>
-      ))}
-      <Button
-        size="sm"
-        variant={mine ? 'soft' : 'secondary'}
-        aria-pressed={Boolean(mine)}
-        onClick={() => {
-          if (!mine) {
-            const id = Date.now();
-            setBursts((x) => [...x, id]);
-            setTimeout(() => setBursts((x) => x.filter((y) => y !== id)), 1200);
-          }
-          react.mutate({ id: a.id, emoji: '👋' });
-        }}
-      >
-        👋 {mine ? 'Waved' : 'Wave'}
-      </Button>
-    </span>
+    <Button
+      size="sm"
+      variant={mine ? 'soft' : 'secondary'}
+      aria-pressed={Boolean(mine)}
+      className="emo-host"
+      onClick={() => {
+        if (!mine) setFire((n) => n + 1);
+        react.mutate({ id: a.id, emoji: '👋' });
+      }}
+    >
+      <Emoji e="👋" fire={fire} burst /> {mine ? 'Waved' : 'Wave'}
+    </Button>
   );
 }
 

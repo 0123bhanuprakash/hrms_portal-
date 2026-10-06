@@ -29,12 +29,17 @@ export class AttendancePolicyService {
       fullDayMinutes: policy.fullDayMinutes,
       regularisationWindowDays: policy.regularisationWindowDays,
       webCheckInEnabled: policy.webCheckInEnabled,
+      correctionAlertAt: policy.correctionAlertAt,
+      lateAlertAt: policy.lateAlertAt,
+      autoCloseAfterMinutes: policy.autoCloseAfterMinutes,
+      optionalHolidayLimit: policy.optionalHolidayLimit,
       timeZone,
     };
   }
 
   async update(companyId: string, dto: UpdatePolicyDto): Promise<CompanyPolicy> {
     const current = await this.get(companyId);
+    // null switches a rule off, so only undefined means "unchanged"
     const next = { ...current, ...Object.fromEntries(Object.entries(dto).filter(([, v]) => v !== undefined)) } as CompanyPolicy;
     if (minutesOf(next.shiftEnd) <= minutesOf(next.shiftStart)) throw new BadRequestException('Shift end must be after shift start (overnight shifts are not supported yet)');
     if (next.halfDayMinutes >= next.fullDayMinutes) throw new BadRequestException('Half-day hours must be less than full-day hours');

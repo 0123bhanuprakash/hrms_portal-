@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsOptional, IsString, MaxLength, ValidateNested, IsUUID } from 'class-validator';
 
 /** One CSV row, as text. Validation happens per row in the service so every problem is reported, not just the first. */
 export class ImportRowDto {
@@ -35,4 +35,9 @@ export class ImportEmployeesDto {
   @IsOptional()
   @IsBoolean()
   sendInvites?: boolean;
+
+  @ApiPropertyOptional({ description: 'Any id the page picks; live progress events carry it' })
+  @IsOptional()
+  @IsUUID()
+  progressId?: string;
 }

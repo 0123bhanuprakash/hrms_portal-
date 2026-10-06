@@ -14,6 +14,7 @@ import { GlobalExceptionFilter } from './common/filters/global-exception.filter'
 import { RequestIdInterceptor } from './common/interceptors/request-id.interceptor';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { ResponseTransformInterceptor } from './common/interceptors/response-transform.interceptor';
+import { LiveIoAdapter } from './modules/realtime/live-io.adapter';
 
 async function bootstrap(): Promise<void> {
   const logger = new Logger('Bootstrap');
@@ -59,8 +60,8 @@ async function bootstrap(): Promise<void> {
       dotfiles: 'deny',
       setHeaders: (res, filePath) => {
         res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-        // Lottie covers (.json) are read with fetch() by the web app
-        if (filePath.endsWith('.json')) res.setHeader('Access-Control-Allow-Origin', '*');
+        // Lottie (.json) and 3D models (.glb) are read with fetch() by the web app
+        if (filePath.endsWith('.json') || filePath.endsWith('.glb')) res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('X-Content-Type-Options', 'nosniff');
         res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox");
       },
@@ -81,6 +82,9 @@ async function bootstrap(): Promise<void> {
     ],
     exposedHeaders: ['X-Request-ID', 'X-Access-Version', 'Retry-After', ...(dbTraceEnabled() ? ['Server-Timing', 'X-DB-Queries'] : [])],
   });
+
+  // ── Live updates (Socket.IO on /socket.io, same origins) ───
+  app.useWebSocketAdapter(new LiveIoAdapter(app, corsOrigins));
 
   // ── Global API prefix & versioning ─────────────────────────
   // Health endpoints excluded — used by container orchestrators

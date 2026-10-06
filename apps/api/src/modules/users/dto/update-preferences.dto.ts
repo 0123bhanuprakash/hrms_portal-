@@ -1,5 +1,13 @@
-import { IsString, IsOptional, IsBoolean, IsIn, ValidateIf } from 'class-validator';
-import { BUILTIN_THEME_KEYS, MENU_STYLES } from '../../themes/personalization';
+import { IsString, IsOptional, IsBoolean, IsIn, ValidateIf, IsObject, Matches, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class QuietHoursDto {
+  @IsBoolean() on!: boolean;
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/) from!: string;
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/) to!: string;
+  @IsBoolean() weekends!: boolean;
+}
+import { BACKDROP_LEVELS, BACKDROP_PACKS, BUILTIN_THEME_KEYS, MENU_STYLES } from '../../themes/personalization';
 
 export class UpdatePreferencesDto {
   @IsOptional()
@@ -25,6 +33,20 @@ export class UpdatePreferencesDto {
   @IsBoolean()
   emailNotifications?: boolean;
 
+  /** { time: { app: true, email: false }, … } (merged into the saved choices) */
+  @IsOptional()
+  @IsObject()
+  notificationTopics?: Record<string, { app?: boolean; email?: boolean }>;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => QuietHoursDto)
+  quietHours?: QuietHoursDto;
+
+  @IsOptional()
+  @IsBoolean()
+  dailySummary?: boolean;
+
   /** Spacing of the interface; "theme" follows the company/platform theme */
   @IsOptional()
   @IsIn(['theme', 'compact', 'normal', 'spacious'])
@@ -44,10 +66,20 @@ export class UpdatePreferencesDto {
   @IsIn([...BUILTIN_THEME_KEYS], { message: 'colorTheme must be one of the built-in themes' })
   colorTheme?: string | null;
 
-  /** classic | rail | floating | collapsible; null = the company default */
+  /** classic | glide | peek | floating | collapsible; null = the company default */
   @ValidateIf((_, v) => v !== null && v !== undefined)
-  @IsIn([...MENU_STYLES], { message: 'menuStyle must be classic, rail, floating or collapsible' })
+  @IsIn([...MENU_STYLES], { message: 'menuStyle must be classic, glide, peek, floating or collapsible' })
   menuStyle?: string | null;
+
+  /** Page background pack; null = the company default */
+  @ValidateIf((_, v) => v !== null && v !== undefined)
+  @IsIn([...BACKDROP_PACKS], { message: 'backdropPack is not a known background pack' })
+  backdropPack?: string | null;
+
+  /** lively | calm | off; null = the company default */
+  @ValidateIf((_, v) => v !== null && v !== undefined)
+  @IsIn([...BACKDROP_LEVELS], { message: 'backdropLevel must be lively, calm or off' })
+  backdropLevel?: string | null;
 
   /** Super Admins: email me when a new device signs in */
   @IsOptional()

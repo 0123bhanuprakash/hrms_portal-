@@ -101,6 +101,29 @@ export class OrgService {
    * People who haven't joined yet only show for org managers (flagged joinsOn);
    * a notice period shows as Active unless the viewer handles exits.
    */
+  /** What people pickers need — much lighter than the chart (no levels, emails or statuses). */
+  async people(companyId: string, access: AccessContext) {
+    const today = (await this.lifecycle.today(companyId)).date;
+    const planners = holds(access, 'org.manage');
+    const rows = await this.prisma.employee.findMany({
+      where: { companyId, employmentStatus: { not: EmploymentStatus.TERMINATED }, ...(planners ? {} : { joiningDate: { lte: today } }) },
+      orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
+      select: {
+        id: true,
+        userId: true,
+        employeeId: true,
+        firstName: true,
+        lastName: true,
+        avatarUrl: true,
+        reportingManagerId: true,
+        department: { select: { id: true, name: true } },
+        designation: { select: { id: true, name: true } },
+        _count: { select: { subordinates: { where: { employmentStatus: { not: EmploymentStatus.TERMINATED } } } } },
+      },
+    });
+    return rows.map(({ _count, ...e }) => ({ ...e, directReports: _count.subordinates }));
+  }
+
   async chart(companyId: string, access: AccessContext) {
     const today = (await this.lifecycle.today(companyId)).date;
     const planners = holds(access, 'org.manage');

@@ -9,7 +9,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, EmptyState, ErrorState, Skeleton } from '@/components/ui/feedback';
-import { Field, Input, Textarea, inputClass } from '@/components/ui/field';
+import { Field, Textarea, inputClass } from '@/components/ui/field';
 import { PersonAvatar } from '@/components/profile/person-avatar';
 import { ProductArt } from '@/components/assets/product-art';
 import { useAccess } from '@/lib/access/use-access';
@@ -17,6 +17,7 @@ import { useAssetCatalog, useRequestAsset, useRequestPreview, type CatalogType }
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatDate } from '@/lib/format';
 import { cn } from '@/lib/cn';
+import { DateInput, PersonSelect } from '@/components/ui/pickers';
 
 const todayKey = () => {
   const d = new Date();
@@ -99,10 +100,7 @@ export default function RequestAssetPage() {
 
             {team.length > 0 && (
               <Field label="Who is it for?" htmlFor="rq-for">
-                <select id="rq-for" className={inputClass} value={forId} onChange={(e) => setForId(e.target.value)}>
-                  <option value="">Me</option>
-                  {team.map((p) => <option key={p.id} value={p.id}>{p.firstName} {p.lastName}{daysAhead(p.joiningDate) > 0 ? ` (joins ${formatDate(p.joiningDate)})` : ''}</option>)}
-                </select>
+                <PersonSelect id="rq-for" value={forId} onChange={setForId} emptyLabel="Me" people={team.map((p) => ({ ...p, sub: daysAhead(p.joiningDate) > 0 ? `Joins ${formatDate(p.joiningDate)}` : null }))} />
               </Field>
             )}
 
@@ -113,13 +111,13 @@ export default function RequestAssetPage() {
 
             {kind === 'LOAN' ? (
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="From" htmlFor="rq-from" required><Input id="rq-from" type="date" value={loanFrom} min={todayKey()} onChange={(e) => setLoanFrom(e.target.value)} required /></Field>
+                <Field label="From" htmlFor="rq-from" required><DateInput id="rq-from" value={loanFrom} min={todayKey()} onChange={(e) => setLoanFrom(e.target.value)} required /></Field>
                 <Field label="Back by" htmlFor="rq-until" required hint={loanUntil ? (maxUntil && loanUntil > maxUntil ? `Longest loan is ${type.maxLoanDays} days` : `${loanDays} day${loanDays === 1 ? '' : 's'}`) : undefined}>
-                  <Input id="rq-until" type="date" value={loanUntil} min={loanFrom} max={maxUntil} onChange={(e) => setLoanUntil(e.target.value)} required />
+                  <DateInput id="rq-until" value={loanUntil} min={loanFrom} max={maxUntil} onChange={(e) => setLoanUntil(e.target.value)} required />
                 </Field>
               </div>
             ) : (
-              <Field label="Needed by" htmlFor="rq-need" hint="Optional — helps IT plan"><Input id="rq-need" type="date" value={neededBy} min={todayKey()} onChange={(e) => setNeededBy(e.target.value)} className="sm:max-w-xs" /></Field>
+              <Field label="Needed by" htmlFor="rq-need" hint="Optional — helps IT plan"><DateInput id="rq-need" value={neededBy} min={todayKey()} onChange={(e) => setNeededBy(e.target.value)} className="sm:max-w-xs" /></Field>
             )}
 
             <Field label="Why do you need it?" htmlFor="rq-reason" required>

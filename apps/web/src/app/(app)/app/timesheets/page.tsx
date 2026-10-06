@@ -17,6 +17,7 @@ import { useMyCard } from '@/lib/company/profile';
 import { TS_STATUS, addDays, clock, dayLabel, fmtHours, longDayLabel, mondayOf, todayKey, useRecallTime, useWeek, weekLabel, type Block, type Week } from '@/lib/company/timesheets';
 import { getApiErrorMessage } from '@/lib/errors';
 import { cn } from '@/lib/cn';
+import { NoProfile } from '@/components/profile/no-profile';
 
 type View = 'day' | 'week' | 'list';
 
@@ -71,7 +72,7 @@ function Timesheet() {
   };
 
   if (!accessLoading && !allowed) return <EmptyState icon={<ShieldCheck />} title="Timesheets are off" description="Your company plan doesn’t include timesheets." />;
-  if (!employeeId && me.data && !me.data.employee) return <EmptyState icon={<ClipboardList />} title="No employee profile" description="Timesheets are for employees — your account isn’t linked to one." />;
+  if (!employeeId && me.data && !me.data.employee) return <NoProfile icon={<ClipboardList />} what="Timesheets are for employees." />;
 
   const own = week?.isOwn ?? !employeeId;
   const waiting = week?.blocks.filter((b) => b.status === 'SUBMITTED') ?? [];

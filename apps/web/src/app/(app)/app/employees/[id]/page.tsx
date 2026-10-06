@@ -18,6 +18,7 @@ import { useAccess } from '@/lib/access/use-access';
 import { useEmployeeRecord, useMyCard, type EmployeeRecord } from '@/lib/company/profile';
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatDate, formatRelative } from '@/lib/format';
+import { ViewingNow } from '@/components/live/viewing-now';
 
 export default function EmployeeDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -51,7 +52,10 @@ export default function EmployeeDetailPage() {
 
   return (
     <div className="space-y-4">
-      <div>{back}</div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {back}
+        {!isSelf && <ViewingNow kind="employee" id={e.id} />}
+      </div>
       <EmployeeHero
         e={e}
         perms={{ canEditPhoto, canEdit: can('employee.edit') && (isSelf || canEditOthers), canEditOthers, seesExits: can('employee.terminate'), isSelf }}

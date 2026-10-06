@@ -7,6 +7,7 @@ import { AttendanceService } from './attendance.service';
 import { AttendancePolicyService } from './policy.service';
 import { RegularisationService } from './regularisation.service';
 import { HolidaysService } from './holidays.service';
+import { ShiftsService } from './shifts.service';
 import {
   CalendarQueryDto,
   CreateRegularisationDto,
@@ -19,17 +20,25 @@ import {
   UpdatePolicyDto,
   UpsertRecordDto,
   CheckOutDto,
+  ImportHolidaysDto,
+  NudgeDto,
+  SaveShiftDto,
+  ShiftMembersDto,
+  TeamMonthQueryDto,
 } from './dto';
+import { Live } from '../realtime/live.decorator';
 
 const clientIp = (req: Request) => (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ?? req.ip;
 
 @RequireFeature('time.attendance')
+@Live('attendance')
 @Controller('attendance')
 export class AttendanceController {
   constructor(
     private readonly attendance: AttendanceService,
     private readonly policies: AttendancePolicyService,
     private readonly corrections: RegularisationService,
+    private readonly shifts: ShiftsService,
   ) {}
 
   // ─── Self-service ──────────────────────────────────────────
@@ -69,6 +78,26 @@ export class AttendanceController {
     return this.attendance.team(ctx.companyId!, access, query);
   }
 
+  @RequirePermission('attendance.view')
+  @Get('team-month')
+  teamMonth(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Query() query: TeamMonthQueryDto) {
+    return this.attendance.teamMonth(ctx.companyId!, access, query);
+  }
+
+  @RequirePermission('attendance.view')
+  @Get('insights')
+  insights(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext) {
+    return this.attendance.insights(ctx.companyId!, access);
+  }
+
+  /** Team leads, managers and HR remind people they look after (checked per person). */
+  @Audit('attendance:nudge', 'attendance_record')
+  @Post('nudge')
+  @HttpCode(HttpStatus.OK)
+  nudge(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Body() dto: NudgeDto) {
+    return this.attendance.nudge(ctx.companyId!, access, dto);
+  }
+
   @RequirePermission('attendance.export')
   @Audit('attendance:export', 'attendance_record')
   @Get('export')
@@ -102,6 +131,42 @@ export class AttendanceController {
   @Put('policy')
   updatePolicy(@TenantCtx() ctx: TenantContext, @Body() dto: UpdatePolicyDto) {
     return this.policies.update(ctx.companyId!, dto);
+  }
+
+  // ─── Shifts ────────────────────────────────────────────────
+
+  @RequirePermission('attendance.view')
+  @Get('shifts')
+  listShifts(@TenantCtx() ctx: TenantContext) {
+    return this.shifts.list(ctx.companyId!);
+  }
+
+  @RequirePermission('attendance.policy')
+  @Audit('attendance:shift:create', 'work_shift')
+  @Post('shifts')
+  createShift(@TenantCtx() ctx: TenantContext, @Body() dto: SaveShiftDto) {
+    return this.shifts.create(ctx.companyId!, dto);
+  }
+
+  @RequirePermission('attendance.policy')
+  @Audit('attendance:shift:update', 'work_shift')
+  @Patch('shifts/:id')
+  updateShift(@TenantCtx() ctx: TenantContext, @Param('id', ParseUUIDPipe) id: string, @Body() dto: SaveShiftDto) {
+    return this.shifts.update(ctx.companyId!, id, dto);
+  }
+
+  @RequirePermission('attendance.policy')
+  @Audit('attendance:shift:delete', 'work_shift')
+  @Delete('shifts/:id')
+  removeShift(@TenantCtx() ctx: TenantContext, @Param('id', ParseUUIDPipe) id: string) {
+    return this.shifts.remove(ctx.companyId!, id);
+  }
+
+  @RequirePermission('attendance.policy')
+  @Audit('attendance:shift:members', 'work_shift')
+  @Put('shifts/:id/members')
+  shiftMembers(@TenantCtx() ctx: TenantContext, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ShiftMembersDto) {
+    return this.shifts.setMembers(ctx.companyId!, id, dto.employeeIds);
   }
 
   // ─── Correction requests ──────────────────────────────────
@@ -154,8 +219,31 @@ export class HolidaysController {
 
   @RequirePermission('attendance.view')
   @Get()
-  list(@TenantCtx() ctx: TenantContext, @Query() query: HolidayQueryDto) {
-    return this.holidays.list(ctx.companyId!, query.year);
+  list(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Query() query: HolidayQueryDto) {
+    return this.holidays.list(ctx.companyId!, query.year, access.employee?.id);
+  }
+
+  @RequirePermission('holiday.manage')
+  @Audit('holiday:import', 'holiday')
+  @Post('import')
+  importPreset(@TenantCtx() ctx: TenantContext, @Body() dto: ImportHolidaysDto) {
+    return this.holidays.importPreset(ctx.companyId!, dto.year);
+  }
+
+  /** Pick an optional holiday for yourself (up to the company's limit). */
+  @RequirePermission('attendance.view')
+  @Audit('holiday:choose', 'holiday')
+  @Post(':id/choose')
+  @HttpCode(HttpStatus.OK)
+  choose(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Param('id', ParseUUIDPipe) id: string) {
+    return this.holidays.choose(ctx.companyId!, access.employee?.id, id);
+  }
+
+  @RequirePermission('attendance.view')
+  @Audit('holiday:unchoose', 'holiday')
+  @Delete(':id/choose')
+  unchoose(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Param('id', ParseUUIDPipe) id: string) {
+    return this.holidays.unchoose(ctx.companyId!, access.employee?.id, id);
   }
 
   @RequirePermission('holiday.manage')

@@ -30,6 +30,7 @@ import {
 } from './dto/admin-company.dto';
 import { SuperAdminOnly, Audit } from '../../common';
 import { Risky } from '../account/reauth.guard';
+import { LiveAccess } from '../realtime/live.decorator';
 
 // ============================================================
 // AdminController — Super Admin platform API (/api/v1/admin/*)
@@ -175,6 +176,7 @@ export class AdminController {
 
   @Audit('company:status:update', 'company', { companyIdParam: 'id' })
   @Risky()
+  @LiveAccess('company')
   @Patch('companies/:id/status')
   @ApiOperation({ summary: 'Set company status; non-ACTIVE blocks all its users immediately' })
   updateCompanyStatus(@Param('id', uuid) id: string, @Body() dto: UpdateCompanyStatusDto) {
@@ -197,6 +199,7 @@ export class AdminController {
   }
 
   @Audit('company:admin:status:update', 'user', { companyIdParam: 'id' })
+  @LiveAccess('user')
   @Patch('companies/:id/admins/:userId/status')
   @ApiOperation({ summary: 'Activate / deactivate a Company Admin (deactivation revokes sessions)' })
   updateCompanyAdminStatus(

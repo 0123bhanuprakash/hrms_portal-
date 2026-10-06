@@ -1,6 +1,7 @@
 import { Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
+  ArrayMinSize,
   ArrayUnique,
   IsArray,
   IsBoolean,
@@ -15,6 +16,7 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 import { AttendanceStatus, RegularisationStatus } from '@prisma/client';
 
@@ -83,6 +85,39 @@ export class UpdatePolicyDto {
   @IsOptional() @IsInt() @Min(60) @Max(1440) fullDayMinutes?: number;
   @IsOptional() @IsInt() @Min(0) @Max(365) regularisationWindowDays?: number;
   @IsOptional() @IsBoolean() webCheckInEnabled?: boolean;
+  @IsOptional() @IsInt() @Min(1) @Max(31) correctionAlertAt?: number;
+  @IsOptional() @ValidateIf((_, v) => v !== null) @IsInt() @Min(1) @Max(31) lateAlertAt?: number | null;
+  @IsOptional() @ValidateIf((_, v) => v !== null) @IsInt() @Min(0) @Max(720) autoCloseAfterMinutes?: number | null;
+  @IsOptional() @IsInt() @Min(0) @Max(30) optionalHolidayLimit?: number;
+}
+
+export class SaveShiftDto {
+  @Transform(trim) @IsString() @MinLength(2) @MaxLength(40) name!: string;
+  @Matches(TIME, { message: 'startTime must be HH:mm' }) startTime!: string;
+  @Matches(TIME, { message: 'endTime must be HH:mm' }) endTime!: string;
+  @IsOptional() @Matches(/^#[0-9a-fA-F]{6}$/, { message: 'Colour must be a hex value like #7C3AED' }) color?: string;
+}
+
+export class ShiftMembersDto {
+  @IsArray() @ArrayUnique() @ArrayMaxSize(2000) @IsUUID('all', { each: true }) employeeIds!: string[];
+}
+
+export class NudgeDto {
+  @IsArray() @ArrayUnique() @ArrayMinSize(1) @ArrayMaxSize(200) @IsUUID('all', { each: true }) employeeIds!: string[];
+  /** check_in = "you haven't checked in"; fix = "fix your missed check-out" */
+  @IsIn(['check_in', 'fix']) kind!: 'check_in' | 'fix';
+}
+
+export class TeamMonthQueryDto {
+  @Matches(MONTH, { message: 'month must be YYYY-MM' }) month!: string;
+  @IsOptional() @IsUUID() departmentId?: string;
+  @IsOptional() @Transform(trim) @IsString() @MaxLength(100) search?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit?: number;
+}
+
+export class ImportHolidaysDto {
+  @IsInt() @Min(2024) @Max(2030) year!: number;
 }
 
 export class HolidayQueryDto {
@@ -93,6 +128,8 @@ export class SaveHolidayDto {
   @Transform(trim) @IsString() @MinLength(2) @MaxLength(100) name!: string;
   @Matches(DATE, { message: 'date must be YYYY-MM-DD' }) date!: string;
   @IsOptional() @IsBoolean() isOptional?: boolean;
+  /** Office locations it applies to; empty / missing = everyone */
+  @IsOptional() @IsArray() @ArrayUnique() @ArrayMaxSize(50) @IsUUID('all', { each: true }) locationIds?: string[];
 }
 
 /** POST /attendance/check-out — an optional reason when leaving before a full day */

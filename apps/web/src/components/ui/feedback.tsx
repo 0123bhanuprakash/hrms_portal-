@@ -19,9 +19,9 @@ export function Skeleton({ className }: { className?: string }) {
   );
 }
 
-export function Card({ className, children }: { className?: string; children: React.ReactNode }) {
+export function Card({ className, children, style }: { className?: string; children: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <div className={cn('rounded-xl border border-border bg-surface text-surface-foreground shadow-card', className)}>
+    <div style={style} className={cn('rounded-xl border border-border bg-surface text-surface-foreground shadow-card', className)}>
       {children}
     </div>
   );
@@ -63,7 +63,7 @@ export function EmptyState({
   className,
 }: {
   icon: React.ReactNode;
-  title: string;
+  title: React.ReactNode;
   description?: string;
   action?: React.ReactNode;
   className?: string;

@@ -158,7 +158,10 @@ async function cleanup() {
     const cal = await call(E, 'GET', `/attendance/calendar?month=${y4.slice(0, 7)}`);
     const day = (k) => cal.data?.days.find((d) => d.date === k)?.status;
     check('Calendar: correction → PRESENT', y1.slice(0, 7) !== y4.slice(0, 7) || day(y1) === 'PRESENT', day(y1));
-    check('Calendar: holiday + leave', day(y3) === 'HOLIDAY' && day(y4) === 'ON_LEAVE', `${day(y3)} ${day(y4)}`);
+    // y3 and y4 can fall in different months (start of a month)
+    const cal3 = y3.slice(0, 7) === y4.slice(0, 7) ? cal : await call(E, 'GET', `/attendance/calendar?month=${y3.slice(0, 7)}`);
+    const day3 = cal3.data?.days.find((d) => d.date === y3)?.status;
+    check('Calendar: holiday + leave', day3 === 'HOLIDAY' && day(y4) === 'ON_LEAVE', `${day3} ${day(y4)}`);
     const sat = cal.data?.days.find((d) => weekday(d.date) === 6);
     check('Calendar: Saturday = WEEKEND', sat?.status === 'WEEKEND');
     check('Peer cannot see emp calendar → 404', (await call(P, 'GET', `/attendance/calendar?month=${month}&employeeId=${people.emp.id}`)).status === 404);

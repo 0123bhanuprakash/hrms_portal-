@@ -11,3 +11,5 @@ metadata:
 For company-portal testing the user designated: email `bhanu@yopmail.com`, workspace `aakash-portal` (sign in at /login?company=aakash-portal). The user shares the password in chat when needed; it is deliberately not stored here. The account's own preference settings (e.g. text size Small) are the user's: restore them after tests.
 
 Super Admin testing uses SUPER_ADMIN_EMAIL / SUPER_ADMIN_PASSWORD from apps/api/.env (never print them).
+
+Also usable for browser tests (user said so 2026-10-05): perf-bench workspace HR account hr@perf-bench.test (/login?company=perf-bench, 493 people, "Head Iyer"). Password typed by the user in chat; not stored here.

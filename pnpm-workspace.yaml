@@ -3,6 +3,7 @@ packages:
   - 'packages/*'
 
 allowBuilds:
+  '@nestjs/core': true
   msgpackr-extract: true
   unrs-resolver: false
 

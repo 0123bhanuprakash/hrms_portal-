@@ -16,6 +16,7 @@ export interface UserExplanation {
   isOwner: boolean;
   roles: Array<{ id: string; key: string | null; name: string }>;
   employee: { id: string; directReports: number; allReports: number } | null;
+  reach?: { self: number; direct: number; team: number; department: number; company: number; widest: AccessScope | null };
   permissionCount: number;
   sensitiveCount: number;
   modules: Array<{
@@ -52,6 +53,16 @@ export const useWhoCanAccess = (employeeId: string | null, permission: string) =
     enabled: Boolean(employeeId && permission),
   });
 
+export interface SensitiveItem {
+  key: string;
+  label: string;
+  feature: string;
+  holders: Array<{ userId: string; name: string; email: string; scope: AccessScope | null; sources: GrantSource[] }>;
+}
+
+export const useSensitiveCheck = (enabled: boolean) =>
+  useQuery({ queryKey: ['explain', 'sensitive'], queryFn: async () => unwrap<SensitiveItem[]>(await api.get('/access/explain/sensitive')), enabled });
+
 // ─── Delegations ────────────────────────────────────────────
 
 export interface Delegation {
@@ -60,6 +71,8 @@ export interface Delegation {
   startsAt: string;
   endsAt: string;
   reason: string | null;
+  /** Approval kinds handed over; empty = all */
+  permissions: string[] | Array<{ key: string; label: string }>;
   revokedAt: string | null;
   createdAt: string;
   delegator: { id: string; name: string; email: string };
@@ -91,10 +104,58 @@ function useDelegationMutation<V, R>(fn: (v: V) => Promise<R>) {
 }
 
 export const useCreateDelegation = () =>
-  useDelegationMutation(async (body: { delegateId: string; delegatorId?: string; startsAt?: string; endsAt: string; reason?: string }) =>
+  useDelegationMutation(async (body: { delegateId: string; delegatorId?: string; startsAt?: string; endsAt: string; reason?: string; permissions?: string[] }) =>
     unwrap<Delegation>(await api.post('/delegations', body)),
   );
 export const useRevokeDelegation = () => useDelegationMutation(async (id: string) => unwrap<Delegation>(await api.delete(`/delegations/${id}`)));
+
+export interface AwayLeave {
+  id: string;
+  from: string;
+  to: string;
+  type: string;
+  inDays: number;
+  coveredBy: { id: string; name: string } | null;
+}
+export interface CoverSuggestion {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  avatarUrl: string | null;
+  title: string | null;
+  reasons: string[];
+  awayDays: number;
+  available: string;
+}
+export interface TimelineRow {
+  employeeId: string;
+  userId: string;
+  firstName: string;
+  lastName: string;
+  avatarUrl: string | null;
+  isMe: boolean;
+  off: Array<{ from: string; to: string }>;
+  covers: Array<{ from: string; to: string; by: string }>;
+  gaps: Array<{ from: string; to: string }>;
+}
+export interface RecapItem {
+  id: string;
+  delegate: { id: string; name: string };
+  from: string;
+  to: string;
+  approved: number;
+  rejected: number;
+  items: Array<{ kind: string; title: string; approved: boolean }>;
+}
+
+export const useAway = () => useQuery({ queryKey: ['delegations', 'away'], queryFn: async () => unwrap<AwayLeave[]>(await api.get('/delegations/away')) });
+export const useCoverSuggestions = (from: string, to: string, enabled = true) =>
+  useQuery({ queryKey: ['delegations', 'suggest', from, to], queryFn: async () => unwrap<CoverSuggestion[]>(await api.get('/delegations/suggest', { params: { from, to } })), enabled: enabled && Boolean(from && to && to >= from) });
+export const useDelegationTimeline = (from: string, to: string) =>
+  useQuery({ queryKey: ['delegations', 'timeline', from, to], queryFn: async () => unwrap<{ from: string; to: string; rows: TimelineRow[] }>(await api.get('/delegations/timeline', { params: { from, to } })) });
+export const useDelegationRecap = () => useQuery({ queryKey: ['delegations', 'recap'], queryFn: async () => unwrap<RecapItem[]>(await api.get('/delegations/recap')) });
+export const useDelegationGaps = (enabled: boolean) =>
+  useQuery({ queryKey: ['delegations', 'gaps'], queryFn: async () => unwrap<Array<{ userId: string; name: string; from: string; to: string }>>(await api.get('/delegations/gaps')), enabled });
 
 // ─── Bulk import ────────────────────────────────────────────
 
@@ -130,7 +191,8 @@ export const useImportPreview = () =>
 export const useRunImport = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (body: { rows: ImportRow[]; sendInvites: boolean }) => unwrap<ImportResult>(await api.post('/employees/import', body)),
+    // progressId: live "N of M" events carry it (see the import page)
+    mutationFn: async (body: { rows: ImportRow[]; sendInvites: boolean; progressId?: string }) => unwrap<ImportResult>(await api.post('/employees/import', body)),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['org'] }),
   });
 };

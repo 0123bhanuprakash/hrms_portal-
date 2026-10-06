@@ -5,9 +5,11 @@ import type { TenantContext } from '../../common/types/request.types';
 import { holds, type AccessContext } from '../access/access.types';
 import { AnnouncementsService } from './announcements.service';
 import { KudosService } from './kudos.service';
+import { Live, NoLive } from '../realtime/live.decorator';
 import { SeenDto, AnnouncementAudienceDto, AnnouncementQueryDto, AnnouncementReactDto, GiveKudosDto, KudosHintDto, KudosInsightsQueryDto, KudosQueryDto, ReactDto, RsvpDto, SaveAnnouncementDto, SaveKudosValueDto } from './dto';
 
 @RequireFeature('engage.announcements')
+@Live('announcements', 'company')
 @Controller('announcements')
 export class AnnouncementsController {
   constructor(private readonly announcements: AnnouncementsService) {}
@@ -27,6 +29,7 @@ export class AnnouncementsController {
 
   /** Posts scrolled into view count as read. */
   @RequirePermission('announcement.view')
+  @Live('announcements')
   @Post('seen')
   @HttpCode(HttpStatus.OK)
   seen(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Body() dto: SeenDto) {
@@ -34,6 +37,7 @@ export class AnnouncementsController {
   }
 
   @RequirePermission('announcement.view')
+  @Live('announcements')
   @Post('read-all')
   @HttpCode(HttpStatus.OK)
   readAll(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext) {
@@ -42,6 +46,7 @@ export class AnnouncementsController {
 
   /** How many people a post would reach (before posting). */
   @RequirePermission('announcement.view')
+  @NoLive()
   @Post('audience')
   @HttpCode(HttpStatus.OK)
   audience(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Body() dto: AnnouncementAudienceDto) {
@@ -56,6 +61,7 @@ export class AnnouncementsController {
   }
 
   @RequirePermission('announcement.view')
+  @Live('announcements')
   @Post(':id/acknowledge')
   @HttpCode(HttpStatus.OK)
   acknowledge(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Param('id', ParseUUIDPipe) id: string) {
@@ -81,6 +87,7 @@ export class AnnouncementsController {
 
   @RequirePermission('announcement.view')
   @Audit('announcement:nudge', 'announcement')
+  @NoLive()
   @Post(':id/nudge')
   @HttpCode(HttpStatus.OK)
   nudge(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Param('id', ParseUUIDPipe) id: string) {
@@ -158,6 +165,7 @@ export class AnnouncementsController {
 }
 
 @RequireFeature('engage.kudos')
+@Live('kudos', 'company')
 @Controller('kudos')
 export class KudosController {
   constructor(private readonly kudos: KudosService) {}
@@ -202,6 +210,7 @@ export class KudosController {
 
   @RequirePermission('kudos.manage')
   @Audit('kudos:hint', 'kudos')
+  @NoLive()
   @Post('insights/hint')
   @HttpCode(HttpStatus.OK)
   hint(@TenantCtx() ctx: TenantContext, @Body() dto: KudosHintDto) {

@@ -313,6 +313,16 @@ export function MyProjectsCard() {
 // ─── Celebrations (today's birthdays + work anniversaries) ───
 
 type Person = Spotlight['birthdays'][number];
+
+/** "12 wishes so far today" — counts up live as kudos arrive. */
+function Wishes({ n }: { n: number }) {
+  if (!n) return null;
+  return (
+    <span className="m-pop inline-flex items-center gap-1 rounded-full bg-surface/80 px-2.5 py-0.5 text-2xs font-semibold text-muted-foreground ring-1 ring-border">
+      🎉 <CountUp value={n} /> wish{n === 1 ? '' : 'es'} so far today
+    </span>
+  );
+}
 type Slide = { kind: 'birthday'; people: Person[] } | { kind: 'anniversary'; person: Spotlight['anniversaries'][number] };
 
 /** Today’s birthdays (all of them together) and each work anniversary, as a moving card. */
@@ -390,7 +400,8 @@ export function CelebrationsCard({ data, loading }: { data?: Spotlight; loading:
                   <p className="text-base font-bold">{cur.people.length <= 2 ? cur.people.map((p) => `${p.firstName} ${p.lastName}`).join(' & ') : `${cur.people.slice(0, 2).map((p) => p.firstName).join(', ')} and ${cur.people.length - 2} more`}</p>
                   <p className="text-xs text-muted-foreground">{[...new Set(cur.people.map((p) => p.department?.name).filter(Boolean))].join(' · ') || 'Wish them a happy birthday'}</p>
                 </div>
-                {kudos && <Link href="/app/kudos" className="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-3.5 text-xs font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5"><Cake className="h-3.5 w-3.5" />Send wishes</Link>}
+                <Wishes n={cur.people.reduce((t, p) => t + (p.wishesToday ?? 0), 0)} />
+                {kudos && <Link href={`/app/kudos?to=${cur.people.map((p) => p.id).join(',')}`} className="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-3.5 text-xs font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5"><Cake className="h-3.5 w-3.5" />Send wishes</Link>}
               </>
             ) : (
               <>
@@ -405,7 +416,8 @@ export function CelebrationsCard({ data, loading }: { data?: Spotlight; loading:
                   <p className="text-base font-bold">{cur.person.firstName} {cur.person.lastName} · {cur.person.years} year{cur.person.years === 1 ? '' : 's'}</p>
                   <p className="text-xs text-muted-foreground">{cur.person.designation?.name ?? cur.person.department?.name ?? 'Thank you for your work'}</p>
                 </div>
-                {kudos && <Link href="/app/kudos" className="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-3.5 text-xs font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5"><Heart className="h-3.5 w-3.5" />Give kudos</Link>}
+                <Wishes n={cur.person.wishesToday ?? 0} />
+                {kudos && <Link href={`/app/kudos?to=${cur.person.id}`} className="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-3.5 text-xs font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5"><Heart className="h-3.5 w-3.5" />Give kudos</Link>}
               </>
             )}
           </div>
@@ -487,10 +499,15 @@ const monthDay = (md: string) => {
   return new Date(2000, (m ?? 1) - 1, d ?? 1).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 };
 const inDays = (n: number) => (n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : `In ${n} days`);
+const UP_ROWS = 5;
 
 /** The next 30 days: birthdays, work anniversaries, new joiners and holidays. */
 export function ComingUpCard({ data, loading }: { data?: Spotlight; loading: boolean }) {
   const [tab, setTab] = useState<UpTab>('birthdays');
+  const { scopeOf } = useAccess();
+  // Full profiles only for people who can see beyond themselves (the API re-checks)
+  const viewScope = scopeOf('employee.view');
+  const canOpenProfile = Boolean(viewScope && viewScope !== 'own');
   const tabs: Array<{ id: UpTab; label: string; icon: React.ReactNode; count?: number }> = [
     { id: 'birthdays', label: 'Birthdays', icon: <Cake />, count: data?.birthdays.length },
     { id: 'anniversaries', label: 'Anniversaries', icon: <Award />, count: data?.anniversaries.length },
@@ -515,17 +532,34 @@ export function ComingUpCard({ data, loading }: { data?: Spotlight; loading: boo
       ) : !rows?.length ? (
         <p className="px-5 py-6 text-center text-sm text-muted-foreground">{empty}</p>
       ) : (
-        <ul key={tab} className="m-stagger divide-y divide-border">
-          {rows.slice(0, 5).map((r) => (
-            <li key={r.key} className="flex items-center gap-3 px-5 py-2.5">
-              {r.p ? <PersonAvatar person={r.p} size="sm" /> : <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-info-soft text-info [&_svg]:size-4"><CalendarDays /></span>}
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{r.p ? `${r.p.firstName} ${r.p.lastName}` : 'name' in r ? r.name : ''}</p>
-                <p className="truncate text-xs text-muted-foreground">{r.sub}</p>
-              </div>
-              <span className="text-sm font-medium tabular-nums">{r.right}</span>
-            </li>
-          ))}
+        <ul
+          key={tab}
+          tabIndex={rows.length > UP_ROWS ? 0 : undefined}
+          aria-label={rows.length > UP_ROWS ? `${rows.length} ${tabs.find((t) => t.id === tab)?.label.toLowerCase()} (scroll for more)` : undefined}
+          // 5 rows of 53px in view, the rest scroll; the fade hints there is more
+          className={cn('m-stagger divide-y divide-border', rows.length > UP_ROWS && 'max-h-[272px] overflow-y-auto overscroll-contain [mask-image:linear-gradient(#000_85%,transparent)] focus-visible:outline-none')}
+        >
+          {rows.map((r) => {
+            const inner = (
+              <>
+                {r.p ? <PersonAvatar person={r.p} size="sm" /> : <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-info-soft text-info [&_svg]:size-4"><CalendarDays /></span>}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{r.p ? `${r.p.firstName} ${r.p.lastName}` : 'name' in r ? r.name : ''}</p>
+                  <p className="truncate text-xs text-muted-foreground">{r.sub}</p>
+                </div>
+                <span className="text-sm font-medium tabular-nums">{r.right}</span>
+              </>
+            );
+            return (
+              <li key={r.key}>
+                {r.p && canOpenProfile ? (
+                  <Link href={`/app/employees/${r.p.id}`} className="flex h-[53px] items-center gap-3 px-5 transition-colors hover:bg-subtle">{inner}</Link>
+                ) : (
+                  <div className="flex h-[53px] items-center gap-3 px-5">{inner}</div>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </Card>

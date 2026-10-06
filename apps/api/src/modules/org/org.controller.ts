@@ -6,6 +6,7 @@ import type { TenantContext } from '../../common/types/request.types';
 import { companyOf } from '../user-management/company-context';
 import { ReorderOrgLevelsDto, ReportingLineDto, SaveOrgLevelDto } from './dto';
 import { OrgService } from './org.service';
+import { Live } from '../realtime/live.decorator';
 
 // ============================================================
 // Organisation structure (feature: people.org — core)
@@ -24,6 +25,7 @@ import { OrgService } from './org.service';
 @ApiTags('Organisation')
 @ApiBearerAuth()
 @RequireFeature('people.org')
+@Live('people', 'company')
 @Controller('org')
 export class OrgController {
   constructor(private readonly org: OrgService) {}
@@ -68,6 +70,13 @@ export class OrgController {
   @Audit('org:level:delete', 'org_level')
   deleteLevel(@TenantCtx() ctx: TenantContext, @Param('id', ParseUUIDPipe) id: string) {
     return this.org.deleteLevel(companyOf(ctx), id);
+  }
+
+  @Get('people')
+  @RequirePermission('org.view')
+  @ApiOperation({ summary: 'Light list of current people for pickers (name, photo, title, department)' })
+  people(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext) {
+    return this.org.people(companyOf(ctx), access);
   }
 
   @Get('chart')

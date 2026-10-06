@@ -3,6 +3,8 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAccess } from '@/lib/access/use-access';
+import { isLive } from '@/lib/live/socket';
+import { useMayApprove } from '@/lib/company/projects';
 import { notificationKeys } from '@/lib/notifications';
 
 // ============================================================
@@ -326,11 +328,14 @@ export function useRequestMatches(requestId: string | undefined) {
 /** Requests waiting for me plus, for IT, approved ones to hand over — nav badge. */
 export function usePendingAssetRequests() {
   const { hasFeature } = useAccess();
+  // Only people who can approve here ask; the API would answer 0 for everyone else
+  const mayApprove = useMayApprove('asset.approve_it', 'asset.approve_hr', 'asset.manage');
   return useQuery({
     queryKey: assetKeys.pending,
     queryFn: async () => unwrap<{ count: number }>(await api.get('/assets/requests/pending-count')).count,
-    enabled: hasFeature('ops.assets'),
-    refetchInterval: 2 * 60_000,
+    enabled: hasFeature('ops.assets') && mayApprove,
+    // Live updates refresh it while connected; poll only when the connection is down
+    refetchInterval: () => (isLive() ? false : 2 * 60_000),
   });
 }
 

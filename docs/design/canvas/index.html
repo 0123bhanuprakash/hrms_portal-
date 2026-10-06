@@ -1,0 +1,212 @@
+<title>HRMS Design Canvas</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: full-bleed pan/zoom board canvas, slim row index on the left, focus overlay for one board */
+:root{
+  --ground:#E9EAEF;--panel:#FFFFFF;--ink:#17181F;--muted:#6A6C7A;--line:#D9DBE3;--accent:#4F46E5;--accent-soft:#ECEBFF;--frame:#FFFFFF;--new:#047857;
+  --f-ui:Manrope,ui-sans-serif,system-ui,"Segoe UI",sans-serif;--f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--ground:#0D0E12;--panel:#16171D;--ink:#ECEDF3;--muted:#8D8FA0;--line:#2A2C36;--accent:#A5A0FF;--accent-soft:#25234A;--frame:#1C1D24;--new:#34D399;color-scheme:dark}}
+:root[data-theme="dark"]{--ground:#0D0E12;--panel:#16171D;--ink:#ECEDF3;--muted:#8D8FA0;--line:#2A2C36;--accent:#A5A0FF;--accent-soft:#25234A;--frame:#1C1D24;--new:#34D399;color-scheme:dark}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--f-ui);overflow:hidden}
+.app{position:relative;height:100%;display:flex}
+aside{width:280px;flex:none;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;z-index:5;min-width:0}
+aside header{padding:16px 16px 12px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:4px}
+aside h1{font-size:15px;font-weight:800;margin:0;letter-spacing:-.01em}
+aside .meta{font:500 11px var(--f-mono);color:var(--muted)}
+.rows{overflow:auto;padding:8px;display:flex;flex-direction:column;gap:2px}
+.rows button{all:unset;cursor:pointer;padding:8px 10px;border-radius:8px;font-size:12.5px;line-height:1.35;color:var(--ink);display:flex;gap:8px;align-items:flex-start}
+.rows button:hover{background:var(--accent-soft)}
+.rows button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.rows button.on{background:var(--accent-soft);color:var(--accent);font-weight:700}
+.rows .n{font:500 10.5px var(--f-mono);color:var(--muted);min-width:22px;padding-top:1px}
+.rows .tag{font:700 9.5px var(--f-ui);letter-spacing:.08em;text-transform:uppercase;color:var(--new);margin-left:4px}
+.stage{position:relative;flex:1;overflow:hidden;cursor:grab;touch-action:none;min-width:0}
+.stage.drag{cursor:grabbing}
+.world{position:absolute;left:0;top:0;transform-origin:0 0}
+.note{position:absolute;font-weight:800;letter-spacing:-.02em;color:var(--ink);white-space:nowrap;font-size:96px}
+.board{position:absolute;display:flex;flex-direction:column}
+.board .cap{position:absolute;bottom:100%;left:0;right:0;padding-bottom:14px;font-size:30px;font-weight:700;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.board .cap:hover{color:var(--accent)}
+.board .frame{flex:1;background:var(--frame);border-radius:14px;overflow:hidden;box-shadow:0 2px 0 var(--line),0 30px 60px -40px rgba(0,0,0,.35);position:relative}
+.board iframe{border:0;width:100%;height:100%;pointer-events:none;background:#fff}
+.board .ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:44px;font-weight:800;color:var(--muted);padding:60px;text-align:center;text-wrap:balance}
+.tools{position:absolute;right:16px;bottom:16px;display:flex;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:5px;z-index:4;align-items:center}
+.tools button,.fhead button{all:unset;cursor:pointer;height:30px;min-width:30px;padding:0 10px;border-radius:8px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;color:var(--ink);box-sizing:border-box}
+.tools button:hover,.fhead button:hover{background:var(--accent-soft);color:var(--accent)}
+.tools button:focus-visible,.fhead button:focus-visible{outline:2px solid var(--accent)}
+.tools .z{font:500 11.5px var(--f-mono);color:var(--muted);min-width:44px;text-align:center;font-variant-numeric:tabular-nums}
+.hint{position:absolute;left:16px;bottom:16px;font-size:11.5px;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:7px 11px;z-index:4}
+.focus{position:fixed;inset:0;background:var(--ground);z-index:10;display:flex;flex-direction:column}
+.fhead{display:flex;align-items:center;gap:8px;padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top,0px));border-bottom:1px solid var(--line);background:var(--panel)}
+.fhead b{flex:1;font-size:13.5px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fhead .pos{font:500 11.5px var(--f-mono);color:var(--muted)}
+.fbody{flex:1;overflow:auto;display:flex;justify-content:center;padding:16px}
+.fwrap{position:relative;flex:none}
+.fwrap iframe{border:0;background:#fff;border-radius:10px;transform-origin:0 0;position:absolute;left:0;top:0}
+@media (max-width:760px){aside{position:absolute;left:0;top:0;bottom:0;transform:translateX(-100%);transition:transform .2s}.app.menu aside{transform:none}.hint{display:none}}
+@media (min-width:761px){.only-small{display:none!important}}
+@media (prefers-reduced-motion:reduce){aside{transition:none}}
+</style>
+
+<div class="app" id="app">
+  <aside id="side">
+    <header><h1>HRMS design canvas</h1><span class="meta" id="meta">loading…</span></header>
+    <nav class="rows" id="rows" aria-label="Canvas rows"></nav>
+  </aside>
+  <main class="stage" id="stage" aria-label="Design boards">
+    <div class="world" id="world"></div>
+    <div class="hint">Drag to move · scroll or pinch to zoom · click a board title to open it</div>
+    <div class="tools">
+      <button class="only-small" id="menuBtn" aria-label="Show rows">Rows</button>
+      <button id="zout" aria-label="Zoom out">−</button><span class="z" id="zl">—</span><button id="zin" aria-label="Zoom in">+</button>
+      <button id="fitAll">Fit all</button>
+    </div>
+  </main>
+</div>
+<div class="focus" id="focus" hidden>
+  <div class="fhead"><button id="fclose" aria-label="Back to canvas">← Canvas</button><b id="ftitle"></b><span class="pos" id="fpos"></span><button id="fprev" aria-label="Previous board">‹</button><button id="fnext" aria-label="Next board">›</button></div>
+  <div class="fbody" id="fbody"><div class="fwrap" id="fwrap"><iframe id="fframe" title="Board"></iframe></div></div>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const stage = $('stage'), world = $('world');
+  let C, boards = [], notes = [], view = { x: 0, y: 0, k: 0.05 };
+  const NEW_FROM_Y = 51400; // rows added in this round
+  const MAX_LIVE = 10;
+  const live = new Map();
+
+  const apply = () => {
+    world.style.transform = `translate(${view.x}px,${view.y}px) scale(${view.k})`;
+    $('zl').textContent = Math.round(view.k * 100) + '%';
+    schedule();
+  };
+  const fit = (x0, y0, x1, y1, pad = 40) => {
+    const r = stage.getBoundingClientRect();
+    const k = Math.min((r.width - pad * 2) / (x1 - x0), (r.height - pad * 2) / (y1 - y0));
+    view.k = Math.max(0.01, Math.min(k, 1.2));
+    view.x = (r.width - (x1 - x0) * view.k) / 2 - x0 * view.k;
+    view.y = pad - y0 * view.k;
+    apply();
+  };
+  const zoomAt = (f, cx, cy) => {
+    const k = Math.max(0.01, Math.min(2, view.k * f));
+    view.x = cx - (cx - view.x) * (k / view.k);
+    view.y = cy - (cy - view.y) * (k / view.k);
+    view.k = k; apply();
+  };
+
+  // only boards on screen and large enough get a real iframe
+  let t;
+  const schedule = () => { clearTimeout(t); t = setTimeout(refresh, 120); };
+  const refresh = () => {
+    const r = stage.getBoundingClientRect();
+    const vis = [];
+    for (const b of boards) {
+      const sx = b.x * view.k + view.x, sy = b.y * view.k + view.y, sw = b.w * view.k, sh = b.h * view.k;
+      const on = sx < r.width && sy < r.height && sx + sw > 0 && sy + sh > 0;
+      if (on && sw > 260) vis.push([b, Math.hypot(sx + sw / 2 - r.width / 2, sy + sh / 2 - r.height / 2)]);
+    }
+    vis.sort((a, b) => a[1] - b[1]);
+    const want = new Set(vis.slice(0, MAX_LIVE).map(([b]) => b.file));
+    for (const [file, el] of live) if (!want.has(file)) { el.remove(); live.delete(file); boards.find((b) => b.file === file).ph.hidden = false; }
+    for (const file of want) if (!live.has(file)) {
+      const b = boards.find((x) => x.file === file);
+      const f = document.createElement('iframe');
+      f.title = b.title; f.src = encodeURI(file);
+      b.frame.appendChild(f); live.set(file, f); b.ph.hidden = true;
+    }
+  };
+
+  // pan / zoom
+  const ptrs = new Map(); let last = null, pinch = null;
+  stage.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.tools,.cap')) return;
+    stage.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+    stage.classList.add('drag'); last = [e.clientX, e.clientY];
+    if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]) }; }
+  });
+  stage.addEventListener('pointermove', (e) => {
+    if (!ptrs.has(e.pointerId)) return;
+    ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+    const r = stage.getBoundingClientRect();
+    if (ptrs.size === 2 && pinch) {
+      const [a, b] = [...ptrs.values()]; const d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+      zoomAt(d / pinch.d, (a[0] + b[0]) / 2 - r.left, (a[1] + b[1]) / 2 - r.top); pinch.d = d; return;
+    }
+    view.x += e.clientX - last[0]; view.y += e.clientY - last[1]; last = [e.clientX, e.clientY]; apply();
+  });
+  const up = (e) => { ptrs.delete(e.pointerId); if (!ptrs.size) stage.classList.remove('drag'); pinch = null; const p = [...ptrs.values()][0]; if (p) last = p; };
+  stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);
+  stage.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const r = stage.getBoundingClientRect();
+    if (e.ctrlKey || e.metaKey || Math.abs(e.deltaY) > 40 && !e.shiftKey && e.deltaMode === 0 && Number.isInteger(e.deltaY) && Math.abs(e.deltaX) < 1) zoomAt(Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015)), e.clientX - r.left, e.clientY - r.top);
+    else { view.x -= e.deltaX; view.y -= e.deltaY; apply(); }
+  }, { passive: false });
+  const center = () => { const r = stage.getBoundingClientRect(); return [r.width / 2, r.height / 2]; };
+  $('zin').onclick = () => zoomAt(1.4, ...center());
+  $('zout').onclick = () => zoomAt(1 / 1.4, ...center());
+  $('fitAll').onclick = () => { const all = boards.concat(notes); fit(Math.min(...all.map((b) => b.x)), Math.min(...all.map((b) => b.y)), Math.max(...boards.map((b) => b.x + b.w)), Math.max(...boards.map((b) => b.y + b.h))); };
+  $('menuBtn').onclick = () => $('app').classList.toggle('menu');
+
+  // focus view
+  let fi = -1;
+  const sizeFocus = () => {
+    if (fi < 0) return;
+    const b = boards[fi], avail = $('fbody').clientWidth - 32, s = Math.min(1, avail / b.w);
+    const fr = $('fframe'); fr.style.width = b.w + 'px'; fr.style.height = b.h + 'px'; fr.style.transform = `scale(${s})`;
+    $('fwrap').style.width = b.w * s + 'px'; $('fwrap').style.height = b.h * s + 'px';
+  };
+  const openFocus = (i) => {
+    fi = (i + boards.length) % boards.length; const b = boards[fi];
+    $('focus').hidden = false; $('ftitle').textContent = b.title; $('fpos').textContent = `${fi + 1} / ${boards.length}`;
+    $('fframe').src = encodeURI(b.file); $('fframe').title = b.title; sizeFocus();
+    try { history.replaceState(null, '', '#' + b.file.replace(/[^A-Za-z0-9._~-]/g, '')); } catch (_) {}
+  };
+  const closeFocus = () => { $('focus').hidden = true; fi = -1; $('fframe').src = 'about:blank'; try { history.replaceState(null, '', location.pathname); } catch (_) {} };
+  $('fclose').onclick = closeFocus; $('fprev').onclick = () => openFocus(fi - 1); $('fnext').onclick = () => openFocus(fi + 1);
+  addEventListener('keydown', (e) => { if (fi < 0) return; if (e.key === 'Escape') closeFocus(); if (e.key === 'ArrowRight') openFocus(fi + 1); if (e.key === 'ArrowLeft') openFocus(fi - 1); });
+  addEventListener('resize', () => { sizeFocus(); schedule(); });
+
+  fetch('canvas.json').then((r) => r.json()).then((c) => {
+    C = c;
+    const order = c.order.filter((f) => c.boards[f]);
+    for (const f of Object.keys(c.boards)) if (!order.includes(f)) order.push(f);
+    boards = order.map((file) => ({ file, ...c.boards[file] })).sort((a, b) => a.y - b.y || a.x - b.x);
+    notes = Object.values(c.notes || {}).sort((a, b) => a.y - b.y);
+    for (const n of notes) { const el = document.createElement('div'); el.className = 'note'; el.style.left = n.x + 'px'; el.style.top = n.y + 'px'; el.textContent = n.text; world.appendChild(el); }
+    boards.forEach((b, i) => {
+      const el = document.createElement('div'); el.className = 'board';
+      Object.assign(el.style, { left: b.x + 'px', top: b.y + 'px', width: b.w + 'px', height: b.h + 'px' });
+      const cap = document.createElement('div'); cap.className = 'cap'; cap.textContent = b.title || b.file; cap.onclick = () => openFocus(i);
+      const fr = document.createElement('div'); fr.className = 'frame';
+      const ph = document.createElement('div'); ph.className = 'ph'; ph.textContent = b.title || b.file;
+      fr.appendChild(ph); el.append(cap, fr); world.appendChild(el); b.frame = fr; b.ph = ph;
+    });
+    $('meta').textContent = `${boards.length} boards · ${notes.length} rows`;
+    // row index: each note owns the boards below it until the next note
+    const rows = $('rows');
+    notes.forEach((n, i) => {
+      const next = notes[i + 1] ? notes[i + 1].y : Infinity;
+      const mine = boards.filter((b) => b.y >= n.y && b.y < next);
+      if (!mine.length) return;
+      const btn = document.createElement('button');
+      btn.innerHTML = `<span class="n">${String(i + 1).padStart(2, '0')}</span><span></span>`;
+      btn.lastChild.textContent = n.text.split(' — ')[0];
+      if (n.y >= NEW_FROM_Y - 400) { const tg = document.createElement('span'); tg.className = 'tag'; tg.textContent = 'New'; btn.lastChild.appendChild(tg); }
+      btn.onclick = () => { rows.querySelectorAll('.on').forEach((x) => x.classList.remove('on')); btn.classList.add('on'); $('app').classList.remove('menu'); fit(Math.min(...mine.map((b) => b.x)), n.y, Math.max(...mine.map((b) => b.x + b.w)), Math.max(...mine.map((b) => b.y + b.h))); };
+      rows.appendChild(btn);
+    });
+    const h = location.hash.slice(1);
+    const hi = h ? boards.findIndex((b) => b.file.replace(/[^A-Za-z0-9._~-]/g, '') === h) : -1;
+    const newest = [...rows.querySelectorAll('button')].find((b) => b.querySelector('.tag'));
+    requestAnimationFrame(() => { (newest || rows.firstChild).click(); if (hi >= 0) openFocus(hi); });
+  }).catch(() => { $('meta').textContent = 'Could not load canvas.json'; });
+})();
+</script>

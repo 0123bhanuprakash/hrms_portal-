@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Settings — delegation</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F6F7FB}
+.app{display:flex;min-height:100vh;font-family:Manrope,system-ui,sans-serif;color:#111827;background:#F6F7FB;position:relative}
+.sb{flex:0 0 240px;background:#FFFFFF;border-right:1px solid #E5E7EF;display:flex;flex-direction:column}
+.sb-h{display:flex;gap:10px;align-items:center;padding:14px}
+.logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#E9416A,#7A2BD9);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px}
+.sb-h b{display:block;font-size:14px}.sb-h span{font-size:11px;color:#6B7280}
+.sb-g{padding:12px 14px 3px;font-size:10.5px;font-weight:700;letter-spacing:.07em;color:#9CA3AF}
+.sb-i{display:flex;align-items:center;gap:10px;height:34px;margin:0 10px;padding:0 10px;border-radius:7px;font-size:13.5px;color:#374151}
+.sb-i svg{color:#9CA3AF}.sb-i.on{background:#EEF0FF;color:#3730A3;font-weight:700}.sb-i.on svg{color:#4F46E5}
+.col{flex:1;min-width:0;display:flex;flex-direction:column}
+.hdr{height:56px;border-bottom:1px solid #E5E7EF;display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:rgba(255,255,255,.7)}
+.crumb{font-size:13.5px;color:#6B7280}.crumb b{color:#111827}
+.main{padding:24px 30px 40px;display:flex;flex-direction:column;gap:16px}
+.eyebrow{font-size:12.5px;color:#4F46E5;font-weight:700}
+h1{margin:2px 0 0;font-size:26px;font-weight:800;letter-spacing:-.02em}
+.sub{color:#6B7280;font-size:14px;margin-top:3px}
+.row{display:flex;align-items:center;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 14px;border-radius:9px;border:1px solid #E5E7EF;background:#fff;color:#111827;font-size:13px;font-weight:700;white-space:nowrap}
+.btn.pri{background:#4F46E5;border-color:#4F46E5;color:#fff}.btn.sm{height:30px;padding:0 10px;font-size:12px}
+.card{background:#fff;border:1px solid #E5E7EF;border-radius:14px;box-shadow:0 1px 2px rgba(17,24,39,.04)}
+.sec{padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.sec h3{margin:0;font-size:14.5px;display:flex;align-items:center;gap:8px}.sec h3 svg{color:#6B7280}
+.sec h3 .r{margin-left:auto;font-size:12px;font-weight:500;color:#6B7280}
+.mut{color:#6B7280}.xs{font-size:12px}
+.tabs{display:flex;gap:4px;background:#fff;border:1px solid #E5E7EF;border-radius:11px;padding:4px;width:max-content}
+.tabs span{display:flex;align-items:center;gap:7px;padding:7px 14px;border-radius:8px;font-size:13px;color:#6B7280;font-weight:600}
+.tabs span.on{background:#4F46E5;color:#fff}
+.fbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:9px;border:1px solid #E5E7EF;background:#fff;font-size:12.5px;font-weight:600;color:#374151}
+.chip.on{border-color:#C7C9F7;background:#EEF0FF;color:#3730A3}
+.seg{display:flex;border:1px solid #E5E7EF;border-radius:9px;overflow:hidden;background:#fff}.seg span{padding:7px 11px;font-size:12px;font-weight:600;color:#6B7280}.seg span.on{background:#111827;color:#fff}
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.kpi{padding:14px 16px;display:flex;flex-direction:column;gap:3px;position:relative;overflow:hidden}
+.kpi span.l{font-size:12px;color:#6B7280}.kpi b.v{font-size:25px;font-weight:800;letter-spacing:-.02em}
+.delta{font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;gap:2px}
+.d-up{color:#059669}.d-dn{color:#DC2626}.d-flat{color:#6B7280}
+.kpi svg.sp{position:absolute;right:12px;bottom:12px}
+.hl{display:flex;gap:12px;padding:12px 14px;border-radius:12px;border:1px solid #E5E7EF;background:#fff;align-items:flex-start}
+.hl .ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.g21{display:grid;grid-template-columns:1.5fr 1fr;gap:16px}.g12{display:grid;grid-template-columns:1fr 1.4fr;gap:16px}
+.lib{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid #EEF0F5;border-radius:12px;background:#F8F9FC}
+.lib .ic{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none}
+.bar{height:8px;border-radius:99px;background:#EEF0F5;overflow:hidden}.bar i{display:block;height:100%;border-radius:99px;transform-origin:left;animation:fw 1s cubic-bezier(.2,.8,.2,1) both}
+@keyframes fw{from{transform:scaleX(0)}}
+.chart polyline,.chart path.ln{stroke-dasharray:3000;animation:draw 1.6s ease both}@keyframes draw{from{stroke-dashoffset:3000}}
+.heat{display:grid;gap:3px}.heat i{display:block;border-radius:4px;aspect-ratio:1}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#6B7280;padding:8px 10px;border-bottom:1px solid #E5E7EF}
+td{padding:9px 10px;border-bottom:1px solid #EEF0F5}
+.av{width:28px;height:28px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;color:#fff;flex:none}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.p-ok{background:#E6F6F0;color:#059669}.p-warn{background:#FEF3E2;color:#D97706}.p-bad{background:#FDECEC;color:#DC2626}.p-pri{background:#EEF0FF;color:#3730A3}.p-neu{background:#EEF0F5;color:#6B7280}
+.dim{position:absolute;inset:0;background:rgba(17,24,39,.35);z-index:4}
+.drawer{position:absolute;top:0;right:0;bottom:0;width:440px;background:#fff;border-left:1px solid #E5E7EF;z-index:5;display:flex;flex-direction:column;box-shadow:-24px 0 50px -20px rgba(0,0,0,.35)}
+.modal{position:absolute;left:50%;top:150px;transform:translateX(-50%);width:480px;background:#fff;border:1px solid #E5E7EF;border-radius:16px;z-index:5;box-shadow:0 30px 60px -20px rgba(0,0,0,.4)}
+.fld{display:flex;flex-direction:column;gap:5px;font-size:12.5px}.fld label{font-weight:700}
+.inp{height:36px;border:1px solid #E5E7EF;border-radius:9px;padding:0 11px;display:flex;align-items:center;font-size:13px;gap:8px;background:#fff}
+
+.ph{position:relative;overflow:hidden;border-radius:14px;flex:none}
+.ph svg{display:block}
+.st{position:absolute;display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:800;padding:3px 8px;border-radius:99px;background:rgba(255,255,255,.92);box-shadow:0 2px 6px rgba(0,0,0,.12)}
+.st i{width:7px;height:7px;border-radius:50%;display:inline-block}
+.pc{display:flex;flex-direction:column;overflow:hidden;transition:transform .25s,box-shadow .25s}
+.pc:hover{transform:translateY(-4px);box-shadow:0 18px 36px -18px rgba(17,24,39,.35)}
+.pc .body{padding:12px 14px 14px;display:flex;flex-direction:column;gap:4px}
+.pc b.n{font-size:15px}.pc .role{font-size:12.5px;color:#6B7280}
+.tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:#F8F9FC;border:1px solid #EEF0F5;color:#374151}
+.acts{display:flex;gap:6px;padding:0 14px 14px}
+.acts span{flex:1;height:30px;border-radius:8px;border:1px solid #E5E7EF;display:flex;align-items:center;justify-content:center;gap:5px;font-size:12px;font-weight:700;color:#374151}
+.rail{display:flex;flex-direction:column;gap:2px;position:sticky;top:0;font-size:10.5px;font-weight:800;color:#9CA3AF;text-align:center}
+.rail span{padding:1px 0}.rail span.on{color:#4F46E5}
+.hlstrip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.hlc{padding:14px 16px;display:flex;align-items:center;gap:12px}
+.stack{display:flex}.stack .ph{border:2.5px solid #fff;margin-left:-10px;border-radius:50%}.stack .ph:first-child{margin-left:0}
+.search{display:flex;align-items:center;gap:8px;height:42px;padding:0 14px;border:1px solid #E5E7EF;border-radius:12px;background:#fff;flex:1;color:#6B7280;font-size:14px;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+.wall{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px}
+.grp{display:flex;flex-direction:column;gap:10px}
+.grp h3{margin:0;font-size:15px;display:flex;align-items:center;gap:10px}
+.mini{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid #EEF0F5;border-radius:12px;background:#fff}
+
+.new{display:inline-flex;font-size:9.5px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:99px;background:#DCFCE7;color:#166534;vertical-align:middle;margin-left:6px}
+.notes{padding:12px 14px;display:flex;flex-direction:column;gap:6px;background:#F8F9FC}
+.k-new,.k-old,.k-q,.k-fix{display:inline-block;min-width:44px;font-size:9.5px;font-weight:900;text-transform:uppercase;letter-spacing:.05em;margin-right:6px}
+.k-new{color:#16A34A}.k-old{color:#6B7280}.k-q{color:#D97706}.k-fix{color:#DC2626}
+.sec2{padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.lbl{font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#6B7280}
+.num{font-size:24px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.rchip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}.tbl th{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#6B7280;text-align:left;padding:8px 10px;background:#F8F9FC;border-bottom:1px solid #E5E7EF}.tbl td{padding:9px 10px;border-bottom:1px solid #EEF0F5;vertical-align:middle}
+.tbl tr.sel td{background:#EEF0FF}
+.cb{width:15px;height:15px;border-radius:4px;border:1.5px solid #CBD2DE;display:inline-flex;align-items:center;justify-content:center;background:#fff;flex:none}.cb.on{background:#4F46E5;border-color:#4F46E5;color:#fff}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+.ladder{display:inline-flex;border-radius:9px;background:#F8F9FC;border:1px solid #E5E7EF;padding:2px;gap:2px}
+.ladder span{font-size:10.5px;font-weight:700;padding:4px 7px;border-radius:7px;color:#6B7280;white-space:nowrap}
+.ladder span.past{background:#EEF0FF;color:#3730A3}.ladder span.on{background:#4F46E5;color:#fff}.ladder span.lk{opacity:.35}
+.ladder.cp span{width:16px;height:10px;padding:0;border-radius:3px}
+.tile{padding:12px;border-radius:12px;background:#F8F9FC;display:flex;flex-direction:column;gap:2px}
+.alertrow{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:11px;font-size:12.5px}
+.ovl{position:absolute;inset:0;background:rgba(17,24,39,.38);backdrop-filter:blur(2px)}
+.drw{position:absolute;top:0;right:0;bottom:0;width:520px;background:#fff;border-left:1px solid #E5E7EF;box-shadow:-20px 0 50px rgba(17,24,39,.15);display:flex;flex-direction:column}
+.drw .dh{padding:18px 20px;border-bottom:1px solid #E5E7EF}.drw .db{flex:1;overflow:hidden;padding:16px 20px;display:flex;flex-direction:column;gap:12px}.drw .df{padding:12px 20px;border-top:1px solid #E5E7EF;display:flex;gap:8px;justify-content:flex-end;background:#F8F9FC}
+.mdl{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;border-radius:16px;box-shadow:0 30px 80px rgba(17,24,39,.3);display:flex;flex-direction:column;overflow:hidden}
+.mh{padding:16px 20px;display:flex;gap:12px;align-items:flex-start;border-bottom:1px solid #EEF0F5}.mb{padding:16px 20px;display:flex;flex-direction:column;gap:14px}.mf{padding:12px 20px;border-top:1px solid #E5E7EF;display:flex;gap:8px;align-items:center;background:#F8F9FC}
+.mic{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex:none}
+.f{display:flex;flex-direction:column;gap:5px}.f>label{font-size:12px;font-weight:700}.f .h{font-size:11px;color:#6B7280}.f .er{font-size:11px;color:#DC2626;font-weight:700}
+.in{height:36px;border:1px solid #E5E7EF;border-radius:9px;padding:0 11px;display:flex;align-items:center;gap:8px;font-size:12.5px;background:#fff}.in.ph{color:#9CA3AF}.in.foc{border-color:#4F46E5;box-shadow:0 0 0 3px #EEF0FF}.in.bad{border-color:#DC2626;box-shadow:0 0 0 3px #FDECEC}.in.ok{border-color:#059669}
+.secn{display:flex;gap:10px;align-items:center;font-size:12.5px;font-weight:800}.secn i{width:20px;height:20px;border-radius:50%;background:#EEF0FF;color:#4F46E5;font-style:normal;font-size:11px;display:flex;align-items:center;justify-content:center}
+.kbd{font-size:10px;font-weight:800;border:1px solid #E5E7EF;border-bottom-width:2px;border-radius:5px;padding:0 5px;color:#6B7280;background:#fff}
+.bad2{background:#FDECEC;color:#DC2626}.good2{background:#E6F6F0;color:#059669}
+.prob{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:start;padding:10px 12px;border-radius:12px;background:#fff;border:1px solid #E5E7EF}
+.prob .n2{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px}
+.big{font-size:22px;font-weight:900;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+/* motion */
+.stg>*{animation:rise .5s cubic-bezier(.2,.8,.2,1) both}.stg>*:nth-child(2){animation-delay:.06s}.stg>*:nth-child(3){animation-delay:.12s}.stg>*:nth-child(4){animation-delay:.18s}.stg>*:nth-child(5){animation-delay:.24s}.stg>*:nth-child(6){animation-delay:.3s}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}}
+@keyframes wbar{from{transform:scaleX(0)}}.wb{transform-origin:left;animation:wbar 1s cubic-bezier(.2,.8,.2,1) both}
+@keyframes ripple{0%{transform:scale(.4);opacity:.9}100%{transform:scale(1.5);opacity:0}}
+.rip{position:absolute;border-radius:50%;border:2px solid #4F46E5;animation:ripple 2.4s ease-out infinite}
+@keyframes fly{0%,20%{transform:translate(0,0) scale(1);opacity:1}60%{transform:translate(170px,0) scale(.9);opacity:1}75%,100%{transform:translate(170px,0) scale(.9);opacity:0}}
+@keyframes land{0%,58%{opacity:0;transform:scale(.6)}70%,100%{opacity:1;transform:scale(1)}}
+@keyframes shimmer{0%{background-position:-120px 0}100%{background-position:220px 0}}
+.shim{background:linear-gradient(100deg,#FEF3C7 30%,#FFFBEB 50%,#FEF3C7 70%);background-size:200px 100%;animation:shimmer 2.2s linear infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(217,119,6,.45)}50%{box-shadow:0 0 0 7px rgba(217,119,6,0)}}
+.pulse{animation:pulse 1.8s ease-in-out infinite}
+@keyframes slideL{0%,15%{left:3px}45%,60%{left:calc(57% + 3px)}90%,100%{left:3px}}
+@keyframes dash{to{stroke-dashoffset:0}}.path{stroke-dasharray:240;stroke-dashoffset:240;animation:dash 1.6s ease forwards}
+@keyframes tick{0%,30%{transform:scale(0)}45%{transform:scale(1.2)}55%,100%{transform:scale(1)}}
+@keyframes morph{0%,30%{width:110px;border-radius:9px}45%,100%{width:36px;border-radius:50%}}
+@keyframes txt{0%,28%{opacity:1}33%,100%{opacity:0}}
+@keyframes shake{0%,100%{transform:none}20%,60%{transform:translateX(-5px)}40%,80%{transform:translateX(5px)}}
+.shake{animation:shake .5s ease 1s 1}
+@keyframes sheet{0%,10%{transform:translateY(100%)}35%,100%{transform:none}}
+@keyframes cnt{from{opacity:.2;transform:translateY(6px)}}
+.demo{background:#fff;border:1px solid #E5E7EF;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.stage{height:130px;border-radius:12px;background:#F8F9FC;display:flex;align-items:center;justify-content:center;gap:10px;padding:0 16px;position:relative;overflow:hidden}
+.where{font-size:10.5px;font-weight:800;color:#4F46E5;background:#EEF0FF;padding:2px 8px;border-radius:99px;align-self:flex-start}
+.seg2{display:inline-flex;background:#F8F9FC;border:1px solid #E5E7EF;border-radius:9px;padding:2px}.seg2 span{font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:7px;color:#6B7280}.seg2 span.on{background:#fff;color:#111827;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+
+.frame{border-radius:14px;border:1px solid #E5E7EF;overflow:hidden;background:#fff;box-shadow:0 10px 30px rgba(17,24,39,.08)}
+.fbar{height:26px;background:#F8F9FC;border-bottom:1px solid #E5E7EF;display:flex;align-items:center;gap:6px;padding:0 10px}
+.fbar i{width:8px;height:8px;border-radius:50%;background:#E5E7EF;display:inline-block}
+.tabx{display:inline-flex;align-items:center;gap:6px;height:20px;padding:0 10px;border-radius:7px 7px 0 0;background:#fff;font-size:10.5px;font-weight:700;margin-top:6px}
+.drop{border:2px dashed #4F46E566;border-radius:14px;background:#EEF0FF66;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center}
+.pane{display:flex;flex-direction:column;gap:12px}
+.idx{display:flex;flex-direction:column;gap:2px}.idx span{font-size:12.5px;padding:7px 10px;border-radius:8px;display:flex;gap:8px;align-items:center;color:#374151}.idx span.on{background:#EEF0FF;color:#3730A3;font-weight:800}
+.saved{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;color:#059669;background:#E6F6F0;padding:2px 8px;border-radius:99px;animation:pop .4s ease both}
+@keyframes pop{from{opacity:0;transform:scale(.7)}}
+.mx{width:100%;border-collapse:collapse;font-size:12px}.mx th{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#6B7280;text-align:center;padding:6px}.mx th:first-child{text-align:left}.mx td{padding:7px 6px;border-top:1px solid #EEF0F5;text-align:center}.mx td:first-child{text-align:left}
+.gantt{position:relative;height:30px;border-radius:8px;background:#F8F9FC}
+.gantt i{position:absolute;top:5px;bottom:5px;border-radius:6px;display:flex;align-items:center;padding:0 8px;color:#fff;font-size:10.5px;font-weight:800;font-style:normal;white-space:nowrap;overflow:hidden}
+@keyframes wave{0%{clip-path:circle(0% at 0% 0%)}100%{clip-path:circle(150% at 0% 0%)}}
+.wave{animation:wave 2.6s cubic-bezier(.4,0,.2,1) infinite alternate}
+@keyframes flyc{0%{transform:translate(0,0) scale(.4);opacity:0}40%{opacity:1}100%{transform:translate(var(--x),var(--y)) scale(1);opacity:1}}
+.flyc{animation:flyc 1.6s cubic-bezier(.2,.8,.2,1) infinite alternate}
+@keyframes sunmoon{0%,40%{transform:rotate(0)}60%,100%{transform:rotate(180deg)}}
+@keyframes passb{0%,15%{left:14%}55%,100%{left:72%}}
+@keyframes ringd{from{stroke-dashoffset:0}to{stroke-dashoffset:var(--o)}}
+@keyframes hand{to{transform:rotate(360deg)}}
+@keyframes slidex{0%,20%{left:25%}50%,70%{left:72%}100%{left:25%}}
+</style>
+</helmet>
+<div class="app"><aside class="sb">
+<div class="sb-h"><span class="logo">AP</span><span><b>aakash-portal</b><span>HR workspace</span></span></div>
+<div class="sb-g">OVERVIEW</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Home</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M16 10h2M16 14h2"/><circle cx="9" cy="11" r="2"/><path d="M6 16.5a3.5 3.5 0 0 1 6 0"/></svg>My profile</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>Reports &amp; analytics</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v2M8 2v2"/><circle cx="12" cy="11" r="3"/><path d="M7 20a5 5 0 0 1 10 0"/></svg>People</div>
+<div class="sb-g">ORGANIZATION ›</div><div class="sb-g">ENGAGEMENT ›</div><div class="sb-g">WORK ›</div><div class="sb-g">EXPENSES ›</div><div class="sb-g">ASSETS ›</div><div class="sb-g">HELPDESK ›</div><div class="sb-g">TIME ›</div><div class="sb-g">ADMINISTRATION ›</div>
+<div class="sb-g">SETTINGS</div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg><span style="flex:1">Branding</span></div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.65-.75 1.65-1.69 0-.44-.18-.84-.44-1.13-.29-.29-.44-.65-.44-1.13a1.64 1.64 0 0 1 1.67-1.67h2c3.05 0 5.56-2.5 5.56-5.55C21.97 6.01 17.46 2 12 2z"/></svg><span style="flex:1">Theme</span></div><div class="sb-i on"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 3 4 4-4 4M20 7H4M8 21l-4-4 4-4M4 17h16"/></svg><span style="flex:1">Delegation</span></div><div class="sb-i"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/></svg><span style="flex:1">Preferences</span></div>
+</aside><div class="col"><header class="hdr"><div class="crumb">Settings &nbsp;›&nbsp; <b>Delegation</b></div><div class="row mut xs"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span style="width:34px;height:20px;border-radius:99px;background:#E5E7EF;display:inline-block"></span></div></header><main class="main">
+<div class="row" style="align-items:flex-end"><div style="flex:1"><div class="eyebrow">Settings</div><h1>Delegation</h1><div class="sub">Going away? Hand your approvals to a colleague — they cover for you, then it ends by itself.</div></div></div>
+<div style="padding:18px 20px;border-radius:18px;background:linear-gradient(135deg,#EEF0FF,#F0FDFA);display:flex;gap:18px;align-items:center;border:1px solid #4F46E522">
+  <span style="font-size:38px">🏖️</span>
+  <div style="flex:1"><b style="font-size:16px">You’re off Thu 15 – Tue 20 Oct (4 days)</b><div class="xs mut" style="margin-top:3px">Casual leave · approved. <b>7 requests</b> from your team usually come in during a week like this.</div></div>
+  <span class="btn pri"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 20 12-12"/><path d="m14 4 6 6-3 3-6-6z"/></svg>Find someone to cover</span>
+</div>
+<div style="display:grid;grid-template-columns:1fr 400px;gap:16px;align-items:start">
+  <div class="pane">
+    <div class="card sec2"><div class="row"><b style="font-size:14px;flex:1">Your team’s next 3 weeks <span class="new">New</span></b><span class="xs mut">who’s away, who covers</span></div>
+      <div style="display:grid;grid-template-columns:110px repeat(21,1fr);gap:2px;font-size:9px;align-items:center">
+        <span></span><span style="text-align:center;color:#6B7280">5</span><span style="text-align:center;color:#6B7280">6</span><span style="text-align:center;color:#6B7280">7</span><span style="text-align:center;color:#6B7280">8</span><span style="text-align:center;color:#6B7280">9</span><span style="text-align:center;color:#6B7280">10</span><span style="text-align:center;color:#6B7280">11</span><span style="text-align:center;color:#6B7280">12</span><span style="text-align:center;color:#6B7280">13</span><span style="text-align:center;color:#6B7280">14</span><span style="text-align:center;color:#6B7280">15</span><span style="text-align:center;color:#6B7280">16</span><span style="text-align:center;color:#6B7280">17</span><span style="text-align:center;color:#6B7280">18</span><span style="text-align:center;color:#6B7280">19</span><span style="text-align:center;color:#6B7280">20</span><span style="text-align:center;color:#6B7280">21</span><span style="text-align:center;color:#6B7280">22</span><span style="text-align:center;color:#6B7280">23</span><span style="text-align:center;color:#6B7280">24</span><span style="text-align:center;color:#6B7280">25</span>
+        <span class="row" style="gap:5px"><div class="ph" style="width:18px;height:18px;border-radius:50%"><svg width="18" height="18" viewBox="0 0 18 18"><defs><linearGradient id="g4" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#BBF7D0"/><stop offset="1" stop-color="#ECFDF5"/></linearGradient></defs>
+  <rect width="18" height="18" fill="url(#g4)"/>
+  <circle cx="14.76" cy="3.2399999999999998" r="3.96" fill="#fff" opacity=".35"/>
+  
+  <path d="M1.9620000000000006,18 Q2.267999999999999,12.303 9,11.997 Q15.732000000000001,12.303 16.038,18Z" fill="#059669"/>
+  <rect x="7.8372" y="9.702" width="2.3256" height="2.754" fill="#8D5A3C"/>
+  <circle cx="9" cy="7.56" r="3.06" fill="#8D5A3C"/>
+  <path d="M5.8788,7.254 Q5.9399999999999995,3.4289999999999994 9,3.888 Q12.06,3.4289999999999994 12.1212,7.254 Q9,5.265 5.8788,7.254Z" fill="#151515"/>
+  </svg></div><b style="font-size:11px">You</b></span><div style="grid-column:span 21;position:relative;height:26px;border-radius:6px;background:#F8F9FC"><i style="position:absolute;top:3px;height:10px;left:47.61904761904761%;width:28.57142857142857%;border-radius:4px;background:#DB2777;border:none;font-size:8.5px;color:#fff;font-weight:800;font-style:normal;overflow:hidden;white-space:nowrap;padding:0 4px;line-height:10px">🏖️ Leave</i><i style="position:absolute;top:14px;height:9px;left:47.61904761904761%;width:28.57142857142857%;border-radius:4px;background:transparent;border:1.5px dashed #0D9488;font-size:8.5px;color:#0D9488;font-weight:800;font-style:normal;overflow:hidden;white-space:nowrap;padding:0 4px;line-height:7px">→ Priya covers</i></div><span class="row" style="gap:5px"><div class="ph" style="width:18px;height:18px;border-radius:50%"><svg width="18" height="18" viewBox="0 0 18 18"><defs><linearGradient id="g5" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#C7D2FE"/><stop offset="1" stop-color="#EEF2FF"/></linearGradient></defs>
+  <rect width="18" height="18" fill="url(#g5)"/>
+  <circle cx="14.76" cy="3.2399999999999998" r="3.96" fill="#fff" opacity=".35"/>
+  <path d="M5.481,7.56 Q5.175,2.9699999999999998 9,3.7349999999999994 Q12.825,2.9699999999999998 12.519,7.56 L12.672,12.456 L5.328,12.456Z" fill="#2B1D14"/>
+  <path d="M1.9620000000000006,18 Q2.267999999999999,12.303 9,11.997 Q15.732000000000001,12.303 16.038,18Z" fill="#4F46E5"/>
+  <rect x="7.8372" y="9.702" width="2.3256" height="2.754" fill="#F2C9A5"/>
+  <circle cx="9" cy="7.56" r="3.06" fill="#F2C9A5"/>
+  
+  </svg></div><b style="font-size:11px">Priya</b></span><div style="grid-column:span 21;position:relative;height:26px;border-radius:6px;background:#F8F9FC"><i style="position:absolute;top:14px;height:9px;left:47.61904761904761%;width:28.57142857142857%;border-radius:4px;background:transparent;border:1.5px dashed #0D9488;font-size:8.5px;color:#0D9488;font-weight:800;font-style:normal;overflow:hidden;white-space:nowrap;padding:0 4px;line-height:7px">covering you</i></div><span class="row" style="gap:5px"><div class="ph" style="width:18px;height:18px;border-radius:50%"><svg width="18" height="18" viewBox="0 0 18 18"><defs><linearGradient id="g6" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#BAE6FD"/><stop offset="1" stop-color="#F0F9FF"/></linearGradient></defs>
+  <rect width="18" height="18" fill="url(#g6)"/>
+  <circle cx="14.76" cy="3.2399999999999998" r="3.96" fill="#fff" opacity=".35"/>
+  <path d="M5.481,7.56 Q5.175,2.9699999999999998 9,3.7349999999999994 Q12.825,2.9699999999999998 12.519,7.56 L12.672,12.456 L5.328,12.456Z" fill="#1C1C1C"/>
+  <path d="M1.9620000000000006,18 Q2.267999999999999,12.303 9,11.997 Q15.732000000000001,12.303 16.038,18Z" fill="#0284C7"/>
+  <rect x="7.8372" y="9.702" width="2.3256" height="2.754" fill="#F2C9A5"/>
+  <circle cx="9" cy="7.56" r="3.06" fill="#F2C9A5"/>
+  
+  </svg></div><b style="font-size:11px">Neha</b></span><div style="grid-column:span 21;position:relative;height:26px;border-radius:6px;background:#F8F9FC"><i style="position:absolute;top:3px;height:10px;left:19.047619047619047%;width:14.285714285714285%;border-radius:4px;background:#DB2777;border:none;font-size:8.5px;color:#fff;font-weight:800;font-style:normal;overflow:hidden;white-space:nowrap;padding:0 4px;line-height:10px">Leave</i></div><span class="row" style="gap:5px"><div class="ph" style="width:18px;height:18px;border-radius:50%"><svg width="18" height="18" viewBox="0 0 18 18"><defs><linearGradient id="g7" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FBCFE8"/><stop offset="1" stop-color="#FDF2F8"/></linearGradient></defs>
+  <rect width="18" height="18" fill="url(#g7)"/>
+  <circle cx="14.76" cy="3.2399999999999998" r="3.96" fill="#fff" opacity=".35"/>
+  
+  <path d="M1.9620000000000006,18 Q2.267999999999999,12.303 9,11.997 Q15.732000000000001,12.303 16.038,18Z" fill="#7C3AED"/>
+  <rect x="7.8372" y="9.702" width="2.3256" height="2.754" fill="#8D5A3C"/>
+  <circle cx="9" cy="7.56" r="3.06" fill="#8D5A3C"/>
+  <path d="M5.8788,7.254 Q5.9399999999999995,3.4289999999999994 9,3.888 Q12.06,3.4289999999999994 12.1212,7.254 Q9,5.265 5.8788,7.254Z" fill="#6B4423"/>
+  </svg></div><b style="font-size:11px">Rahul</b></span><div style="grid-column:span 21;position:relative;height:26px;border-radius:6px;background:#F8F9FC"><i style="position:absolute;top:3px;height:10px;left:76.19047619047619%;width:23.809523809523807%;border-radius:4px;background:#DB2777;border:none;font-size:8.5px;color:#fff;font-weight:800;font-style:normal;overflow:hidden;white-space:nowrap;padding:0 4px;line-height:10px">Leave</i><i style="position:absolute;top:14px;height:9px;left:76.19047619047619%;width:23.809523809523807%;border-radius:4px;background:transparent;border:1.5px dashed #D97706;font-size:8.5px;color:#D97706;font-weight:800;font-style:normal;overflow:hidden;white-space:nowrap;padding:0 4px;line-height:7px">no cover yet</i></div>
+      </div>
+    </div>
+    <div class="card sec2"><b style="font-size:14px">Handed over</b>
+      <div class="row" style="gap:12px;padding:10px;border-radius:12px;border:1px solid #E5E7EF"><div class="ph" style="width:34px;height:34px;border-radius:50%"><svg width="34" height="34" viewBox="0 0 34 34"><defs><linearGradient id="g8" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#C7D2FE"/><stop offset="1" stop-color="#EEF2FF"/></linearGradient></defs>
+  <rect width="34" height="34" fill="url(#g8)"/>
+  <circle cx="27.88" cy="6.12" r="7.48" fill="#fff" opacity=".35"/>
+  <path d="M10.353000000000002,14.28 Q9.774999999999999,5.609999999999999 17,7.054999999999999 Q24.225,5.609999999999999 23.647,14.28 L23.936,23.528 L10.064,23.528Z" fill="#2B1D14"/>
+  <path d="M3.7060000000000013,34 Q4.283999999999999,23.239 17,22.661 Q29.716,23.239 30.293999999999997,34Z" fill="#4F46E5"/>
+  <rect x="14.8036" y="18.326" width="4.3928" height="5.202" fill="#F2C9A5"/>
+  <circle cx="17" cy="14.28" r="5.78" fill="#F2C9A5"/>
+  
+  </svg></div><div style="flex:1"><b style="font-size:13px">Priya Sharma</b><div class="xs mut">15 – 20 Oct · Starts in 9 days</div><div style="height:5px;border-radius:99px;background:#EEF0F5;margin-top:6px;overflow:hidden"><i class="wb" style="display:block;height:100%;width:0%;background:#0284C7"></i></div></div><span class="pill p-pri">Upcoming</span><span class="btn sm">End now</span></div><div class="row" style="gap:12px;padding:10px;border-radius:12px;border:1px solid #E5E7EF"><div class="ph" style="width:34px;height:34px;border-radius:50%"><svg width="34" height="34" viewBox="0 0 34 34"><defs><linearGradient id="g9" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FDE68A"/><stop offset="1" stop-color="#FFFBEB"/></linearGradient></defs>
+  <rect width="34" height="34" fill="url(#g9)"/>
+  <circle cx="27.88" cy="6.12" r="7.48" fill="#fff" opacity=".35"/>
+  <path d="M10.353000000000002,14.28 Q9.774999999999999,5.609999999999999 17,7.054999999999999 Q24.225,5.609999999999999 23.647,14.28 L23.936,23.528 L10.064,23.528Z" fill="#3B2A20"/>
+  <path d="M3.7060000000000013,34 Q4.283999999999999,23.239 17,22.661 Q29.716,23.239 30.293999999999997,34Z" fill="#374151"/>
+  <rect x="14.8036" y="18.326" width="4.3928" height="5.202" fill="#F2C9A5"/>
+  <circle cx="17" cy="14.28" r="5.78" fill="#F2C9A5"/>
+  
+  </svg></div><div style="flex:1"><b style="font-size:13px">Hema Iyer</b><div class="xs mut">1 – 3 Oct · Approved 4 for you</div><div style="height:5px;border-radius:99px;background:#EEF0F5;margin-top:6px;overflow:hidden"><i class="wb" style="display:block;height:100%;width:100%;background:#6B7280"></i></div></div><span class="pill p-neu">Ended</span></div>
+    </div>
+  </div>
+  <div class="card sec2" style="border:1.5px solid #4F46E544">
+    <b style="font-size:14px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 20 12-12"/><path d="m14 4 6 6-3 3-6-6z"/></svg> Hand over my approvals</b>
+    <div class="secn"><i>1</i>When</div>
+    <div class="row" style="gap:8px"><div class="in" style="flex:1"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>15 Oct · in 9 days</div><span class="mut">→</span><div class="in" style="flex:1">20 Oct</div></div>
+    <div class="xs" style="color:#059669"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Filled from your approved leave</div>
+    <div class="secn"><i>2</i>Who covers — best fits <span class="new">New</span></div>
+    <div class="row" style="gap:10px;padding:8px 10px;border-radius:12px;border:2px solid #4F46E5;"><div class="ph" style="width:30px;height:30px;border-radius:50%"><svg width="30" height="30" viewBox="0 0 30 30"><defs><linearGradient id="g10" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#C7D2FE"/><stop offset="1" stop-color="#EEF2FF"/></linearGradient></defs>
+  <rect width="30" height="30" fill="url(#g10)"/>
+  <circle cx="24.599999999999998" cy="5.3999999999999995" r="6.6" fill="#fff" opacity=".35"/>
+  <path d="M9.135,12.6 Q8.625,4.949999999999999 15,6.224999999999999 Q21.375,4.949999999999999 20.865000000000002,12.6 L21.12,20.76 L8.879999999999999,20.76Z" fill="#2B1D14"/>
+  <path d="M3.2699999999999996,30 Q3.7799999999999976,20.505000000000003 15,19.995 Q26.220000000000002,20.505000000000003 26.73,30Z" fill="#4F46E5"/>
+  <rect x="13.062" y="16.17" width="3.8760000000000003" height="4.590000000000001" fill="#F2C9A5"/>
+  <circle cx="15" cy="12.6" r="5.1000000000000005" fill="#F2C9A5"/>
+  
+  </svg></div><div style="flex:1"><b style="font-size:12.5px">Priya Sharma</b><div class="xs mut">Engineering Lead · same team reach</div><div class="xs" style="color:#059669">In all 6 days · 2 requests waiting</div></div><span class="cb on"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span></div><div class="row" style="gap:10px;padding:8px 10px;border-radius:12px;border:1px solid #E5E7EF;"><div class="ph" style="width:30px;height:30px;border-radius:50%"><svg width="30" height="30" viewBox="0 0 30 30"><defs><linearGradient id="g11" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FDE68A"/><stop offset="1" stop-color="#FFFBEB"/></linearGradient></defs>
+  <rect width="30" height="30" fill="url(#g11)"/>
+  <circle cx="24.599999999999998" cy="5.3999999999999995" r="6.6" fill="#fff" opacity=".35"/>
+  <path d="M9.135,12.6 Q8.625,4.949999999999999 15,6.224999999999999 Q21.375,4.949999999999999 20.865000000000002,12.6 L21.12,20.76 L8.879999999999999,20.76Z" fill="#3B2A20"/>
+  <path d="M3.2699999999999996,30 Q3.7799999999999976,20.505000000000003 15,19.995 Q26.220000000000002,20.505000000000003 26.73,30Z" fill="#374151"/>
+  <rect x="13.062" y="16.17" width="3.8760000000000003" height="4.590000000000001" fill="#F2C9A5"/>
+  <circle cx="15" cy="12.6" r="5.1000000000000005" fill="#F2C9A5"/>
+  
+  </svg></div><div style="flex:1"><b style="font-size:12.5px">Hema Iyer</b><div class="xs mut">HR · can already approve</div><div class="xs" style="color:#059669">In 5 of 6 days</div></div></div><div class="row" style="gap:10px;padding:8px 10px;border-radius:12px;border:1px solid #E5E7EF;opacity:.5"><div class="ph" style="width:30px;height:30px;border-radius:50%"><svg width="30" height="30" viewBox="0 0 30 30"><defs><linearGradient id="g12" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#BAE6FD"/><stop offset="1" stop-color="#F0F9FF"/></linearGradient></defs>
+  <rect width="30" height="30" fill="url(#g12)"/>
+  <circle cx="24.599999999999998" cy="5.3999999999999995" r="6.6" fill="#fff" opacity=".35"/>
+  <path d="M9.135,12.6 Q8.625,4.949999999999999 15,6.224999999999999 Q21.375,4.949999999999999 20.865000000000002,12.6 L21.12,20.76 L8.879999999999999,20.76Z" fill="#1C1C1C"/>
+  <path d="M3.2699999999999996,30 Q3.7799999999999976,20.505000000000003 15,19.995 Q26.220000000000002,20.505000000000003 26.73,30Z" fill="#0284C7"/>
+  <rect x="13.062" y="16.17" width="3.8760000000000003" height="4.590000000000001" fill="#F2C9A5"/>
+  <circle cx="15" cy="12.6" r="5.1000000000000005" fill="#F2C9A5"/>
+  
+  </svg></div><div style="flex:1"><b style="font-size:12.5px">Neha Gupta</b><div class="xs mut">Team Lead</div><div class="xs" style="color:#DC2626">Away 15 Oct</div></div></div>
+    <div class="secn"><i>3</i>What they approve</div>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><span class="pill p-pri"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Leave</span><span class="pill p-pri"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Attendance fixes</span><span class="pill p-pri"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Expenses</span><span class="pill p-pri"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Timesheets</span></div>
+    <div class="f"><label>Note for Priya</label><div class="in ph">e.g. Ask Rahul about the release week</div></div>
+    <span class="btn pri" style="justify-content:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 20 12-12"/><path d="m14 4 6 6-3 3-6-6z"/></svg>Hand over 15 – 20 Oct</span>
+  </div>
+</div>
+<div class="card notes"><b class="xs" style="letter-spacing:.06em;text-transform:uppercase;color:#6B7280">What changes</b><div class="xs"><span class="k-old">Today</span>Hand over for dates, reason, end early, list of mine, “You’re covering for”, admin list + set up on someone’s behalf.</div><div class="xs"><span class="k-new">New</span>“Going away?” banner from your approved leave; dates filled in for you.</div><div class="xs"><span class="k-new">New</span>Best covers: same reach, in office those days, how busy they are. People on leave are faded.</div><div class="xs"><span class="k-new">New</span>Team timeline: who’s away and who covers — gaps (“no cover yet”) stand out.</div><div class="xs"><span class="k-q">Ask</span>Pick which approvals to hand over, or always all 4? On leave approval: only suggest, or set it up by itself?</div></div>
+</main></div></div></x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

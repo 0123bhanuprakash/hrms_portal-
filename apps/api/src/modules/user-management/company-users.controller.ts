@@ -5,7 +5,8 @@ import type { TenantContext } from '../../common/types/request.types';
 import type { AccessContext } from '../access/access.types';
 import { companyOf } from './company-context';
 import { CompanyUsersService } from './company-users.service';
-import { InviteUserDto, QueryCompanyUsersDto, SetUserRolesDto, UpdateCompanyUserDto, UserStatusDto } from './dto';
+import { BulkUsersDto, InviteManyDto, InviteUserDto, PreviewRolesDto, QueryCompanyUsersDto, SetUserRolesDto, UpdateCompanyUserDto, UserStatusDto } from './dto';
+import { LiveAccess } from '../realtime/live.decorator';
 
 // ============================================================
 // Company Admin → Users  (/company/users)
@@ -22,6 +23,7 @@ import { InviteUserDto, QueryCompanyUsersDto, SetUserRolesDto, UpdateCompanyUser
 @ApiTags('Users')
 @ApiBearerAuth()
 @RequireFeature('admin.users')
+@LiveAccess('user')
 @Controller('company/users')
 export class CompanyUsersController {
   constructor(private readonly users: CompanyUsersService) {}
@@ -31,6 +33,41 @@ export class CompanyUsersController {
   @ApiOperation({ summary: 'List the users of your company' })
   list(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Query() query: QueryCompanyUsersDto) {
     return this.users.list(companyOf(ctx), query, access);
+  }
+
+  @Get('insights')
+  @RequirePermission('user.view')
+  @ApiOperation({ summary: 'Counts and "needs a look" items for the Users page' })
+  insights(@TenantCtx() ctx: TenantContext) {
+    return this.users.insights(companyOf(ctx));
+  }
+
+  @Post('bulk')
+  @HttpCode(HttpStatus.OK)
+  @RequirePermission('user.view')
+  @Audit('user:bulk', 'user')
+  bulk(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Body() dto: BulkUsersDto) {
+    return this.users.bulk(companyOf(ctx), access, dto);
+  }
+
+  @Post('invite-many')
+  @RequirePermission('user.invite')
+  @Audit('user:invite:many', 'user')
+  inviteMany(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Body() dto: InviteManyDto) {
+    return this.users.inviteMany(companyOf(ctx), access, dto.emails, dto.roleIds);
+  }
+
+  @Post(':id/roles/preview')
+  @HttpCode(HttpStatus.OK)
+  @RequirePermission('user.view')
+  preview(@TenantCtx() ctx: TenantContext, @Param('id', ParseUUIDPipe) id: string, @Body() dto: PreviewRolesDto) {
+    return this.users.previewRoles(companyOf(ctx), id, dto.roleIds);
+  }
+
+  @Get(':id/history')
+  @RequirePermission('user.view')
+  history(@TenantCtx() ctx: TenantContext, @Param('id', ParseUUIDPipe) id: string) {
+    return this.users.history(companyOf(ctx), id);
   }
 
   @Get(':id')

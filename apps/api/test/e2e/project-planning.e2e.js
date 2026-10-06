@@ -141,7 +141,7 @@ const D = (k) => new Date(`${k}T00:00:00Z`);
     check('Fill the open role', r.status === 200 && (await p.projectOpenRole.findUnique({ where: { id: role } })).filledAt !== null);
 
     // ── Reminder: no update for 14 days ──
-    const job = new ProjectPlanningService(p, new ProjectsService(p), new NotificationsService(p, { queueNotification: async () => undefined }, { get: () => undefined }), { get: () => undefined });
+    const job = new ProjectPlanningService(p, new ProjectsService(p), new NotificationsService(p, { queueNotification: async () => undefined }, { get: () => undefined }, new (require(require('path').resolve('dist/apps/api/src/modules/realtime/realtime.service.js')).RealtimeService)()), { get: () => undefined });
     await job.remindUpdates();
     await wait(300);
     check('PM reminded about the internal project (no update)', (await notes('pm', 'project.update_due')) === 1);

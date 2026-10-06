@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { CompanyPersonalization, MenuStyle, ThemeRef, ThemeTokens } from '@hrms/types';
+import type { BackdropLevel, BackdropPack, CompanyPersonalization, MenuStyle, ThemeRef, ThemeTokens } from '@hrms/types';
 import { api } from '@/lib/api';
 import { resolveTheme } from '@/lib/theme/presets';
 import type { DensityPref, TextSizePref } from '@/lib/preferences/display';
@@ -27,6 +27,13 @@ export interface CompanyBrandingResponse {
   faviconUrl: string | null;
   primaryColor: string;
   secondaryColor: string;
+  /** Short line under the name in the side menu */
+  tagline?: string | null;
+  /** Logo for dark mode */
+  logoDarkUrl?: string | null;
+  signInMessage?: string | null;
+  signInBackground?: 'pack' | 'photo' | 'plain';
+  signInPhotoUrl?: string | null;
 }
 
 export interface CompanyStats {
@@ -49,6 +56,10 @@ export interface UserPreferences {
   colorTheme?: string | null;
   /** null = the company default */
   menuStyle?: MenuStyle | null;
+  /** Page background pack; null = the company default */
+  backdropPack?: BackdropPack | null;
+  /** lively | calm | off; null = the company default */
+  backdropLevel?: BackdropLevel | null;
   /** View settings that follow the person (see lib/preferences/ui-state) */
   uiState?: Record<string, unknown>;
   /** Super Admins: email when a new device signs in */
@@ -57,6 +68,12 @@ export interface UserPreferences {
   idleTimeoutMinutes?: number | null;
   /** Super Admins: confirm the password before risky changes */
   reauthForRisky?: boolean;
+  /** Per topic: { time: { app, email } } — missing = on */
+  notificationTopics?: Record<string, { app?: boolean; email?: boolean }>;
+  /** Quiet hours for emails */
+  quietHours?: { on: boolean; from: string; to: string; weekends: boolean } | null;
+  /** One summary email a day */
+  dailySummary?: boolean;
 }
 
 export const companyKeys = {
@@ -122,13 +139,13 @@ export function useCompanyBranding(companyId: string | null | undefined) {
 export function useUpdateCompanyBranding(companyId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { displayName: string }) =>
+    mutationFn: (body: Partial<{ displayName: string; tagline: string; signInMessage: string; signInBackground: 'pack' | 'photo' | 'plain'; logoUrl: string | null; logoDarkUrl: string | null; signInPhotoUrl: string | null }>) =>
       unwrap<CompanyBrandingResponse>(api.patch(`/companies/${companyId}/branding`, body)),
     onSuccess: (data) => qc.setQueryData(companyKeys.branding(companyId), data),
   });
 }
 
-export function useUploadBrandingAsset(companyId: string, kind: 'logo' | 'favicon') {
+export function useUploadBrandingAsset(companyId: string, kind: 'logo' | 'favicon' | 'logo-dark' | 'sign-in-photo') {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (file: File) => {

@@ -92,7 +92,7 @@ function CategoryDialog({ value, onClose }: { value: ExpenseCategory | 'new' | n
   };
 
   return (
-    <Modal open onClose={onClose} busy={save.isPending} icon={<Tags />} title={value === 'new' ? 'Add category' : `Edit ${value.name}`} className="sm:max-w-md"
+    <Modal open onClose={onClose} busy={save.isPending} icon={<Tags />} title={value === 'new' ? 'Add category' : `Edit ${value.name}`} size="sm"
       footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button><Button type="submit" form="cat-form" loading={save.isPending}>Save</Button></>}>
       <form id="cat-form" onSubmit={submit} className="space-y-3">
         <Field label="Name" htmlFor="cat-name" required><Input id="cat-name" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required minLength={2} maxLength={60} /></Field>

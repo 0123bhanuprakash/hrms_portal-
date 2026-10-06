@@ -91,6 +91,8 @@ export class KudosService {
       body: created.message,
       link: '/app/kudos',
       email: false,
+      // Lets a deleted kudos take its notifications back (see remove)
+      dedupeKey: `kudos:${created.id}:received`,
     });
     // Their managers like to know too (not the giver, not the people thanked)
     const recipients = new Set(people.map((p) => p.userId));
@@ -108,6 +110,7 @@ export class KudosService {
         body: created.message,
         link: '/app/kudos',
         email: false,
+        dedupeKey: `kudos:${created.id}:team`,
       });
     }
     return this.present(created, access);
@@ -375,6 +378,8 @@ export class KudosService {
       throw new ForbiddenException(row.fromUserId === access.userId ? `Kudos can only be taken back within ${UNDO_HOURS} hours` : 'You can’t remove someone else’s kudos');
     }
     await this.prisma.kudos.update({ where: { id }, data: { deletedAt: new Date(), deletedById: access.userId } });
+    // Nobody is told it was removed; its notifications quietly leave the bells
+    void this.notifications.withdraw(companyId, { dedupePrefixes: [`kudos:${id}:`, `kudos-thanks:${id}:`] }).catch(() => undefined);
     return { id };
   }
 

@@ -85,7 +85,7 @@ async function cleanup() {
 
     // ── Categories
     const cats = (await call(S.emp, 'GET', '/helpdesk/categories')).data;
-    check('Default categories for 3 queues', cats?.length === 16 && new Set(cats.map((c) => c.queue)).size === 3);
+    check('Default categories for 4 queues (incl. DevOps)', cats?.length === 21 && new Set(cats.map((c) => c.queue)).size === 4);
     const cat = (q, n) => cats.find((c) => c.queue === q && c.name === n);
     check('Employee cannot add categories → 403', (await call(S.emp, 'POST', '/helpdesk/categories', { queue: 'IT', name: 'Printers' })).status === 403);
     check('HR cannot add IT categories → 403', (await call(S.hr, 'POST', '/helpdesk/categories', { queue: 'IT', name: 'Printers' })).status === 403);
@@ -189,7 +189,7 @@ async function cleanup() {
         return c;
       },
     };
-    const rem = new HelpdeskRemindersService(p, notifs, { get: () => 'false' });
+    const rem = new HelpdeskRemindersService(p, notifs, { get: () => 'false' }, { live: () => undefined }, { leads: async () => ({ headId: null, backupId: null, onDuty: [] }) });
     const r1 = await rem.run();
     check('SLA warning to Finance (response + resolution)', r1.warned === 2 && (await p.notification.count({ where: { userId: P.fin.user.id, type: 'ticket.sla' } })) === 2, JSON.stringify(r1));
     check('Resolved > 7 days auto-closed', r1.closed >= 1 && (await p.ticket.findUnique({ where: { id: t3.id } })).status === 'CLOSED');

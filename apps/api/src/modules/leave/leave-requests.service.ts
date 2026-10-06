@@ -1,8 +1,11 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { LeaveApprovalStatus, LeaveStatus, Prisma } from '@prisma/client';
+import { randomUUID } from 'crypto';
+import { EmploymentStatus, LeaveApprovalStatus, LeaveStatus, Prisma } from '@prisma/client';
+import { PrivateFilesService } from '../employee-profile/private-files.service';
+import { detectFileType, DOCUMENT_TYPES } from '../employee-profile/file-types';
 import { PrismaService } from '../prisma/prisma.service';
 import { AccessService } from '../access/access.service';
-import type { AccessContext } from '../access/access.types';
+import { covering, type AccessContext } from '../access/access.types';
 import { AttendancePolicyService } from '../attendance/policy.service';
 import { HolidaysService } from '../attendance/holidays.service';
 import { addDays, dateFromKey, keyFromDate, localDateKey, monthKeys } from '../attendance/time-zone';
@@ -11,7 +14,9 @@ import { LeaveBalancesService, eligible } from './leave-balances.service';
 import { countLeaveDays } from './leave-rules';
 import { NotificationsService, dateRange } from '../notifications/notifications.service';
 import { ApprovalRouterService } from '../projects/approval-router.service';
-import type { CancelLeaveDto, CreateLeaveRequestDto, DecideLeaveDto, LeaveCalendarQueryDto, LeaveListQueryDto, LeaveRequestInputDto } from './dto';
+import type { AskQuestionDto, CancelLeaveDto, CreateLeaveRequestDto, DecideLeaveDto, LeaveCalendarQueryDto, LeaveListQueryDto, LeaveRequestInputDto } from './dto';
+
+const DOC_MAX_BYTES = 10 * 1024 * 1024;
 
 const APPROVE = 'leave.approve';
 const ACTIVE: LeaveStatus[] = [LeaveStatus.PENDING, LeaveStatus.APPROVED];
@@ -31,6 +36,9 @@ const SELECT = {
   decidedAt: true,
   cancelledAt: true,
   cancelReason: true,
+  documentName: true,
+  documentSize: true,
+  documentMime: true,
   employee: {
     select: {
       id: true,
@@ -43,13 +51,23 @@ const SELECT = {
       department: { select: { id: true, name: true } },
     },
   },
-  leaveType: { select: { id: true, name: true, code: true, color: true, countsAsPresent: true, isPaid: true } },
+  leaveType: { select: { id: true, name: true, code: true, color: true, countsAsPresent: true, isPaid: true, documentAfterDays: true } },
   approvals: {
     orderBy: { level: 'asc' },
     select: { level: true, status: true, approverId: true, approverIds: true, label: true, actedById: true, comments: true, actedAt: true, approver: NAME, actedBy: NAME, onBehalfOf: NAME },
   },
 } satisfies Prisma.LeaveRequestSelect;
 type RequestRow = Prisma.LeaveRequestGetPayload<{ select: typeof SELECT }>;
+
+/** Just what "can I decide this?" needs — for counts and the waiting-for-me filter. */
+const DECIDE_SELECT = {
+  id: true,
+  status: true,
+  currentLevel: true,
+  employee: { select: { userId: true } },
+  approvals: { select: { level: true, status: true, approverId: true, approverIds: true, actedById: true } },
+} satisfies Prisma.LeaveRequestSelect;
+type DecideRow = Prisma.LeaveRequestGetPayload<{ select: typeof DECIDE_SELECT }>;
 
 type Decider = { mode: 'approver' | 'delegate' | 'override'; onBehalfOf: string | null };
 
@@ -64,6 +82,7 @@ export class LeaveRequestsService {
     private readonly balances: LeaveBalancesService,
     private readonly notifications: NotificationsService,
     private readonly router: ApprovalRouterService,
+    private readonly files: PrivateFilesService,
   ) {}
 
   // ─── Apply ─────────────────────────────────────────────────
@@ -98,7 +117,7 @@ export class LeaveRequestsService {
 
     const id = await this.prisma.$transaction(async (tx) => {
       // Re-check balance and overlaps inside the transaction (double submits)
-      if (check.available !== null && (await this.balances.available(tx, companyId, person, type, year))! < check.days) {
+      if (check.available !== null && (await this.balances.available(tx, companyId, person, type, year))! + type.negativeBalance < check.days) {
         throw new BadRequestException('Not enough balance');
       }
       if (await this.overlapping(tx, companyId, person.id, dto.startDate, dto.endDate)) throw new ConflictException('You already have leave in these dates');
@@ -130,7 +149,7 @@ export class LeaveRequestsService {
     return this.getRow(companyId, access, id, true);
   }
 
-  private async evaluate(companyId: string, person: { id: string; joiningDate: Date; gender: string | null }, type: LeaveTypeRow, dto: LeaveRequestInputDto) {
+  private async evaluate(companyId: string, person: { id: string; joiningDate: Date; gender: string | null; employmentStatus?: EmploymentStatus; locationId?: string | null }, type: LeaveTypeRow, dto: LeaveRequestInputDto) {
     const errors: string[] = [];
     const warnings: string[] = [];
     const policy = await this.policies.get(companyId);
@@ -138,6 +157,7 @@ export class LeaveRequestsService {
 
     if (!type.isActive) errors.push(`${type.name} is no longer available`);
     if (!eligible(type, person)) errors.push(`${type.name} isn’t available to you`);
+    if (type.blockDuringProbation && person.employmentStatus === EmploymentStatus.PROBATION) errors.push(`${type.name} can be used once your probation is over`);
     if (dto.endDate < dto.startDate) errors.push('The end date is before the start date');
     if (dto.startDate.slice(0, 4) !== dto.endDate.slice(0, 4)) errors.push('Leave can’t span two calendar years — split it into two requests');
     if (dto.halfDay && dto.startDate !== dto.endDate) errors.push('A half day must be a single date');
@@ -148,10 +168,10 @@ export class LeaveRequestsService {
       errors.push(`${type.name} needs ${type.minNoticeDays} day${type.minNoticeDays === 1 ? '' : 's'}’ notice`);
     }
     if (dto.startDate < todayKey) warnings.push('These dates are in the past');
-    if (errors.length) return { days: 0, dates: [] as string[], available: null as number | null, after: null as number | null, errors, warnings };
+    if (errors.length) return { days: 0, dates: [] as string[], available: null as number | null, after: null as number | null, needsDocument: false, errors, warnings };
 
-    const holidays = await this.holidays.between(companyId, dto.startDate, dto.endDate);
-    const holidayKeys = new Set([...holidays.entries()].filter(([, h]) => !h.isOptional).map(([k]) => k));
+    // The person's own days off: holidays for everyone / their office, plus optional ones they picked
+    const holidayKeys = await this.holidays.keysFor(companyId, { id: person.id, locationId: person.locationId ?? null }, dto.startDate, dto.endDate);
     const { days, dates } = countLeaveDays({
       startKey: dto.startDate,
       endKey: dto.endDate,
@@ -159,6 +179,7 @@ export class LeaveRequestsService {
       includeNonWorkingDays: type.includeNonWorkingDays,
       workDays: policy.workDays,
       holidayKeys,
+      sandwich: type.sandwichRule,
     });
     if (!days) errors.push('There are no working days in these dates');
     if (type.maxConsecutiveDays && days > type.maxConsecutiveDays) errors.push(`${type.name} allows at most ${type.maxConsecutiveDays} days at a time`);
@@ -166,8 +187,14 @@ export class LeaveRequestsService {
 
     const year = Number(dto.startDate.slice(0, 4));
     const available = await this.balances.available(this.prisma, companyId, person, type, year);
-    if (available !== null && days > available) errors.push(`Not enough balance — ${available} day${available === 1 ? '' : 's'} available`);
-    return { days, dates, available, after: available === null ? null : available - days, errors, warnings };
+    if (available !== null && days > available + type.negativeBalance) {
+      errors.push(`Not enough balance — ${available} day${available === 1 ? '' : 's'} available${type.negativeBalance ? ` (+${type.negativeBalance} in advance)` : ''}`);
+    } else if (available !== null && days > available) warnings.push(`${days - available} day${days - available === 1 ? '' : 's'} taken in advance — your balance goes below 0`);
+    const offInside = dates.filter((d) => holidayKeys.has(d) || !policy.workDays.includes(new Date(d + 'T00:00:00Z').getUTCDay())).length;
+    if (type.sandwichRule && !type.includeNonWorkingDays && offInside) warnings.push(`${offInside} weekend / holiday day${offInside === 1 ? '' : 's'} between your leave days count as leave (company rule)`);
+    const needsDocument = type.documentAfterDays !== null && days > type.documentAfterDays;
+    if (needsDocument) warnings.push(`Please attach a document (asked for ${type.name.toLowerCase()} over ${type.documentAfterDays} day${type.documentAfterDays === 1 ? '' : 's'})`);
+    return { days, dates, available, after: available === null ? null : available - days, needsDocument, errors, warnings };
   }
 
   private async overlapping(db: PrismaService | Prisma.TransactionClient, companyId: string, employeeId: string, startKey: string, endKey: string) {
@@ -256,7 +283,7 @@ export class LeaveRequestsService {
       // Withdrawn while pending: let the approver know it no longer needs them (in-app only)
       const level = request.approvals.find((a) => a.level === request.currentLevel);
       const pool = level ? this.pool(level) : [];
-      const to = [...pool, ...(await this.notifications.coveringFor(pool))];
+      const to = [...pool, ...(await this.notifications.coveringFor(pool, APPROVE))];
       void this.notifications.notify({
         companyId,
         userIds: to,
@@ -281,7 +308,7 @@ export class LeaveRequestsService {
   }
 
   /** How the caller may decide the current level, if at all. */
-  private deciderFor(access: AccessContext, request: RequestRow): Decider | null {
+  private deciderFor(access: AccessContext, request: DecideRow): Decider | null {
     if (request.status !== LeaveStatus.PENDING || request.employee.userId === access.userId) return null;
     const row = request.approvals.find((a) => a.level === request.currentLevel);
     if (!row || row.status !== LeaveApprovalStatus.PENDING) return null;
@@ -295,8 +322,8 @@ export class LeaveRequestsService {
     const pool = this.pool(row);
     if (pool.includes(access.userId)) return { mode: 'approver', onBehalfOf: null };
     // Covering for someone in the pool (their authority may come from a project, not a role)
-    const covering = access.delegations.find((d) => pool.includes(d.fromUserId));
-    if (covering) return { mode: 'delegate', onBehalfOf: covering.fromUserId };
+    const cover = covering(access, APPROVE).find((d) => pool.includes(d.fromUserId));
+    if (cover) return { mode: 'delegate', onBehalfOf: cover.fromUserId };
     return null;
   }
 
@@ -325,7 +352,7 @@ export class LeaveRequestsService {
     if (!r || r.status !== LeaveStatus.PENDING) return;
     const level = r.approvals.find((a) => a.level === r.currentLevel);
     const pool = level ? this.pool(level) : [];
-    const to = pool.length ? [...pool, ...(await this.notifications.coveringFor(pool))] : await this.notifications.companyWideApprovers(companyId, APPROVE);
+    const to = pool.length ? [...pool, ...(await this.notifications.coveringFor(pool, APPROVE))] : await this.notifications.companyWideApprovers(companyId, APPROVE);
     const who = `${r.employee.firstName} ${r.employee.lastName}`;
     const step = r.requiredLevels > 1 ? ` (approval ${r.currentLevel} of ${r.requiredLevels})` : '';
     await this.notifications.notify({
@@ -379,37 +406,47 @@ export class LeaveRequestsService {
     } else if (query.view === 'all') {
       where = { ...filters, employee: this.access.requireEmployeeScope(access, 'leave.view') };
     } else {
-      // Waiting for me: current level is mine, someone I cover for, or (company-wide) unassigned / anyone
-      const covering = access.delegations.map((d) => d.fromUserId);
-      const pending = await this.prisma.leaveRequest.findMany({
-        where: {
-          companyId,
-          status: LeaveStatus.PENDING,
-          employee: { userId: { not: access.userId } },
-          ...(this.companyWide(access) ? {} : { approvals: { some: { status: LeaveApprovalStatus.PENDING, approverIds: { hasSome: [access.userId, ...covering] } } } }),
-        },
-        select: SELECT,
-        orderBy: { startDate: 'asc' },
-      });
-      const mine = pending.filter((r) => {
-        const row = r.approvals.find((a) => a.level === r.currentLevel);
-        if (!row) return false;
-        const pool = this.pool(row);
-        if (pool.includes(access.userId) || pool.some((u) => covering.includes(u))) return Boolean(this.deciderFor(access, r));
-        return this.companyWide(access) && pool.length === 0;
-      });
-      return this.page(companyId, mine.slice((page - 1) * limit, page * limit), mine.length, page, limit, access);
+      // Filter on the light rows, then load full details only for this page
+      const ids = await this.waitingForMe(companyId, access);
+      const pageIds = ids.slice((page - 1) * limit, page * limit);
+      const rows = pageIds.length ? await this.prisma.leaveRequest.findMany({ where: { id: { in: pageIds } }, select: SELECT }) : [];
+      rows.sort((a, b) => pageIds.indexOf(a.id) - pageIds.indexOf(b.id));
+      return this.page(companyId, rows, ids.length, page, limit, access, true);
     }
 
     const [rows, total] = await Promise.all([
       this.prisma.leaveRequest.findMany({ where, select: SELECT, orderBy: { startDate: 'desc' }, skip: (page - 1) * limit, take: limit }),
       this.prisma.leaveRequest.count({ where }),
     ]);
-    return this.page(companyId, rows, total, page, limit, access);
+    return this.page(companyId, rows, total, page, limit, access, query.view === 'all');
   }
 
+  /** Ids of requests waiting for me (soonest first): current level is mine, someone I cover for, or (company-wide) unassigned / anyone. */
+  private async waitingForMe(companyId: string, access: AccessContext): Promise<string[]> {
+    const coveredIds = covering(access, APPROVE).map((d) => d.fromUserId);
+    const pending = await this.prisma.leaveRequest.findMany({
+      where: {
+        companyId,
+        status: LeaveStatus.PENDING,
+        employee: { userId: { not: access.userId } },
+        ...(this.companyWide(access) ? {} : { approvals: { some: { status: LeaveApprovalStatus.PENDING, approverIds: { hasSome: [access.userId, ...coveredIds] } } } }),
+      },
+      select: DECIDE_SELECT,
+      orderBy: { startDate: 'asc' },
+    });
+    const mine = pending.filter((r) => {
+      const row = r.approvals.find((a) => a.level === r.currentLevel);
+      if (!row) return false;
+      const pool = this.pool(row);
+      if (pool.includes(access.userId) || pool.some((u) => coveredIds.includes(u))) return Boolean(this.deciderFor(access, r));
+      return this.companyWide(access) && pool.length === 0;
+    });
+    return mine.map((r) => r.id);
+  }
+
+  /** The badge: same rule as the approvals list, without building the list. */
   async pendingCount(companyId: string, access: AccessContext): Promise<number> {
-    return (await this.list(companyId, access, { view: 'review', limit: 100 })).meta.total;
+    return (await this.waitingForMe(companyId, access)).length;
   }
 
   /** `decided`: the caller just acted on it, so it is theirs to see. */
@@ -421,7 +458,7 @@ export class LeaveRequestsService {
       r.employee.userId === access.userId ||
       Boolean(this.deciderFor(access, r)) ||
       decided ||
-      r.approvals.some((a) => this.pool(a).includes(access.userId) || access.delegations.some((d) => this.pool(a).includes(d.fromUserId))) ||
+      r.approvals.some((a) => this.pool(a).includes(access.userId) || covering(access, APPROVE).some((d) => this.pool(a).includes(d.fromUserId))) ||
       (scope !== null && (await this.prisma.employee.count({ where: { AND: [{ id: r.employee.id }, scope] } })) > 0);
     if (!visible) throw new NotFoundException('Leave request not found');
     const todayKey = localDateKey(new Date(), (await this.policies.get(companyId)).timeZone);
@@ -430,7 +467,10 @@ export class LeaveRequestsService {
 
   /** Who is off in a month (approved + pending), within the caller's leave.view reach. */
   async calendar(companyId: string, access: AccessContext, query: LeaveCalendarQueryDto) {
-    const scope = this.access.requireEmployeeScope(access, 'leave.view');
+    const reach = this.access.requireEmployeeScope(access, 'leave.view');
+    // Everyone also sees their own team (same manager, their reports, shared projects)
+    const team = access.employee ? await this.teammates(companyId, access.employee.id) : [];
+    const scope: Prisma.EmployeeWhereInput = team.length ? { OR: [reach, { id: { in: team } }] } : reach;
     const keys = monthKeys(query.month);
     const [from, to] = [keys[0]!, keys[keys.length - 1]!];
     const [rows, holidays] = await Promise.all([
@@ -456,10 +496,11 @@ export class LeaveRequestsService {
     };
   }
 
-  private async page(companyId: string, rows: RequestRow[], total: number, page: number, limit: number, access: AccessContext) {
+  private async page(companyId: string, rows: RequestRow[], total: number, page: number, limit: number, access: AccessContext, withClashes = false) {
     const todayKey = localDateKey(new Date(), (await this.policies.get(companyId)).timeZone);
     const names = await this.poolNames(rows);
-    return { data: rows.map((r) => this.present(r, access, todayKey, names)), meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
+    const clashes = withClashes ? await this.clashes(companyId, rows.filter((r) => r.status === LeaveStatus.PENDING)) : new Map();
+    return { data: rows.map((r) => ({ ...this.present(r, access, todayKey, names), ...(clashes.get(r.id) && { team: clashes.get(r.id) }) })), meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
 
   private poolNames(rows: RequestRow[]) {
@@ -481,7 +522,106 @@ export class LeaveRequestsService {
       canDecide: Boolean(decider),
       decideAs: decider?.mode ?? null,
       canCancel: this.canCancel(access, r, todayKey),
+      document: r.documentName ? { name: r.documentName, size: r.documentSize, mime: r.documentMime } : null,
+      needsDocument: r.leaveType.documentAfterDays !== null && r.totalDays > r.leaveType.documentAfterDays && !r.documentName,
     };
+  }
+
+  // ─── Document, questions, team clashes ─────────────────────
+
+  /** The person attaches a supporting document (e.g. doctor's note) to their own request. */
+  async addDocument(companyId: string, access: AccessContext, id: string, file?: Express.Multer.File) {
+    const r = await this.prisma.leaveRequest.findFirst({ where: { id, companyId }, select: { id: true, status: true, documentKey: true, employee: { select: { userId: true } } } });
+    if (!r || r.employee.userId !== access.userId) throw new NotFoundException('Leave request not found');
+    if (!ACTIVE.includes(r.status)) throw new BadRequestException('Documents can only be added to pending or approved leave');
+    if (!file) throw new BadRequestException('Choose a file');
+    if (file.size > DOC_MAX_BYTES) throw new BadRequestException('Files must be 10 MB or smaller');
+    const kind = detectFileType(file.buffer, file.mimetype);
+    if (!kind || !DOCUMENT_TYPES.has(kind.ext)) throw new BadRequestException('Documents can be PDF, JPG, PNG, WebP or Word (.docx)');
+    const key = `${companyId}/leave/${id}/${randomUUID()}.${kind.ext}`;
+    await this.files.save(key, file.buffer);
+    const base = (file.originalname ?? 'document').split(/[\\/]/).pop()!.replace(/\.[^.]*$/, '').replace(/[^\w\- ().]+/g, '').slice(0, 80) || 'document';
+    await this.prisma.leaveRequest.update({ where: { id }, data: { documentKey: key, documentName: `${base}.${kind.ext}`, documentMime: kind.mime, documentSize: file.size } });
+    if (r.documentKey) await this.files.remove(r.documentKey).catch(() => undefined);
+    return this.getRow(companyId, access, id);
+  }
+
+  /** Anyone who can see the request can open its document. */
+  async openDocument(companyId: string, access: AccessContext, id: string) {
+    await this.getRow(companyId, access, id);
+    const r = await this.prisma.leaveRequest.findUnique({ where: { id }, select: { documentKey: true, documentName: true, documentMime: true, documentSize: true } });
+    if (!r?.documentKey) throw new NotFoundException('No document on this request');
+    const stream = await this.files.open(r.documentKey).catch(() => {
+      throw new NotFoundException('The file is no longer available');
+    });
+    return { stream, name: r.documentName!, mime: r.documentMime ?? 'application/octet-stream', size: r.documentSize ?? undefined };
+  }
+
+  /** An approver asks the person something; the request stays pending (in-app message). */
+  async ask(companyId: string, access: AccessContext, id: string, dto: AskQuestionDto) {
+    const r = await this.prisma.leaveRequest.findFirst({ where: { id, companyId }, select: SELECT });
+    if (!r || !this.deciderFor(access, r)) throw new NotFoundException('Leave request not found');
+    const me = access.employee ? await this.prisma.employee.findUnique({ where: { id: access.employee.id }, select: { firstName: true, lastName: true } }) : null;
+    const who = me ? `${me.firstName} ${me.lastName}` : 'Your approver';
+    await this.notifications.notify({
+      companyId,
+      userIds: [r.employee.userId],
+      type: 'leave.question',
+      title: `${who} has a question about your ${r.leaveType.name.toLowerCase()}`,
+      body: `${dateRange(keyFromDate(r.startDate), keyFromDate(r.endDate))}\n“${dto.question}”\nReply to them directly — your request is still pending.`,
+      link: '/app/leave',
+      actionLabel: 'View my leave',
+      email: false,
+    });
+    return { sent: true };
+  }
+
+  /**
+   * For approvers: teammates (same manager, or on the same project) who are off
+   * during each request, and how big that team is.
+   */
+  private async clashes(companyId: string, rows: RequestRow[]) {
+    type Overlap = { employee: { id: string; firstName: string; lastName: string; avatarUrl: string | null }; startDate: string; endDate: string; leaveType: string; color: string; status: LeaveStatus };
+    const out = new Map<string, { teamSize: number; overlaps: Overlap[] }>();
+    for (const r of rows) {
+      const team = await this.teammates(companyId, r.employee.id);
+      if (!team.length) {
+        out.set(r.id, { teamSize: 1, overlaps: [] });
+        continue;
+      }
+      const others = await this.prisma.leaveRequest.findMany({
+        where: { companyId, employeeId: { in: team }, status: { in: ACTIVE }, startDate: { lte: r.endDate }, endDate: { gte: r.startDate } },
+        select: { startDate: true, endDate: true, status: true, leaveType: { select: { name: true, color: true } }, employee: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } } },
+        orderBy: { startDate: 'asc' },
+      });
+      out.set(r.id, {
+        teamSize: team.length + 1,
+        overlaps: others.map((o) => ({ employee: o.employee, startDate: keyFromDate(o.startDate), endDate: keyFromDate(o.endDate), leaveType: o.leaveType.name, color: o.leaveType.color, status: o.status })),
+      });
+    }
+    return out;
+  }
+
+  /** People who share the person's manager, report to them, are their manager, or are on an active project with them. */
+  async teammates(companyId: string, employeeId: string): Promise<string[]> {
+    const me = await this.prisma.employee.findUnique({ where: { id: employeeId }, select: { reportingManagerId: true } });
+    const today = new Date();
+    const projects = await this.prisma.projectMember.findMany({ where: { companyId, employeeId, OR: [{ endDate: null }, { endDate: { gte: today } }] }, select: { projectId: true } });
+    const rows = await this.prisma.employee.findMany({
+      where: {
+        companyId,
+        id: { not: employeeId },
+        employmentStatus: { not: EmploymentStatus.TERMINATED },
+        OR: [
+          ...(me?.reportingManagerId ? [{ reportingManagerId: me.reportingManagerId }, { id: me.reportingManagerId }] : []),
+          { reportingManagerId: employeeId },
+          ...(projects.length ? [{ projectMembers: { some: { projectId: { in: projects.map((p) => p.projectId) }, OR: [{ endDate: null }, { endDate: { gte: today } }] } } }] : []),
+        ],
+      },
+      select: { id: true },
+      take: 200,
+    });
+    return rows.map((r) => r.id);
   }
 
   private async me(companyId: string, access: AccessContext) {

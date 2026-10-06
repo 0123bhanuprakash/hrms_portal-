@@ -4,10 +4,10 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { ArrowLeft, Bold, Building2, Clock, Italic, Link2, List, Mail, MapPin, Paperclip, Send, Smartphone, Users, X } from 'lucide-react';
+import { ArrowLeft, AtSign, Bold, Building2, Clock, Italic, Link2, List, Mail, MapPin, Paperclip, Send, Smartphone, Users, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/feedback';
-import { Field, Input, Textarea } from '@/components/ui/field';
+import { Field, Input, Textarea, FormError } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { PersonAvatar } from '@/components/profile/person-avatar';
 import { useAccess } from '@/lib/access/use-access';
@@ -19,6 +19,8 @@ import { getApiErrorMessage } from '@/lib/errors';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import { CATEGORIES, CATEGORY_ORDER, COVERS, CategoryPill, RichText, eventWhen } from './announcement-ui';
+import { DateInput } from '@/components/ui/pickers';
+import { useMentions } from '@/components/engagement/mentions';
 
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 /** <input type="datetime-local"> value ↔ ISO */
@@ -67,6 +69,7 @@ export function AnnouncementComposer({ existing }: { existing?: Announcement }) 
   }, [existing]);
 
   const set = <K extends keyof AnnouncementInput>(k: K, v: AnnouncementInput[K]) => setF((p) => ({ ...p, [k]: v }));
+  const mention = useMentions(body, f.body, (next) => set('body', next));
   const audienceQ = useMemo(() => ({ audience: f.audience, departmentIds: f.departmentIds, locationIds: f.locationIds }), [f.audience, f.departmentIds, f.locationIds]);
   const reach = useAudiencePreview(audienceQ, !(existing && existing.audience === 'TEAM' && !existing.isMine));
   // Uploaded cover: a new file (previewed locally), the saved one, or removed
@@ -148,7 +151,7 @@ export function AnnouncementComposer({ existing }: { existing?: Announcement }) 
         </div>
       </div>
       {existing?.status === 'scheduled' && <p className="rounded-lg bg-info-soft px-3 py-2 text-sm text-info">Scheduled to go out {formatDateTime(existing.publishedAt)}. Publish now, reschedule, or save it back as a draft.</p>}
-      {error && <p role="alert" className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+      <FormError>{error}</FormError>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0 space-y-4">
@@ -176,10 +179,29 @@ export function AnnouncementComposer({ existing }: { existing?: Announcement }) 
                   {([['bold', <Bold key="b" />, 'Bold'], ['italic', <Italic key="i" />, 'Italic'], ['list', <List key="l" />, 'Bullet list'], ['link', <Link2 key="k" />, 'Link']] as const).map(([k, icon, label]) => (
                     <Button key={k} type="button" variant="ghost" size="icon-sm" aria-label={label} title={label} onClick={() => format(k)}>{icon}</Button>
                   ))}
-                  <span className="ml-auto self-center pr-2 text-[11px] text-muted-foreground">**bold** · *italic* · - list</span>
+                  <Button type="button" variant="ghost" size="icon-sm" aria-label="Mention someone" title="Mention someone (type @)" onClick={mention.start}><AtSign /></Button>
+                  <span className="ml-auto self-center pr-2 text-[11px] text-muted-foreground">**bold** · *italic* · - list · @name</span>
                 </div>
-                <Textarea ref={body} id="an-body" value={f.body} onChange={(e) => set('body', e.target.value)} maxLength={5000} rows={9} className="rounded-none border-0 focus-visible:ring-0" placeholder="What do people need to know?" />
+                <Textarea
+                  ref={body}
+                  id="an-body"
+                  value={f.body}
+                  onChange={(e) => {
+                    set('body', e.target.value);
+                    mention.detect();
+                  }}
+                  onKeyDown={mention.onKeyDown}
+                  onKeyUp={(e) => !['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].includes(e.key) && mention.detect()}
+                  onClick={mention.detect}
+                  onBlur={mention.close}
+                  aria-expanded={mention.open}
+                  maxLength={5000}
+                  rows={9}
+                  className="rounded-none border-0 focus-visible:ring-0"
+                  placeholder="What do people need to know? Type @ to mention someone."
+                />
               </div>
+              {mention.panel}
             </Field>
             {(f.category === 'event' || f.eventAt) && (
               <div className="grid gap-3 sm:grid-cols-2">
@@ -235,7 +257,7 @@ export function AnnouncementComposer({ existing }: { existing?: Announcement }) 
               <Toggle on={f.requiresAck} onChange={(v) => setF((p) => ({ ...p, requiresAck: v, ackDueAt: v ? (p.ackDueAt ?? ymd(new Date(Date.now() + 7 * 86_400_000))) : null }))} title="Ask people to confirm they’ve read it" hint="Adds an “I have read this” button and tracks who did.">
                 {f.requiresAck && (
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    Confirm by <Input type="date" className="h-8 w-40" value={f.ackDueAt ?? ''} min={ymd(new Date())} onChange={(e) => set('ackDueAt', e.target.value || null)} aria-label="Confirm by" />
+                    Confirm by <DateInput className="h-8 w-40" value={f.ackDueAt ?? ''} min={ymd(new Date())} onChange={(e) => set('ackDueAt', e.target.value || null)} aria-label="Confirm by" />
                     {f.ackDueAt && <span>· a reminder goes 2 days before to anyone who hasn’t</span>}
                   </div>
                 )}
@@ -244,7 +266,7 @@ export function AnnouncementComposer({ existing }: { existing?: Announcement }) 
               <Toggle on={f.allowReactions} onChange={(v) => set('allowReactions', v)} title="Allow reactions" hint="👍 ❤️ 🎉 🙏 👏 — no comments." />
               <div className="flex flex-wrap items-center gap-3 py-2 text-sm">
                 <span className="font-medium">Hide after</span>
-                <Input type="date" className="h-8 w-40" value={f.expiresAt ?? ''} min={ymd(new Date())} onChange={(e) => set('expiresAt', e.target.value || null)} aria-label="Hide after" />
+                <DateInput className="h-8 w-40" value={f.expiresAt ?? ''} min={ymd(new Date())} onChange={(e) => set('expiresAt', e.target.value || null)} aria-label="Hide after" />
                 <span className="text-xs text-muted-foreground">Optional — it moves out of the feed</span>
               </div>
             </div>

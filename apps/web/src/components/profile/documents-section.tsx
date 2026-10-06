@@ -6,7 +6,7 @@ import { Download, FileImage, FileText, FolderOpen, Loader2, Trash2, Upload } fr
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, EmptyState, ErrorState, Skeleton } from '@/components/ui/feedback';
-import { Field, Input, inputClass } from '@/components/ui/field';
+import { Field, Input, inputClass, FormError } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
@@ -19,6 +19,7 @@ import {
 } from '@/lib/company/profile';
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatDate } from '@/lib/format';
+import { Select } from '@/components/ui/pickers';
 
 const MAX_BYTES = 10 * 1024 * 1024;
 const ACCEPT = '.pdf,.jpg,.jpeg,.png,.webp,.docx';
@@ -160,7 +161,7 @@ function UploadDialog({ open, onClose, employeeId }: { open: boolean; onClose: (
       icon={<Upload />}
       title="Upload document"
       description="PDF, JPG, PNG, WebP or Word (.docx), up to 10 MB."
-      className="sm:max-w-md"
+      size="sm"
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={upload.isPending}>Cancel</Button>
@@ -169,7 +170,7 @@ function UploadDialog({ open, onClose, employeeId }: { open: boolean; onClose: (
       }
     >
       <form id="doc-form" onSubmit={submit} className="space-y-3">
-        {error && <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+        <FormError>{error}</FormError>
         <button
           type="button"
           onClick={() => input.current?.click()}
@@ -189,9 +190,9 @@ function UploadDialog({ open, onClose, employeeId }: { open: boolean; onClose: (
         </button>
         <input ref={input} type="file" accept={ACCEPT} className="sr-only" tabIndex={-1} onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ''; }} />
         <Field label="Category" htmlFor="doc-cat">
-          <select id="doc-cat" className={inputClass} value={category} onChange={(e) => setCategory(e.target.value)}>
+          <Select id="doc-cat" className={inputClass} value={category} onChange={(e) => setCategory(e.target.value)}>
             {Object.entries(DOCUMENT_CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
+          </Select>
         </Field>
         <Field label="Name" htmlFor="doc-name" hint="Shown in the list, e.g. “PAN card”">
           <Input id="doc-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} />

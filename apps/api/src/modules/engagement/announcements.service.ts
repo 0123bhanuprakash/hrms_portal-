@@ -25,6 +25,7 @@ const SELECT = {
   id: true,
   title: true,
   body: true,
+  mentionIds: true,
   audience: true,
   departmentIds: true,
   locationIds: true,
@@ -63,8 +64,18 @@ const WITH_SOCIAL = { ...SELECT, reactions: { select: { emoji: true, userId: tru
 type SocialRow = Prisma.AnnouncementGetPayload<{ select: typeof WITH_SOCIAL }>;
 
 /** "**bold**", "[text](url)" and "- " bullets → plain text (notifications, emails). */
+/** `@[Priya Shah](<employee id>)` in a post body — a mention. */
+const MENTION = /@\[([^\]\n]{1,80})\]\(([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\)/gi;
+const MAX_MENTIONS = 20;
+
+/** Employee ids mentioned in a body (each once). */
+export function mentionedEmployeeIds(body: string): string[] {
+  return [...new Set([...body.matchAll(MENTION)].map((m) => m[2]!.toLowerCase()))];
+}
+
 export function plainText(body: string): string {
   return body
+    .replace(MENTION, '@$1')
     .replace(/\*\*(.+?)\*\*/g, '$1')
     .replace(/(^|\s)\*(\S.*?)\*/g, '$1$2')
     .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '$1')
@@ -511,6 +522,10 @@ export class AnnouncementsService implements OnApplicationBootstrap, OnModuleDes
     const row = await this.prisma.announcement.update({ where: { id }, data, select: SELECT });
     if (row.pinned && !existing.pinned) await this.onlyPinned(companyId, id);
     if (row.status === 'published' && !row.notifiedAt) await this.publishNow(companyId, row);
+    else if (row.status === 'published' && row.notifiedAt) {
+      const before = new Set(existing.mentionIds);
+      void this.notifyMentioned(companyId, row, row.mentionIds.filter((u) => !before.has(u))).catch(() => undefined);
+    }
     return { ...this.present(await this.reload(id), null, access, new Date()), stats: null };
   }
 
@@ -530,7 +545,26 @@ export class AnnouncementsService implements OnApplicationBootstrap, OnModuleDes
   async remove(companyId: string, access: AccessContext, id: string) {
     const row = await this.managed(companyId, access, id);
     await this.prisma.announcement.update({ where: { id }, data: { deletedAt: new Date() } });
+    void this.afterRemove(companyId, access, row).catch((err) => this.logger.error(`After removing announcement ${id}`, err as Error));
     return { id, title: row.title };
+  }
+
+  private async afterRemove(companyId: string, access: AccessContext, row: Row) {
+    // Old "new post" / reminder / mention notifications would point at nothing
+    await this.notifications.withdraw(companyId, { linkPrefix: `/app/announcements/${row.id}` });
+    // Only people mentioned in a post that went out are told — nobody else
+    if (!row.notifiedAt || !row.mentionIds.length) return;
+    const active = await this.prisma.user.findMany({ where: { id: { in: row.mentionIds.filter((u) => u !== access.userId) }, companyId, status: UserStatus.ACTIVE }, select: { id: true } });
+    if (!active.length) return;
+    await this.notifications.notify({
+      companyId,
+      userIds: active.map((u) => u.id),
+      type: 'announcement.removed',
+      title: `“${row.title}” was removed`,
+      body: 'An announcement you were mentioned in has been deleted.',
+      link: null,
+      email: false,
+    });
   }
 
   // ─── Attachment (private storage, downloaded through the API) ─
@@ -642,8 +676,10 @@ export class AnnouncementsService implements OnApplicationBootstrap, OnModuleDes
 
   private async announce(companyId: string, a: Row, authorId: string | null) {
     try {
-      const users = (await this.audienceUsers(companyId, a)).filter((u) => u !== authorId);
+      const mentioned = new Set(a.mentionIds);
+      const users = (await this.audienceUsers(companyId, a)).filter((u) => u !== authorId && !mentioned.has(u));
       const body = plainText(a.body);
+      await this.notifyMentioned(companyId, a, [...mentioned]);
       await this.notifications.notify({
         companyId,
         userIds: users,
@@ -733,9 +769,11 @@ export class AnnouncementsService implements OnApplicationBootstrap, OnModuleDes
       status = 'published';
       publishedAt = now;
     }
+    const mentionIds = await this.mentions(companyId, target, dto.body, existing?.author?.id ?? access.userId);
     return {
       title: dto.title,
       body: dto.body,
+      mentionIds,
       ...target,
       category: dto.category ?? 'update',
       cover: dto.cover ?? null,
@@ -759,6 +797,43 @@ export class AnnouncementsService implements OnApplicationBootstrap, OnModuleDes
       status,
       publishedAt,
     };
+  }
+
+  /**
+   * Who is @mentioned (user ids, never the author). Everyone mentioned must be
+   * in the audience — otherwise they'd be told about a post they can't open.
+   */
+  private async mentions(companyId: string, target: Pick<Row, 'audience' | 'departmentIds' | 'locationIds' | 'teamManagerId'>, body: string, authorId: string): Promise<string[]> {
+    const ids = mentionedEmployeeIds(body);
+    if (!ids.length) return [];
+    if (ids.length > MAX_MENTIONS) throw new BadRequestException(`You can mention up to ${MAX_MENTIONS} people in one post`);
+    const people = await this.prisma.employee.findMany({ where: { companyId, id: { in: ids } }, select: { userId: true, firstName: true, lastName: true } });
+    if (people.length !== ids.length) throw new BadRequestException('Some people you mentioned aren’t in your company');
+    const audience = new Set(await this.audienceUsers(companyId, target));
+    const outside = people.filter((p) => !p.userId || !audience.has(p.userId));
+    if (outside.length) {
+      const names = outside.map((p) => `${p.firstName} ${p.lastName}`);
+      const list = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0];
+      throw new BadRequestException(`${list} ${names.length > 1 ? 'aren’t' : 'isn’t'} in this post’s audience, so they couldn’t open it. Remove the mention or widen the audience.`);
+    }
+    return [...new Set(people.map((p) => p.userId!).filter((u) => u !== authorId))];
+  }
+
+  /** Tell people they were mentioned (on publish, or when added to a live post). */
+  private async notifyMentioned(companyId: string, a: Row, userIds: string[]) {
+    if (!userIds.length) return;
+    const author = a.author ? `${a.author.firstName} ${a.author.lastName}` : 'Someone';
+    const body = plainText(a.body);
+    await this.notifications.notify({
+      companyId,
+      userIds,
+      type: 'announcement.mention',
+      title: `${author} mentioned you in “${a.title}”`,
+      body: body.length > 280 ? `${body.slice(0, 277)}…` : body,
+      link: `/app/announcements/${a.id}`,
+      actionLabel: 'Read announcement',
+      email: a.sendEmail,
+    });
   }
 
   private async reload(id: string) {

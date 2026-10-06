@@ -22,12 +22,14 @@ import type { AccessContext } from '../access/access.types';
 import { ProfileService } from './profile.service';
 import { DocumentsService, DOCUMENT_MAX_BYTES } from './documents.service';
 import { UpdateBankDto, UpdatePersonalDto, UpdateStatutoryDto, UploadDocumentDto } from './dto';
+import { Live } from '../realtime/live.decorator';
 
 // Profile sub-resources of an employee. The permission decorator is the
 // minimum to call the route; services check the permission's SCOPE
 // against this particular employee (out of reach → 404).
 
 @RequireFeature('people.directory')
+@Live('people', 'company')
 @Controller('employees/:id')
 export class EmployeeProfileController {
   constructor(private readonly profile: ProfileService) {}

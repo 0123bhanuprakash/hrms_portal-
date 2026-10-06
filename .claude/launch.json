@@ -1,0 +1,66 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "api",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@hrms/api",
+        "dev"
+      ],
+      "port": 4000
+    },
+    {
+      "name": "web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@hrms/web",
+        "dev"
+      ],
+      "port": 3000
+    },
+    {
+      "name": "design",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "docs/design/serve.js"
+      ],
+      "port": 5599,
+      "autoPort": true
+    },
+    {
+      "name": "web-prod",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@hrms/web",
+        "exec",
+        "next",
+        "start",
+        "-p",
+        "3000"
+      ],
+      "env": {
+        "NEXT_DIST_DIR": ".next-prod"
+      },
+      "port": 3000
+    },
+    {
+      "name": "web-turbo",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@hrms/web",
+        "exec",
+        "next",
+        "dev",
+        "--turbo",
+        "-p",
+        "3000"
+      ],
+      "port": 3000
+    }
+  ]
+}

@@ -31,7 +31,9 @@ import {
 } from '../../common';
 import type { TenantContext } from '../../common/types/request.types';
 import { CompanyStatus } from '@prisma/client';
+import { Live } from '../realtime/live.decorator';
 
+@Live('branding', 'company')
 @Controller('companies')
 export class CompaniesController {
   constructor(private readonly companiesService: CompaniesService) {}
@@ -106,7 +108,8 @@ export class CompaniesController {
   ) {
     this.assertTenantAccess(id, ctx);
     const company = await this.companiesService.findOne(id);
-    return company.branding;
+    // Older or imported companies may have no branding yet — start them with their name
+    return company.branding ?? this.companiesService.ensureBranding(id, company.name);
   }
 
   /**
@@ -139,6 +142,24 @@ export class CompaniesController {
   ) {
     this.assertTenantAccess(id, ctx);
     return this.companiesService.uploadLogo(id, file);
+  }
+
+  @RequirePermission('branding.manage')
+  @Audit('company:branding:logo-dark:upload', 'company_branding', { companyIdParam: 'id' })
+  @UseInterceptors(FileInterceptor('file'))
+  @Post(':id/branding/logo-dark')
+  async uploadLogoDark(@Param('id') id: string, @UploadedFile() file: Express.Multer.File, @TenantCtx() ctx: TenantContext) {
+    this.assertTenantAccess(id, ctx);
+    return this.companiesService.uploadLogoDark(id, file);
+  }
+
+  @RequirePermission('branding.manage')
+  @Audit('company:branding:sign-in-photo:upload', 'company_branding', { companyIdParam: 'id' })
+  @UseInterceptors(FileInterceptor('file'))
+  @Post(':id/branding/sign-in-photo')
+  async uploadSignInPhoto(@Param('id') id: string, @UploadedFile() file: Express.Multer.File, @TenantCtx() ctx: TenantContext) {
+    this.assertTenantAccess(id, ctx);
+    return this.companiesService.uploadSignInPhoto(id, file);
   }
 
   /**

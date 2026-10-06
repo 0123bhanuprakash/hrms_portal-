@@ -143,6 +143,28 @@ function useOrgMutation<V, R>(fn: (v: V) => Promise<R>) {
 
 // ─── Chart & reporting lines ────────────────────────────────
 
+/** A person in pickers (light: no levels, emails or statuses). */
+export interface PickPerson {
+  id: string;
+  userId: string;
+  employeeId: string;
+  firstName: string;
+  lastName: string;
+  avatarUrl: string | null;
+  reportingManagerId: string | null;
+  department: { id: string; name: string } | null;
+  designation: { id: string; name: string } | null;
+  directReports: number;
+}
+
+/** Current people for pickers — one cached list shared by every form. */
+export const usePeoplePicker = () =>
+  useQuery({
+    queryKey: ['org', 'people'],
+    queryFn: async () => ({ employees: unwrap<PickPerson[]>(await api.get('/org/people')) }),
+    staleTime: 5 * 60_000,
+  });
+
 export const useOrgChart = () => useQuery({ queryKey: orgKeys.chart, queryFn: async () => unwrap<OrgChart>(await api.get('/org/chart')) });
 
 export const useReportingPreview = () =>

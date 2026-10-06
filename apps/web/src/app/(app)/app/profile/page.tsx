@@ -14,6 +14,7 @@ import { useCapacity } from '@/lib/company/projects';
 import { ProjectsPanel } from '@/components/projects/projects-panel';
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatDate } from '@/lib/format';
+import { NoProfile } from '@/components/profile/no-profile';
 
 export default function MyProfilePage() {
   const { can } = useAccess();
@@ -31,11 +32,7 @@ export default function MyProfilePage() {
   const employee = me.data?.employee;
   if (!employee) {
     return (
-      <EmptyState
-        icon={<IdCard />}
-        title="No employee profile"
-        description="Your account can sign in, but it isn’t linked to an employee record. An admin can add one from Users → Add employee profile."
-      />
+      <NoProfile icon={<IdCard />} what="Your account can sign in, but it isn’t linked to an employee record." />
     );
   }
 

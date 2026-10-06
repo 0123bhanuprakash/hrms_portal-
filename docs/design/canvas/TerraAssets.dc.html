@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Terra · Zen garden — Assets</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<style>
+*{box-sizing:border-box}
+.bd{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;background:#F6F6F9;color:#16161D;padding:34px 40px;min-height:100%}
+.bd h1{font-size:26px;font-weight:800;letter-spacing:-.02em;margin:0}
+.bd .sub{color:#6B6B76;font-size:13.5px;margin-top:4px;max-width:900px;line-height:1.5}
+.eyebrow{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#4F46E5}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.tag{font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;background:#EEF0FF;color:#4338CA}
+.tag.g{background:#E8F7EF;color:#047857}.tag.a{background:#FEF3E2;color:#B45309}.tag.n{background:#ECECF1;color:#4B4B55}
+.cols{display:flex;gap:22px;margin-top:20px;align-items:flex-start}
+.side{width:378px;flex:none;display:flex;flex-direction:column;gap:14px}
+.cap{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#8A8A95;margin-bottom:6px}
+.spec{background:#fff;border:1px solid #E5E5EC;border-radius:14px;padding:14px 16px;font-size:12.5px;line-height:1.55}
+.spec dl{display:grid;grid-template-columns:96px 1fr;gap:6px 10px;margin:0}.spec dt{color:#8A8A95;font-weight:700}.spec dd{margin:0}
+.spec ul{margin:0;padding-left:17px}.spec li{margin:2px 0}
+.mini{width:378px;height:221px;border-radius:12px;overflow:hidden;border:1px solid #E5E5EC;position:relative}
+.mini > .stage{transform:scale(.39375);transform-origin:0 0;position:absolute;left:0;top:0}
+
+/* ── App frame (sidebar + top bar stay exactly as today) ── */
+.stage{--bg:#0E0E11;--surf:#16161B;--raise:#1C1C22;--line:#26262E;--tx:#EDEDF2;--mu:#8C8C99;--pri:#E3A63B;--pri2:#F2C46D;--a2:#8B5CF6;--a3:#14B8A6;--glow:.5;
+ width:960px;height:560px;border-radius:16px;overflow:hidden;position:relative;display:flex;background:var(--bg);color:var(--tx);border:1px solid #2A2A33;box-shadow:0 30px 60px -30px rgba(10,10,20,.5);flex:none}
+.stage.light{--bg:#F7F7FA;--surf:#FFFFFF;--raise:#FFFFFF;--line:#E7E7EE;--tx:#16161D;--mu:#71717C;--pri:#4F46E5;--pri2:#818CF8;--a2:#A855F7;--a3:#0EA5E9;--glow:.32;border-color:#E5E5EC;box-shadow:none}
+.sb{width:168px;flex:none;background:var(--surf);border-right:1px solid var(--line);padding:14px 12px;display:flex;flex-direction:column;gap:7px;position:relative;z-index:2}
+.sb .lg{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:800;margin-bottom:8px}.sb .lg i{width:22px;height:22px;border-radius:7px;background:linear-gradient(135deg,var(--pri),var(--a2))}
+.sb .it{height:9px;border-radius:5px;background:var(--line);width:78%}.sb .it.on{background:var(--pri);opacity:.85;width:66%}.sb .g{height:6px;width:40%;border-radius:4px;background:var(--line);opacity:.6;margin-top:8px}
+.mn{flex:1;position:relative;display:flex;flex-direction:column;min-width:0}
+.tb{height:44px;flex:none;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;padding:0 18px;position:relative;z-index:2;background:color-mix(in srgb,var(--bg) 70%,transparent);backdrop-filter:blur(10px)}
+.tb .cr{height:8px;width:120px;border-radius:5px;background:var(--line)}.tb .sp{flex:1}.tb .bl{width:18px;height:18px;border-radius:50%;background:var(--line)}.tb .tg{width:34px;height:18px;border-radius:99px;background:var(--line)}
+.pg{flex:1;position:relative;overflow:hidden}
+.fx{position:absolute;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.ct{position:relative;z-index:1;padding:18px 20px;display:flex;flex-direction:column;gap:12px}
+.ey{font-size:9.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--pri)}
+.h{font-size:19px;font-weight:800;letter-spacing:-.02em}
+.p{font-size:11px;color:var(--mu)}
+.card{background:var(--surf);border:1px solid var(--line);border-radius:12px;padding:12px;position:relative}
+.ln{height:7px;border-radius:5px;background:var(--line)}.ln.s{width:40%}.ln.m{width:65%}.ln.l{width:88%}
+.num{font-size:20px;font-weight:800;letter-spacing:-.02em}
+.row{display:flex;gap:10px}.f1{flex:1;min-width:0}
+.k4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.av{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--pri2),var(--a2));flex:none}
+.btn{height:26px;padding:0 12px;border-radius:8px;background:var(--pri);color:#fff;font-size:10.5px;font-weight:800;display:inline-flex;align-items:center}
+.pill{height:16px;width:54px;border-radius:99px;background:color-mix(in srgb,var(--pri) 22%,transparent)}
+.trow{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}.trow:last-child{border:0}
+
+/* ── Layer 1 · ambient base: every page ── */
+.base{position:absolute;inset:0;background:radial-gradient(120% 70% at 50% -10%,color-mix(in srgb,var(--pri) 9%,transparent),transparent 60%)}
+.vig{position:absolute;inset:0;background:radial-gradient(130% 100% at 50% 40%,transparent 60%,color-mix(in srgb,var(--bg) 70%,#000 30%) 100%);opacity:.35}
+.light .vig{opacity:.08}
+
+/* ── Effects (transform/opacity only, slow, pause when tab hidden) ── */
+/* aurora — home */
+.blob{position:absolute;border-radius:50%;filter:blur(70px);opacity:calc(var(--glow) * .7);will-change:transform}
+.b1{width:420px;height:320px;left:-80px;top:-120px;background:var(--pri);animation:drift1 38s ease-in-out infinite alternate}
+.b2{width:380px;height:300px;right:-90px;top:40px;background:var(--a2);animation:drift2 46s ease-in-out infinite alternate}
+.b3{width:360px;height:260px;left:30%;bottom:-160px;background:var(--a3);animation:drift3 52s ease-in-out infinite alternate;opacity:calc(var(--glow) * .5)}
+@keyframes drift1{to{transform:translate(160px,90px) scale(1.15)}}
+@keyframes drift2{to{transform:translate(-140px,80px) scale(.9)}}
+@keyframes drift3{to{transform:translate(120px,-70px) scale(1.1)}}
+
+/* particles — people */
+.pt{position:absolute;bottom:-10px;width:4px;height:4px;border-radius:50%;background:var(--pri2);opacity:0;animation:rise linear infinite}
+@keyframes rise{0%{transform:translateY(0);opacity:0}15%{opacity:calc(var(--glow) * 1)}85%{opacity:calc(var(--glow) * .8)}100%{transform:translateY(-560px);opacity:0}}
+.halo{position:absolute;left:12%;top:-80px;width:520px;height:240px;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,var(--pri) 40%,transparent),transparent);opacity:var(--glow);filter:blur(10px);animation:breathe 9s ease-in-out infinite}
+@keyframes breathe{50%{opacity:calc(var(--glow) * .55);transform:scale(1.06)}}
+
+/* light sweep + dial — attendance & timesheets */
+.sweep{position:absolute;top:-60%;left:0;width:34%;height:220%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.09),transparent);transform:rotate(18deg) translateX(-160%);animation:sweep 14s cubic-bezier(.45,0,.2,1) infinite}
+.light .sweep{background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--pri) 10%,transparent),transparent)}
+@keyframes sweep{0%,30%{transform:rotate(18deg) translateX(-160%)}75%,100%{transform:rotate(18deg) translateX(420%)}}
+.dial{position:absolute;right:-140px;top:-140px;width:420px;height:420px;border-radius:50%;background:conic-gradient(from 0deg,transparent 0 70%,color-mix(in srgb,var(--pri) 60%,transparent) 88%,transparent 100%);-webkit-mask:radial-gradient(closest-side,transparent 86%,#000 87%,#000 100%);mask:radial-gradient(closest-side,transparent 86%,#000 87%,#000 100%);opacity:var(--glow);animation:spin 60s linear infinite}
+.dial2{position:absolute;right:-90px;top:-90px;width:320px;height:320px;border-radius:50%;border:1px dashed color-mix(in srgb,var(--tx) 14%,transparent)}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* horizon — leave, who's off, holidays */
+.hz1,.hz2{position:absolute;left:0;right:0;top:0;height:260px}
+.hz1{background:linear-gradient(180deg,color-mix(in srgb,#F59E0B 22%,transparent),color-mix(in srgb,#EC4899 10%,transparent) 45%,transparent)}
+.hz2{background:linear-gradient(180deg,color-mix(in srgb,#38BDF8 22%,transparent),color-mix(in srgb,var(--a2) 10%,transparent) 45%,transparent);animation:dawn 24s ease-in-out infinite alternate}
+@keyframes dawn{0%{opacity:0}100%{opacity:1}}
+.sun{position:absolute;left:62%;top:150px;width:220px;height:220px;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,#FBBF24 45%,transparent),transparent);filter:blur(6px);opacity:var(--glow);animation:sunrise 24s ease-in-out infinite alternate}
+@keyframes sunrise{to{transform:translateY(-70px)}}
+
+/* blueprint grid + spotlight — projects, planner */
+.grid{position:absolute;inset:-20px;background-image:radial-gradient(color-mix(in srgb,var(--tx) 22%,transparent) 1px,transparent 1.2px);background-size:22px 22px;-webkit-mask:radial-gradient(70% 80% at 50% 30%,#000,transparent);mask:radial-gradient(70% 80% at 50% 30%,#000,transparent);opacity:.55}
+.spot{position:absolute;width:360px;height:360px;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,var(--pri) 38%,transparent),transparent);opacity:var(--glow);left:-60px;top:-60px;animation:roam 48s ease-in-out infinite alternate}
+@keyframes roam{33%{transform:translate(420px,60px)}66%{transform:translate(200px,240px)}100%{transform:translate(560px,180px)}}
+
+/* mesh — expenses & payments */
+.mesh{position:absolute;inset:-50%;background:
+ radial-gradient(25% 30% at 30% 35%,color-mix(in srgb,#10B981 60%,transparent),transparent 70%),
+ radial-gradient(22% 28% at 68% 42%,color-mix(in srgb,var(--a3) 50%,transparent),transparent 70%),
+ radial-gradient(26% 26% at 52% 70%,color-mix(in srgb,var(--pri) 36%,transparent),transparent 70%);
+ opacity:var(--glow);filter:blur(24px);animation:meshspin 90s linear infinite}
+@keyframes meshspin{to{transform:rotate(360deg)}}
+.coin{position:absolute;width:10px;height:10px;border-radius:50%;border:1.5px solid color-mix(in srgb,#10B981 60%,transparent);opacity:0;animation:rise linear infinite}
+
+/* studio light — assets */
+.cone{position:absolute;left:50%;top:-40px;width:760px;height:520px;margin-left:-380px;background:radial-gradient(50% 60% at 50% 0%,color-mix(in srgb,var(--tx) 10%,transparent),transparent 70%);-webkit-mask:linear-gradient(180deg,#000,transparent);opacity:.9;animation:flicker 7s ease-in-out infinite}
+@keyframes flicker{50%{opacity:.7}}
+.floor{position:absolute;left:10%;right:10%;bottom:-120px;height:220px;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,var(--pri) 26%,transparent),transparent);opacity:var(--glow)}
+.bok{position:absolute;border-radius:50%;background:color-mix(in srgb,var(--pri2) 40%,transparent);filter:blur(2px);opacity:calc(var(--glow) * .6);animation:bob ease-in-out infinite alternate}
+@keyframes bob{to{transform:translate(30px,-40px)}}
+
+/* signal rings — helpdesk */
+.rings{position:absolute;right:60px;top:40px;width:10px;height:10px}
+.rings i{position:absolute;left:-150px;top:-150px;width:310px;height:310px;border-radius:50%;border:1.5px solid color-mix(in srgb,var(--a3) 55%,transparent);opacity:0;animation:ring 9s ease-out infinite}
+.rings i:nth-child(2){animation-delay:3s}.rings i:nth-child(3){animation-delay:6s}
+@keyframes ring{0%{transform:scale(.25);opacity:calc(var(--glow) * 1.2)}100%{transform:scale(1.8);opacity:0}}
+.core{position:absolute;right:20px;top:0;width:90px;height:90px;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,var(--a3) 45%,transparent),transparent);opacity:var(--glow)}
+
+/* floaters — announcements & kudos */
+.fl{position:absolute;bottom:-40px;opacity:0;animation:float linear infinite}
+.fl.c{width:18px;height:18px;border-radius:50%;border:2px solid color-mix(in srgb,var(--pri) 55%,transparent)}
+.fl.q{width:16px;height:16px;border-radius:5px;background:color-mix(in srgb,var(--a2) 30%,transparent)}
+.fl.h{width:16px;height:16px;color:color-mix(in srgb,#EC4899 60%,transparent);font-size:16px;line-height:16px}
+@keyframes float{0%{transform:translateY(0) rotate(0);opacity:0}12%{opacity:calc(var(--glow) * 1.1)}88%{opacity:calc(var(--glow) * .9)}100%{transform:translateY(-620px) rotate(200deg);opacity:0}}
+.warm{position:absolute;left:-10%;right:-10%;top:-200px;height:420px;background:radial-gradient(50% 50% at 30% 50%,color-mix(in srgb,#F59E0B 22%,transparent),transparent),radial-gradient(40% 50% at 75% 40%,color-mix(in srgb,#EC4899 18%,transparent),transparent);opacity:var(--glow);animation:breathe 12s ease-in-out infinite}
+
+/* data waves — reports */
+.waves{position:absolute;left:0;bottom:0;width:200%;height:220px;animation:wave 34s linear infinite}
+.waves.w2{animation-duration:52s;opacity:.6;bottom:-20px}
+@keyframes wave{to{transform:translateX(-50%)}}
+.waves path{fill:none;stroke-width:1.5}
+
+/* quiet — settings, roles, admin forms */
+.noise{position:absolute;inset:0;opacity:.05;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
+.qgrad{position:absolute;inset:0;background:linear-gradient(160deg,color-mix(in srgb,var(--pri) 7%,transparent),transparent 40%,color-mix(in srgb,var(--a2) 5%,transparent))}
+
+/* pulse line — super admin */
+.night{position:absolute;inset:0;background:linear-gradient(180deg,color-mix(in srgb,#1E3A8A 30%,transparent),transparent 70%)}
+.light .night{background:linear-gradient(180deg,color-mix(in srgb,#3B82F6 10%,transparent),transparent 70%)}
+.star{position:absolute;width:2px;height:2px;border-radius:50%;background:var(--tx);opacity:.25;animation:twinkle ease-in-out infinite alternate}
+@keyframes twinkle{to{opacity:.05}}
+.pulse{position:absolute;left:0;right:0;bottom:70px;height:120px}
+.pulse path{fill:none;stroke-width:1.6}
+.pulse .run{stroke-dasharray:90 1400;animation:run 7s linear infinite}
+@keyframes run{from{stroke-dashoffset:1490}to{stroke-dashoffset:0}}
+
+/* sign-in hero */
+.big .blob{filter:blur(80px);opacity:calc(var(--glow) * 1)}
+
+/* reduced motion: everything settles to its first frame */
+.rm *{animation:none!important}
+</style><style>
+.fx svg{position:absolute;overflow:visible}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes spinr{to{transform:rotate(-360deg)}}
+
+/* ════════ TERRA ════════ */
+/* sky wheel — home: real time of day (board runs a whole day in 48 s) */
+.t-ph{position:absolute;inset:0;opacity:0;animation:t-phase 48s linear infinite}
+.t-ph.dawn{background:linear-gradient(180deg,color-mix(in srgb,#F472B6 30%,transparent),color-mix(in srgb,#FBBF24 18%,transparent) 42%,transparent 78%)}
+.t-ph.day{background:linear-gradient(180deg,color-mix(in srgb,#38BDF8 32%,transparent),color-mix(in srgb,#A5F3FC 12%,transparent) 45%,transparent 78%);animation-delay:-36s}
+.t-ph.dusk{background:linear-gradient(180deg,color-mix(in srgb,#7C3AED 28%,transparent),color-mix(in srgb,#F97316 20%,transparent) 42%,transparent 78%);animation-delay:-24s}
+.t-ph.night{background:linear-gradient(180deg,color-mix(in srgb,#1E3A8A 45%,transparent),color-mix(in srgb,#312E81 18%,transparent) 50%,transparent 80%);animation-delay:-12s}
+.light .t-ph.night{background:linear-gradient(180deg,color-mix(in srgb,#6366F1 18%,transparent),transparent 70%)}
+@keyframes t-phase{0%{opacity:0}8%,25%{opacity:1}33%,100%{opacity:0}}
+.t-wheel{position:absolute;left:50%;top:540px;width:0;height:0;animation:spin 48s linear infinite}
+.t-orb{position:absolute;width:56px;height:56px;margin:-28px;border-radius:50%}
+.t-orb.sun{left:-470px;top:0;background:radial-gradient(circle,#FDE68A 0 30%,color-mix(in srgb,#FBBF24 55%,transparent) 36%,transparent 70%);box-shadow:0 0 80px 30px color-mix(in srgb,#FBBF24 22%,transparent)}
+.t-orb.moon{left:470px;top:0;width:34px;height:34px;margin:-17px;background:radial-gradient(circle at 35% 35%,#F1F5F9,#CBD5E1 60%);box-shadow:0 0 40px 12px color-mix(in srgb,#E2E8F0 18%,transparent);opacity:.8}
+.t-cloud{position:absolute;height:34px;border-radius:40px;background:color-mix(in srgb,#fff 10%,transparent);filter:blur(6px);animation:t-drift linear infinite}
+.t-cloud::before,.t-cloud::after{content:"";position:absolute;border-radius:50%;background:inherit}
+.t-cloud::before{width:46%;height:150%;left:16%;top:-60%}.t-cloud::after{width:34%;height:120%;left:48%;top:-40%}
+.light .t-cloud{background:color-mix(in srgb,#fff 70%,transparent);filter:blur(4px)}
+@keyframes t-drift{from{transform:translateX(-260px)}to{transform:translateX(1060px)}}
+.t-strip{display:flex;gap:6px}.t-strip span{flex:1;height:34px;border-radius:8px;position:relative;font-size:10px;font-weight:800;color:#fff;display:flex;align-items:flex-end;padding:4px 7px}
+
+/* fireflies — people */
+.t-dusk{position:absolute;inset:0;background:linear-gradient(180deg,color-mix(in srgb,#312E81 14%,transparent),transparent 40%,color-mix(in srgb,#065F46 22%,transparent))}
+.light .t-dusk{background:linear-gradient(180deg,transparent 40%,color-mix(in srgb,#10B981 10%,transparent))}
+.t-grass path{fill:color-mix(in srgb,#064E3B 55%,transparent)}.light .t-grass path{fill:color-mix(in srgb,#10B981 14%,transparent)}
+.t-ff{position:absolute;width:5px;height:5px;border-radius:50%;background:#FDE68A;box-shadow:0 0 10px 3px color-mix(in srgb,#FACC15 50%,transparent);animation:t-wander var(--d) ease-in-out infinite alternate,t-blink var(--b) ease-in-out infinite}
+.light .t-ff{background:#CA8A04;box-shadow:0 0 8px 2px color-mix(in srgb,#FACC15 45%,transparent)}
+@keyframes t-wander{33%{transform:translate(var(--x1),var(--y1))}66%{transform:translate(var(--x2),var(--y2))}100%{transform:translate(var(--x3),var(--y3))}}
+@keyframes t-blink{0%,100%{opacity:.08}50%{opacity:calc(var(--glow) * 1.7)}}
+
+/* sun path — attendance & timesheets */
+.t-band{position:absolute;inset:0 0 auto 0;height:300px;background:linear-gradient(180deg,color-mix(in srgb,#FBBF24 12%,transparent),transparent)}
+.t-arc path{fill:none;stroke-width:1.5}
+.t-arc .done{stroke-dasharray:1312;stroke-dashoffset:1312;animation:t-fill 40s ease-in-out infinite alternate}
+@keyframes t-fill{to{stroke-dashoffset:0}}
+.t-dialw{position:absolute;left:396px;top:560px;width:0;height:0;animation:t-day 40s ease-in-out infinite alternate}
+@keyframes t-day{from{transform:rotate(-78deg)}to{transform:rotate(78deg)}}
+.t-dialw .t-orb.sun{left:0;top:-470px;width:44px;height:44px;margin:-22px}
+.t-hr{position:absolute;font-size:9px;font-weight:800;color:var(--mu);letter-spacing:.06em}
+
+/* clouds & hills — leave */
+.t-sky2{position:absolute;inset:0 0 auto 0;height:280px;background:linear-gradient(180deg,color-mix(in srgb,#7DD3FC 20%,transparent),color-mix(in srgb,#FDBA74 10%,transparent) 55%,transparent)}
+.t-hills path:nth-child(1){fill:color-mix(in srgb,var(--a3) 12%,transparent)}.t-hills path:nth-child(2){fill:color-mix(in srgb,#10B981 14%,transparent)}
+.t-bird{position:absolute;animation:t-fly linear infinite}.t-bird path{fill:none;stroke:color-mix(in srgb,var(--tx) 40%,transparent);stroke-width:1.4;stroke-linecap:round}
+@keyframes t-fly{0%{transform:translate(-60px,0)}50%{transform:translate(420px,-18px)}100%{transform:translate(900px,6px)}}
+
+/* topographic contours — projects */
+.t-topo{animation:t-shift 70s ease-in-out infinite alternate}
+.t-topo path{fill:none;stroke:color-mix(in srgb,var(--tx) 13%,transparent);stroke-width:1}
+.t-topo path.ix{stroke:color-mix(in srgb,var(--pri) 38%,transparent);stroke-width:1.5}
+@keyframes t-shift{to{transform:translate(-40px,18px) scale(1.04)}}
+.t-route{fill:none;stroke:color-mix(in srgb,var(--pri) 55%,transparent);stroke-width:1.6;stroke-dasharray:5 6}
+.t-pin{fill:var(--bg);stroke:var(--pri);stroke-width:2}
+.t-walker{position:absolute;left:0;top:0;width:10px;height:10px;border-radius:50%;background:var(--pri);box-shadow:0 0 14px 4px color-mix(in srgb,var(--pri) 45%,transparent);offset-path:var(--route);animation:t-walk 30s ease-in-out infinite alternate}
+@keyframes t-walk{from{offset-distance:0%}to{offset-distance:100%}}
+
+/* dappled light (komorebi) — expenses */
+.t-canopy{position:absolute;inset:0;background:linear-gradient(170deg,color-mix(in srgb,#065F46 26%,transparent),transparent 55%,color-mix(in srgb,#14532D 16%,transparent))}
+.light .t-canopy{background:linear-gradient(170deg,color-mix(in srgb,#10B981 12%,transparent),transparent 60%)}
+.t-dap{position:absolute;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,#FDE68A 60%,transparent),color-mix(in srgb,#34D399 20%,transparent) 60%,transparent);filter:blur(5px);opacity:calc(var(--glow) * .9);animation:t-sway var(--d) ease-in-out infinite alternate}
+@keyframes t-sway{to{transform:translate(var(--x),var(--y)) scale(1.18);opacity:calc(var(--glow) * .35)}}
+.t-leaf{position:absolute;top:-30px;width:14px;height:9px;border-radius:0 100% 0 100%;background:color-mix(in srgb,#22C55E 55%,transparent);animation:t-leaffall linear infinite}
+@keyframes t-leaffall{0%{transform:translate(0,0) rotate(0);opacity:0}10%{opacity:.8}50%{transform:translate(60px,280px) rotate(220deg)}100%{transform:translate(-20px,600px) rotate(420deg);opacity:0}}
+
+/* zen garden — assets */
+.t-sand{position:absolute;inset:0;background:linear-gradient(180deg,color-mix(in srgb,#D6B98C 7%,transparent),color-mix(in srgb,#D6B98C 13%,transparent))}
+.t-zen path,.t-zen circle.r{fill:none;stroke:color-mix(in srgb,var(--tx) 11%,transparent);stroke-width:1.2}
+.t-zen .stone{fill:url(#stoneG)}
+.t-ripple{transform-box:fill-box;transform-origin:center;animation:t-breathe 12s ease-in-out infinite alternate}
+@keyframes t-breathe{to{transform:scale(1.035)}}
+.t-rake{position:absolute;top:0;bottom:0;width:240px;background:linear-gradient(90deg,transparent,color-mix(in srgb,#FDE68A 9%,transparent),transparent);animation:t-rakemove 26s ease-in-out infinite alternate}
+@keyframes t-rakemove{from{transform:translateX(-260px)}to{transform:translateX(820px)}}
+
+/* lighthouse — helpdesk */
+.t-sea{position:absolute;left:0;right:0;bottom:0;height:150px;background:linear-gradient(180deg,transparent,color-mix(in srgb,#0E7490 22%,transparent))}
+.t-dusk2{position:absolute;inset:0;background:linear-gradient(180deg,color-mix(in srgb,#1E1B4B 22%,transparent),transparent 60%)}
+.light .t-dusk2{background:linear-gradient(180deg,color-mix(in srgb,#06B6D4 8%,transparent),transparent 60%)}
+.t-beam{position:absolute;left:676px;top:330px;width:900px;height:200px;margin-top:-100px;transform-origin:0 50%;background:linear-gradient(90deg,color-mix(in srgb,#FEF3C7 32%,transparent),transparent 85%);clip-path:polygon(0 47%,100% 0,100% 100%,0 53%);filter:blur(3px);opacity:calc(var(--glow) * 1.5);animation:t-scan 16s ease-in-out infinite alternate}
+.light .t-beam{background:linear-gradient(90deg,color-mix(in srgb,var(--a3) 30%,transparent),transparent 85%)}
+@keyframes t-scan{from{transform:rotate(-200deg)}to{transform:rotate(-150deg)}}
+.t-lamp{position:absolute;left:666px;top:320px;width:20px;height:20px;border-radius:50%;background:radial-gradient(circle,#FEF3C7,color-mix(in srgb,#FBBF24 40%,transparent) 50%,transparent 72%);animation:breathe 4s ease-in-out infinite}
+.t-house path{fill:color-mix(in srgb,var(--tx) 18%,transparent)}
+.t-wv{position:absolute;left:0;width:200%;animation:wave 30s linear infinite}.t-wv path{fill:none;stroke:color-mix(in srgb,var(--a3) 30%,transparent);stroke-width:1.2}
+
+/* petal breeze — announcements & kudos */
+.t-pw{position:absolute;top:-30px;animation:t-fall linear infinite}
+.t-pet{width:16px;height:12px;border-radius:100% 0 100% 0;background:linear-gradient(135deg,#FBCFE8,#F472B6);opacity:.9;box-shadow:0 0 8px color-mix(in srgb,#F472B6 40%,transparent);animation:t-flut ease-in-out infinite alternate}
+.light .t-pet{background:linear-gradient(135deg,#F9A8D4,#EC4899);opacity:.55}
+@keyframes t-fall{0%{transform:translate(0,0);opacity:0}8%{opacity:1}100%{transform:translate(var(--dx),600px);opacity:0}}
+@keyframes t-flut{to{transform:rotate3d(1,.4,0,170deg) rotate(60deg)}}
+
+/* mountain ridges — reports */
+.t-mist{position:absolute;inset:0;background:linear-gradient(180deg,transparent 30%,color-mix(in srgb,var(--pri) 7%,transparent) 70%,transparent)}
+.t-ridge{position:absolute;left:0;bottom:0;width:200%;animation:wave linear infinite}
+.t-ridge path.f{stroke:none}.t-ridge path.l{fill:none;stroke-width:1.6}
+
+/* linen — settings (still) */
+.t-linen{position:absolute;inset:0;background:linear-gradient(160deg,color-mix(in srgb,#D6B98C 8%,transparent),transparent 45%,color-mix(in srgb,#10B981 4%,transparent))}
+.t-vein path{fill:none;stroke:color-mix(in srgb,var(--tx) 7%,transparent);stroke-width:1.2}
+
+/* northern lights — super admin */
+.t-polar{position:absolute;inset:0;background:linear-gradient(180deg,color-mix(in srgb,#0B1E3F 45%,transparent),transparent 75%)}
+.light .t-polar{background:linear-gradient(180deg,color-mix(in srgb,#38BDF8 10%,transparent),transparent 75%)}
+.t-cur{position:absolute;top:-40px;height:330px;filter:blur(18px);opacity:calc(var(--glow) * 1.1);transform-origin:50% 0;-webkit-mask:repeating-linear-gradient(90deg,#000 0 14px,rgba(0,0,0,.45) 14px 22px);mask:repeating-linear-gradient(90deg,#000 0 14px,rgba(0,0,0,.45) 14px 22px);animation:t-curtain var(--d) ease-in-out infinite alternate}
+@keyframes t-curtain{0%{transform:translateX(0) skewX(-14deg) scaleY(1)}50%{transform:translateX(50px) skewX(6deg) scaleY(1.12)}100%{transform:translateX(-30px) skewX(-6deg) scaleY(.92)}}
+.t-peaks path{fill:color-mix(in srgb,#020617 50%,transparent)}.light .t-peaks path{fill:color-mix(in srgb,#0EA5E9 10%,transparent)}
+
+/* ════════ PRISM ════════ */
+/* light beams — home */
+.p-gridf{position:absolute;inset:0;background-image:linear-gradient(color-mix(in srgb,var(--tx) 7%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--tx) 7%,transparent) 1px,transparent 1px);background-size:44px 44px;-webkit-mask:radial-gradient(70% 60% at 50% 0%,#000,transparent);mask:radial-gradient(70% 60% at 50% 0%,#000,transparent)}
+.p-hline{position:absolute;left:8%;right:8%;top:0;height:1px;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--pri2) 90%,transparent),transparent);box-shadow:0 0 24px 4px color-mix(in srgb,var(--pri) 35%,transparent)}
+.p-beam{position:absolute;top:-30px;width:120px;height:720px;margin-left:-60px;transform-origin:50% 0;background:linear-gradient(180deg,color-mix(in srgb,var(--c) 42%,transparent),transparent 78%);filter:blur(16px);opacity:calc(var(--glow) * 1.2);animation:p-sway var(--d) ease-in-out infinite alternate}
+@keyframes p-sway{from{transform:rotate(var(--a))}to{transform:rotate(calc(var(--a) + 9deg))}}
+
+/* bauhaus shapes — people */
+.p-sh{position:absolute;opacity:calc(var(--glow) * .75)}
+.p-circ{border-radius:50%}.p-ring{border-radius:50%;border:2px solid}
+.p-semi{border-radius:999px 999px 0 0}
+.p-quar{border-radius:100% 0 0 0}
+.p-rot{animation:spin 60s linear infinite}.p-rotr{animation:spinr 80s linear infinite}
+.p-flip{animation:p-flip 30s ease-in-out infinite alternate}@keyframes p-flip{to{transform:rotate(180deg)}}
+.p-glide{animation:p-glide 26s ease-in-out infinite alternate}@keyframes p-glide{to{transform:translate(-60px,30px)}}
+
+/* chronograph rings — attendance & timesheets */
+.p-chrono{position:absolute;right:-150px;top:-170px;width:520px;height:520px}
+.p-chrono circle{fill:none;transform-box:fill-box;transform-origin:center}
+.p-chrono .r1{animation:spin 90s linear infinite}.p-chrono .r2{animation:spinr 60s linear infinite}.p-chrono .r3{animation:spin 40s linear infinite}
+.p-hand{transform-origin:260px 260px;animation:spin 60s linear infinite}
+
+/* striped sun — leave */
+.p-stripes{position:absolute;right:40px;top:30px;width:300px;height:300px;animation:p-rise 24s ease-in-out infinite alternate}
+@keyframes p-rise{from{transform:translateY(40px)}to{transform:translateY(-10px)}}
+.p-hz{position:absolute;left:0;right:0;height:1px;background:color-mix(in srgb,var(--tx) 10%,transparent)}
+
+/* isometric blocks — projects */
+.p-iso{position:absolute;inset:0;background-image:repeating-linear-gradient(30deg,color-mix(in srgb,var(--tx) 8%,transparent) 0 1px,transparent 1px 30px),repeating-linear-gradient(150deg,color-mix(in srgb,var(--tx) 8%,transparent) 0 1px,transparent 1px 30px);-webkit-mask:radial-gradient(75% 85% at 70% 30%,#000,transparent);mask:radial-gradient(75% 85% at 70% 30%,#000,transparent)}
+.p-blk{position:absolute;animation:p-build var(--d) ease-in-out infinite alternate;opacity:calc(var(--glow) * 1.4)}
+@keyframes p-build{from{transform:translateY(16px)}to{transform:translateY(-14px)}}
+
+/* faceted gem — expenses */
+.p-facets polygon{animation:p-glint var(--d) ease-in-out infinite alternate}
+@keyframes p-glint{from{opacity:.25}to{opacity:1}}
+.p-shine{position:absolute;top:-60%;left:0;width:26%;height:220%;background:linear-gradient(90deg,transparent,color-mix(in srgb,#fff 8%,transparent),transparent);transform:rotate(24deg) translateX(-200%);animation:p-shine 16s ease-in-out infinite}
+@keyframes p-shine{0%,40%{transform:rotate(24deg) translateX(-200%)}80%,100%{transform:rotate(24deg) translateX(520%)}}
+
+/* wireframe cubes — assets */
+.p-3d{position:absolute;inset:0;perspective:900px}
+.p-cube{position:absolute;width:var(--s);height:var(--s);transform-style:preserve-3d;animation:p-tumble var(--d) linear infinite}
+.p-cube i{position:absolute;inset:0;border:1.5px solid color-mix(in srgb,var(--pri) 55%,transparent);background:color-mix(in srgb,var(--pri) 4%,transparent)}
+.p-cube i:nth-child(1){transform:translateZ(calc(var(--s) / 2))}.p-cube i:nth-child(2){transform:rotateY(180deg) translateZ(calc(var(--s) / 2))}
+.p-cube i:nth-child(3){transform:rotateY(90deg) translateZ(calc(var(--s) / 2))}.p-cube i:nth-child(4){transform:rotateY(-90deg) translateZ(calc(var(--s) / 2))}
+.p-cube i:nth-child(5){transform:rotateX(90deg) translateZ(calc(var(--s) / 2))}.p-cube i:nth-child(6){transform:rotateX(-90deg) translateZ(calc(var(--s) / 2))}
+@keyframes p-tumble{from{transform:rotateX(-22deg) rotateY(0)}to{transform:rotateX(-22deg) rotateY(360deg)}}
+.p-floor{position:absolute;left:-30%;right:-30%;bottom:-40px;height:260px;transform:perspective(500px) rotateX(64deg);transform-origin:50% 100%;background-image:linear-gradient(color-mix(in srgb,var(--pri) 22%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--pri) 22%,transparent) 1px,transparent 1px);background-size:40px 40px;-webkit-mask:linear-gradient(0deg,#000,transparent);mask:linear-gradient(0deg,#000,transparent)}
+
+/* radar — helpdesk */
+.p-radar{position:absolute;right:-90px;top:-110px;width:420px;height:420px;border-radius:50%;overflow:hidden;
+ background:repeating-radial-gradient(circle,transparent 0 51px,color-mix(in srgb,var(--a3) 26%,transparent) 51px 52.5px),linear-gradient(color-mix(in srgb,var(--a3) 18%,transparent),color-mix(in srgb,var(--a3) 18%,transparent)) center/1px 100% no-repeat,linear-gradient(90deg,color-mix(in srgb,var(--a3) 18%,transparent),color-mix(in srgb,var(--a3) 18%,transparent)) center/100% 1px no-repeat}
+.p-sweep{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,transparent 0 78%,color-mix(in srgb,var(--a3) 45%,transparent) 100%);opacity:var(--glow);animation:spin 8s linear infinite}
+.p-blip{position:absolute;width:7px;height:7px;margin:-3.5px;border-radius:50%;background:var(--a3);box-shadow:0 0 10px 3px color-mix(in srgb,var(--a3) 50%,transparent);opacity:0;animation:p-blip 8s linear infinite}
+@keyframes p-blip{0%{opacity:0}2%{opacity:1}40%{opacity:0}100%{opacity:0}}
+
+/* memphis shapes — announcements & kudos */
+.p-mf{position:absolute;bottom:-40px;opacity:0;animation:p-mfloat linear infinite}
+@keyframes p-mfloat{0%{transform:translateY(0) rotate(0) scale(1.5);opacity:0}12%{opacity:calc(var(--glow) * 1.6)}88%{opacity:calc(var(--glow) * 1.4)}100%{transform:translateY(-620px) rotate(200deg) scale(1.5);opacity:0}}
+.p-tri{width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-bottom:16px solid}
+.p-plus{font-size:20px;font-weight:900;line-height:20px}
+.p-dotg{position:absolute;width:120px;height:80px;background-image:radial-gradient(color-mix(in srgb,var(--tx) 22%,transparent) 1.5px,transparent 2px);background-size:12px 12px}
+
+/* equaliser — reports */
+.p-eq{position:absolute;left:0;right:0;bottom:0;height:190px;display:flex;align-items:flex-end;gap:8px;padding:0 10px}
+.p-eq i{flex:1;height:100%;border-radius:3px 3px 0 0;transform-origin:50% 100%;background:linear-gradient(180deg,color-mix(in srgb,var(--c) 55%,transparent),transparent);opacity:calc(var(--glow) * 1.3);animation:p-eqm var(--d) ease-in-out infinite alternate}
+@keyframes p-eqm{from{transform:scaleY(var(--lo))}to{transform:scaleY(var(--hi))}}
+.p-guides{position:absolute;inset:0;background-image:linear-gradient(color-mix(in srgb,var(--tx) 6%,transparent) 1px,transparent 1px);background-size:100% 38px}
+
+/* swiss grid — settings (still) */
+.p-cols{position:absolute;inset:0;background-image:linear-gradient(90deg,color-mix(in srgb,var(--pri) 7%,transparent) 1px,transparent 1px);background-size:calc(100% / 12) 100%}
+.p-base{position:absolute;inset:0;background-image:linear-gradient(color-mix(in srgb,var(--tx) 4%,transparent) 1px,transparent 1px);background-size:100% 8px}
+
+/* grid horizon — super admin */
+.p-sky{position:absolute;inset:0;background:linear-gradient(180deg,color-mix(in srgb,#1E3A8A 26%,transparent),transparent 60%)}
+.light .p-sky{background:linear-gradient(180deg,color-mix(in srgb,#3B82F6 9%,transparent),transparent 60%)}
+.p-plane{position:absolute;left:-40%;right:-40%;bottom:0;height:250px;overflow:hidden;transform:perspective(320px) rotateX(58deg);transform-origin:50% 100%;-webkit-mask:linear-gradient(0deg,#000 20%,transparent);mask:linear-gradient(0deg,#000 20%,transparent)}
+.p-plane i{position:absolute;left:0;right:0;top:-48px;bottom:0;background-image:linear-gradient(color-mix(in srgb,var(--a3) 40%,transparent) 1.5px,transparent 1.5px),linear-gradient(90deg,color-mix(in srgb,var(--a3) 40%,transparent) 1.5px,transparent 1.5px);background-size:48px 48px;animation:p-roll 9s linear infinite}
+@keyframes p-roll{to{transform:translateY(48px)}}
+.p-horizon{position:absolute;left:0;right:0;bottom:250px;height:1px;background:linear-gradient(90deg,transparent,var(--a3),transparent);box-shadow:0 0 22px 5px color-mix(in srgb,var(--a3) 35%,transparent)}
+.p-run{position:absolute;bottom:246px;left:0;width:90px;height:9px;border-radius:9px;background:radial-gradient(closest-side,var(--a3),transparent);animation:p-runx 7s linear infinite}
+@keyframes p-runx{from{transform:translateX(-100px)}to{transform:translateX(820px)}}
+
+/* prism — sign-in */
+.p-ray{position:absolute;left:0;top:250px;width:250px;height:2px;background:linear-gradient(90deg,transparent,#fff);box-shadow:0 0 12px 2px rgba(255,255,255,.45);transform-origin:100% 50%;transform:rotate(-8deg);animation:breathe 7s ease-in-out infinite}
+.light .p-ray{background:linear-gradient(90deg,transparent,var(--pri));box-shadow:none}
+.p-gem{position:absolute;left:240px;top:170px;width:120px;height:110px;clip-path:polygon(50% 0,100% 100%,0 100%);background:linear-gradient(160deg,color-mix(in srgb,#fff 30%,transparent),color-mix(in srgb,#fff 6%,transparent));border:0}
+.light .p-gem{background:linear-gradient(160deg,color-mix(in srgb,var(--pri) 30%,transparent),color-mix(in srgb,var(--pri) 8%,transparent))}
+.p-fan{position:absolute;left:330px;top:120px;width:720px;height:360px;clip-path:polygon(0 36%,100% 0,100% 100%,0 46%);background:linear-gradient(180deg,#F43F5E,#F59E0B 18%,#FDE047 34%,#22C55E 52%,#38BDF8 70%,#8B5CF6 88%);filter:blur(3px);opacity:calc(var(--glow) * .9);animation:p-shimmer 9s ease-in-out infinite alternate}
+@keyframes p-shimmer{from{opacity:calc(var(--glow) * .55)}to{opacity:calc(var(--glow) * 1)}}
+
+/* ── calm (Lively off) for tiles ── */
+.still *{animation-play-state:paused!important}
+</style><div class="bd">
+  <div class="eyebrow" style="color:#047857">Terra pack · Assets</div><h1>Zen garden</h1><div class="sub">Raked sand lines flow around a few stones, with rings around each — every object has its place. A soft band of light passes slowly, like a rake.</div>
+  <div class="tags"><span class="tag ">My assets</span><span class="tag ">Request an asset</span><span class="tag ">Register & detail</span><span class="tag a">Product animations unchanged</span><span class="tag n">Replaces Signature · Studio light</span></div>
+  <div class="cols"><div><div class="cap">Dark · live</div><div class="stage" style="">
+  <div class="sb"><div class="lg"><i></i>aakash-portal</div><div class="g"></div><div class="it on"></div><div class="it"></div><div class="it"></div><div class="g"></div><div class="it"></div><div class="it"></div><div class="it"></div><div class="g"></div><div class="it"></div><div class="it"></div></div>
+  <div class="mn"><div class="tb"><div class="cr"></div><div class="sp"></div><div class="bl"></div><div class="tg"></div></div>
+  <div class="pg"><div class="fx"><div class="t-sand"></div><svg class="t-zen" width="792" height="516" viewBox="0 0 792 516" style="left:0;top:0"><defs><mask id="zm"><rect width="792" height="516" fill="#fff"/><circle cx="600" cy="150" r="96" fill="#000"/><circle cx="170" cy="400" r="88" fill="#000"/><circle cx="690" cy="430" r="80" fill="#000"/></mask><radialGradient id="stoneG" cx="40%" cy="35%"><stop offset="0" stop-color="color-mix(in srgb,var(--tx) 28%,transparent)"/><stop offset="1" stop-color="color-mix(in srgb,var(--tx) 8%,transparent)"/></radialGradient></defs><g mask="url(#zm)"><path d="M0 8 L0 8.7 L24 9.5 L48 10.2 L72 10.7 L96 11.0 L120 11.0 L144 10.8 L168 10.3 L192 9.7 L216 8.9 L240 8.1 L264 7.2 L288 6.4 L312 5.8 L336 5.3 L360 5.0 L384 5.0 L408 5.3 L432 5.7 L456 6.4 L480 7.2 L504 8.0 L528 8.9 L552 9.6 L576 10.3 L600 10.7 L624 11.0 L648 11.0 L672 10.7 L696 10.2 L720 9.6 L744 8.8 L768 7.9 L792 7.1"/><path d="M0 21 L0 22.8 L24 23.4 L48 23.8 L72 24.0 L96 23.9 L120 23.6 L144 23.1 L168 22.4 L192 21.6 L216 20.8 L240 19.9 L264 19.2 L288 18.6 L312 18.2 L336 18.0 L360 18.1 L384 18.4 L408 18.9 L432 19.6 L456 20.5 L480 21.3 L504 22.2 L528 22.9 L552 23.5 L576 23.9 L600 24.0 L624 23.9 L648 23.6 L672 23.0 L696 22.3 L720 21.5 L744 20.6 L768 19.8 L792 19.0"/><path d="M0 34 L0 36.6 L24 36.9 L48 37.0 L72 36.9 L96 36.5 L120 35.9 L144 35.2 L168 34.3 L192 33.5 L216 32.6 L240 31.9 L264 31.4 L288 31.1 L312 31.0 L336 31.2 L360 31.6 L384 32.2 L408 32.9 L432 33.8 L456 34.6 L480 35.4 L504 36.1 L528 36.6 L552 36.9 L576 37.0 L600 36.8 L624 36.4 L648 35.8 L672 35.0 L696 34.2 L720 33.3 L744 32.5 L768 31.8 L792 31.3"/><path d="M0 47 L0 50.0 L24 50.0 L48 49.7 L72 49.3 L96 48.6 L120 47.9 L144 47.0 L168 46.2 L192 45.4 L216 44.7 L240 44.3 L264 44.0 L288 44.0 L312 44.3 L336 44.8 L360 45.4 L384 46.2 L408 47.1 L432 47.9 L456 48.7 L480 49.3 L504 49.8 L528 50.0 L552 50.0 L576 49.7 L600 49.2 L624 48.5 L648 47.7 L672 46.9 L696 46.0 L720 45.2 L744 44.6 L768 44.2 L792 44.0"/><path d="M0 60 L0 62.9 L24 62.6 L48 62.1 L72 61.4 L96 60.6 L120 59.7 L144 58.9 L168 58.1 L192 57.5 L216 57.2 L240 57.0 L264 57.1 L288 57.4 L312 58.0 L336 58.7 L360 59.5 L384 60.4 L408 61.2 L432 61.9 L456 62.5 L480 62.9 L504 63.0 L528 62.9 L552 62.5 L576 62.0 L600 61.2 L624 60.4 L648 59.5 L672 58.7 L696 58.0 L720 57.5 L744 57.1 L768 57.0 L792 57.1"/><path d="M0 73 L0 75.4 L24 74.8 L48 74.1 L72 73.3 L96 72.4 L120 71.6 L144 70.9 L168 70.4 L192 70.1 L216 70.0 L240 70.2 L264 70.6 L288 71.2 L312 72.0 L336 72.8 L360 73.7 L384 74.5 L408 75.2 L432 75.7 L456 75.9 L480 76.0 L504 75.8 L528 75.3 L552 74.7 L576 74.0 L600 73.1 L624 72.2 L648 71.5 L672 70.8 L696 70.3 L720 70.0 L744 70.0 L768 70.2 L792 70.7"/><path d="M0 86 L0 87.6 L24 86.8 L48 86.0 L72 85.1 L96 84.3 L120 83.7 L144 83.2 L168 83.0 L192 83.0 L216 83.3 L240 83.8 L264 84.5 L288 85.3 L312 86.1 L336 87.0 L360 87.7 L384 88.4 L408 88.8 L432 89.0 L456 88.9 L480 88.7 L504 88.1 L528 87.5 L552 86.7 L576 85.8 L600 85.0 L624 84.2 L648 83.6 L672 83.2 L696 83.0 L720 83.1 L744 83.4 L768 83.9 L792 84.6"/><path d="M0 99 L0 99.5 L24 98.7 L48 97.8 L72 97.1 L96 96.5 L120 96.1 L144 96.0 L168 96.1 L192 96.5 L216 97.0 L240 97.7 L264 98.6 L288 99.4 L312 100.3 L336 101.0 L360 101.5 L384 101.9 L408 102.0 L432 101.9 L456 101.5 L480 100.9 L504 100.2 L528 99.4 L552 98.5 L576 97.7 L600 97.0 L624 96.4 L648 96.1 L672 96.0 L696 96.2 L720 96.5 L744 97.1 L768 97.9 L792 98.7"/><path d="M0 112 L0 111.3 L24 110.5 L48 109.9 L72 109.4 L96 109.1 L120 109.0 L144 109.2 L168 109.6 L192 110.3 L216 111.0 L240 111.9 L264 112.7 L288 113.5 L312 114.2 L336 114.7 L360 115.0 L384 115.0 L408 114.8 L432 114.3 L456 113.7 L480 112.9 L504 112.1 L528 111.2 L552 110.4 L576 109.8 L600 109.3 L624 109.0 L648 109.0 L672 109.3 L696 109.7 L720 110.4 L744 111.2 L768 112.0 L792 112.9"/><path d="M0 125 L0 123.3 L24 122.7 L48 122.2 L72 122.0 L96 122.1 L120 122.3 L144 122.8 L168 123.5 L192 124.3 L216 125.2 L240 126.0 L264 126.8 L288 127.4 L312 127.8 L336 128.0 L360 127.9 L384 127.6 L408 127.1 L432 126.4 L456 125.6 L480 124.7 L504 123.9 L528 123.2 L552 122.6 L576 122.2 L600 122.0 L624 122.1 L648 122.4 L672 122.9 L696 123.7 L720 124.5 L744 125.3 L768 126.2 L792 126.9"/><path d="M0 138 L0 135.5 L24 135.1 L48 135.0 L72 135.1 L96 135.5 L120 136.1 L144 136.8 L168 137.6 L192 138.5 L216 139.3 L240 140.0 L264 140.6 L288 140.9 L312 141.0 L336 140.8 L360 140.5 L384 139.9 L408 139.1 L432 138.3 L456 137.4 L480 136.6 L504 135.9 L528 135.4 L552 135.1 L576 135.0 L600 135.2 L624 135.6 L648 136.2 L672 136.9 L696 137.8 L720 138.6 L744 139.4 L768 140.1 L792 140.6"/><path d="M0 151 L0 148.0 L24 148.0 L48 148.2 L72 148.7 L96 149.3 L120 150.1 L144 150.9 L168 151.8 L192 152.6 L216 153.2 L240 153.7 L264 154.0 L288 154.0 L312 153.7 L336 153.3 L360 152.6 L384 151.8 L408 151.0 L432 150.1 L456 149.4 L480 148.7 L504 148.3 L528 148.0 L552 148.0 L576 148.3 L600 148.8 L624 149.4 L648 150.2 L672 151.1 L696 151.9 L720 152.7 L744 153.3 L768 153.8 L792 154.0"/><path d="M0 164 L0 161.1 L24 161.4 L48 161.9 L72 162.6 L96 163.4 L120 164.2 L144 165.1 L168 165.8 L192 166.4 L216 166.8 L240 167.0 L264 166.9 L288 166.6 L312 166.1 L336 165.4 L360 164.6 L384 163.7 L408 162.9 L432 162.1 L456 161.5 L480 161.1 L504 161.0 L528 161.1 L552 161.4 L576 162.0 L600 162.7 L624 163.5 L648 164.4 L672 165.2 L696 165.9 L720 166.5 L744 166.9 L768 167.0 L792 166.9"/><path d="M0 177 L0 174.5 L24 175.1 L48 175.8 L72 176.7 L96 177.5 L120 178.4 L144 179.1 L168 179.6 L192 179.9 L216 180.0 L240 179.8 L264 179.4 L288 178.8 L312 178.1 L336 177.2 L360 176.4 L384 175.6 L408 174.9 L432 174.4 L456 174.1 L480 174.0 L504 174.2 L528 174.6 L552 175.2 L576 176.0 L600 176.8 L624 177.7 L648 178.5 L672 179.2 L696 179.7 L720 179.9 L744 180.0 L768 179.8 L792 179.3"/><path d="M0 190 L0 188.3 L24 189.1 L48 190.0 L72 190.8 L96 191.6 L120 192.3 L144 192.7 L168 193.0 L192 193.0 L216 192.7 L240 192.2 L264 191.6 L288 190.8 L312 189.9 L336 189.1 L360 188.3 L384 187.7 L408 187.2 L432 187.0 L456 187.0 L480 187.3 L504 187.8 L528 188.5 L552 189.3 L576 190.1 L600 191.0 L624 191.7 L648 192.4 L672 192.8 L696 193.0 L720 192.9 L744 192.6 L768 192.1 L792 191.4"/><path d="M0 203 L0 202.4 L24 203.3 L48 204.1 L72 204.9 L96 205.5 L120 205.8 L144 206.0 L168 205.9 L192 205.6 L216 205.0 L240 204.3 L264 203.5 L288 202.6 L312 201.8 L336 201.1 L360 200.5 L384 200.1 L408 200.0 L432 200.1 L456 200.5 L480 201.0 L504 201.8 L528 202.6 L552 203.4 L576 204.3 L600 205.0 L624 205.5 L648 205.9 L672 206.0 L696 205.9 L720 205.5 L744 204.9 L768 204.2 L792 203.3"/><path d="M0 216 L0 216.6 L24 217.4 L48 218.1 L72 218.6 L96 218.9 L120 219.0 L144 218.8 L168 218.4 L192 217.8 L216 217.0 L240 216.2 L264 215.3 L288 214.5 L312 213.8 L336 213.3 L360 213.1 L384 213.0 L408 213.2 L432 213.6 L456 214.3 L480 215.0 L504 215.9 L528 216.7 L552 217.5 L576 218.2 L600 218.7 L624 219.0 L648 219.0 L672 218.8 L696 218.3 L720 217.7 L744 216.9 L768 216.0 L792 215.2"/><path d="M0 229 L0 230.7 L24 231.3 L48 231.8 L72 232.0 L96 232.0 L120 231.7 L144 231.2 L168 230.5 L192 229.7 L216 228.9 L240 228.0 L264 227.3 L288 226.6 L312 226.2 L336 226.0 L360 226.1 L384 226.3 L408 226.8 L432 227.5 L456 228.3 L480 229.2 L504 230.0 L528 230.8 L552 231.4 L576 231.8 L600 232.0 L624 231.9 L648 231.6 L672 231.1 L696 230.4 L720 229.6 L744 228.7 L768 227.9 L792 227.1"/><path d="M0 242 L0 244.5 L24 244.9 L48 245.0 L72 244.9 L96 244.5 L120 244.0 L144 243.3 L168 242.4 L192 241.6 L216 240.8 L240 240.0 L264 239.5 L288 239.1 L312 239.0 L336 239.1 L360 239.5 L384 240.1 L408 240.8 L432 241.6 L456 242.5 L480 243.3 L504 244.0 L528 244.6 L552 244.9 L576 245.0 L600 244.8 L624 244.5 L648 243.9 L672 243.1 L696 242.3 L720 241.4 L744 240.6 L768 239.9 L792 239.4"/><path d="M0 255 L0 257.9 L24 258.0 L48 257.8 L72 257.4 L96 256.7 L120 256.0 L144 255.1 L168 254.3 L192 253.5 L216 252.8 L240 252.3 L264 252.0 L288 252.0 L312 252.2 L336 252.7 L360 253.3 L384 254.1 L408 254.9 L432 255.8 L456 256.6 L480 257.2 L504 257.7 L528 258.0 L552 258.0 L576 257.7 L600 257.3 L624 256.6 L648 255.8 L672 255.0 L696 254.1 L720 253.4 L744 252.7 L768 252.3 L792 252.0"/><path d="M0 268 L0 270.9 L24 270.7 L48 270.2 L72 269.5 L96 268.7 L120 267.8 L144 267.0 L168 266.2 L192 265.6 L216 265.2 L240 265.0 L264 265.1 L288 265.4 L312 265.9 L336 266.6 L360 267.4 L384 268.2 L408 269.1 L432 269.8 L456 270.4 L480 270.8 L504 271.0 L528 270.9 L552 270.6 L576 270.1 L600 269.4 L624 268.5 L648 267.7 L672 266.8 L696 266.1 L720 265.5 L744 265.1 L768 265.0 L792 265.1"/><path d="M0 281 L0 283.5 L24 282.9 L48 282.2 L72 281.4 L96 280.5 L120 279.7 L144 279.0 L168 278.4 L192 278.1 L216 278.0 L240 278.1 L264 278.5 L288 279.1 L312 279.9 L336 280.7 L360 281.5 L384 282.4 L408 283.1 L432 283.6 L456 283.9 L480 284.0 L504 283.8 L528 283.4 L552 282.8 L576 282.1 L600 281.2 L624 280.4 L648 279.6 L672 278.9 L696 278.4 L720 278.1 L744 278.0 L768 278.2 L792 278.6"/><path d="M0 294 L0 295.7 L24 294.9 L48 294.1 L72 293.2 L96 292.4 L120 291.8 L144 291.3 L168 291.0 L192 291.0 L216 291.3 L240 291.7 L264 292.4 L288 293.1 L312 294.0 L336 294.8 L360 295.6 L384 296.3 L408 296.7 L432 297.0 L456 297.0 L480 296.7 L504 296.2 L528 295.6 L552 294.8 L576 293.9 L600 293.1 L624 292.3 L648 291.7 L672 291.2 L696 291.0 L720 291.0 L744 291.3 L768 291.8 L792 292.5"/><path d="M0 307 L0 307.6 L24 306.8 L48 305.9 L72 305.2 L96 304.6 L120 304.2 L144 304.0 L168 304.1 L192 304.4 L216 304.9 L240 305.6 L264 306.4 L288 307.3 L312 308.1 L336 308.9 L360 309.5 L384 309.8 L408 310.0 L432 309.9 L456 309.6 L480 309.0 L504 308.3 L528 307.5 L552 306.6 L576 305.8 L600 305.1 L624 304.5 L648 304.1 L672 304.0 L696 304.1 L720 304.5 L744 305.0 L768 305.8 L792 306.6"/><path d="M0 320 L0 319.5 L24 318.7 L48 318.0 L72 317.4 L96 317.1 L120 317.0 L144 317.2 L168 317.6 L192 318.2 L216 318.9 L240 319.7 L264 320.6 L288 321.4 L312 322.1 L336 322.6 L360 322.9 L384 323.0 L408 322.8 L432 322.4 L456 321.8 L480 321.0 L504 320.2 L528 319.3 L552 318.5 L576 317.8 L600 317.3 L624 317.1 L648 317.0 L672 317.2 L696 317.7 L720 318.3 L744 319.1 L768 319.9 L792 320.8"/><path d="M0 333 L0 331.4 L24 330.7 L48 330.3 L72 330.0 L96 330.0 L120 330.3 L144 330.7 L168 331.4 L192 332.2 L216 333.0 L240 333.9 L264 334.7 L288 335.3 L312 335.8 L336 336.0 L360 336.0 L384 335.7 L408 335.2 L432 334.5 L456 333.7 L480 332.9 L504 332.0 L528 331.3 L552 330.6 L576 330.2 L600 330.0 L624 330.1 L648 330.3 L672 330.9 L696 331.5 L720 332.3 L744 333.2 L768 334.0 L792 334.8"/><path d="M0 346 L0 343.6 L24 343.2 L48 343.0 L72 343.1 L96 343.4 L120 344.0 L144 344.7 L168 345.5 L192 346.4 L216 347.2 L240 347.9 L264 348.5 L288 348.9 L312 349.0 L336 348.9 L360 348.5 L384 348.0 L408 347.3 L432 346.4 L456 345.6 L480 344.7 L504 344.0 L528 343.5 L552 343.1 L576 343.0 L600 343.1 L624 343.5 L648 344.1 L672 344.8 L696 345.6 L720 346.5 L744 347.3 L768 348.0 L792 348.6"/><path d="M0 359 L0 356.1 L24 356.0 L48 356.2 L72 356.6 L96 357.2 L120 358.0 L144 358.8 L168 359.7 L192 360.5 L216 361.1 L240 361.7 L264 361.9 L288 362.0 L312 361.8 L336 361.4 L360 360.7 L384 360.0 L408 359.1 L432 358.3 L456 357.5 L480 356.8 L504 356.3 L528 356.0 L552 356.0 L576 356.2 L600 356.7 L624 357.3 L648 358.1 L672 359.0 L696 359.8 L720 360.6 L744 361.3 L768 361.7 L792 362.0"/><path d="M0 372 L0 369.0 L24 369.3 L48 369.8 L72 370.5 L96 371.2 L120 372.1 L144 372.9 L168 373.7 L192 374.3 L216 374.8 L240 375.0 L264 374.9 L288 374.7 L312 374.2 L336 373.5 L360 372.7 L384 371.8 L408 371.0 L432 370.2 L456 369.6 L480 369.2 L504 369.0 L528 369.1 L552 369.4 L576 369.9 L600 370.6 L624 371.4 L648 372.3 L672 373.1 L696 373.8 L720 374.4 L744 374.8 L768 375.0 L792 374.9"/><path d="M0 385 L0 382.4 L24 383.0 L48 383.7 L72 384.5 L96 385.4 L120 386.2 L144 387.0 L168 387.5 L192 387.9 L216 388.0 L240 387.9 L264 387.5 L288 386.9 L312 386.2 L336 385.4 L360 384.5 L384 383.7 L408 383.0 L432 382.4 L456 382.1 L480 382.0 L504 382.2 L528 382.5 L552 383.1 L576 383.9 L600 384.7 L624 385.6 L648 386.4 L672 387.1 L696 387.6 L720 387.9 L744 388.0 L768 387.8 L792 387.4"/><path d="M0 398 L0 396.2 L24 397.0 L48 397.8 L72 398.7 L96 399.5 L120 400.2 L144 400.7 L168 401.0 L192 401.0 L216 400.8 L240 400.3 L264 399.7 L288 398.9 L312 398.1 L336 397.2 L360 396.4 L384 395.8 L408 395.3 L432 395.0 L456 395.0 L480 395.3 L504 395.7 L528 396.4 L552 397.2 L576 398.0 L600 398.9 L624 399.6 L648 400.3 L672 400.7 L696 401.0 L720 401.0 L744 400.7 L768 400.2 L792 399.6"/><path d="M0 411 L0 410.3 L24 411.2 L48 412.0 L72 412.8 L96 413.4 L120 413.8 L144 414.0 L168 413.9 L192 413.6 L216 413.1 L240 412.4 L264 411.6 L288 410.8 L312 409.9 L336 409.2 L360 408.6 L384 408.2 L408 408.0 L432 408.1 L456 408.4 L480 408.9 L504 409.6 L528 410.5 L552 411.3 L576 412.1 L600 412.9 L624 413.5 L648 413.9 L672 414.0 L696 413.9 L720 413.6 L744 413.0 L768 412.3 L792 411.5"/><path d="M0 424 L0 424.5 L24 425.3 L48 426.0 L72 426.6 L96 426.9 L120 427.0 L144 426.9 L168 426.5 L192 425.9 L216 425.2 L240 424.3 L264 423.5 L288 422.6 L312 421.9 L336 421.4 L360 421.1 L384 421.0 L408 421.2 L432 421.6 L456 422.2 L480 422.9 L504 423.8 L528 424.6 L552 425.4 L576 426.1 L600 426.6 L624 426.9 L648 427.0 L672 426.8 L696 426.4 L720 425.8 L744 425.0 L768 424.2 L792 423.3"/><path d="M0 437 L0 438.6 L24 439.2 L48 439.7 L72 440.0 L96 440.0 L120 439.7 L144 439.3 L168 438.6 L192 437.9 L216 437.0 L240 436.2 L264 435.4 L288 434.7 L312 434.3 L336 434.0 L360 434.0 L384 434.3 L408 434.8 L432 435.4 L456 436.2 L480 437.1 L504 437.9 L528 438.7 L552 439.3 L576 439.8 L600 440.0 L624 440.0 L648 439.7 L672 439.2 L696 438.5 L720 437.7 L744 436.9 L768 436.0 L792 435.2"/><path d="M0 450 L0 452.4 L24 452.8 L48 453.0 L72 452.9 L96 452.6 L120 452.1 L144 451.4 L168 450.6 L192 449.7 L216 448.9 L240 448.1 L264 447.5 L288 447.2 L312 447.0 L336 447.1 L360 447.4 L384 448.0 L408 448.7 L432 449.5 L456 450.4 L480 451.2 L504 451.9 L528 452.5 L552 452.9 L576 453.0 L600 452.9 L624 452.5 L648 452.0 L672 451.2 L696 450.4 L720 449.6 L744 448.7 L768 448.0 L792 447.5"/><path d="M0 463 L0 465.9 L24 466.0 L48 465.8 L72 465.4 L96 464.9 L120 464.1 L144 463.3 L168 462.4 L192 461.6 L216 460.9 L240 460.4 L264 460.1 L288 460.0 L312 460.2 L336 460.6 L360 461.2 L384 462.0 L408 462.8 L432 463.7 L456 464.5 L480 465.2 L504 465.7 L528 465.9 L552 466.0 L576 465.8 L600 465.4 L624 464.7 L648 464.0 L672 463.1 L696 462.3 L720 461.5 L744 460.8 L768 460.3 L792 460.0"/><path d="M0 476 L0 479.0 L24 478.7 L48 478.3 L72 477.6 L96 476.8 L120 476.0 L144 475.1 L168 474.3 L192 473.7 L216 473.2 L240 473.0 L264 473.0 L288 473.3 L312 473.8 L336 474.5 L360 475.3 L384 476.1 L408 477.0 L432 477.7 L456 478.4 L480 478.8 L504 479.0 L528 478.9 L552 478.7 L576 478.2 L600 477.5 L624 476.7 L648 475.8 L672 475.0 L696 474.2 L720 473.6 L744 473.2 L768 473.0 L792 473.1"/><path d="M0 489 L0 491.6 L24 491.0 L48 490.3 L72 489.5 L96 488.7 L120 487.8 L144 487.1 L168 486.5 L192 486.1 L216 486.0 L240 486.1 L264 486.5 L288 487.0 L312 487.7 L336 488.6 L360 489.4 L384 490.2 L408 491.0 L432 491.5 L456 491.9 L480 492.0 L504 491.9 L528 491.5 L552 490.9 L576 490.2 L600 489.4 L624 488.5 L648 487.7 L672 487.0 L696 486.4 L720 486.1 L744 486.0 L768 486.2 L792 486.5"/><path d="M0 502 L0 503.8 L24 503.1 L48 502.2 L72 501.4 L96 500.6 L120 499.9 L144 499.4 L168 499.1 L192 499.0 L216 499.2 L240 499.6 L264 500.3 L288 501.0 L312 501.9 L336 502.7 L360 503.5 L384 504.2 L408 504.7 L432 505.0 L456 505.0 L480 504.8 L504 504.3 L528 503.7 L552 502.9 L576 502.1 L600 501.2 L624 500.4 L648 499.8 L672 499.3 L696 499.0 L720 499.0 L744 499.3 L768 499.7 L792 500.4"/><path d="M0 515 L0 515.8 L24 514.9 L48 514.1 L72 513.3 L96 512.7 L120 512.2 L144 512.0 L168 512.1 L192 512.3 L216 512.8 L240 513.5 L264 514.3 L288 515.2 L312 516.0 L336 516.8 L360 517.4 L384 517.8 L408 518.0 L432 517.9 L456 517.6 L480 517.1 L504 516.4 L528 515.6 L552 514.8 L576 513.9 L600 513.2 L624 512.6 L648 512.2 L672 512.0 L696 512.1 L720 512.4 L744 512.9 L768 513.7 L792 514.5"/></g><g class="t-ripple"><circle class="r" cx="600" cy="150" r="47"/><circle class="r" cx="600" cy="150" r="60"/><circle class="r" cx="600" cy="150" r="73"/><circle class="r" cx="600" cy="150" r="86"/></g><ellipse class="stone" cx="600" cy="150" rx="34" ry="27.88"/><g class="t-ripple"><circle class="r" cx="170" cy="400" r="39"/><circle class="r" cx="170" cy="400" r="52"/><circle class="r" cx="170" cy="400" r="65"/><circle class="r" cx="170" cy="400" r="78"/></g><ellipse class="stone" cx="170" cy="400" rx="26" ry="21.32"/><g class="t-ripple"><circle class="r" cx="690" cy="430" r="31"/><circle class="r" cx="690" cy="430" r="44"/><circle class="r" cx="690" cy="430" r="57"/><circle class="r" cx="690" cy="430" r="70"/></g><ellipse class="stone" cx="690" cy="430" rx="18" ry="14.76"/></svg><div class="t-rake"></div><div class="vig"></div></div><div class="ct"><div class="row" style="align-items:flex-end"><div class="f1"><div class="ey">Assets</div><div class="h">My assets</div><div class="p">3 things with you · 1 to confirm</div></div><span class="btn">Request an asset</span></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px" class="f1"><div class="card" style="display:flex;flex-direction:column;gap:8px;padding:0;overflow:hidden"><div style="height:110px;display:flex;align-items:center;justify-content:center;font-size:46px;background:color-mix(in srgb,var(--tx) 4%,transparent)">💻</div><div style="padding:0 12px 12px;display:flex;flex-direction:column;gap:7px"><div class="ln m"></div><div class="ln s"></div></div></div><div class="card" style="display:flex;flex-direction:column;gap:8px;padding:0;overflow:hidden"><div style="height:110px;display:flex;align-items:center;justify-content:center;font-size:46px;background:color-mix(in srgb,var(--tx) 4%,transparent)">🖥️</div><div style="padding:0 12px 12px;display:flex;flex-direction:column;gap:7px"><div class="ln m"></div><div class="ln s"></div></div></div><div class="card" style="display:flex;flex-direction:column;gap:8px;padding:0;overflow:hidden"><div style="height:110px;display:flex;align-items:center;justify-content:center;font-size:46px;background:color-mix(in srgb,var(--tx) 4%,transparent)">🪪</div><div style="padding:0 12px 12px;display:flex;flex-direction:column;gap:7px"><div class="ln m"></div><div class="ln s"></div></div></div></div></div></div></div></div></div>
+  <div class="side"><div><div class="cap">Light</div><div class="mini"><div class="stage light" style="">
+  <div class="sb"><div class="lg"><i></i>aakash-portal</div><div class="g"></div><div class="it on"></div><div class="it"></div><div class="it"></div><div class="g"></div><div class="it"></div><div class="it"></div><div class="it"></div><div class="g"></div><div class="it"></div><div class="it"></div></div>
+  <div class="mn"><div class="tb"><div class="cr"></div><div class="sp"></div><div class="bl"></div><div class="tg"></div></div>
+  <div class="pg"><div class="fx"><div class="t-sand"></div><svg class="t-zen" width="792" height="516" viewBox="0 0 792 516" style="left:0;top:0"><defs><mask id="zm"><rect width="792" height="516" fill="#fff"/><circle cx="600" cy="150" r="96" fill="#000"/><circle cx="170" cy="400" r="88" fill="#000"/><circle cx="690" cy="430" r="80" fill="#000"/></mask><radialGradient id="stoneG" cx="40%" cy="35%"><stop offset="0" stop-color="color-mix(in srgb,var(--tx) 28%,transparent)"/><stop offset="1" stop-color="color-mix(in srgb,var(--tx) 8%,transparent)"/></radialGradient></defs><g mask="url(#zm)"><path d="M0 8 L0 8.7 L24 9.5 L48 10.2 L72 10.7 L96 11.0 L120 11.0 L144 10.8 L168 10.3 L192 9.7 L216 8.9 L240 8.1 L264 7.2 L288 6.4 L312 5.8 L336 5.3 L360 5.0 L384 5.0 L408 5.3 L432 5.7 L456 6.4 L480 7.2 L504 8.0 L528 8.9 L552 9.6 L576 10.3 L600 10.7 L624 11.0 L648 11.0 L672 10.7 L696 10.2 L720 9.6 L744 8.8 L768 7.9 L792 7.1"/><path d="M0 21 L0 22.8 L24 23.4 L48 23.8 L72 24.0 L96 23.9 L120 23.6 L144 23.1 L168 22.4 L192 21.6 L216 20.8 L240 19.9 L264 19.2 L288 18.6 L312 18.2 L336 18.0 L360 18.1 L384 18.4 L408 18.9 L432 19.6 L456 20.5 L480 21.3 L504 22.2 L528 22.9 L552 23.5 L576 23.9 L600 24.0 L624 23.9 L648 23.6 L672 23.0 L696 22.3 L720 21.5 L744 20.6 L768 19.8 L792 19.0"/><path d="M0 34 L0 36.6 L24 36.9 L48 37.0 L72 36.9 L96 36.5 L120 35.9 L144 35.2 L168 34.3 L192 33.5 L216 32.6 L240 31.9 L264 31.4 L288 31.1 L312 31.0 L336 31.2 L360 31.6 L384 32.2 L408 32.9 L432 33.8 L456 34.6 L480 35.4 L504 36.1 L528 36.6 L552 36.9 L576 37.0 L600 36.8 L624 36.4 L648 35.8 L672 35.0 L696 34.2 L720 33.3 L744 32.5 L768 31.8 L792 31.3"/><path d="M0 47 L0 50.0 L24 50.0 L48 49.7 L72 49.3 L96 48.6 L120 47.9 L144 47.0 L168 46.2 L192 45.4 L216 44.7 L240 44.3 L264 44.0 L288 44.0 L312 44.3 L336 44.8 L360 45.4 L384 46.2 L408 47.1 L432 47.9 L456 48.7 L480 49.3 L504 49.8 L528 50.0 L552 50.0 L576 49.7 L600 49.2 L624 48.5 L648 47.7 L672 46.9 L696 46.0 L720 45.2 L744 44.6 L768 44.2 L792 44.0"/><path d="M0 60 L0 62.9 L24 62.6 L48 62.1 L72 61.4 L96 60.6 L120 59.7 L144 58.9 L168 58.1 L192 57.5 L216 57.2 L240 57.0 L264 57.1 L288 57.4 L312 58.0 L336 58.7 L360 59.5 L384 60.4 L408 61.2 L432 61.9 L456 62.5 L480 62.9 L504 63.0 L528 62.9 L552 62.5 L576 62.0 L600 61.2 L624 60.4 L648 59.5 L672 58.7 L696 58.0 L720 57.5 L744 57.1 L768 57.0 L792 57.1"/><path d="M0 73 L0 75.4 L24 74.8 L48 74.1 L72 73.3 L96 72.4 L120 71.6 L144 70.9 L168 70.4 L192 70.1 L216 70.0 L240 70.2 L264 70.6 L288 71.2 L312 72.0 L336 72.8 L360 73.7 L384 74.5 L408 75.2 L432 75.7 L456 75.9 L480 76.0 L504 75.8 L528 75.3 L552 74.7 L576 74.0 L600 73.1 L624 72.2 L648 71.5 L672 70.8 L696 70.3 L720 70.0 L744 70.0 L768 70.2 L792 70.7"/><path d="M0 86 L0 87.6 L24 86.8 L48 86.0 L72 85.1 L96 84.3 L120 83.7 L144 83.2 L168 83.0 L192 83.0 L216 83.3 L240 83.8 L264 84.5 L288 85.3 L312 86.1 L336 87.0 L360 87.7 L384 88.4 L408 88.8 L432 89.0 L456 88.9 L480 88.7 L504 88.1 L528 87.5 L552 86.7 L576 85.8 L600 85.0 L624 84.2 L648 83.6 L672 83.2 L696 83.0 L720 83.1 L744 83.4 L768 83.9 L792 84.6"/><path d="M0 99 L0 99.5 L24 98.7 L48 97.8 L72 97.1 L96 96.5 L120 96.1 L144 96.0 L168 96.1 L192 96.5 L216 97.0 L240 97.7 L264 98.6 L288 99.4 L312 100.3 L336 101.0 L360 101.5 L384 101.9 L408 102.0 L432 101.9 L456 101.5 L480 100.9 L504 100.2 L528 99.4 L552 98.5 L576 97.7 L600 97.0 L624 96.4 L648 96.1 L672 96.0 L696 96.2 L720 96.5 L744 97.1 L768 97.9 L792 98.7"/><path d="M0 112 L0 111.3 L24 110.5 L48 109.9 L72 109.4 L96 109.1 L120 109.0 L144 109.2 L168 109.6 L192 110.3 L216 111.0 L240 111.9 L264 112.7 L288 113.5 L312 114.2 L336 114.7 L360 115.0 L384 115.0 L408 114.8 L432 114.3 L456 113.7 L480 112.9 L504 112.1 L528 111.2 L552 110.4 L576 109.8 L600 109.3 L624 109.0 L648 109.0 L672 109.3 L696 109.7 L720 110.4 L744 111.2 L768 112.0 L792 112.9"/><path d="M0 125 L0 123.3 L24 122.7 L48 122.2 L72 122.0 L96 122.1 L120 122.3 L144 122.8 L168 123.5 L192 124.3 L216 125.2 L240 126.0 L264 126.8 L288 127.4 L312 127.8 L336 128.0 L360 127.9 L384 127.6 L408 127.1 L432 126.4 L456 125.6 L480 124.7 L504 123.9 L528 123.2 L552 122.6 L576 122.2 L600 122.0 L624 122.1 L648 122.4 L672 122.9 L696 123.7 L720 124.5 L744 125.3 L768 126.2 L792 126.9"/><path d="M0 138 L0 135.5 L24 135.1 L48 135.0 L72 135.1 L96 135.5 L120 136.1 L144 136.8 L168 137.6 L192 138.5 L216 139.3 L240 140.0 L264 140.6 L288 140.9 L312 141.0 L336 140.8 L360 140.5 L384 139.9 L408 139.1 L432 138.3 L456 137.4 L480 136.6 L504 135.9 L528 135.4 L552 135.1 L576 135.0 L600 135.2 L624 135.6 L648 136.2 L672 136.9 L696 137.8 L720 138.6 L744 139.4 L768 140.1 L792 140.6"/><path d="M0 151 L0 148.0 L24 148.0 L48 148.2 L72 148.7 L96 149.3 L120 150.1 L144 150.9 L168 151.8 L192 152.6 L216 153.2 L240 153.7 L264 154.0 L288 154.0 L312 153.7 L336 153.3 L360 152.6 L384 151.8 L408 151.0 L432 150.1 L456 149.4 L480 148.7 L504 148.3 L528 148.0 L552 148.0 L576 148.3 L600 148.8 L624 149.4 L648 150.2 L672 151.1 L696 151.9 L720 152.7 L744 153.3 L768 153.8 L792 154.0"/><path d="M0 164 L0 161.1 L24 161.4 L48 161.9 L72 162.6 L96 163.4 L120 164.2 L144 165.1 L168 165.8 L192 166.4 L216 166.8 L240 167.0 L264 166.9 L288 166.6 L312 166.1 L336 165.4 L360 164.6 L384 163.7 L408 162.9 L432 162.1 L456 161.5 L480 161.1 L504 161.0 L528 161.1 L552 161.4 L576 162.0 L600 162.7 L624 163.5 L648 164.4 L672 165.2 L696 165.9 L720 166.5 L744 166.9 L768 167.0 L792 166.9"/><path d="M0 177 L0 174.5 L24 175.1 L48 175.8 L72 176.7 L96 177.5 L120 178.4 L144 179.1 L168 179.6 L192 179.9 L216 180.0 L240 179.8 L264 179.4 L288 178.8 L312 178.1 L336 177.2 L360 176.4 L384 175.6 L408 174.9 L432 174.4 L456 174.1 L480 174.0 L504 174.2 L528 174.6 L552 175.2 L576 176.0 L600 176.8 L624 177.7 L648 178.5 L672 179.2 L696 179.7 L720 179.9 L744 180.0 L768 179.8 L792 179.3"/><path d="M0 190 L0 188.3 L24 189.1 L48 190.0 L72 190.8 L96 191.6 L120 192.3 L144 192.7 L168 193.0 L192 193.0 L216 192.7 L240 192.2 L264 191.6 L288 190.8 L312 189.9 L336 189.1 L360 188.3 L384 187.7 L408 187.2 L432 187.0 L456 187.0 L480 187.3 L504 187.8 L528 188.5 L552 189.3 L576 190.1 L600 191.0 L624 191.7 L648 192.4 L672 192.8 L696 193.0 L720 192.9 L744 192.6 L768 192.1 L792 191.4"/><path d="M0 203 L0 202.4 L24 203.3 L48 204.1 L72 204.9 L96 205.5 L120 205.8 L144 206.0 L168 205.9 L192 205.6 L216 205.0 L240 204.3 L264 203.5 L288 202.6 L312 201.8 L336 201.1 L360 200.5 L384 200.1 L408 200.0 L432 200.1 L456 200.5 L480 201.0 L504 201.8 L528 202.6 L552 203.4 L576 204.3 L600 205.0 L624 205.5 L648 205.9 L672 206.0 L696 205.9 L720 205.5 L744 204.9 L768 204.2 L792 203.3"/><path d="M0 216 L0 216.6 L24 217.4 L48 218.1 L72 218.6 L96 218.9 L120 219.0 L144 218.8 L168 218.4 L192 217.8 L216 217.0 L240 216.2 L264 215.3 L288 214.5 L312 213.8 L336 213.3 L360 213.1 L384 213.0 L408 213.2 L432 213.6 L456 214.3 L480 215.0 L504 215.9 L528 216.7 L552 217.5 L576 218.2 L600 218.7 L624 219.0 L648 219.0 L672 218.8 L696 218.3 L720 217.7 L744 216.9 L768 216.0 L792 215.2"/><path d="M0 229 L0 230.7 L24 231.3 L48 231.8 L72 232.0 L96 232.0 L120 231.7 L144 231.2 L168 230.5 L192 229.7 L216 228.9 L240 228.0 L264 227.3 L288 226.6 L312 226.2 L336 226.0 L360 226.1 L384 226.3 L408 226.8 L432 227.5 L456 228.3 L480 229.2 L504 230.0 L528 230.8 L552 231.4 L576 231.8 L600 232.0 L624 231.9 L648 231.6 L672 231.1 L696 230.4 L720 229.6 L744 228.7 L768 227.9 L792 227.1"/><path d="M0 242 L0 244.5 L24 244.9 L48 245.0 L72 244.9 L96 244.5 L120 244.0 L144 243.3 L168 242.4 L192 241.6 L216 240.8 L240 240.0 L264 239.5 L288 239.1 L312 239.0 L336 239.1 L360 239.5 L384 240.1 L408 240.8 L432 241.6 L456 242.5 L480 243.3 L504 244.0 L528 244.6 L552 244.9 L576 245.0 L600 244.8 L624 244.5 L648 243.9 L672 243.1 L696 242.3 L720 241.4 L744 240.6 L768 239.9 L792 239.4"/><path d="M0 255 L0 257.9 L24 258.0 L48 257.8 L72 257.4 L96 256.7 L120 256.0 L144 255.1 L168 254.3 L192 253.5 L216 252.8 L240 252.3 L264 252.0 L288 252.0 L312 252.2 L336 252.7 L360 253.3 L384 254.1 L408 254.9 L432 255.8 L456 256.6 L480 257.2 L504 257.7 L528 258.0 L552 258.0 L576 257.7 L600 257.3 L624 256.6 L648 255.8 L672 255.0 L696 254.1 L720 253.4 L744 252.7 L768 252.3 L792 252.0"/><path d="M0 268 L0 270.9 L24 270.7 L48 270.2 L72 269.5 L96 268.7 L120 267.8 L144 267.0 L168 266.2 L192 265.6 L216 265.2 L240 265.0 L264 265.1 L288 265.4 L312 265.9 L336 266.6 L360 267.4 L384 268.2 L408 269.1 L432 269.8 L456 270.4 L480 270.8 L504 271.0 L528 270.9 L552 270.6 L576 270.1 L600 269.4 L624 268.5 L648 267.7 L672 266.8 L696 266.1 L720 265.5 L744 265.1 L768 265.0 L792 265.1"/><path d="M0 281 L0 283.5 L24 282.9 L48 282.2 L72 281.4 L96 280.5 L120 279.7 L144 279.0 L168 278.4 L192 278.1 L216 278.0 L240 278.1 L264 278.5 L288 279.1 L312 279.9 L336 280.7 L360 281.5 L384 282.4 L408 283.1 L432 283.6 L456 283.9 L480 284.0 L504 283.8 L528 283.4 L552 282.8 L576 282.1 L600 281.2 L624 280.4 L648 279.6 L672 278.9 L696 278.4 L720 278.1 L744 278.0 L768 278.2 L792 278.6"/><path d="M0 294 L0 295.7 L24 294.9 L48 294.1 L72 293.2 L96 292.4 L120 291.8 L144 291.3 L168 291.0 L192 291.0 L216 291.3 L240 291.7 L264 292.4 L288 293.1 L312 294.0 L336 294.8 L360 295.6 L384 296.3 L408 296.7 L432 297.0 L456 297.0 L480 296.7 L504 296.2 L528 295.6 L552 294.8 L576 293.9 L600 293.1 L624 292.3 L648 291.7 L672 291.2 L696 291.0 L720 291.0 L744 291.3 L768 291.8 L792 292.5"/><path d="M0 307 L0 307.6 L24 306.8 L48 305.9 L72 305.2 L96 304.6 L120 304.2 L144 304.0 L168 304.1 L192 304.4 L216 304.9 L240 305.6 L264 306.4 L288 307.3 L312 308.1 L336 308.9 L360 309.5 L384 309.8 L408 310.0 L432 309.9 L456 309.6 L480 309.0 L504 308.3 L528 307.5 L552 306.6 L576 305.8 L600 305.1 L624 304.5 L648 304.1 L672 304.0 L696 304.1 L720 304.5 L744 305.0 L768 305.8 L792 306.6"/><path d="M0 320 L0 319.5 L24 318.7 L48 318.0 L72 317.4 L96 317.1 L120 317.0 L144 317.2 L168 317.6 L192 318.2 L216 318.9 L240 319.7 L264 320.6 L288 321.4 L312 322.1 L336 322.6 L360 322.9 L384 323.0 L408 322.8 L432 322.4 L456 321.8 L480 321.0 L504 320.2 L528 319.3 L552 318.5 L576 317.8 L600 317.3 L624 317.1 L648 317.0 L672 317.2 L696 317.7 L720 318.3 L744 319.1 L768 319.9 L792 320.8"/><path d="M0 333 L0 331.4 L24 330.7 L48 330.3 L72 330.0 L96 330.0 L120 330.3 L144 330.7 L168 331.4 L192 332.2 L216 333.0 L240 333.9 L264 334.7 L288 335.3 L312 335.8 L336 336.0 L360 336.0 L384 335.7 L408 335.2 L432 334.5 L456 333.7 L480 332.9 L504 332.0 L528 331.3 L552 330.6 L576 330.2 L600 330.0 L624 330.1 L648 330.3 L672 330.9 L696 331.5 L720 332.3 L744 333.2 L768 334.0 L792 334.8"/><path d="M0 346 L0 343.6 L24 343.2 L48 343.0 L72 343.1 L96 343.4 L120 344.0 L144 344.7 L168 345.5 L192 346.4 L216 347.2 L240 347.9 L264 348.5 L288 348.9 L312 349.0 L336 348.9 L360 348.5 L384 348.0 L408 347.3 L432 346.4 L456 345.6 L480 344.7 L504 344.0 L528 343.5 L552 343.1 L576 343.0 L600 343.1 L624 343.5 L648 344.1 L672 344.8 L696 345.6 L720 346.5 L744 347.3 L768 348.0 L792 348.6"/><path d="M0 359 L0 356.1 L24 356.0 L48 356.2 L72 356.6 L96 357.2 L120 358.0 L144 358.8 L168 359.7 L192 360.5 L216 361.1 L240 361.7 L264 361.9 L288 362.0 L312 361.8 L336 361.4 L360 360.7 L384 360.0 L408 359.1 L432 358.3 L456 357.5 L480 356.8 L504 356.3 L528 356.0 L552 356.0 L576 356.2 L600 356.7 L624 357.3 L648 358.1 L672 359.0 L696 359.8 L720 360.6 L744 361.3 L768 361.7 L792 362.0"/><path d="M0 372 L0 369.0 L24 369.3 L48 369.8 L72 370.5 L96 371.2 L120 372.1 L144 372.9 L168 373.7 L192 374.3 L216 374.8 L240 375.0 L264 374.9 L288 374.7 L312 374.2 L336 373.5 L360 372.7 L384 371.8 L408 371.0 L432 370.2 L456 369.6 L480 369.2 L504 369.0 L528 369.1 L552 369.4 L576 369.9 L600 370.6 L624 371.4 L648 372.3 L672 373.1 L696 373.8 L720 374.4 L744 374.8 L768 375.0 L792 374.9"/><path d="M0 385 L0 382.4 L24 383.0 L48 383.7 L72 384.5 L96 385.4 L120 386.2 L144 387.0 L168 387.5 L192 387.9 L216 388.0 L240 387.9 L264 387.5 L288 386.9 L312 386.2 L336 385.4 L360 384.5 L384 383.7 L408 383.0 L432 382.4 L456 382.1 L480 382.0 L504 382.2 L528 382.5 L552 383.1 L576 383.9 L600 384.7 L624 385.6 L648 386.4 L672 387.1 L696 387.6 L720 387.9 L744 388.0 L768 387.8 L792 387.4"/><path d="M0 398 L0 396.2 L24 397.0 L48 397.8 L72 398.7 L96 399.5 L120 400.2 L144 400.7 L168 401.0 L192 401.0 L216 400.8 L240 400.3 L264 399.7 L288 398.9 L312 398.1 L336 397.2 L360 396.4 L384 395.8 L408 395.3 L432 395.0 L456 395.0 L480 395.3 L504 395.7 L528 396.4 L552 397.2 L576 398.0 L600 398.9 L624 399.6 L648 400.3 L672 400.7 L696 401.0 L720 401.0 L744 400.7 L768 400.2 L792 399.6"/><path d="M0 411 L0 410.3 L24 411.2 L48 412.0 L72 412.8 L96 413.4 L120 413.8 L144 414.0 L168 413.9 L192 413.6 L216 413.1 L240 412.4 L264 411.6 L288 410.8 L312 409.9 L336 409.2 L360 408.6 L384 408.2 L408 408.0 L432 408.1 L456 408.4 L480 408.9 L504 409.6 L528 410.5 L552 411.3 L576 412.1 L600 412.9 L624 413.5 L648 413.9 L672 414.0 L696 413.9 L720 413.6 L744 413.0 L768 412.3 L792 411.5"/><path d="M0 424 L0 424.5 L24 425.3 L48 426.0 L72 426.6 L96 426.9 L120 427.0 L144 426.9 L168 426.5 L192 425.9 L216 425.2 L240 424.3 L264 423.5 L288 422.6 L312 421.9 L336 421.4 L360 421.1 L384 421.0 L408 421.2 L432 421.6 L456 422.2 L480 422.9 L504 423.8 L528 424.6 L552 425.4 L576 426.1 L600 426.6 L624 426.9 L648 427.0 L672 426.8 L696 426.4 L720 425.8 L744 425.0 L768 424.2 L792 423.3"/><path d="M0 437 L0 438.6 L24 439.2 L48 439.7 L72 440.0 L96 440.0 L120 439.7 L144 439.3 L168 438.6 L192 437.9 L216 437.0 L240 436.2 L264 435.4 L288 434.7 L312 434.3 L336 434.0 L360 434.0 L384 434.3 L408 434.8 L432 435.4 L456 436.2 L480 437.1 L504 437.9 L528 438.7 L552 439.3 L576 439.8 L600 440.0 L624 440.0 L648 439.7 L672 439.2 L696 438.5 L720 437.7 L744 436.9 L768 436.0 L792 435.2"/><path d="M0 450 L0 452.4 L24 452.8 L48 453.0 L72 452.9 L96 452.6 L120 452.1 L144 451.4 L168 450.6 L192 449.7 L216 448.9 L240 448.1 L264 447.5 L288 447.2 L312 447.0 L336 447.1 L360 447.4 L384 448.0 L408 448.7 L432 449.5 L456 450.4 L480 451.2 L504 451.9 L528 452.5 L552 452.9 L576 453.0 L600 452.9 L624 452.5 L648 452.0 L672 451.2 L696 450.4 L720 449.6 L744 448.7 L768 448.0 L792 447.5"/><path d="M0 463 L0 465.9 L24 466.0 L48 465.8 L72 465.4 L96 464.9 L120 464.1 L144 463.3 L168 462.4 L192 461.6 L216 460.9 L240 460.4 L264 460.1 L288 460.0 L312 460.2 L336 460.6 L360 461.2 L384 462.0 L408 462.8 L432 463.7 L456 464.5 L480 465.2 L504 465.7 L528 465.9 L552 466.0 L576 465.8 L600 465.4 L624 464.7 L648 464.0 L672 463.1 L696 462.3 L720 461.5 L744 460.8 L768 460.3 L792 460.0"/><path d="M0 476 L0 479.0 L24 478.7 L48 478.3 L72 477.6 L96 476.8 L120 476.0 L144 475.1 L168 474.3 L192 473.7 L216 473.2 L240 473.0 L264 473.0 L288 473.3 L312 473.8 L336 474.5 L360 475.3 L384 476.1 L408 477.0 L432 477.7 L456 478.4 L480 478.8 L504 479.0 L528 478.9 L552 478.7 L576 478.2 L600 477.5 L624 476.7 L648 475.8 L672 475.0 L696 474.2 L720 473.6 L744 473.2 L768 473.0 L792 473.1"/><path d="M0 489 L0 491.6 L24 491.0 L48 490.3 L72 489.5 L96 488.7 L120 487.8 L144 487.1 L168 486.5 L192 486.1 L216 486.0 L240 486.1 L264 486.5 L288 487.0 L312 487.7 L336 488.6 L360 489.4 L384 490.2 L408 491.0 L432 491.5 L456 491.9 L480 492.0 L504 491.9 L528 491.5 L552 490.9 L576 490.2 L600 489.4 L624 488.5 L648 487.7 L672 487.0 L696 486.4 L720 486.1 L744 486.0 L768 486.2 L792 486.5"/><path d="M0 502 L0 503.8 L24 503.1 L48 502.2 L72 501.4 L96 500.6 L120 499.9 L144 499.4 L168 499.1 L192 499.0 L216 499.2 L240 499.6 L264 500.3 L288 501.0 L312 501.9 L336 502.7 L360 503.5 L384 504.2 L408 504.7 L432 505.0 L456 505.0 L480 504.8 L504 504.3 L528 503.7 L552 502.9 L576 502.1 L600 501.2 L624 500.4 L648 499.8 L672 499.3 L696 499.0 L720 499.0 L744 499.3 L768 499.7 L792 500.4"/><path d="M0 515 L0 515.8 L24 514.9 L48 514.1 L72 513.3 L96 512.7 L120 512.2 L144 512.0 L168 512.1 L192 512.3 L216 512.8 L240 513.5 L264 514.3 L288 515.2 L312 516.0 L336 516.8 L360 517.4 L384 517.8 L408 518.0 L432 517.9 L456 517.6 L480 517.1 L504 516.4 L528 515.6 L552 514.8 L576 513.9 L600 513.2 L624 512.6 L648 512.2 L672 512.0 L696 512.1 L720 512.4 L744 512.9 L768 513.7 L792 514.5"/></g><g class="t-ripple"><circle class="r" cx="600" cy="150" r="47"/><circle class="r" cx="600" cy="150" r="60"/><circle class="r" cx="600" cy="150" r="73"/><circle class="r" cx="600" cy="150" r="86"/></g><ellipse class="stone" cx="600" cy="150" rx="34" ry="27.88"/><g class="t-ripple"><circle class="r" cx="170" cy="400" r="39"/><circle class="r" cx="170" cy="400" r="52"/><circle class="r" cx="170" cy="400" r="65"/><circle class="r" cx="170" cy="400" r="78"/></g><ellipse class="stone" cx="170" cy="400" rx="26" ry="21.32"/><g class="t-ripple"><circle class="r" cx="690" cy="430" r="31"/><circle class="r" cx="690" cy="430" r="44"/><circle class="r" cx="690" cy="430" r="57"/><circle class="r" cx="690" cy="430" r="70"/></g><ellipse class="stone" cx="690" cy="430" rx="18" ry="14.76"/></svg><div class="t-rake"></div><div class="vig"></div></div><div class="ct"><div class="row" style="align-items:flex-end"><div class="f1"><div class="ey">Assets</div><div class="h">My assets</div><div class="p">3 things with you · 1 to confirm</div></div><span class="btn">Request an asset</span></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px" class="f1"><div class="card" style="display:flex;flex-direction:column;gap:8px;padding:0;overflow:hidden"><div style="height:110px;display:flex;align-items:center;justify-content:center;font-size:46px;background:color-mix(in srgb,var(--tx) 4%,transparent)">💻</div><div style="padding:0 12px 12px;display:flex;flex-direction:column;gap:7px"><div class="ln m"></div><div class="ln s"></div></div></div><div class="card" style="display:flex;flex-direction:column;gap:8px;padding:0;overflow:hidden"><div style="height:110px;display:flex;align-items:center;justify-content:center;font-size:46px;background:color-mix(in srgb,var(--tx) 4%,transparent)">🖥️</div><div style="padding:0 12px 12px;display:flex;flex-direction:column;gap:7px"><div class="ln m"></div><div class="ln s"></div></div></div><div class="card" style="display:flex;flex-direction:column;gap:8px;padding:0;overflow:hidden"><div style="height:110px;display:flex;align-items:center;justify-content:center;font-size:46px;background:color-mix(in srgb,var(--tx) 4%,transparent)">🪪</div><div style="padding:0 12px 12px;display:flex;flex-direction:column;gap:7px"><div class="ln m"></div><div class="ln s"></div></div></div></div></div></div></div></div></div></div>
+  <div class="spec"><dl><dt>Layers</dt><dd>Sand tint · raked lines (masked around stones) · ripples · 3 stones · light pass</dd><dt>Motion</dt><dd>Ripples breathe 12 s; light pass 26 s</dd><dt>Strength</dt><dd>Lines 11% of text colour</dd><dt>Cost</dt><dd>1 static SVG + 2 moving layers</dd></dl></div></div></div></div></x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

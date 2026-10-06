@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Backgrounds · Signal rings — Helpdesk</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<style>
+*{box-sizing:border-box}
+.bd{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;background:#F6F6F9;color:#16161D;padding:34px 40px;min-height:100%}
+.bd h1{font-size:26px;font-weight:800;letter-spacing:-.02em;margin:0}
+.bd .sub{color:#6B6B76;font-size:13.5px;margin-top:4px;max-width:900px;line-height:1.5}
+.eyebrow{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#4F46E5}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.tag{font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;background:#EEF0FF;color:#4338CA}
+.tag.g{background:#E8F7EF;color:#047857}.tag.a{background:#FEF3E2;color:#B45309}.tag.n{background:#ECECF1;color:#4B4B55}
+.cols{display:flex;gap:22px;margin-top:20px;align-items:flex-start}
+.side{width:378px;flex:none;display:flex;flex-direction:column;gap:14px}
+.cap{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#8A8A95;margin-bottom:6px}
+.spec{background:#fff;border:1px solid #E5E5EC;border-radius:14px;padding:14px 16px;font-size:12.5px;line-height:1.55}
+.spec dl{display:grid;grid-template-columns:96px 1fr;gap:6px 10px;margin:0}.spec dt{color:#8A8A95;font-weight:700}.spec dd{margin:0}
+.spec ul{margin:0;padding-left:17px}.spec li{margin:2px 0}
+.mini{width:378px;height:221px;border-radius:12px;overflow:hidden;border:1px solid #E5E5EC;position:relative}
+.mini > .stage{transform:scale(.39375);transform-origin:0 0;position:absolute;left:0;top:0}
+
+/* ── App frame (sidebar + top bar stay exactly as today) ── */
+.stage{--bg:#0E0E11;--surf:#16161B;--raise:#1C1C22;--line:#26262E;--tx:#EDEDF2;--mu:#8C8C99;--pri:#E3A63B;--pri2:#F2C46D;--a2:#8B5CF6;--a3:#14B8A6;--glow:.5;
+ width:960px;height:560px;border-radius:16px;overflow:hidden;position:relative;display:flex;background:var(--bg);color:var(--tx);border:1px solid #2A2A33;box-shadow:0 30px 60px -30px rgba(10,10,20,.5);flex:none}
+.stage.light{--bg:#F7F7FA;--surf:#FFFFFF;--raise:#FFFFFF;--line:#E7E7EE;--tx:#16161D;--mu:#71717C;--pri:#4F46E5;--pri2:#818CF8;--a2:#A855F7;--a3:#0EA5E9;--glow:.32;border-color:#E5E5EC;box-shadow:none}
+.sb{width:168px;flex:none;background:var(--surf);border-right:1px solid var(--line);padding:14px 12px;display:flex;flex-direction:column;gap:7px;position:relative;z-index:2}
+.sb .lg{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:800;margin-bottom:8px}.sb .lg i{width:22px;height:22px;border-radius:7px;background:linear-gradient(135deg,var(--pri),var(--a2))}
+.sb .it{height:9px;border-radius:5px;background:var(--line);width:78%}.sb .it.on{background:var(--pri);opacity:.85;width:66%}.sb .g{height:6px;width:40%;border-radius:4px;background:var(--line);opacity:.6;margin-top:8px}
+.mn{flex:1;position:relative;display:flex;flex-direction:column;min-width:0}
+.tb{height:44px;flex:none;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;padding:0 18px;position:relative;z-index:2;background:color-mix(in srgb,var(--bg) 70%,transparent);backdrop-filter:blur(10px)}
+.tb .cr{height:8px;width:120px;border-radius:5px;background:var(--line)}.tb .sp{flex:1}.tb .bl{width:18px;height:18px;border-radius:50%;background:var(--line)}.tb .tg{width:34px;height:18px;border-radius:99px;background:var(--line)}
+.pg{flex:1;position:relative;overflow:hidden}
+.fx{position:absolute;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.ct{position:relative;z-index:1;padding:18px 20px;display:flex;flex-direction:column;gap:12px}
+.ey{font-size:9.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--pri)}
+.h{font-size:19px;font-weight:800;letter-spacing:-.02em}
+.p{font-size:11px;color:var(--mu)}
+.card{background:var(--surf);border:1px solid var(--line);border-radius:12px;padding:12px;position:relative}
+.ln{height:7px;border-radius:5px;background:var(--line)}.ln.s{width:40%}.ln.m{width:65%}.ln.l{width:88%}
+.num{font-size:20px;font-weight:800;letter-spacing:-.02em}
+.row{display:flex;gap:10px}.f1{flex:1;min-width:0}
+.k4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.av{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--pri2),var(--a2));flex:none}
+.btn{height:26px;padding:0 12px;border-radius:8px;background:var(--pri);color:#fff;font-size:10.5px;font-weight:800;display:inline-flex;align-items:center}
+.pill{height:16px;width:54px;border-radius:99px;background:color-mix(in srgb,var(--pri) 22%,transparent)}
+.trow{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}.trow:last-child{border:0}
+
+/* ── Layer 1 · ambient base: every page ── */
+.base{position:absolute;inset:0;background:radial-gradient(120% 70% at 50% -10%,color-mix(in srgb,var(--pri) 9%,transparent),transparent 60%)}
+.vig{position:absolute;inset:0;background:radial-gradient(130% 100% at 50% 40%,transparent 60%,color-mix(in srgb,var(--bg) 70%,#000 30%) 100%);opacity:.35}
+.light .vig{opacity:.08}
+
+/* ── Effects (transform/opacity only, slow, pause when tab hidden) ── */
+/* aurora — home */
+.blob{position:absolute;border-radius:50%;filter:blur(70px);opacity:calc(var(--glow) * .7);will-change:transform}
+.b1{width:420px;height:320px;left:-80px;top:-120px;background:var(--pri);animation:drift1 38s ease-in-out infinite alternate}
+.b2{width:380px;height:300px;right:-90px;top:40px;background:var(--a2);animation:drift2 46s ease-in-out infinite alternate}
+.b3{width:360px;height:260px;left:30%;bottom:-160px;background:var(--a3);animation:drift3 52s ease-in-out infinite alternate;opacity:calc(var(--glow) * .5)}
+@keyframes drift1{to{transform:translate(160px,90px) scale(1.15)}}
+@keyframes drift2{to{transform:translate(-140px,80px) scale(.9)}}
+@keyframes drift3{to{transform:translate(120px,-70px) scale(1.1)}}
+
+/* particles — people */
+.pt{position:absolute;bottom:-10px;width:4px;height:4px;border-radius:50%;background:var(--pri2);opacity:0;animation:rise linear infinite}
+@keyframes rise{0%{transform:translateY(0);opacity:0}15%{opacity:calc(var(--glow) * 1)}85%{opacity:calc(var(--glow) * .8)}100%{transform:translateY(-560px);opacity:0}}
+.halo{position:absolute;left:12%;top:-80px;width:520px;height:240px;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,var(--pri) 40%,transparent),transparent);opacity:var(--glow);filter:blur(10px);animation:breathe 9s ease-in-out infinite}
+@keyframes breathe{50%{opacity:calc(var(--glow) * .55);transform:scale(1.06)}}
+
+/* light sweep + dial — attendance & timesheets */
+.sweep{position:absolute;top:-60%;left:0;width:34%;height:220%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.09),transparent);transform:rotate(18deg) translateX(-160%);animation:sweep 14s cubic-bezier(.45,0,.2,1) infinite}
+.light .sweep{background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--pri) 10%,transparent),transparent)}
+@keyframes sweep{0%,30%{transform:rotate(18deg) translateX(-160%)}75%,100%{transform:rotate(18deg) translateX(420%)}}
+.dial{position:absolute;right:-140px;top:-140px;width:420px;height:420px;border-radius:50%;background:conic-gradient(from 0deg,transparent 0 70%,color-mix(in srgb,var(--pri) 60%,transparent) 88%,transparent 100%);-webkit-mask:radial-gradient(closest-side,transparent 86%,#000 87%,#000 100%);mask:radial-gradient(closest-side,transparent 86%,#000 87%,#000 100%);opacity:var(--glow);animation:spin 60s linear infinite}
+.dial2{position:absolute;right:-90px;top:-90px;width:320px;height:320px;border-radius:50%;border:1px dashed color-mix(in srgb,var(--tx) 14%,transparent)}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* horizon — leave, who's off, holidays */
+.hz1,.hz2{position:absolute;left:0;right:0;top:0;height:260px}
+.hz1{background:linear-gradient(180deg,color-mix(in srgb,#F59E0B 22%,transparent),color-mix(in srgb,#EC4899 10%,transparent) 45%,transparent)}
+.hz2{background:linear-gradient(180deg,color-mix(in srgb,#38BDF8 22%,transparent),color-mix(in srgb,var(--a2) 10%,transparent) 45%,transparent);animation:dawn 24s ease-in-out infinite alternate}
+@keyframes dawn{0%{opacity:0}100%{opacity:1}}
+.sun{position:absolute;left:62%;top:150px;width:220px;height:220px;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,#FBBF24 45%,transparent),transparent);filter:blur(6px);opacity:var(--glow);animation:sunrise 24s ease-in-out infinite alternate}
+@keyframes sunrise{to{transform:translateY(-70px)}}
+
+/* blueprint grid + spotlight — projects, planner */
+.grid{position:absolute;inset:-20px;background-image:radial-gradient(color-mix(in srgb,var(--tx) 22%,transparent) 1px,transparent 1.2px);background-size:22px 22px;-webkit-mask:radial-gradient(70% 80% at 50% 30%,#000,transparent);mask:radial-gradient(70% 80% at 50% 30%,#000,transparent);opacity:.55}
+.spot{position:absolute;width:360px;height:360px;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,var(--pri) 38%,transparent),transparent);opacity:var(--glow);left:-60px;top:-60px;animation:roam 48s ease-in-out infinite alternate}
+@keyframes roam{33%{transform:translate(420px,60px)}66%{transform:translate(200px,240px)}100%{transform:translate(560px,180px)}}
+
+/* mesh — expenses & payments */
+.mesh{position:absolute;inset:-50%;background:
+ radial-gradient(25% 30% at 30% 35%,color-mix(in srgb,#10B981 60%,transparent),transparent 70%),
+ radial-gradient(22% 28% at 68% 42%,color-mix(in srgb,var(--a3) 50%,transparent),transparent 70%),
+ radial-gradient(26% 26% at 52% 70%,color-mix(in srgb,var(--pri) 36%,transparent),transparent 70%);
+ opacity:var(--glow);filter:blur(24px);animation:meshspin 90s linear infinite}
+@keyframes meshspin{to{transform:rotate(360deg)}}
+.coin{position:absolute;width:10px;height:10px;border-radius:50%;border:1.5px solid color-mix(in srgb,#10B981 60%,transparent);opacity:0;animation:rise linear infinite}
+
+/* studio light — assets */
+.cone{position:absolute;left:50%;top:-40px;width:760px;height:520px;margin-left:-380px;background:radial-gradient(50% 60% at 50% 0%,color-mix(in srgb,var(--tx) 10%,transparent),transparent 70%);-webkit-mask:linear-gradient(180deg,#000,transparent);opacity:.9;animation:flicker 7s ease-in-out infinite}
+@keyframes flicker{50%{opacity:.7}}
+.floor{position:absolute;left:10%;right:10%;bottom:-120px;height:220px;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,var(--pri) 26%,transparent),transparent);opacity:var(--glow)}
+.bok{position:absolute;border-radius:50%;background:color-mix(in srgb,var(--pri2) 40%,transparent);filter:blur(2px);opacity:calc(var(--glow) * .6);animation:bob ease-in-out infinite alternate}
+@keyframes bob{to{transform:translate(30px,-40px)}}
+
+/* signal rings — helpdesk */
+.rings{position:absolute;right:60px;top:40px;width:10px;height:10px}
+.rings i{position:absolute;left:-150px;top:-150px;width:310px;height:310px;border-radius:50%;border:1.5px solid color-mix(in srgb,var(--a3) 55%,transparent);opacity:0;animation:ring 9s ease-out infinite}
+.rings i:nth-child(2){animation-delay:3s}.rings i:nth-child(3){animation-delay:6s}
+@keyframes ring{0%{transform:scale(.25);opacity:calc(var(--glow) * 1.2)}100%{transform:scale(1.8);opacity:0}}
+.core{position:absolute;right:20px;top:0;width:90px;height:90px;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,var(--a3) 45%,transparent),transparent);opacity:var(--glow)}
+
+/* floaters — announcements & kudos */
+.fl{position:absolute;bottom:-40px;opacity:0;animation:float linear infinite}
+.fl.c{width:18px;height:18px;border-radius:50%;border:2px solid color-mix(in srgb,var(--pri) 55%,transparent)}
+.fl.q{width:16px;height:16px;border-radius:5px;background:color-mix(in srgb,var(--a2) 30%,transparent)}
+.fl.h{width:16px;height:16px;color:color-mix(in srgb,#EC4899 60%,transparent);font-size:16px;line-height:16px}
+@keyframes float{0%{transform:translateY(0) rotate(0);opacity:0}12%{opacity:calc(var(--glow) * 1.1)}88%{opacity:calc(var(--glow) * .9)}100%{transform:translateY(-620px) rotate(200deg);opacity:0}}
+.warm{position:absolute;left:-10%;right:-10%;top:-200px;height:420px;background:radial-gradient(50% 50% at 30% 50%,color-mix(in srgb,#F59E0B 22%,transparent),transparent),radial-gradient(40% 50% at 75% 40%,color-mix(in srgb,#EC4899 18%,transparent),transparent);opacity:var(--glow);animation:breathe 12s ease-in-out infinite}
+
+/* data waves — reports */
+.waves{position:absolute;left:0;bottom:0;width:200%;height:220px;animation:wave 34s linear infinite}
+.waves.w2{animation-duration:52s;opacity:.6;bottom:-20px}
+@keyframes wave{to{transform:translateX(-50%)}}
+.waves path{fill:none;stroke-width:1.5}
+
+/* quiet — settings, roles, admin forms */
+.noise{position:absolute;inset:0;opacity:.05;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
+.qgrad{position:absolute;inset:0;background:linear-gradient(160deg,color-mix(in srgb,var(--pri) 7%,transparent),transparent 40%,color-mix(in srgb,var(--a2) 5%,transparent))}
+
+/* pulse line — super admin */
+.night{position:absolute;inset:0;background:linear-gradient(180deg,color-mix(in srgb,#1E3A8A 30%,transparent),transparent 70%)}
+.light .night{background:linear-gradient(180deg,color-mix(in srgb,#3B82F6 10%,transparent),transparent 70%)}
+.star{position:absolute;width:2px;height:2px;border-radius:50%;background:var(--tx);opacity:.25;animation:twinkle ease-in-out infinite alternate}
+@keyframes twinkle{to{opacity:.05}}
+.pulse{position:absolute;left:0;right:0;bottom:70px;height:120px}
+.pulse path{fill:none;stroke-width:1.6}
+.pulse .run{stroke-dasharray:90 1400;animation:run 7s linear infinite}
+@keyframes run{from{stroke-dashoffset:1490}to{stroke-dashoffset:0}}
+
+/* sign-in hero */
+.big .blob{filter:blur(80px);opacity:calc(var(--glow) * 1)}
+
+/* reduced motion: everything settles to its first frame */
+.rm *{animation:none!important}
+</style><div class="bd">
+  <div class="eyebrow">Helpdesk</div><h1>Signal rings</h1><div class="sub">Gentle rings spread out from the top corner every 3 s — “we hear you, help is on the way”.</div>
+  <div class="tags"><span class="tag ">My tickets</span><span class="tag ">Queue</span><span class="tag ">Ticket detail</span></div>
+  <div class="cols"><div><div class="cap">Dark · live</div><div class="stage" style="--a3:#06B6D4">
+  <div class="sb"><div class="lg"><i></i>aakash-portal</div><div class="g"></div><div class="it on"></div><div class="it"></div><div class="it"></div><div class="g"></div><div class="it"></div><div class="it"></div><div class="it"></div><div class="g"></div><div class="it"></div><div class="it"></div></div>
+  <div class="mn"><div class="tb"><div class="cr"></div><div class="sp"></div><div class="bl"></div><div class="tg"></div></div>
+  <div class="pg"><div class="fx"><div class="base"></div><div class="core"></div><div class="rings"><i></i><i></i><i></i></div><div class="vig"></div></div><div class="ct"><div class="row" style="align-items:flex-end"><div class="f1"><div class="ey">Helpdesk</div><div class="h">My tickets</div><div class="p">2 open · IT usually replies in 2 hours</div></div><span class="btn">New ticket</span></div>
+    <div class="row f1"><div class="card f1"><div class="trow"><div class="av" style="width:20px;height:20px;opacity:0.5"></div><div class="f1"><div class="ln l"></div></div><div class="pill"></div></div><div class="trow"><div class="av" style="width:20px;height:20px;opacity:0.7"></div><div class="f1"><div class="ln m"></div></div><div class="pill"></div></div><div class="trow"><div class="av" style="width:20px;height:20px;opacity:0.9"></div><div class="f1"><div class="ln l"></div></div><div class="pill"></div></div><div class="trow"><div class="av" style="width:20px;height:20px;opacity:0.5"></div><div class="f1"><div class="ln m"></div></div><div class="pill"></div></div><div class="trow"><div class="av" style="width:20px;height:20px;opacity:0.7"></div><div class="f1"><div class="ln l"></div></div><div class="pill"></div></div><div class="trow"><div class="av" style="width:20px;height:20px;opacity:0.9"></div><div class="f1"><div class="ln m"></div></div><div class="pill"></div></div></div><div class="card" style="width:230px;display:flex;flex-direction:column;gap:8px"><div class="ln s"></div><div class="ln l"></div><div class="ln m"></div><div class="ln l"></div><div class="ln m"></div></div></div></div></div></div></div></div>
+  <div class="side"><div><div class="cap">Light</div><div class="mini"><div class="stage light" style="--a3:#06B6D4">
+  <div class="sb"><div class="lg"><i></i>aakash-portal</div><div class="g"></div><div class="it on"></div><div class="it"></div><div class="it"></div><div class="g"></div><div class="it"></div><div class="it"></div><div class="it"></div><div class="g"></div><div class="it"></div><div class="it"></div></div>
+  <div class="mn"><div class="tb"><div class="cr"></div><div class="sp"></div><div class="bl"></div><div class="tg"></div></div>
+  <div class="pg"><div class="fx"><div class="base"></div><div class="core"></div><div class="rings"><i></i><i></i><i></i></div><div class="vig"></div></div><div class="ct"><div class="row" style="align-items:flex-end"><div class="f1"><div class="ey">Helpdesk</div><div class="h">My tickets</div><div class="p">2 open · IT usually replies in 2 hours</div></div><span class="btn">New ticket</span></div>
+    <div class="row f1"><div class="card f1"><div class="trow"><div class="av" style="width:20px;height:20px;opacity:0.5"></div><div class="f1"><div class="ln l"></div></div><div class="pill"></div></div><div class="trow"><div class="av" style="width:20px;height:20px;opacity:0.7"></div><div class="f1"><div class="ln m"></div></div><div class="pill"></div></div><div class="trow"><div class="av" style="width:20px;height:20px;opacity:0.9"></div><div class="f1"><div class="ln l"></div></div><div class="pill"></div></div><div class="trow"><div class="av" style="width:20px;height:20px;opacity:0.5"></div><div class="f1"><div class="ln m"></div></div><div class="pill"></div></div><div class="trow"><div class="av" style="width:20px;height:20px;opacity:0.7"></div><div class="f1"><div class="ln l"></div></div><div class="pill"></div></div><div class="trow"><div class="av" style="width:20px;height:20px;opacity:0.9"></div><div class="f1"><div class="ln m"></div></div><div class="pill"></div></div></div><div class="card" style="width:230px;display:flex;flex-direction:column;gap:8px"><div class="ln s"></div><div class="ln l"></div><div class="ln m"></div><div class="ln l"></div><div class="ln m"></div></div></div></div></div></div></div></div></div>
+  <div class="spec"><dl><dt>Layers</dt><dd>Ambient base · soft core glow · 3 staggered rings</dd><dt>Motion</dt><dd>Each ring 9 s, scale + fade, ease-out</dd><dt>Strength</dt><dd>Thin 1.5 px rings, max 60% → 0</dd><dt>Cost</dt><dd>3 elements, transform + opacity</dd></dl></div></div></div></div></x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

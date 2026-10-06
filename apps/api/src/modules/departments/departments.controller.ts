@@ -13,9 +13,11 @@ import { CreateDepartmentDto } from './dto/create-department.dto';
 import { UpdateDepartmentDto } from './dto/update-department.dto';
 import { RequirePermission, RequireFeature, Audit, TenantCtx } from '../../common';
 import type { TenantContext } from '../../common/types/request.types';
+import { Live } from '../realtime/live.decorator';
 
 // Organisation structure is a core feature; reads need org.view, changes org.manage
 @RequireFeature('people.org')
+@Live('people', 'company')
 @Controller('departments')
 export class DepartmentsController {
   constructor(private readonly departmentsService: DepartmentsService) {}

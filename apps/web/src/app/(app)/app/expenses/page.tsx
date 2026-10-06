@@ -17,6 +17,8 @@ import { money, useClaims, useCopyClaim, useExpenseSummary, useSaveClaim, type C
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatRelative } from '@/lib/format';
 import { cn } from '@/lib/cn';
+import { NoProfile } from '@/components/profile/no-profile';
+import { Select } from '@/components/ui/pickers';
 
 type Tab = '' | 'needs' | ClaimStatus;
 
@@ -33,7 +35,7 @@ export default function MyExpensesPage() {
   const copy = useCopyClaim();
 
   if (!accessLoading && !allowed) return <EmptyState icon={<ShieldCheck />} title="Expenses aren’t available" />;
-  if (me.isSuccess && !me.data?.employee) return <EmptyState icon={<Receipt />} title="No employee profile" description="Expense claims need an employee profile." />;
+  if (me.isSuccess && !me.data?.employee) return <NoProfile icon={<Receipt />} what="Expense claims need an employee profile." />;
   const s = summary.data;
 
   const doCopy = async (id: string) => {
@@ -150,7 +152,7 @@ function NewClaimDialog({ onClose }: { onClose: () => void }) {
       icon={<Receipt />}
       title="New expense claim"
       description="Next you’ll add each expense with its receipt — or drop several receipts at once."
-      className="sm:max-w-md"
+      size="sm"
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={save.isPending}>Cancel</Button>
@@ -164,10 +166,10 @@ function NewClaimDialog({ onClose }: { onClose: () => void }) {
         </Field>
         {mine.length > 0 && (
           <Field label="Project (optional)" htmlFor="nc-project" hint="Client projects mark the spend as re-billable">
-            <select id="nc-project" className={inputClass} value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+            <Select id="nc-project" className={inputClass} value={projectId} onChange={(e) => setProjectId(e.target.value)}>
               <option value="">Not for a project</option>
               {mine.map((a) => <option key={a.project.id} value={a.project.id}>{a.project.name}</option>)}
-            </select>
+            </Select>
           </Field>
         )}
       </form>

@@ -12,9 +12,11 @@ import { CreateLocationDto } from './dto/create-location.dto';
 import { UpdateLocationDto } from './dto/update-location.dto';
 import { RequirePermission, RequireFeature, Audit, TenantCtx } from '../../common';
 import type { TenantContext } from '../../common/types/request.types';
+import { Live } from '../realtime/live.decorator';
 
 // Organisation structure is a core feature; reads need org.view, changes org.manage
 @RequireFeature('people.org')
+@Live('people', 'company')
 @Controller('office-locations')
 export class LocationsController {
   constructor(private readonly locationsService: LocationsService) {}

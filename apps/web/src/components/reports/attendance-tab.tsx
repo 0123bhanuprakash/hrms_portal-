@@ -14,6 +14,7 @@ import { getApiErrorMessage } from '@/lib/errors';
 import { formatDate } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import { shortDate, type ReportParams } from './filters';
+import { lateBy } from '@/lib/company/attendance';
 
 const WEEK = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -106,7 +107,7 @@ function DayDrawer({ date, filters, onClose }: { date: string | null; filters: R
                           <span className="block truncate font-medium">{p.firstName} {p.lastName}</span>
                           <span className="block truncate text-xs text-muted-foreground">{p.department ?? p.employeeId}</span>
                         </span>
-                        <span className="shrink-0 text-xs text-muted-foreground">{key === 'late' ? `${time(p)} · ${p.lateMinutes} min late` : time(p)}</span>
+                        <span className="shrink-0 text-xs text-muted-foreground">{key === 'late' ? `${time(p)} · ${lateBy(p.lateMinutes)} late` : time(p)}</span>
                       </Link>
                     </li>
                   ))}
@@ -213,7 +214,7 @@ export function AttendanceTab({ params }: { params: ReportParams }) {
       <div className="m-stagger grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi icon={<CalendarCheck />} label="Attendance rate" value={r.attendanceRatePct === null ? '—' : `${r.attendanceRatePct}%`} sub={`${r.headcount} people × ${r.workingDays} working day${r.workingDays === 1 ? '' : 's'}`} />
         <Kpi icon={<Clock />} label="Average day" value={r.avgWorkingMinutes ? fmtHours(r.avgWorkingMinutes) : '—'} sub="On days with check-in and out" />
-        <Kpi icon={<AlarmClock />} label="Late arrivals" value={r.lateArrivals} sub={r.lateArrivals ? `Average ${r.avgLateMinutes} min late` : undefined} />
+        <Kpi icon={<AlarmClock />} label="Late arrivals" value={r.lateArrivals} sub={r.lateArrivals ? `Average ${lateBy(r.avgLateMinutes)} late` : undefined} />
         <Kpi icon={<Home />} label="Work from home" value={r.wfhDays} sub="Days" />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
