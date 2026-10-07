@@ -254,7 +254,7 @@ export class PeopleService {
    * Upcoming birthdays (only people who opted in; day + month, never the year),
    * work anniversaries, recent joiners and the next holidays.
    */
-  async spotlight(companyId: string) {
+  async spotlight(companyId: string, access?: AccessContext) {
     // "Today" in the company's time zone (UTC midnight of that calendar date)
     const { today } = await companyToday(this.prisma, companyId);
     const people = await this.prisma.employee.findMany({
@@ -284,18 +284,19 @@ export class PeopleService {
       if (years >= 1 && inDays <= SPOTLIGHT_DAYS) anniversaries.push({ ...basic(person), date: monthDay(next), inDays, years });
     }
 
-    // Wishes for people celebrating today (count up live on Home)
-    const celebrating = [...birthdays, ...anniversaries].filter((x) => x.inDays === 0).map((x) => x.id);
+    // How many wished you today — only the person celebrating sees their own count
+    // (no comparing who got more); it counts up live on their Home
+    const me = access?.employee?.id;
+    const celebratingToday = me && [...birthdays, ...anniversaries].some((x) => x.id === me && x.inDays === 0);
     const wishes = new Map<string, number>();
-    if (celebrating.length) {
-      const rows = await this.prisma.celebrationWish.groupBy({
-        by: ['employeeId'],
-        where: { companyId, employeeId: { in: celebrating }, occasion: today },
-        _count: { _all: true },
-      });
-      for (const r of rows) wishes.set(r.employeeId, r._count._all);
+    if (me && celebratingToday) {
+      const rows = await this.prisma.celebrationWish.groupBy({ by: ['kind'], where: { companyId, employeeId: me, occasion: today }, _count: { _all: true } });
+      for (const r of rows) wishes.set(r.kind, r._count._all);
     }
-    const withWishes = <T extends { id: string; inDays: number }>(x: T) => (x.inDays === 0 ? { ...x, wishesToday: wishes.get(x.id) ?? 0 } : x);
+    const withWishes =
+      (kind: 'birthday' | 'anniversary') =>
+      <T extends { id: string; inDays: number }>(x: T) =>
+        x.id === me && x.inDays === 0 ? { ...x, wishesToday: wishes.get(kind) ?? 0 } : x;
 
     const holidays = await this.prisma.publicHoliday.findMany({
       where: { companyId, date: { gte: today } },
@@ -307,8 +308,8 @@ export class PeopleService {
     const byDays = (a: { inDays: number }, b: { inDays: number }) => a.inDays - b.inDays;
     return {
       windowDays: SPOTLIGHT_DAYS,
-      birthdays: birthdays.sort(byDays).map(withWishes),
-      anniversaries: anniversaries.sort(byDays).map(withWishes),
+      birthdays: birthdays.sort(byDays).map(withWishes('birthday')),
+      anniversaries: anniversaries.sort(byDays).map(withWishes('anniversary')),
       newJoiners: newJoiners.sort((a, b) => b.joiningDate.getTime() - a.joiningDate.getTime()),
       holidays,
     };

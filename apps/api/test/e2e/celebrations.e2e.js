@@ -69,9 +69,9 @@ async function cleanup() {
     const AMY = await login(P.amy.email), ANN = await login(P.annie.email), D = await login(P.dev.email), S = await login(P.sam.email), H = await login(P.hr.email);
     const inbox = (name) => p.notification.findMany({ where: { userId: P[name].user.id, type: { startsWith: 'celebration.' } } });
 
-    let sp = await call(D, 'GET', '/people/spotlight');
+    let sp = await call(AMY, 'GET', '/people/spotlight');
     const amyToday = sp.data?.birthdays.find((b) => b.id === P.amy.id);
-    check('Spotlight: Amy celebrates today with 0 wishes', amyToday?.inDays === 0 && amyToday.wishesToday === 0, JSON.stringify(amyToday));
+    check('Spotlight: Amy sees her own birthday today with 0 wishes', amyToday?.inDays === 0 && amyToday.wishesToday === 0, JSON.stringify(amyToday));
 
     // ── Rules
     check('Wishing yourself → 400', (await call(AMY, 'POST', '/celebrations/wishes', { employeeIds: [P.amy.id], kind: 'birthday', sticker: '🎂' })).status === 400);
@@ -104,8 +104,13 @@ async function cleanup() {
     n = await inbox('amy');
     check('Third wish: "hr, sam and 1 other…"', n.length === 1 && n[0].title === 'hr, sam and 1 other wished you a happy birthday 🎂', n[0]?.title);
 
+    sp = await call(AMY, 'GET', '/people/spotlight');
+    check('Celebrant sees her own count: 3 wishes', sp.data.birthdays.find((b) => b.id === P.amy.id)?.wishesToday === 3);
     sp = await call(D, 'GET', '/people/spotlight');
-    check('Spotlight counts 3 wishes today', sp.data.birthdays.find((b) => b.id === P.amy.id)?.wishesToday === 3);
+    const seen = sp.data.birthdays.find((b) => b.id === P.amy.id);
+    check('Colleagues see the birthday but no count', seen?.inDays === 0 && !('wishesToday' in seen), JSON.stringify(seen));
+    const annSp = (await call(ANN, 'GET', '/people/spotlight')).data;
+    check('Nobody else’s count leaks (anniversary person, before any wish)', annSp.birthdays.every((b) => !('wishesToday' in b)) && annSp.anniversaries.find((a) => a.id === P.annie.id)?.wishesToday === 0, JSON.stringify(annSp.anniversaries));
     check('Wishes are not kudos', (await call(D, 'GET', '/kudos')).body.data?.length === 0);
 
     // ── Who sees what

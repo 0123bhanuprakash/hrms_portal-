@@ -53,8 +53,9 @@ export class CelebrationsService {
         skipDuplicates: true,
       });
       for (const p of fresh) if (p.userId) await this.tell(companyId, p.userId, p.id, dto.kind, today, years.get(p.id) ?? null);
-      // Everyone's "N wishes so far today" counts up
-      this.realtime.soon([room.company(companyId)], 'celebrations');
+      // The celebrant's own "N wishes so far today" counts up (nobody else sees counts);
+      // the sender's other tabs flip to "Wished"
+      this.realtime.changed([...fresh.flatMap((p) => (p.userId ? [room.user(p.userId)] : [])), room.user(access.userId)], 'celebrations');
     }
     return { sent: fresh.map((p) => p.id), alreadyWished: [...already] };
   }

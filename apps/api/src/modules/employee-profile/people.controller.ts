@@ -41,7 +41,7 @@ export class PeopleController {
 
   @RequirePermission('org.view')
   @Get('spotlight')
-  spotlight(@TenantCtx() ctx: TenantContext) {
-    return this.people.spotlight(ctx.companyId!);
+  spotlight(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext) {
+    return this.people.spotlight(ctx.companyId!, access);
   }
 }

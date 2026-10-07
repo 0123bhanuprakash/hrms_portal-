@@ -100,7 +100,7 @@ export interface EmployeeDocument {
 
 export interface Spotlight {
   windowDays: number;
-  /** wishesToday: kudos they got today (only for today's celebrations; climbs live) */
+  /** wishesToday: only on your own entry when you celebrate today (nobody sees others' counts); climbs live */
   birthdays: Array<PersonBasic & { date: string; inDays: number; wishesToday?: number }>;
   anniversaries: Array<PersonBasic & { date: string; inDays: number; years: number; wishesToday?: number }>;
   newJoiners: Array<PersonBasic & { joiningDate: string }>;
