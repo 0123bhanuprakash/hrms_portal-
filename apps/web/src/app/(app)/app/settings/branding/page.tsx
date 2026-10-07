@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { Droplet, ImageIcon, Lock, Mail, Monitor, Moon, Palette, Smartphone, Sun, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardHeader, EmptyState, Skeleton } from '@/components/ui/feedback';
+import { Card, CardHeader, EmptyState, ErrorState, Skeleton } from '@/components/ui/feedback';
 import { Field, Input } from '@/components/ui/field';
 import { PageHeader } from '@/components/ui/page-header';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -70,6 +70,7 @@ export default function BrandingPage() {
       </Card>
     );
   }
+  if (branding.isLoadingError) return <ErrorState message={getApiErrorMessage(branding.error, 'Could not load your branding')} onRetry={() => void branding.refetch()} />;
   if (!b || !companyId) return <Skeleton className="h-[70vh] rounded-xl" />;
 
   const dirty = form.displayName.trim() !== b.displayName || form.tagline.trim() !== (b.tagline ?? '') || form.signInMessage.trim() !== (b.signInMessage ?? '') || form.signInBackground !== (b.signInBackground ?? 'pack');

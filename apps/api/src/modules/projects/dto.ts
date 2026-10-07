@@ -1,5 +1,5 @@
 import { Transform, Type } from 'class-transformer';
-import { IsEnum, IsIn, IsInt, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min, MinLength, IsBoolean } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsEnum, IsIn, IsInt, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min, MinLength, IsBoolean } from 'class-validator';
 import { ProjectRole, ProjectStatus, ProjectType } from '@prisma/client';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -19,6 +19,16 @@ export class SaveProjectDto {
   @IsOptional() @Transform(blankToNull) @Matches(/^#[0-9a-fA-F]{6}$/) color?: string | null;
   @Matches(DATE, { message: 'startDate must be YYYY-MM-DD' }) startDate!: string;
   @IsOptional() @Transform(blankToNull) @Matches(DATE, { message: 'endDate must be YYYY-MM-DD' }) endDate?: string | null;
+  /** People in charge (PMO): the one project manager — picking one also books their time here */
+  @IsOptional() @IsUUID() managerEmployeeId?: string | null;
+  @IsOptional() @IsInt() @Min(1) @Max(100) managerAllocation?: number;
+  /** Oversees the PM; resource requests go Lead → PM → Delivery Director → PMO. No time is booked. */
+  @IsOptional() @IsUUID() deliveryDirectorId?: string | null;
+}
+
+/** Technologies used on the project (kept by its leads) */
+export class TechStackDto {
+  @IsArray() @ArrayMaxSize(30) @IsString({ each: true }) @MaxLength(40, { each: true }) techStack!: string[];
 }
 
 export class ProjectQueryDto {
@@ -69,12 +79,6 @@ export class MilestonePatchDto {
 export class ProjectUpdateDto {
   @IsIn(['on_track', 'at_risk', 'off_track']) health!: 'on_track' | 'at_risk' | 'off_track';
   @Transform(trim) @IsString() @MinLength(3) @MaxLength(1000) note!: string;
-}
-
-export class OpenRoleDto {
-  @Transform(trim) @IsString() @MinLength(2) @MaxLength(80) title!: string;
-  @IsInt() @Min(5) @Max(100) allocation!: number;
-  @Matches(DATE, { message: 'fromDate must be YYYY-MM-DD' }) fromDate!: string;
 }
 
 export class BilledDto {

@@ -1,10 +1,10 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseBoolPipe, ParseUUIDPipe, Patch, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post, Put, Query } from '@nestjs/common';
 import { Audit, CurrentAccess, RequireFeature, RequirePermission, TenantCtx } from '../../common';
 import type { TenantContext } from '../../common/types/request.types';
 import type { AccessContext } from '../access/access.types';
 import { ProjectsService } from './projects.service';
 import { ProjectPlanningService } from './planning.service';
-import { AvailableQueryDto, BilledDto, CapacityQueryDto, MilestoneDto, MilestonePatchDto, OpenRoleDto, PlannerQueryDto, ProjectQueryDto, ProjectUpdateDto, SaveMemberDto, SaveProjectDto, TimelineQueryDto } from './dto';
+import { AvailableQueryDto, BilledDto, CapacityQueryDto, MilestoneDto, MilestonePatchDto, PlannerQueryDto, ProjectQueryDto, ProjectUpdateDto, SaveMemberDto, SaveProjectDto, TechStackDto, TimelineQueryDto } from './dto';
 import { Live } from '../realtime/live.decorator';
 
 @RequireFeature('work.projects')
@@ -82,7 +82,7 @@ export class ProjectsController {
     return this.planning.detail(ctx.companyId!, id, access);
   }
 
-  // ─── Milestones / updates / open roles (PMO or the project's manager) ──
+  // ─── Milestones / updates (PMO or the project's manager) ──
 
   @RequirePermission('project.view')
   @Audit('project:milestone:add', 'project')
@@ -110,18 +110,14 @@ export class ProjectsController {
     return this.planning.postUpdate(ctx.companyId!, access, id, dto);
   }
 
-  @RequirePermission('project.view')
-  @Post(':id/roles')
-  openRole(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Param('id', ParseUUIDPipe) id: string, @Body() dto: OpenRoleDto) {
-    return this.planning.openRole(ctx.companyId!, access, id, dto);
-  }
+  // Open roles became resource requests (Work → Resource requests, /resources/requests)
 
-  /** filled=true marks the role filled; false removes it. */
+  /** Tech stack: the project's leads, PM, Delivery Director or the PMO. */
   @RequirePermission('project.view')
-  @Put(':id/roles/:roleId')
-  @HttpCode(HttpStatus.OK)
-  closeRole(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Param('id', ParseUUIDPipe) id: string, @Param('roleId', ParseUUIDPipe) roleId: string, @Query('filled', ParseBoolPipe) filled: boolean) {
-    return this.planning.closeRole(ctx.companyId!, access, id, roleId, filled);
+  @Put(':id/tech-stack')
+  async setTechStack(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Param('id', ParseUUIDPipe) id: string, @Body() dto: TechStackDto) {
+    await this.planning.assertInCharge(ctx.companyId!, access, id, 'Only the project’s leads, PM, Delivery Director or the PMO can change the tech stack');
+    return this.projects.setTechStack(ctx.companyId!, id, dto.techStack, access.userId);
   }
 
   @RequirePermission('project.manage')

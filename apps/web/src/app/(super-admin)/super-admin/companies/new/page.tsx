@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import type { ThemeRef } from '@hrms/types';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/feedback';
+import { Card, InlineRetry } from '@/components/ui/feedback';
 import { ColorInput, Field, Input, inputClass } from '@/components/ui/field';
 import { PageHeader } from '@/components/ui/page-header';
 import { CompanyAvatar } from '@/components/super-admin/company-avatar';
@@ -217,6 +217,12 @@ export default function OnboardCompanyPage() {
         title="Onboard a company"
         description="Create the tenant, give it a ready-made theme, and invite its first Company Admin."
       />
+
+      {(plans.isLoadingError || settings.isLoadingError) && (
+        <Card className="px-4 py-2">
+          <InlineRetry query={plans.isLoadingError ? plans : settings} message={plans.isLoadingError ? 'Couldn’t load the plans.' : 'Couldn’t load the default theme.'} />
+        </Card>
+      )}
 
       {/* Stepper */}
       <ol className="grid grid-cols-4 gap-2">

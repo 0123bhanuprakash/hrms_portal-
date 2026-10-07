@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { EXTRA_ROLE_TEMPLATES, PERMISSION_BY_KEY, ROLE_TEMPLATES } from './catalog';
 
 describe('extra role templates (Recruiter, Payroll officer, …)', () => {
-  it('are the five agreed ones', () => {
-    expect(EXTRA_ROLE_TEMPLATES.map((t) => t.key)).toEqual(['recruiter', 'payroll_officer', 'office_admin', 'auditor', 'intern']);
+  it('are the agreed ones (PMO lead added 2026-10-07 for the PMO pool)', () => {
+    expect(EXTRA_ROLE_TEMPLATES.map((t) => t.key)).toEqual(['recruiter', 'payroll_officer', 'pmo_lead', 'office_admin', 'auditor', 'intern']);
   });
 
   for (const t of EXTRA_ROLE_TEMPLATES) {

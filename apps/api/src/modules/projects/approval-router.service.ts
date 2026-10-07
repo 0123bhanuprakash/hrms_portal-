@@ -3,6 +3,7 @@ import { EmploymentStatus, ProjectRole, ProjectStatus, UserStatus } from '@prism
 import { PrismaService } from '../prisma/prisma.service';
 import { EntitlementService } from '../access/entitlement.service';
 import { dateFromKey } from '../attendance/time-zone';
+import { pmoLeadUserIds, reportsToPmo } from './pmo-pool';
 
 /** Everyone who may decide one approval level, and why. */
 export interface ApprovalLevel {
@@ -62,10 +63,10 @@ export class ApprovalRouterService {
     if (!steps.length) {
       // Reporting line: one manager per level
       const chain = line.slice(0, levels).filter((c) => c.userId !== self);
-      return {
-        mode: 'reporting_line',
-        levels: chain.length ? chain.map((c) => ({ approverIds: [c.userId], label: c.label })) : [{ approverIds: [], label: 'HR' }],
-      };
+      if (chain.length) return { mode: 'reporting_line', levels: chain.map((c) => ({ approverIds: [c.userId], label: c.label })) };
+      // Reports to the PMO instead of a person → the PMO lead(s); nobody → HR
+      const pmo = (await reportsToPmo(this.prisma, employeeId)) ? (await pmoLeadUserIds(this.prisma, companyId)).filter((u) => u !== self) : [];
+      return { mode: 'reporting_line', levels: [pmo.length ? { approverIds: pmo, label: 'PMO lead' } : { approverIds: [], label: 'HR' }] };
     }
 
     // Project route: level k = everyone's step k (the last level also takes any later steps)

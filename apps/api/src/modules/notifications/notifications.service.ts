@@ -65,44 +65,22 @@ export class NotificationsService implements OnApplicationBootstrap, OnModuleDes
         if (!userIds.length) return 0;
       }
       const silent = (u: string) => chosen.get(u)?.app === false;
-      const created: Array<{ id: string; userId: string; createdAt: Date }> = [];
-      if (!input.dedupeKey) {
-        // Bulk (e.g. a company-wide announcement)
-        const rows = await this.prisma.notification.createManyAndReturn({
-          data: userIds.map((userId) => ({
-            companyId: input.companyId,
-            userId,
-            type: input.type,
-            title: input.title.slice(0, 200),
-            body: input.body?.slice(0, 1000) ?? null,
-            link: input.link ?? null,
-            readAt: silent(userId) ? new Date() : null,
-          })),
-          select: { id: true, userId: true, createdAt: true },
-        });
-        created.push(...rows);
-      }
-      for (const userId of input.dedupeKey ? userIds : []) {
-        try {
-          const n = await this.prisma.notification.create({
-            data: {
-              companyId: input.companyId,
-              userId,
-              type: input.type,
-              title: input.title.slice(0, 200),
-              body: input.body?.slice(0, 1000) ?? null,
-              link: input.link ?? null,
-              dedupeKey: input.dedupeKey ?? null,
-              readAt: silent(userId) ? new Date() : null,
-            },
-            select: { id: true, userId: true, createdAt: true },
-          });
-          created.push(n);
-        } catch (err) {
-          // Already notified for this dedupe key → skip quietly
-          if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002')) throw err;
-        }
-      }
+      // One insert for everyone. With a dedupe key, people already notified are
+      // skipped by the database (ON CONFLICT DO NOTHING) and aren't returned.
+      const created = await this.prisma.notification.createManyAndReturn({
+        data: userIds.map((userId) => ({
+          companyId: input.companyId,
+          userId,
+          type: input.type,
+          title: input.title.slice(0, 200),
+          body: input.body?.slice(0, 1000) ?? null,
+          link: input.link ?? null,
+          dedupeKey: input.dedupeKey ?? null,
+          readAt: silent(userId) ? new Date() : null,
+        })),
+        skipDuplicates: Boolean(input.dedupeKey),
+        select: { id: true, userId: true, createdAt: true },
+      });
       for (const n of created) {
         if (silent(n.userId)) continue;
         this.realtime.notification(n.userId, { id: n.id, type: input.type, title: input.title.slice(0, 200), body: input.body?.slice(0, 1000) ?? null, link: input.link ?? null, createdAt: n.createdAt });

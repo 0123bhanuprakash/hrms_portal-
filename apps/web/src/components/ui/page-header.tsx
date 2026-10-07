@@ -2,7 +2,7 @@ import React from 'react';
 import { cn } from '@/lib/cn';
 
 interface PageHeaderProps {
-  title: string;
+  title: React.ReactNode;
   /** Short explanation under the title (alias: subtitle) */
   description?: React.ReactNode;
   subtitle?: React.ReactNode;

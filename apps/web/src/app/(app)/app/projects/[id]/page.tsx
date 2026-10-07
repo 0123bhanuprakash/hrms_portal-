@@ -5,7 +5,7 @@ import { Emoji } from '@/components/motion/emoji';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { Activity, ArrowLeft, CheckCircle2, Circle, Flag, GitBranch, MessageSquareText, Palmtree, Pencil, Plus, SearchX, Trash2, UserPlus, Users } from 'lucide-react';
+import { Activity, ArrowLeft, Check, CheckCircle2, Circle, Code2, Flag, GitBranch, Inbox, MessageSquareText, Palmtree, Pencil, Plus, SearchX, Trash2, UserMinus, UserPlus, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, EmptyState, ErrorState, Skeleton, Tabs } from '@/components/ui/feedback';
@@ -19,8 +19,6 @@ import { HEALTH, HealthPill, TypeBadge, UPDATE_HEALTH, daysFrom, projectColor, s
 import {
   PROJECT_STATUS,
   useAddMilestone,
-  useCloseRole,
-  useOpenRole,
   usePostUpdate,
   useProjectPlan,
   useRemoveMember,
@@ -37,8 +35,13 @@ import { getApiErrorMessage } from '@/lib/errors';
 import { formatDate, formatRelative } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import { DateInput, PersonSelect } from '@/components/ui/pickers';
+import { Drawer } from '@/components/ui/modal';
+import { refOf, useResourceContext, useResourceRequests, useSetTechStack, useSkillSuggestions, type ResourceRequest } from '@/lib/company/resources';
+import { ReleaseDialog, RequestPersonDialog } from '@/components/resources/dialogs';
+import { RequestView } from '@/components/resources/request-view';
+import { StatusPill, StepPath, TagInput } from '@/components/resources/parts';
 
-type Tab = 'overview' | 'team' | 'milestones' | 'updates';
+type Tab = 'overview' | 'team' | 'milestones' | 'updates' | 'requests';
 
 export default function ProjectPage() {
   const { id } = useParams<{ id: string }>();
@@ -48,6 +51,16 @@ export default function ProjectPage() {
   const [member, setMember] = useState<Assignment | 'new' | null>(null);
   const [milestone, setMilestone] = useState<Milestone | 'new' | null>(null);
   const [posting, setPosting] = useState(false);
+  const [asking, setAsking] = useState(false);
+  const [releasing, setReleasing] = useState<Assignment | null>(null);
+  const [openRequest, setOpenRequest] = useState<string | null>(null);
+  // My role here: leads and the PM ask for / release people; the DD and PMO see requests too
+  const ctx = useResourceContext();
+  const isLead = Boolean(ctx.data?.leadProjects.includes(id));
+  const isPm = Boolean(ctx.data?.pmProjects.includes(id));
+  const isDd = Boolean(ctx.data?.ddProjects.includes(id));
+  const seesRequests = isLead || isPm || isDd || Boolean(ctx.data?.pmo);
+  const requests = useResourceRequests({ view: 'all', projectId: id }, seesRequests);
 
   const back = (
     <Button variant="ghost" size="sm" asChild>
@@ -94,7 +107,7 @@ export default function ProjectPage() {
       <div>{back}</div>
       <Card className="overflow-hidden">
         <span className="block h-2" style={{ background: `linear-gradient(90deg, ${color}, ${color}aa)` }} />
-        <div className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center">
+        <div className="flex flex-col gap-4 p-5 xl:flex-row xl:items-center">
           <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl font-mono text-xs font-black" style={{ background: `${color}1f`, color }}>{p.code.slice(0, 4)}</span>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
@@ -105,14 +118,16 @@ export default function ProjectPage() {
             <p className="mt-1 text-sm text-muted-foreground">
               {p.clientName ?? 'Internal'} · {formatDate(p.startDate)} – {p.endDate ? formatDate(p.endDate) : 'ongoing'}
               {active.some((m) => m.role === 'MANAGER') && ` · PM ${active.filter((m) => m.role === 'MANAGER').map((m) => `${m.employee.firstName} ${m.employee.lastName}`).join(', ')}`}
+              {p.deliveryDirector && ` · Delivery Director ${p.deliveryDirector.firstName} ${p.deliveryDirector.lastName}`}
             </p>
             {p.description && <p className="mt-2 max-w-2xl text-sm">{p.description}</p>}
           </div>
-          <div className="flex shrink-0 flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 xl:max-w-[55%] xl:justify-end">
             {p.canPlan && <Button variant="secondary" onClick={() => setPosting(true)}><MessageSquareText /> Post update</Button>}
             {p.canPlan && <Button variant="secondary" onClick={() => setMilestone('new')}><Flag /> Add milestone</Button>}
             {p.canManage && <Button variant="secondary" onClick={() => setEditingProject(true)}><Pencil /> Edit</Button>}
             {p.canManage && <Button onClick={() => setMember('new')}><UserPlus /> Assign people</Button>}
+            {(isLead || isPm) && p.status !== 'COMPLETED' && <Button variant={p.canManage ? 'secondary' : 'primary'} onClick={() => setAsking(true)}><UserPlus /> Request a person</Button>}
           </div>
         </div>
         <div className="grid grid-cols-2 border-t border-border md:grid-cols-5">
@@ -142,6 +157,7 @@ export default function ProjectPage() {
           { id: 'team', label: 'Team', icon: <Users />, count: active.length },
           { id: 'milestones', label: 'Milestones', icon: <Flag />, count: p.milestones.length },
           { id: 'updates', label: 'Updates', icon: <MessageSquareText />, count: p.updates.length },
+          ...(seesRequests ? [{ id: 'requests' as const, label: 'Requests', icon: <Inbox />, count: requests.data?.data.filter((r) => ['OPEN', 'ON_HOLD', 'AWAITING_CONSENT'].includes(r.status)).length }] : []),
         ]}
       />
 
@@ -158,7 +174,8 @@ export default function ProjectPage() {
             </div>
           </div>
         )}
-        {tab === 'team' && <Team p={p} onMember={setMember} />}
+        {tab === 'team' && <Team p={p} onMember={setMember} canRelease={isLead || isPm} onRelease={setReleasing} requests={requests.data?.data ?? []} onOpenRequest={setOpenRequest} onAsk={isLead || isPm ? () => setAsking(true) : undefined} inCharge={isLead || isPm || isDd || Boolean(ctx.data?.pmo)} />}
+        {tab === 'requests' && <ProjectRequests list={requests.data?.data ?? []} loading={requests.isLoading} onOpen={setOpenRequest} onAsk={isLead || isPm ? () => setAsking(true) : undefined} />}
         {tab === 'milestones' && <Milestones p={p} onEdit={setMilestone} />}
         {tab === 'updates' && (
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
@@ -172,6 +189,11 @@ export default function ProjectPage() {
       <MemberDialog project={p} value={member} onClose={() => setMember(null)} />
       {milestone && <MilestoneDialog p={p} value={milestone} onClose={() => setMilestone(null)} />}
       {posting && <UpdateDialog p={p} onClose={() => setPosting(false)} />}
+      {asking && <RequestPersonDialog project={{ id: p.id, name: p.name, pm: active.find((m) => m.role === 'MANAGER')?.employee ?? null, dd: p.deliveryDirector ?? null, techStack: p.techStack }} onClose={() => setAsking(false)} />}
+      {releasing && <ReleaseDialog member={releasing} project={p} onClose={() => setReleasing(null)} />}
+      <Drawer open={Boolean(openRequest)} onClose={() => setOpenRequest(null)} title="Resource request" description="Every step is kept in the history." icon={<Users />} className="sm:max-w-2xl" guard={false}>
+        {openRequest && <RequestView id={openRequest} compact onDone={() => setOpenRequest(null)} />}
+      </Drawer>
     </div>
   );
 }
@@ -393,7 +415,8 @@ function MilestoneDialog({ p, value, onClose }: { p: ProjectPlan; value: Milesto
 
 // ─── Team, open roles, billing ──────────────────────────────
 
-function Team({ p, onMember }: { p: ProjectPlan; onMember: (m: Assignment | 'new') => void }) {
+function Team({ p, onMember, canRelease, onRelease, requests, onOpenRequest, onAsk, inCharge }: { p: ProjectPlan; onMember: (m: Assignment | 'new') => void; canRelease?: boolean; onRelease: (m: Assignment) => void; requests: ResourceRequest[]; onOpenRequest: (id: string) => void; onAsk?: () => void; inCharge: boolean }) {
+  const me = useMyCard().data?.employee?.id;
   const remove = useRemoveMember(p.id);
   const billed = useSetBilled(p.id);
   const [removing, setRemoving] = useState<Assignment | null>(null);
@@ -435,6 +458,9 @@ function Team({ p, onMember }: { p: ProjectPlan; onMember: (m: Assignment | 'new
           !m.billed && <Badge tone="neutral" className="hidden sm:inline-flex">Not billed</Badge>
         ))}
       <span className="w-12 text-right text-sm font-semibold tabular-nums">{m.allocation}%</span>
+      {canRelease && m.active && m.role !== 'MANAGER' && m.employee.id !== me && !requests.some((r) => r.kind === 'RELEASE' && r.releaseEmployee?.id === m.employee.id && ['OPEN', 'ON_HOLD'].includes(r.status)) && (
+        <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => onRelease(m)} title="No longer needed here — ask your PM / Delivery Director"><UserMinus /> Release</Button>
+      )}
       {p.canManage && (
         <div className="flex">
           <Button size="icon-sm" variant="ghost" aria-label={`Edit ${m.employee.firstName}`} onClick={() => onMember(m)}><Pencil /></Button>
@@ -475,7 +501,8 @@ function Team({ p, onMember }: { p: ProjectPlan; onMember: (m: Assignment | 'new
           </div>
         </Card>
         <div className="space-y-4">
-          <OpenRoles p={p} />
+          <OpenRequests requests={requests} onOpen={onOpenRequest} onAsk={onAsk} />
+          <TechStack p={p} canEdit={inCharge} />
           <Card>
             <CardHeader title="Past assignments" />
             {groups.past.length ? <ul className="divide-y divide-border px-5 pb-3">{groups.past.map((m) => row(m))}</ul> : <p className="px-5 pb-5 text-sm text-muted-foreground">None.</p>}
@@ -505,49 +532,80 @@ function Team({ p, onMember }: { p: ProjectPlan; onMember: (m: Assignment | 'new
   );
 }
 
-function OpenRoles({ p }: { p: ProjectPlan }) {
-  const open = useOpenRole(p.id);
-  const close = useCloseRole(p.id);
-  const [adding, setAdding] = useState(false);
-  const [title, setTitle] = useState('');
-  const [allocation, setAllocation] = useState(50);
-  const [fromDate, setFromDate] = useState(p.today > p.startDate ? p.today : p.startDate);
-  const roles = p.openRoles.filter((r) => !r.filledAt);
+/** Open requests and releases on this project (they replaced "open roles"). */
+function OpenRequests({ requests, onOpen, onAsk }: { requests: ResourceRequest[]; onOpen: (id: string) => void; onAsk?: () => void }) {
+  const open = requests.filter((r) => ['OPEN', 'ON_HOLD', 'AWAITING_CONSENT'].includes(r.status));
   return (
     <Card>
-      <CardHeader icon={<UserPlus />} title="Open roles" description="Seats the project needs filled" action={p.canPlan && <Button size="sm" variant="ghost" onClick={() => setAdding(true)}><Plus /> Open</Button>} />
+      <CardHeader icon={<Inbox />} title="Open requests" description="People asked for or being released" action={onAsk && <Button size="sm" variant="ghost" onClick={onAsk}><Plus /> Request</Button>} />
       <ul className="space-y-2 px-5 pb-5">
-        {!roles.length && <li className="text-sm text-muted-foreground">None — fully staffed.</li>}
-        {roles.map((r) => (
-          <li key={r.id} className="rounded-xl border border-warning/30 bg-warning-soft/50 px-3 py-2">
-            <p className="text-sm font-semibold">{r.title}</p>
-            <p className="text-xs text-muted-foreground">{r.allocation}% from {shortDate(r.fromDate)}</p>
-            {p.canPlan && (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {p.canManage && <Button size="sm" variant="secondary" asChild><Link href={`/app/projects/planner?role=${r.id}`}>Find someone free</Link></Button>}
-                <Button size="sm" variant="ghost" onClick={() => close.mutate({ id: r.id, filled: true }, { onSuccess: () => toast.success('Marked filled'), onError: (e) => toast.error(getApiErrorMessage(e, 'Could not update')) })}>Filled</Button>
-                <Button size="sm" variant="ghost" onClick={() => close.mutate({ id: r.id, filled: false }, { onSuccess: () => toast.success('Role removed'), onError: (e) => toast.error(getApiErrorMessage(e, 'Could not remove')) })}>Remove</Button>
-              </div>
-            )}
+        {!open.length && <li className="text-sm text-muted-foreground">None — fully staffed.</li>}
+        {open.map((r) => (
+          <li key={r.id}>
+            <button type="button" onClick={() => onOpen(r.id)} className="w-full rounded-xl border border-border px-3 py-2 text-left hover:bg-subtle">
+              <p className="flex items-center gap-2 text-sm font-semibold">{r.kind === 'RELEASE' ? <UserMinus className="h-3.5 w-3.5 text-warning" /> : <UserPlus className="h-3.5 w-3.5 text-primary" />}<span className="truncate">{r.kind === 'RELEASE' ? `Release · ${r.releaseEmployee?.firstName}` : r.title}</span></p>
+              <div className="mt-1 flex items-center justify-between gap-2"><StatusPill r={r} />{r.kind === 'REQUEST' && <StepPath r={r} size="sm" />}</div>
+            </button>
           </li>
         ))}
       </ul>
-      {adding && (
-        <Modal
-          open
-          onClose={() => setAdding(false)}
-          busy={open.isPending}
-          icon={<UserPlus />}
-          title="Open a role"
-          description="Shows on the project and in the PMO’s resource planner with people who are free."
-          footer={<><Button variant="secondary" onClick={() => setAdding(false)}>Cancel</Button><Button loading={open.isPending} disabled={title.trim().length < 2} onClick={() => open.mutate({ title: title.trim(), allocation, fromDate }, { onSuccess: () => { toast.success('Role opened'); setAdding(false); setTitle(''); }, onError: (e) => toast.error(getApiErrorMessage(e, 'Could not open the role')) })}>Open role</Button></>}
-        >
-          <div className="grid gap-3 sm:grid-cols-[1fr_110px_160px]">
-            <Field label="Role" htmlFor="or-title" required><Input id="or-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={80} placeholder="e.g. QA engineer" autoFocus /></Field>
-            <Field label="Allocation" htmlFor="or-alloc"><Input id="or-alloc" type="number" min={5} max={100} step={5} value={allocation} onChange={(e) => setAllocation(Number(e.target.value))} /></Field>
-            <Field label="From" htmlFor="or-from"><DateInput id="or-from" value={fromDate} min={p.startDate} max={p.endDate ?? undefined} onChange={(e) => setFromDate(e.target.value)} /></Field>
+    </Card>
+  );
+}
+
+/** Technologies used here — leads, the PM, the Delivery Director or the PMO keep it (it feeds "best match"). */
+function TechStack({ p, canEdit }: { p: ProjectPlan; canEdit: boolean }) {
+  const save = useSetTechStack();
+  const suggestions = useSkillSuggestions(canEdit);
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState<string[]>(p.techStack ?? []);
+  return (
+    <Card>
+      <CardHeader icon={<Code2 />} title="Tech stack" description="Used to find the best match for requests" action={canEdit && !editing && <Button size="sm" variant="ghost" onClick={() => { setValue(p.techStack ?? []); setEditing(true); }}><Pencil /> Edit</Button>} />
+      <div className="px-5 pb-5">
+        {editing ? (
+          <div className="space-y-2">
+            <TagInput value={value} onChange={setValue} suggestions={suggestions.data ?? []} placeholder="e.g. React, Node.js" max={30} />
+            <div className="flex justify-end gap-2">
+              <Button size="sm" variant="secondary" onClick={() => setEditing(false)}>Cancel</Button>
+              <Button size="sm" loading={save.isPending} onClick={() => save.mutate({ projectId: p.id, techStack: value }, { onSuccess: () => { toast.success('Tech stack saved'); setEditing(false); }, onError: (e) => toast.error(getApiErrorMessage(e, 'Could not save')) })}><Check /> Save</Button>
+            </div>
           </div>
-        </Modal>
+        ) : (p.techStack ?? []).length ? (
+          <div className="flex flex-wrap gap-1.5">{(p.techStack ?? []).map((t) => <Badge key={t} tone="neutral">{t}</Badge>)}</div>
+        ) : (
+          <p className="text-sm text-muted-foreground">Not set yet.{canEdit ? ' Add the main technologies so requests find the right people.' : ''}</p>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+/** Requests tab: every request and release on this project. */
+function ProjectRequests({ list, loading, onOpen, onAsk }: { list: ResourceRequest[]; loading: boolean; onOpen: (id: string) => void; onAsk?: () => void }) {
+  if (loading) return <Skeleton className="h-40 w-full" />;
+  return (
+    <Card>
+      <CardHeader icon={<Inbox />} title="Requests on this project" description={<>Only this project · <Link href="/app/resources" className="text-primary hover:underline">open all in Work → Resource requests</Link></>} action={onAsk && <Button size="sm" onClick={onAsk}><UserPlus /> Request a person</Button>} />
+      {!list.length ? (
+        <EmptyState icon={<Inbox />} title="No requests yet" description={onAsk ? 'Ask for a person, or use “Release” on a member in the Team tab.' : undefined} className="py-8" />
+      ) : (
+        <ul className="divide-y divide-border">
+          {list.map((r) => (
+            <li key={r.id}>
+              <button type="button" onClick={() => onOpen(r.id)} className="flex w-full flex-wrap items-center gap-3 px-5 py-3 text-left hover:bg-subtle">
+                <span className="font-mono text-2xs text-muted-foreground">{refOf(r)}</span>
+                <span className="min-w-0 flex-1">
+                  <b className="block truncate text-sm">{r.kind === 'RELEASE' ? `Release · ${r.releaseEmployee?.firstName} ${r.releaseEmployee?.lastName}` : r.title}</b>
+                  <span className="block truncate text-xs text-muted-foreground">{r.raisedBy ? `${r.raisedBy.firstName} · ` : ''}{r.kind === 'RELEASE' ? `last day ${r.lastDate ? formatDate(r.lastDate) : '—'}` : `${r.allocation}% from ${r.fromDate ? formatDate(r.fromDate) : '—'}`}</span>
+                </span>
+                {r.kind === 'REQUEST' && <StepPath r={r} size="sm" />}
+                <StatusPill r={r} />
+                <span className="w-20 text-right text-2xs text-muted-foreground">{formatRelative(r.updatedAt)}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
     </Card>
   );

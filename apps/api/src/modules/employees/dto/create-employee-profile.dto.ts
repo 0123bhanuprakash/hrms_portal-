@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsEnum, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsDateString, IsEnum, IsOptional, IsString, IsUUID, MaxLength, IsBoolean } from 'class-validator';
 import { EmploymentType } from '@prisma/client';
 
 /**
@@ -26,4 +26,6 @@ export class CreateEmployeeProfileDto {
   @IsOptional() @IsUUID() designationId?: string;
   @IsOptional() @IsUUID() locationId?: string;
   @IsOptional() @IsUUID() reportingManagerId?: string;
+  /** Reports to the PMO (the central pool) instead of a person */
+  @IsOptional() @IsBoolean() reportsToPmo?: boolean;
 }

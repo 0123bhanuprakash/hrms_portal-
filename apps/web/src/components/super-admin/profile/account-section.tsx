@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { Building2, Camera, FileText, History, Layers, Mail, Palette, Pencil, ShieldCheck, Trash2, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, ErrorState, Skeleton } from '@/components/ui/feedback';
+import { Card, ErrorState, InlineRetry, Skeleton } from '@/components/ui/feedback';
 import { Field, Input, inputClass } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { DropdownMenu } from '@/components/ui/dropdown-menu';
@@ -268,7 +268,9 @@ function RecentActionsCard() {
         <History className="h-4 w-4 text-muted-foreground" /> Your recent actions
         <Link href="/super-admin/audit-logs" className="ml-auto text-xs font-semibold text-primary hover:underline">Audit log →</Link>
       </h2>
-      {!actions.data ? (
+      {actions.isLoadingError ? (
+        <InlineRetry query={actions} message="Couldn’t load your recent actions." />
+      ) : !actions.data ? (
         <Skeleton className="h-48" />
       ) : actions.data.length ? (
         <ul className="m-stagger divide-y divide-border">

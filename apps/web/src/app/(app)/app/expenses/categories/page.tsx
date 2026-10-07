@@ -6,7 +6,7 @@ import { Pencil, Plus, ShieldCheck, Tags } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, EmptyState, Skeleton } from '@/components/ui/feedback';
+import { Card, EmptyState, ErrorState, Skeleton } from '@/components/ui/feedback';
 import { Field, Input } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { useAccess } from '@/lib/access/use-access';
@@ -34,6 +34,10 @@ export default function ExpenseCategoriesPage() {
       <Card className="overflow-hidden">
         {cats.isLoading ? (
           <div className="space-y-2 p-5">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+        ) : cats.isLoadingError ? (
+          <ErrorState message={getApiErrorMessage(cats.error, 'Could not load the categories')} onRetry={() => void cats.refetch()} />
+        ) : !cats.data?.length ? (
+          <EmptyState icon={<Tags />} title="No categories yet" description="Add one so people can start claiming." />
         ) : (
           <ul className="divide-y divide-border">
             {cats.data?.map((c) => (

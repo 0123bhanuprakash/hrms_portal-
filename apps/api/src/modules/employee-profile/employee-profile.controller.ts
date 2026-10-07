@@ -21,7 +21,7 @@ import type { TenantContext } from '../../common/types/request.types';
 import type { AccessContext } from '../access/access.types';
 import { ProfileService } from './profile.service';
 import { DocumentsService, DOCUMENT_MAX_BYTES } from './documents.service';
-import { UpdateBankDto, UpdatePersonalDto, UpdateStatutoryDto, UploadDocumentDto } from './dto';
+import { UpdateBankDto, UpdatePersonalDto, UpdateSkillsDto, UpdateStatutoryDto, UploadDocumentDto } from './dto';
 import { Live } from '../realtime/live.decorator';
 
 // Profile sub-resources of an employee. The permission decorator is the
@@ -47,6 +47,13 @@ export class EmployeeProfileController {
   @HttpCode(HttpStatus.OK)
   reveal(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Param('id', ParseUUIDPipe) id: string) {
     return this.profile.reveal(ctx.companyId!, id, access);
+  }
+
+  /** Skills: the person themselves, or whoever may edit them (checked in the service). */
+  @Audit('employee:skills:update', 'employee')
+  @Put('skills')
+  skills(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateSkillsDto) {
+    return this.profile.updateSkills(ctx.companyId!, id, dto.skills, access);
   }
 
   @RequirePermission('employee.edit_private')

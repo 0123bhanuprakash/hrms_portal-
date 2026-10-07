@@ -330,6 +330,7 @@ export function useMarkSeen() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (ids: string[]) => unwrap<{ seen: number }>(await api.post('/announcements/seen', { ids })),
+    meta: { quietErrors: true },
     onSuccess: (r, ids) => {
       if (!r.seen) return;
       const now = new Date().toISOString();

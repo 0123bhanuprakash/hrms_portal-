@@ -93,6 +93,7 @@ export class EmployeesService {
           designationId: dto.designationId ?? null,
           locationId: dto.locationId ?? null,
           reportingManagerId: dto.reportingManagerId ?? null,
+          reportsToPmo: Boolean(dto.reportsToPmo && !dto.reportingManagerId),
           joiningDate: new Date(dto.joiningDate),
         },
         include: { department: true, designation: true, location: true, reportingManager: true },
@@ -267,6 +268,7 @@ export class EmployeesService {
           designationId: dto.designationId || null,
           locationId: dto.locationId || null,
           reportingManagerId: dto.reportingManagerId || null,
+          reportsToPmo: Boolean(dto.reportsToPmo && !dto.reportingManagerId),
           joiningDate: new Date(dto.joiningDate),
           confirmationDate: dto.confirmationDate ? new Date(dto.confirmationDate) : null,
         },
@@ -497,6 +499,9 @@ export class EmployeesService {
     if (dto.reportingManagerId === id) {
       throw new BadRequestException('An employee cannot be their own reporting manager');
     }
+    if (dto.reportsToPmo && dto.reportingManagerId) throw new BadRequestException('Pick a person or the PMO — not both');
+    // Reporting to the PMO means nobody is their manager
+    if (dto.reportsToPmo) dto.reportingManagerId = null as unknown as string;
     await this.assertLinksInCompany(companyId, dto);
     const exitStatus = (s?: string) => s === EmploymentStatus.NOTICE_PERIOD || s === EmploymentStatus.TERMINATED;
     if (dto.employmentStatus && dto.employmentStatus !== existing.employmentStatus && (exitStatus(dto.employmentStatus) || exitStatus(existing.employmentStatus)) && !this.lifecycle.seesExits(access)) {
@@ -552,6 +557,9 @@ export class EmployeesService {
           ...(dto.reportingManagerId !== undefined && {
             reportingManagerId: dto.reportingManagerId,
           }),
+          ...(dto.reportsToPmo !== undefined && { reportsToPmo: dto.reportsToPmo }),
+          // A person as manager means they no longer report to the PMO
+          ...(dto.reportingManagerId && { reportsToPmo: false }),
           ...(dto.joiningDate && { joiningDate: new Date(dto.joiningDate) }),
           ...(dto.confirmationDate && {
             confirmationDate: new Date(dto.confirmationDate),

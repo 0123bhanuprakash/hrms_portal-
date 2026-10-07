@@ -1469,6 +1469,174 @@
       "w": 1440,
       "x": 1520,
       "y": 86600
+    },
+    "CAResOverview.dc.html": {
+      "expand": "fill",
+      "h": 1480,
+      "title": "Resource requests · What changes — two flows (request up, release down), today vs new, hard rules, motion",
+      "w": 1440,
+      "x": 0,
+      "y": 88300
+    },
+    "CAResProjectTab.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "title": "Resource requests · Project page — new Requests tab with status + 4-step path; Lead actions Request a person / Release",
+      "w": 1440,
+      "x": 1520,
+      "y": 88300
+    },
+    "CAResRequestForm.dc.html": {
+      "expand": "fill",
+      "h": 1080,
+      "title": "Resource requests · “Request a person” popup — role, skills, %, dates, reason, preferred person with live load",
+      "w": 1440,
+      "x": 3040,
+      "y": 88300
+    },
+    "CAResReviewPM.dc.html": {
+      "expand": "fill",
+      "h": 1120,
+      "title": "Resource requests · PM review drawer — preferred person, best matches by skills + free %, Fill / Approve → DD / Hold / Reject",
+      "w": 1440,
+      "x": 4560,
+      "y": 88300
+    },
+    "CAResNotUnder.dc.html": {
+      "expand": "fill",
+      "h": 1120,
+      "title": "Resource requests · PM review, preferred person NOT under you — locked card, “only PMO can assign”, approve onward with a note",
+      "w": 1440,
+      "x": 0,
+      "y": 89900
+    },
+    "CAResHold.dc.html": {
+      "expand": "fill",
+      "h": 1080,
+      "title": "Resource requests · Hold → On hold (locked) → Unhold → decide; reasons, reminder, who is told, history",
+      "w": 1440,
+      "x": 1520,
+      "y": 89900
+    },
+    "CAResReject.dc.html": {
+      "expand": "fill",
+      "h": 800,
+      "title": "Resource requests · Reject with reason → Lead’s rejected card → Raise again (pre-filled, linked)",
+      "w": 1440,
+      "x": 3040,
+      "y": 89900
+    },
+    "CAResDD.dc.html": {
+      "expand": "fill",
+      "h": 1120,
+      "title": "Resource requests · Delivery Director view — PM’s note, people on all DD projects, pool tip, Approve → PMO",
+      "w": 1440,
+      "x": 4560,
+      "y": 89900
+    },
+    "CAResPMO.dc.html": {
+      "expand": "fill",
+      "h": 1120,
+      "title": "Resource requests · PMO view — assign the preferred person or anyone free (PMO pool first), role / lead / billed",
+      "w": 1440,
+      "x": 0,
+      "y": 91140
+    },
+    "CAResRelease.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "title": "Resource requests · Release popup (Lead) — reason chips, last day, hand-over; goes to the PM",
+      "w": 1440,
+      "x": 1520,
+      "y": 91140
+    },
+    "CAResReleaseDecide.dc.html": {
+      "expand": "fill",
+      "h": 1120,
+      "title": "Resource requests · Release decision (PM / DD) — PMO pool · Reassign to my project (100% check) · Hold · Keep",
+      "w": 1440,
+      "x": 3040,
+      "y": 91140
+    },
+    "CAResInbox.dc.html": {
+      "expand": "fill",
+      "h": 960,
+      "title": "Resource requests · Inbox — own page Work → Resource requests (menu badge): Waiting for me / On hold / Done, filters, live",
+      "w": 1440,
+      "x": 4560,
+      "y": 91140
+    },
+    "CAResMine.dc.html": {
+      "expand": "fill",
+      "h": 920,
+      "title": "Resource requests · My requests (Lead) — plain statuses with reasons, withdraw, raise again, released people → Request back",
+      "w": 1440,
+      "x": 0,
+      "y": 92380
+    },
+    "CAResTimeline.dc.html": {
+      "expand": "fill",
+      "h": 980,
+      "title": "Resource requests · Request timeline — every step incl. hold / unhold reasons, who filled with whom, time per step",
+      "w": 1440,
+      "x": 1520,
+      "y": 92380
+    },
+    "CAResHistory.dc.html": {
+      "expand": "fill",
+      "h": 1040,
+      "title": "Resource requests · Employee profile → Projects — Assignment history timeline, skills, Request back",
+      "w": 1440,
+      "x": 3040,
+      "y": 92380
+    },
+    "CAResEmpCreate.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "title": "Resource requests · Add employee step 3 — “Reports to: a person / the PMO” (PMO pool)",
+      "w": 1440,
+      "x": 4560,
+      "y": 92380
+    },
+    "CAResPool.dc.html": {
+      "expand": "fill",
+      "h": 1120,
+      "title": "Resource requests · PMO pool — own page Work → PMO pool (PMO only): free %, skills, since when, last project, Assign; planner card change",
+      "w": 1440,
+      "x": 0,
+      "y": 93540
+    },
+    "CAResProjectForm.dc.html": {
+      "expand": "fill",
+      "h": 1060,
+      "title": "Resource requests · Project form — Project manager + Delivery Director (suggested from the PM’s manager)",
+      "w": 1440,
+      "x": 1520,
+      "y": 93540
+    },
+    "CAResWho.dc.html": {
+      "expand": "fill",
+      "h": 1020,
+      "title": "Resource requests · Who sees and does what — Lead / PM / DD / PMO / HR / Employee, notifications, edge cases",
+      "w": 1440,
+      "x": 3040,
+      "y": 93540
+    },
+    "CAResInboxDark.dc.html": {
+      "expand": "fill",
+      "h": 960,
+      "title": "Resource requests · Inbox (dark)",
+      "w": 1440,
+      "x": 4560,
+      "y": 93540
+    },
+    "CAResReviewDark.dc.html": {
+      "expand": "fill",
+      "h": 1120,
+      "title": "Resource requests · PM review drawer (dark)",
+      "w": 1440,
+      "x": 0,
+      "y": 94780
     }
   },
   "createdOnFiles": {
@@ -1703,6 +1871,14 @@
       "w": 240,
       "x": 0,
       "y": 85000
+    },
+    "n29": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Company · Resource requests & reassignment — request a person (Lead → PM → Delivery Director → PMO), hold / reject, release & reassign, inbox, timelines, Reports to PMO, PMO pool, PM + DD on projects",
+      "w": 240,
+      "x": 0,
+      "y": 88000
     }
   },
   "order": [
@@ -1888,7 +2064,28 @@
     "CASideGlide.dc.html",
     "CASideMotion.dc.html",
     "CASidePeek.dc.html",
-    "CASidePhone.dc.html"
+    "CASidePhone.dc.html",
+    "CAResOverview.dc.html",
+    "CAResProjectTab.dc.html",
+    "CAResRequestForm.dc.html",
+    "CAResReviewPM.dc.html",
+    "CAResNotUnder.dc.html",
+    "CAResHold.dc.html",
+    "CAResReject.dc.html",
+    "CAResDD.dc.html",
+    "CAResPMO.dc.html",
+    "CAResRelease.dc.html",
+    "CAResReleaseDecide.dc.html",
+    "CAResInbox.dc.html",
+    "CAResMine.dc.html",
+    "CAResTimeline.dc.html",
+    "CAResHistory.dc.html",
+    "CAResEmpCreate.dc.html",
+    "CAResPool.dc.html",
+    "CAResProjectForm.dc.html",
+    "CAResWho.dc.html",
+    "CAResInboxDark.dc.html",
+    "CAResReviewDark.dc.html"
   ],
   "pages": [],
   "title": "HRMS final dashboards"

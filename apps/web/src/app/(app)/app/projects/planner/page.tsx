@@ -10,11 +10,11 @@ import { Card, CardHeader, EmptyState, ErrorState, Skeleton } from '@/components
 import { Field, Input, inputClass } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { PersonAvatar } from '@/components/profile/person-avatar';
-import { MemberDialog } from '@/components/projects/member-dialog';
+import { AssignDialog, type AssignRequest } from '@/components/projects/assign-dialog';
 import { projectColor, shortDate } from '@/components/projects/project-ui';
 import { useAccess } from '@/lib/access/use-access';
 import { useDepartments } from '@/lib/company/org';
-import { useAvailable, usePlanner, usePortfolio, useProjectPlan, type PlannerCell, type PortfolioProject, type ProjectPerson } from '@/lib/company/projects';
+import { useAvailable, usePlanner, type PlannerCell, type ProjectPerson } from '@/lib/company/projects';
 import { getApiErrorMessage } from '@/lib/errors';
 import { cn } from '@/lib/cn';
 import { DateInput, Select } from '@/components/ui/pickers';
@@ -26,13 +26,6 @@ const addDays = (k: string, n: number) => {
 };
 const tone = (v: number) =>
   v >= 100 ? 'bg-success-soft text-success' : v >= 50 ? 'bg-primary-soft text-primary-soft-foreground' : v > 0 ? 'bg-warning-soft text-warning' : 'bg-muted/60 text-muted-foreground';
-
-interface AssignRequest {
-  employee: ProjectPerson;
-  allocation: number;
-  startDate: string;
-  projectId?: string;
-}
 
 function PlannerContent() {
   const { can, hasFeature, isLoading } = useAccess();
@@ -150,12 +143,12 @@ function PlannerContent() {
       {d && (
         <div className="grid gap-4 lg:grid-cols-2">
           <Card>
-            <CardHeader icon={<Zap />} title="Open roles — who could take them" />
+            <CardHeader icon={<Zap />} title={`Requests waiting for the PMO · ${d.suggestions.length}`} description="Who could take them — assign from the request so every step is recorded" action={<Link href="/app/resources" className="text-xs font-medium text-primary hover:underline">Resource requests</Link>} />
             <ul className="space-y-3 px-5 pb-5">
-              {!d.suggestions.length && <li className="text-sm text-muted-foreground">No open roles. Projects open them from their Team tab.</li>}
+              {!d.suggestions.length && <li className="text-sm text-muted-foreground">Nothing waiting for the PMO. Leads ask for people from their project (Request a person).</li>}
               {d.suggestions.map((s) => (
                 <li key={s.role.id} className={cn('rounded-xl border p-3', focusRole === s.role.id ? 'border-primary ring-2 ring-primary/20' : 'border-border')}>
-                  <p className="text-sm font-semibold">{s.role.title} · {s.role.allocation}% <span className="font-normal text-muted-foreground">from {shortDate(s.role.fromDate)} · <Link href={`/app/projects/${s.role.project.id}`} className="hover:underline">{s.role.project.name}</Link></span></p>
+                  <p className="text-sm font-semibold"><Link href={`/app/resources/${s.role.id}`} className="hover:underline">{s.role.title}</Link> · {s.role.allocation}% <span className="font-normal text-muted-foreground">from {shortDate(s.role.fromDate)} · <Link href={`/app/projects/${s.role.project.id}`} className="hover:underline">{s.role.project.name}</Link></span></p>
                   {!s.candidates.length ? (
                     <p className="mt-1 text-xs text-muted-foreground">Nobody has {s.role.allocation}% free for 4 weeks from then.</p>
                   ) : (
@@ -165,7 +158,7 @@ function PlannerContent() {
                           <PersonAvatar person={c.employee} size="xs" />
                           <span className="min-w-0 flex-1 truncate">{c.employee.firstName} {c.employee.lastName}</span>
                           <span className="rounded-full bg-success-soft px-2 py-0.5 text-[11px] font-semibold text-success">{c.free}% free</span>
-                          <Button size="sm" variant="secondary" onClick={() => setAssign({ employee: c.employee, allocation: s.role.allocation, startDate: s.role.fromDate, projectId: s.role.project.id })}><UserPlus /> Assign</Button>
+                          <Button size="sm" variant="secondary" asChild><Link href={`/app/resources/${s.role.id}`}><UserPlus /> Assign</Link></Button>
                         </li>
                       ))}
                     </ul>
@@ -255,35 +248,5 @@ function FindFree({ onAssign, today }: { onAssign: (r: AssignRequest) => void; t
         )}
       </div>
     </Card>
-  );
-}
-
-/** Pick a project, then the usual assignment dialog opens pre-filled. */
-function AssignDialog({ request, onClose }: { request: AssignRequest; onClose: () => void }) {
-  const [projectId, setProjectId] = useState(request.projectId ?? '');
-  const projects = usePortfolio({});
-  const plan = useProjectPlan(projectId || undefined);
-  const preset = useMemo(() => ({ employeeId: request.employee.id, allocation: request.allocation, startDate: request.startDate }), [request]);
-  const choices = (projects.data?.data ?? []).filter((p): p is PortfolioProject => !p.limited && p.status !== 'COMPLETED' && (!p.endDate || p.endDate >= request.startDate));
-  if (projectId && plan.data && !plan.data.limited) return <MemberDialog project={plan.data} value="new" preset={preset} onClose={onClose} />;
-  return (
-    <Modal open onClose={onClose} icon={<UserPlus />} title={`Book ${request.employee.firstName} ${request.employee.lastName}`} description={`${request.allocation}% from ${shortDate(request.startDate)} — pick the project.`} footer={<Button variant="secondary" onClick={onClose}>Cancel</Button>}>
-      {projectId && plan.isLoading ? (
-        <Skeleton className="h-24" />
-      ) : (
-        <ul className="max-h-80 divide-y divide-border overflow-y-auto">
-          {!choices.length && <li className="py-4 text-sm text-muted-foreground">No open projects run then.</li>}
-          {choices.map((p) => (
-            <li key={p.id}>
-              <button type="button" onClick={() => setProjectId(p.id)} className="flex w-full items-center gap-3 px-1 py-2.5 text-left text-sm hover:bg-subtle">
-                <i className="h-2.5 w-2.5 rounded-sm" style={{ background: projectColor(p) }} />
-                <span className="min-w-0 flex-1 truncate font-medium">{p.name}</span>
-                <span className="text-xs text-muted-foreground">{p.type === 'CLIENT' ? 'Client' : 'Internal'} · {p.endDate ? `ends ${shortDate(p.endDate)}` : 'ongoing'}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </Modal>
   );
 }

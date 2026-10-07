@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { Mail, Pencil, Plus, Send, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/feedback';
+import { InlineRetry, Skeleton } from '@/components/ui/feedback';
 import { Field, inputClass } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { Toggle } from '@/components/super-admin/plans-ui';
@@ -116,6 +116,8 @@ function ScheduleForm({ initial, available, filters, onDone }: { initial: Draft;
         <div id="sch-to" className="max-h-44 space-y-0.5 overflow-y-auto rounded-lg border border-border p-1.5">
           {recipients.isLoading ? (
             <Skeleton className="h-20" />
+          ) : recipients.isLoadingError ? (
+            <InlineRetry query={recipients} message="Couldn’t load the people you can send to." />
           ) : (
             (recipients.data ?? []).map((u) => {
               const on = d.recipientIds.includes(u.id);
@@ -163,6 +165,8 @@ export function ScheduleDialog({ open, onClose, report, available, filters }: { 
     <Modal open={open} onClose={onClose} icon={<Mail />} title={editing ? (editing.id ? 'Change schedule' : 'Email a report') : 'Emailed reports'} description={editing ? 'A summary arrives by email with a link to the full report.' : 'Reports you’ve set up to arrive by email.'} size="lg">
       {editing ? (
         <ScheduleForm initial={editing} available={available} filters={filters} onDone={() => (list.data?.length ? setEditing(null) : onClose())} />
+      ) : list.isLoadingError ? (
+        <InlineRetry query={list} message="Couldn’t load your emailed reports." />
       ) : !list.data ? (
         <Skeleton className="h-32" />
       ) : (

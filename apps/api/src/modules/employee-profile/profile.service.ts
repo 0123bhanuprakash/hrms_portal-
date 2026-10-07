@@ -159,6 +159,15 @@ export class ProfileService {
 
   // ─── Photo ─────────────────────────────────────────────────
 
+  /** Skills the person lists (matched against resource requests). Themselves, or anyone who may edit them. */
+  async updateSkills(companyId: string, employeeId: string, skills: string[], access: AccessContext) {
+    if (access.employee?.id !== employeeId) await this.access.assertEmployeeInScope(access, 'employee.edit', companyId, employeeId);
+    else if (!(await this.prisma.employee.count({ where: { id: employeeId, companyId } }))) throw new NotFoundException('Employee not found');
+    const clean = [...new Map(skills.map((x) => x.trim().replace(/\s+/g, ' ')).filter(Boolean).map((x) => [x.toLowerCase(), x])).values()].slice(0, 40);
+    await this.prisma.employee.update({ where: { id: employeeId }, data: { skills: clean } });
+    return { id: employeeId, skills: clean };
+  }
+
   async uploadAvatar(companyId: string, employeeId: string, file: Express.Multer.File | undefined, access: AccessContext) {
     await this.access.assertEmployeeInScope(access, 'employee.edit', companyId, employeeId);
     if (!file) throw new BadRequestException('No photo provided');

@@ -93,6 +93,10 @@ export interface Employee {
   designationId: string | null;
   locationId: string | null;
   reportingManagerId: string | null;
+  /** Reports to the PMO (the central pool) instead of a person */
+  reportsToPmo?: boolean;
+  /** Skills on their profile */
+  skills?: string[];
   department: Department | null;
   designation: Designation | null;
   location: OfficeLocation | null;
@@ -248,6 +252,8 @@ export type EmployeeInput = {
   designationId?: string | null;
   locationId?: string | null;
   reportingManagerId?: string | null;
+  /** Reports to the PMO (the central pool) instead of a person */
+  reportsToPmo?: boolean;
   employmentStatus?: string;
   confirmationDate?: string;
 };

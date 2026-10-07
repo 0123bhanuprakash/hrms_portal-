@@ -6,6 +6,7 @@ import {
   IsEnum,
   IsUUID,
   IsDateString,
+  IsBoolean,
 } from 'class-validator';
 import { Gender, EmploymentType, EmploymentStatus } from '@prisma/client';
 
@@ -57,6 +58,11 @@ export class CreateEmployeeDto {
   @IsOptional()
   @IsUUID()
   reportingManagerId?: string;
+
+  /** Reports to the PMO (the central pool) instead of a person */
+  @IsOptional()
+  @IsBoolean()
+  reportsToPmo?: boolean;
 
   @IsDateString()
   @IsNotEmpty()

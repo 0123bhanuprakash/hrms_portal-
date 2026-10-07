@@ -716,6 +716,10 @@ model Employee {
   designationId      String?          @map("designation_id") @db.Uuid
   locationId         String?          @map("location_id") @db.Uuid
   reportingManagerId String?          @map("reporting_manager_id") @db.Uuid
+  /// Reports to the PMO (the central pool) instead of a person — leave / timesheets go to the PMO lead
+  reportsToPmo       Boolean          @default(false) @map("reports_to_pmo")
+  /// Skills the person lists on their profile (matched against resource requests)
+  skills             String[]         @default([])
   /// null = the company's general shift
   shiftId            String?          @map("shift_id") @db.Uuid
   joiningDate        DateTime         @map("joining_date") @db.Date
@@ -756,6 +760,7 @@ model Employee {
   projectMembers    ProjectMember[]            @relation("ProjectMemberEmployee")
   ledMembers        ProjectMember[]            @relation("ProjectMemberLead")
   ownedMilestones   ProjectMilestone[]         @relation("MilestoneOwner")
+  directedProjects  Project[]                  @relation("ProjectDeliveryDirector")
   payslips          Payslip[]
   events            EmployeeEvent[]
   checklistItems    EmployeeChecklistItem[]
@@ -1600,22 +1605,26 @@ model Notification {
 
 /// A client / internal project. People are assigned through ProjectMember.
 model Project {
-  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId   String        @map("company_id") @db.Uuid
-  code        String
-  name        String
-  description String?
-  clientName  String?       @map("client_name")
+  id                 String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId          String        @map("company_id") @db.Uuid
+  code               String
+  name               String
+  description        String?
+  clientName         String?       @map("client_name")
   /// Set by the PMO: client (billable) or internal (investment)
-  type        ProjectType   @default(INTERNAL)
+  type               ProjectType   @default(INTERNAL)
   /// Card / timeline colour (#RRGGBB)
-  color       String?
-  status      ProjectStatus @default(ACTIVE)
-  startDate   DateTime      @map("start_date") @db.Date
-  endDate     DateTime?     @map("end_date") @db.Date
-  createdById String?       @map("created_by_id") @db.Uuid
-  createdAt   DateTime      @default(now()) @map("created_at")
-  updatedAt   DateTime      @updatedAt @map("updated_at")
+  color              String?
+  status             ProjectStatus @default(ACTIVE)
+  startDate          DateTime      @map("start_date") @db.Date
+  endDate            DateTime?     @map("end_date") @db.Date
+  createdById        String?       @map("created_by_id") @db.Uuid
+  /// Set by the PMO: oversees the PM (resource requests go Lead → PM → Delivery Director → PMO)
+  deliveryDirectorId String?       @map("delivery_director_id") @db.Uuid
+  /// Technologies used here (kept by the project's leads)
+  techStack          String[]      @default([]) @map("tech_stack")
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
 
   company          Company            @relation(fields: [companyId], references: [id])
   members          ProjectMember[]
@@ -1624,6 +1633,8 @@ model Project {
   updates          ProjectUpdate[]
   openRoles        ProjectOpenRole[]
   events           ProjectEvent[]
+  resourceRequests ResourceRequest[]
+  deliveryDirector Employee?          @relation("ProjectDeliveryDirector", fields: [deliveryDirectorId], references: [id], onDelete: SetNull)
 
   @@unique([companyId, code])
   @@index([companyId, status])
@@ -2653,4 +2664,134 @@ model SeasonalTheme {
 
   @@index([companyId, startsOn])
   @@map("seasonal_themes")
+}
+
+// ============================================================
+// Resource requests & releases
+//   REQUEST: a Lead asks for a person → PM → Delivery Director → PMO
+//   RELEASE: a Lead no longer needs someone → PM / Delivery Director decide
+// Every step is kept in ResourceRequestEvent; every change to someone's
+// assignments is kept in AssignmentLog (their assignment history).
+// ============================================================
+
+enum ResourceRequestKind {
+  REQUEST
+  RELEASE
+}
+
+enum ResourceRequestStatus {
+  OPEN
+  ON_HOLD
+  /// Filling takes time off another PM's project — waiting for that PM to agree
+  AWAITING_CONSENT
+  FILLED
+  REJECTED
+  WITHDRAWN
+  /// Releases: sent to the PMO pool / moved to another project / kept
+  RELEASED
+  REASSIGNED
+  KEPT
+}
+
+enum ResourceStep {
+  PM
+  DD
+  PMO
+}
+
+model ResourceRequest {
+  id                 String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId          String                @map("company_id") @db.Uuid
+  projectId          String                @map("project_id") @db.Uuid
+  kind               ResourceRequestKind
+  status             ResourceRequestStatus @default(OPEN)
+  /// Who acts now (releases: PM and Delivery Director both may)
+  step               ResourceStep          @default(PM)
+  /// Null for requests moved over from old "open roles"
+  raisedByUserId     String?               @map("raised_by_user_id") @db.Uuid
+  raisedByEmployeeId String?               @map("raised_by_employee_id") @db.Uuid
+  reason             String
+
+  // Request
+  title               String?
+  skills              String[]  @default([])
+  allocation          Int?
+  fromDate            DateTime? @map("from_date") @db.Date
+  untilDate           DateTime? @map("until_date") @db.Date
+  preferredEmployeeId String?   @map("preferred_employee_id") @db.Uuid
+
+  // Release
+  memberId          String?   @map("member_id") @db.Uuid
+  releaseEmployeeId String?   @map("release_employee_id") @db.Uuid
+  lastDate          DateTime? @map("last_date") @db.Date
+  handover          String?
+
+  // On hold
+  holdReason   String?   @map("hold_reason")
+  heldAt       DateTime? @map("held_at")
+  heldByUserId String?   @map("held_by_user_id") @db.Uuid
+  remindAt     DateTime? @map("remind_at") @db.Date
+  remindedAt   DateTime? @map("reminded_at")
+  holdNudgedAt DateTime? @map("hold_nudged_at")
+
+  /// A fill waiting for another PM's agreement: { employeeId, allocation, note, takeFrom: { memberId, allocation }, byUserId, consentUserId }
+  pendingFill Json? @map("pending_fill")
+
+  // Outcome
+  filledEmployeeId  String?   @map("filled_employee_id") @db.Uuid
+  filledAllocation  Int?      @map("filled_allocation")
+  targetProjectId   String?   @map("target_project_id") @db.Uuid
+  outcomeNote       String?   @map("outcome_note")
+  decidedByUserId   String?   @map("decided_by_user_id") @db.Uuid
+  decidedAt         DateTime? @map("decided_at")
+  /// PMO nudged the PM / Delivery Director about a waiting release
+  nudgedAt          DateTime? @map("nudged_at")
+  /// "Raise again" / "Request back" — the earlier request
+  previousRequestId String?   @map("previous_request_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  project Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  events  ResourceRequestEvent[]
+
+  @@index([companyId, status])
+  @@index([projectId, status])
+  @@index([raisedByUserId])
+  @@map("resource_requests")
+}
+
+/// One step of a request: raised, forwarded, held, unheld, filled, rejected, withdrawn, consent…
+model ResourceRequestEvent {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  requestId   String   @map("request_id") @db.Uuid
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  kind        String
+  note        String?
+  data        Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  request ResourceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId, createdAt])
+  @@map("resource_request_events")
+}
+
+/// Someone's assignment history: assigned, changed, released, to the PMO pool, reassigned…
+model AssignmentLog {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  employeeId  String   @map("employee_id") @db.Uuid
+  projectId   String?  @map("project_id") @db.Uuid
+  requestId   String?  @map("request_id") @db.Uuid
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  /// assigned | changed | removed | released | to_pool | reassigned | requested
+  action      String
+  allocation  Int?
+  note        String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([companyId, employeeId, createdAt])
+  @@map("assignment_logs")
 }

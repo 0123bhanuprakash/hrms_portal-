@@ -9,7 +9,7 @@ import { addDays, dateFromKey, keyFromDate } from '../attendance/time-zone';
 import { wordsWhere } from '../../common/word-search';
 import { allocationOn, peakAllocation, type Span } from './allocation';
 import { ProjectsService } from './projects.service';
-import type { AvailableQueryDto, MilestoneDto, MilestonePatchDto, OpenRoleDto, PlannerQueryDto, ProjectQueryDto, ProjectUpdateDto, TimelineQueryDto } from './dto';
+import type { AvailableQueryDto, MilestoneDto, MilestonePatchDto, PlannerQueryDto, ProjectQueryDto, ProjectUpdateDto, TimelineQueryDto } from './dto';
 
 // ============================================================
 // Project planning without hours: health from milestones, dates and
@@ -52,7 +52,7 @@ export function projectHealth(p: HealthInput, today: string) {
     else if (late > 0) reasons.push(`${m.title} is ${late} day${late === 1 ? '' : 's'} late`);
     else if (late >= -7) reasons.push(`${m.title} due ${late === 0 ? 'today' : `in ${-late} day${late === -1 ? '' : 's'}`}`);
   }
-  for (const r of p.openRoles) if (!r.filledAt && daysBetween(today, r.fromDate) <= 14) reasons.push(`Open role: ${r.title}`);
+  for (const r of p.openRoles) if (!r.filledAt && daysBetween(today, r.fromDate) <= 14) reasons.push(`Needs a person: ${r.title}`);
   if (!p.hasManager) reasons.push('No project manager');
   const computed: Health = off.length ? 'off_track' : reasons.length ? 'at_risk' : 'on_track';
   const fresh = p.lastUpdate && Date.now() - p.lastUpdate.createdAt.getTime() < UPDATE_FRESH_DAYS * DAY ? p.lastUpdate : null;
@@ -122,6 +122,21 @@ export class ProjectPlanningService implements OnApplicationBootstrap, OnModuleD
     return (await this.prisma.projectMember.count({ where: { projectId, employeeId: access.employee.id, role: ProjectRole.MANAGER, startDate: { lte: t }, OR: [{ endDate: null }, { endDate: { gte: t } }] } })) > 0;
   }
 
+  /** A team lead or PM on this project today, its Delivery Director, or the PMO. */
+  async assertInCharge(companyId: string, access: AccessContext, projectId: string, message: string) {
+    if (this.pmo(access)) return;
+    const me = access.employee?.id;
+    if (me) {
+      const t = dateFromKey(await this.projects.todayKey(companyId));
+      const [role, dd] = await Promise.all([
+        this.prisma.projectMember.count({ where: { projectId, employeeId: me, role: { in: [ProjectRole.TEAM_LEAD, ProjectRole.MANAGER] }, startDate: { lte: t }, OR: [{ endDate: null }, { endDate: { gte: t } }] } }),
+        this.prisma.project.count({ where: { id: projectId, companyId, deliveryDirectorId: me } }),
+      ]);
+      if (role || dd) return;
+    }
+    throw new ForbiddenException(message);
+  }
+
   private async assertPlan(companyId: string, access: AccessContext, projectId: string) {
     const p = await this.prisma.project.findFirst({ where: { id: projectId, companyId }, select: { id: true, name: true, startDate: true, endDate: true } });
     if (!p) throw new NotFoundException('Project not found');
@@ -139,7 +154,8 @@ export class ProjectPlanningService implements OnApplicationBootstrap, OnModuleD
     const t = dateFromKey(today);
     const [milestones, roles, managers, updates] = await Promise.all([
       this.prisma.projectMilestone.findMany({ where: { projectId: { in: ids } }, orderBy: { dueDate: 'asc' }, select: { projectId: true, id: true, title: true, dueDate: true, doneAt: true } }),
-      this.prisma.projectOpenRole.findMany({ where: { projectId: { in: ids }, filledAt: null }, select: { projectId: true, title: true, fromDate: true, filledAt: true } }),
+      // Open resource requests (they replaced the old open roles)
+      this.prisma.resourceRequest.findMany({ where: { projectId: { in: ids }, kind: 'REQUEST', status: { in: ['OPEN', 'ON_HOLD', 'AWAITING_CONSENT'] } }, select: { projectId: true, title: true, fromDate: true, createdAt: true } }).then((rs) => rs.map((x) => ({ projectId: x.projectId, title: x.title ?? 'Person', fromDate: x.fromDate ?? x.createdAt, filledAt: null as Date | null }))),
       this.prisma.projectMember.findMany({ where: { projectId: { in: ids }, role: ProjectRole.MANAGER, startDate: { lte: t }, OR: [{ endDate: null }, { endDate: { gte: t } }] }, select: { projectId: true, employee: { select: FACE } } }),
       this.prisma.projectUpdate.findMany({ where: { projectId: { in: ids } }, orderBy: { createdAt: 'desc' }, distinct: ['projectId'], select: { projectId: true, health: true, note: true, createdAt: true } }),
     ]);
@@ -353,7 +369,8 @@ export class ProjectPlanningService implements OnApplicationBootstrap, OnModuleD
       this.prisma.project.findUniqueOrThrow({ where: { id }, select: { id: true, type: true, color: true, status: true, startDate: true, endDate: true } }),
       this.prisma.projectMilestone.findMany({ where: { projectId: id }, orderBy: { dueDate: 'asc' }, select: { id: true, title: true, dueDate: true, doneAt: true, owner: { select: FACE } } }),
       this.prisma.projectUpdate.findMany({ where: { projectId: id }, orderBy: { createdAt: 'desc' }, take: 20, select: { id: true, health: true, note: true, createdAt: true, authorUserId: true } }),
-      this.prisma.projectOpenRole.findMany({ where: { projectId: id }, orderBy: [{ filledAt: { sort: 'asc', nulls: 'first' } }, { fromDate: 'asc' }], select: { id: true, title: true, allocation: true, fromDate: true, filledAt: true } }),
+      // Open resource requests (they replaced the old open roles)
+      this.prisma.resourceRequest.findMany({ where: { projectId: id, kind: 'REQUEST', status: { in: ['OPEN', 'ON_HOLD', 'AWAITING_CONSENT'] } }, orderBy: { createdAt: 'asc' }, select: { id: true, title: true, allocation: true, fromDate: true, createdAt: true } }).then((rs) => rs.map((x) => ({ id: x.id, title: x.title ?? 'Person', allocation: x.allocation ?? 0, fromDate: x.fromDate ?? x.createdAt, filledAt: null as Date | null }))),
       this.prisma.projectEvent.findMany({ where: { projectId: id }, orderBy: { createdAt: 'desc' }, take: 30, select: { id: true, kind: true, text: true, createdAt: true, actorUserId: true } }),
       this.canPlan(companyId, access, id, today),
     ]);
@@ -517,34 +534,6 @@ export class ProjectPlanningService implements OnApplicationBootstrap, OnModuleD
     }
   }
 
-  // ─── Open roles ───────────────────────────────────────────
-
-  async openRole(companyId: string, access: AccessContext, projectId: string, dto: OpenRoleDto) {
-    const p = await this.assertPlan(companyId, access, projectId);
-    this.assertInside(p, dto.fromDate);
-    const r = await this.prisma.$transaction(async (tx) => {
-      const row = await tx.projectOpenRole.create({ data: { companyId, projectId, title: dto.title, allocation: dto.allocation, fromDate: dateFromKey(dto.fromDate) }, select: { id: true } });
-      await this.record(tx, companyId, projectId, access.userId, 'role_opened', `opened a role: ${dto.title} · ${dto.allocation}% from ${fmt(dto.fromDate)}`);
-      return row;
-    });
-    return { id: r.id };
-  }
-
-  async closeRole(companyId: string, access: AccessContext, projectId: string, roleId: string, filled: boolean) {
-    await this.assertPlan(companyId, access, projectId);
-    const r = await this.prisma.projectOpenRole.findFirst({ where: { id: roleId, projectId }, select: { id: true, title: true } });
-    if (!r) throw new NotFoundException('Role not found');
-    if (filled) {
-      await this.prisma.$transaction(async (tx) => {
-        await tx.projectOpenRole.update({ where: { id: roleId }, data: { filledAt: new Date() } });
-        await this.record(tx, companyId, projectId, access.userId, 'role_filled', `filled the role: ${r.title}`);
-      });
-    } else {
-      await this.prisma.projectOpenRole.delete({ where: { id: roleId } });
-    }
-    return { id: roleId };
-  }
-
   // ─── Timeline ─────────────────────────────────────────────
 
   async timeline(companyId: string, q: TimelineQueryDto) {
@@ -651,7 +640,8 @@ export class ProjectPlanningService implements OnApplicationBootstrap, OnModuleD
       };
     });
     const thisWeek = rows.map((r) => r.cells[0]?.total ?? 0);
-    const roles = await this.prisma.projectOpenRole.findMany({ where: { companyId, filledAt: null, project: { status: { not: ProjectStatus.COMPLETED } } }, orderBy: { fromDate: 'asc' }, select: { id: true, title: true, allocation: true, fromDate: true, project: { select: { id: true, name: true, code: true } } } });
+    // Requests waiting for the PMO (they replaced the old open roles)
+    const roles = (await this.prisma.resourceRequest.findMany({ where: { companyId, kind: 'REQUEST', status: 'OPEN', step: 'PMO', project: { status: { not: ProjectStatus.COMPLETED } } }, orderBy: { createdAt: 'asc' }, select: { id: true, title: true, allocation: true, fromDate: true, createdAt: true, project: { select: { id: true, name: true, code: true } } } })).map((x) => ({ id: x.id, title: x.title ?? 'Person', allocation: x.allocation ?? 0, fromDate: x.fromDate ?? x.createdAt, project: x.project }));
     // For each open role: people free enough for 4 weeks from its start
     const suggestions = roles.slice(0, 5).map((r) => {
       const from = keyFromDate(r.fromDate) < today ? today : keyFromDate(r.fromDate);

@@ -203,6 +203,7 @@ export const CATALOG: CatalogModule[] = [
         permissions: [
           p('project.view', 'View projects & allocation'),
           p('project.manage', 'Create projects & assign people (PMO)', [], { requires: ['project.view'], description: 'Add people to projects, set their role, team lead and allocation %.' }),
+          p('project.pmo_lead', 'Lead the PMO pool', [], { requires: ['project.view'], description: 'Approves leave, attendance corrections and timesheets for people who report to the PMO (the pool) instead of a person.' }),
         ],
       },
       {
@@ -546,6 +547,12 @@ export const EXTRA_ROLE_TEMPLATES: Array<{ key: string; name: string; descriptio
       ['attendance.view', 'company'], ['leave.view', 'company'],
       ['report.view', 'company'], ['report.export', 'company'],
     ],
+  },
+  {
+    key: 'pmo_lead',
+    name: 'PMO lead',
+    description: 'Runs the PMO pool: assigns people like the PMO and approves leave, attendance and timesheets for everyone who reports to the PMO.',
+    grants: [...SELF_SERVICE, ['project.manage'], ['project.pmo_lead'], ['employee.view', 'company'], ['timesheet.view', 'company'], ['leave.view', 'company'], ['attendance.view', 'company']],
   },
   {
     key: 'office_admin',

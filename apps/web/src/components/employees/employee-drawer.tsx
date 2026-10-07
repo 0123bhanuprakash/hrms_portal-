@@ -10,6 +10,7 @@ import { useCreateEmployee, useDepartments, useDesignations, useLocations, useUp
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatDate } from '@/lib/format';
 import { DateInput, PersonSelect, Select } from '@/components/ui/pickers';
+import { ReportsTo } from '@/components/employees/reports-to';
 
 const label = (s: string) => s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, ' ');
 
@@ -27,6 +28,7 @@ interface Form {
   designationId: string;
   locationId: string;
   reportingManagerId: string;
+  reportsToPmo: boolean;
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -55,14 +57,14 @@ export function EmployeeDrawer({
     if (state.mode === 'add') {
       setForm({
         firstName: '', lastName: '', email: '', phone: '', joiningDate: today(), employmentType: 'FULL_TIME', employmentStatus: 'ACTIVE',
-        departmentId: '', designationId: '', locationId: locations.data?.find((l) => l.isDefault)?.id ?? '', reportingManagerId: '',
+        departmentId: '', designationId: '', locationId: locations.data?.find((l) => l.isDefault)?.id ?? '', reportingManagerId: '', reportsToPmo: false,
       });
     } else {
       const e = state.employee;
       setForm({
         firstName: e.firstName, lastName: e.lastName, email: e.email, phone: e.phone ?? '', joiningDate: e.joiningDate?.slice(0, 10) ?? today(),
         employmentType: e.employmentType, employmentStatus: e.employmentStatus, departmentId: e.departmentId ?? '', designationId: e.designationId ?? '',
-        locationId: e.locationId ?? '', reportingManagerId: e.reportingManagerId ?? '',
+        locationId: e.locationId ?? '', reportingManagerId: e.reportingManagerId ?? '', reportsToPmo: Boolean(e.reportsToPmo),
       });
     }
   }, [state, locations.data]);
@@ -82,7 +84,7 @@ export function EmployeeDrawer({
           firstName: form.firstName.trim(), lastName: form.lastName.trim(), email: form.email.trim(), phone: form.phone.trim() || undefined,
           joiningDate: form.joiningDate, employmentType: form.employmentType,
           departmentId: form.departmentId || undefined, designationId: form.designationId || undefined,
-          locationId: form.locationId || undefined, reportingManagerId: form.reportingManagerId || undefined,
+          locationId: form.locationId || undefined, reportingManagerId: form.reportsToPmo ? undefined : form.reportingManagerId || undefined, reportsToPmo: form.reportsToPmo,
         });
         toast.success(`${e.firstName} added — welcome email sent to ${e.email}`);
       } else {
@@ -94,7 +96,7 @@ export function EmployeeDrawer({
                 id, firstName: form.firstName.trim(), lastName: form.lastName.trim(), phone: form.phone.trim() || undefined,
                 employmentType: form.employmentType, employmentStatus: form.employmentStatus,
                 departmentId: form.departmentId || null, designationId: form.designationId || null,
-                locationId: form.locationId || null, reportingManagerId: form.reportingManagerId || null,
+                locationId: form.locationId || null, reportingManagerId: form.reportsToPmo ? null : form.reportingManagerId || null, reportsToPmo: form.reportsToPmo,
               },
         );
         toast.success('Employee updated');
@@ -148,8 +150,8 @@ export function EmployeeDrawer({
             </Select>
           </Field>
         </div>
-        <Field label="Reporting manager" htmlFor="e-mgr" hint="Decides who sees them under “direct / all reports” access.">
-          <PersonSelect id="e-mgr" value={form.reportingManagerId} onChange={(v) => set('reportingManagerId', v)} disabled={lock} emptyLabel="— Nobody (top of the organisation)" people={managers.map((m) => ({ ...m, sub: m.designation?.name ?? null }))} />
+        <Field label="Reports to" htmlFor="e-mgr" hint="A person (decides who sees them under “direct / all reports” access) — or the PMO.">
+          <ReportsTo id="e-mgr" managerId={form.reportingManagerId} pmo={form.reportsToPmo} disabled={lock} onChange={(v) => setForm((f) => (f ? { ...f, reportingManagerId: v.managerId, reportsToPmo: v.pmo } : f))} people={managers.map((m) => ({ ...m, sub: m.designation?.name ?? null }))} />
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Location" htmlFor="e-loc">

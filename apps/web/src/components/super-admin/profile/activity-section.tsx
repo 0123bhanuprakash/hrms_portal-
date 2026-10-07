@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { AlertTriangle, Download, History, Plus, ShieldCheck, UserMinus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, Skeleton } from '@/components/ui/feedback';
+import { Card, InlineRetry, Skeleton } from '@/components/ui/feedback';
 import { Field, Input } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -64,7 +64,9 @@ function SignInsCard() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {!d ? (
+            {q.isLoadingError ? (
+              <tr><td colSpan={4}><InlineRetry query={q} message="Couldn’t load your sign-ins." /></td></tr>
+            ) : !d ? (
               <tr><td colSpan={4} className="py-3"><Skeleton className="h-32" /></td></tr>
             ) : !d.data.length ? (
               <tr><td colSpan={4} className="py-8 text-center text-xs text-muted-foreground">Nothing in the last 30 days.</td></tr>
@@ -112,7 +114,9 @@ function AdminsCard() {
         <ShieldCheck className="h-4 w-4 text-muted-foreground" /> Platform admins
         <span className="ml-auto text-xs font-normal text-muted-foreground">people who can change every company</span>
       </h2>
-      {!admins.data ? (
+      {admins.isLoadingError ? (
+        <InlineRetry query={admins} message="Couldn’t load platform admins." />
+      ) : !admins.data ? (
         <Skeleton className="h-24" />
       ) : (
         <ul className="m-stagger divide-y divide-border">

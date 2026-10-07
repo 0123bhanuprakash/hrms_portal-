@@ -51,15 +51,17 @@ export function useNotifications(q: { unreadOnly?: boolean; page?: number; limit
   });
 }
 
-function useInboxMutation<V>(fn: (v: V) => Promise<unknown>) {
+function useInboxMutation<V>(fn: (v: V) => Promise<unknown>, quietErrors = false) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: fn,
+    meta: { quietErrors },
     onSuccess: () => void qc.invalidateQueries({ queryKey: notificationKeys.all }),
   });
 }
 
-export const useMarkRead = () => useInboxMutation(async (id: string) => api.post(`/notifications/${id}/read`));
+// Opening a notification marks it read in the background: no toast if that fails
+export const useMarkRead = () => useInboxMutation(async (id: string) => api.post(`/notifications/${id}/read`), true);
 export const useMarkAllRead = () => useInboxMutation(async () => api.post('/notifications/read-all'));
 
 /** Icon + colour per notification family. */

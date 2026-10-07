@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { ArrowLeft, BookOpen, Check, Lightbulb, Paperclip, Send, ShieldCheck, ThumbsUp, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, EmptyState, Skeleton } from '@/components/ui/feedback';
+import { Card, EmptyState, InlineRetry, Skeleton } from '@/components/ui/feedback';
 import { Field, Input, Textarea, inputClass } from '@/components/ui/field';
 import { PersonAvatar } from '@/components/profile/person-avatar';
 import { QUEUE_EMOJI, replyTime } from '@/components/helpdesk/ticket-visuals';
@@ -198,6 +198,11 @@ function RaiseTicket() {
           </div>
 
           {/* 2 · Topic */}
+          {(cats.isLoadingError || directory.isLoadingError) && (
+            <Card className="px-4 py-2">
+              <InlineRetry query={cats.isLoadingError ? cats : directory} message="Couldn’t load the help topics. You can still describe the problem below." />
+            </Card>
+          )}
           {queue && topics.length > 0 && (
             <Card className="space-y-3 p-4 animate-fade-up">
               <p className="text-sm font-semibold">What is it about?</p>

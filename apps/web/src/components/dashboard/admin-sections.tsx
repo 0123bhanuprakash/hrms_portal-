@@ -3,11 +3,11 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import * as Popover from '@radix-ui/react-popover';
-import { CalendarClock, ChevronRight, ClipboardCheck, Clock, Eye, Headset, Search, X, LogOut as LeaveIcon, Megaphone, PackageOpen, Receipt, ShieldCheck, Timer, Upload, UserPlus, Users, UsersRound } from 'lucide-react';
+import { CalendarClock, RefreshCw, ChevronRight, ClipboardCheck, Clock, Eye, Headset, Search, X, LogOut as LeaveIcon, Megaphone, PackageOpen, Receipt, ShieldCheck, Timer, Upload, UserPlus, Users, UsersRound } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
-import { Card, CardHeader, Skeleton } from '@/components/ui/feedback';
+import { Card, CardError, CardHeader, InlineRetry, Skeleton } from '@/components/ui/feedback';
 import { PersonAvatar } from '@/components/profile/person-avatar';
 import { Donut, IconTile, Kpi, MiniBars } from '@/components/dashboard/widgets';
 import { Blocks, HBars, Lollipop, ViewAs, useChartStyle } from '@/components/dashboard/charts';
@@ -37,13 +37,13 @@ export function useApprovals() {
   const timesheets = usePendingTimesheets();
   const assets = usePendingAssetRequests();
   const rows = [
-    { key: 'leave', label: 'Leave requests', icon: <CalendarClock />, href: '/app/leave/approvals', count: leave.data, show: hasFeature('time.leave') && (can('leave.approve') || isApprover) },
-    { key: 'att', label: 'Attendance corrections', icon: <ClipboardCheck />, href: '/app/attendance/approvals', count: corrections.data, show: hasFeature('time.attendance') && (can('attendance.approve') || isApprover) },
-    { key: 'exp', label: 'Expense claims', icon: <Receipt />, href: '/app/expenses/approvals', count: expenses.data, show: hasFeature('ops.expenses') && (can('expense.approve') || can('expense.finance') || can('expense.hr') || isApprover) },
-    { key: 'ts', label: 'Timesheets', icon: <Timer />, href: '/app/timesheets/approvals', count: timesheets.data, show: hasFeature('work.timesheets') && (can('timesheet.approve') || isApprover) },
-    { key: 'as', label: 'Asset requests', icon: <PackageOpen />, href: '/app/assets/requests', count: assets.data, show: hasFeature('ops.assets') && (can('asset.approve_it') || can('asset.approve_hr') || can('asset.manage')) },
+    { key: 'leave', label: 'Leave requests', icon: <CalendarClock />, href: '/app/leave/approvals', count: leave.data, query: leave, show: hasFeature('time.leave') && (can('leave.approve') || isApprover) },
+    { key: 'att', label: 'Attendance corrections', icon: <ClipboardCheck />, href: '/app/attendance/approvals', count: corrections.data, query: corrections, show: hasFeature('time.attendance') && (can('attendance.approve') || isApprover) },
+    { key: 'exp', label: 'Expense claims', icon: <Receipt />, href: '/app/expenses/approvals', count: expenses.data, query: expenses, show: hasFeature('ops.expenses') && (can('expense.approve') || can('expense.finance') || can('expense.hr') || isApprover) },
+    { key: 'ts', label: 'Timesheets', icon: <Timer />, href: '/app/timesheets/approvals', count: timesheets.data, query: timesheets, show: hasFeature('work.timesheets') && (can('timesheet.approve') || isApprover) },
+    { key: 'as', label: 'Asset requests', icon: <PackageOpen />, href: '/app/assets/requests', count: assets.data, query: assets, show: hasFeature('ops.assets') && (can('asset.approve_it') || can('asset.approve_hr') || can('asset.manage')) },
   ].filter((r) => r.show);
-  const loaded = rows.every((r) => r.count !== undefined);
+  const loaded = rows.every((r) => r.count !== undefined || r.query.isLoadingError);
   const total = rows.reduce((n, r) => n + (r.count ?? 0), 0);
   return { rows, total: loaded ? total : undefined };
 }
@@ -91,7 +91,9 @@ export function AttendanceTodayCard({ className }: { className?: string }) {
     <Card className={className}>
       <CardHeader title="Attendance today" description={team.data?.holiday ? team.data.holiday.name : undefined} action={<div className="flex items-center gap-3"><ViewAs options={ATT_STYLES} value={style} onChange={setStyle} /><Link href="/app/attendance/team" className="text-xs font-medium text-primary hover:underline">Team</Link></div>} />
       <div key={style} className="px-5 pb-5">
-        {!c ? (
+        {team.isLoadingError ? (
+          <InlineRetry query={team} />
+        ) : !c ? (
           <Skeleton className="h-32 w-full" />
         ) : c.present + c.halfDay + c.working + c.missingCheckout + c.workFromHome + c.onLeave + c.notCheckedIn + c.absent === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">{team.data?.holiday ? `${team.data.holiday.name} — a holiday.` : 'Not a working day — nobody is expected in.'}</p>
@@ -134,7 +136,11 @@ export function ApprovalsCard() {
           <li key={r.key} className="flex items-center gap-3 py-2.5">
             <IconTile tone={r.count ? 'primary' : 'neutral'}>{r.icon}</IconTile>
             <span className="flex-1 text-sm font-medium">{r.label}</span>
-            {r.count === undefined ? <Skeleton className="h-5 w-8" /> : <Badge tone={r.count ? 'primary' : 'neutral'}>{r.count}</Badge>}
+            {r.query.isLoadingError ? (
+              <button type="button" onClick={() => void r.query.refetch()} title="Couldn’t load — try again" className="inline-flex items-center gap-1 text-xs font-medium text-destructive hover:underline">
+                <RefreshCw className="h-3 w-3" /> Retry
+              </button>
+            ) : r.count === undefined ? <Skeleton className="h-5 w-8" /> : <Badge tone={r.count ? 'primary' : 'neutral'}>{r.count}</Badge>}
             <Link href={r.href} className="inline-flex h-8 items-center rounded-md border border-border px-3 text-xs font-semibold hover:bg-subtle">Review</Link>
           </li>
         ))}
@@ -169,6 +175,7 @@ export function JoinersCard() {
   const [style, setStyle] = useChartStyle('headcount-trend', TREND_STYLES, 'mirror');
   if (!enabled) return null;
   if (q.isLoading) return <Skeleton className="h-72 w-full" />;
+  if (q.isLoadingError) return <CardError title="Joiners and leavers" query={q} />;
   const r = q.data;
   if (!r) return null;
   const month = (m: string) => monthLabel(m).split(' ')[0]!;
@@ -425,6 +432,7 @@ export function DepartmentsCard() {
   const [style, setStyle] = useChartStyle('by-department', DEPT_STYLES, 'list');
   if (!enabled) return null;
   if (q.isLoading) return <Skeleton className="h-56 w-full" />;
+  if (q.isLoadingError) return <CardError title="By department" query={q} />;
   const all = [...(q.data?.byDepartment ?? [])].sort((a, b) => b.count - a.count).map((d) => ({ label: d.label, value: d.count }));
   if (!all.length) return null;
   const total = all.reduce((n, d) => n + d.value, 0);
@@ -572,6 +580,8 @@ export function WhosOffCard() {
       />
       {q.isLoading ? (
         <div className="px-5 pb-5"><Skeleton className="h-40 w-full" /></div>
+      ) : q.isLoadingError ? (
+        <div className="px-5 pb-5"><InlineRetry query={q} /></div>
       ) : view === 'calendar' ? (
         <div className="px-5 pb-4">
           <div className="grid grid-cols-7 gap-1 text-center text-2xs font-semibold text-muted-foreground">

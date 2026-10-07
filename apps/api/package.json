@@ -23,7 +23,8 @@
     "db:studio": "prisma studio",
     "db:seed-demo": "node prisma/seed-demo.cjs",
     "db:seed-demo-avatars": "node prisma/seed-demo-avatars.cjs",
-    "db:seed-demo-ui": "node prisma/seed-demo-ui.cjs"
+    "db:seed-demo-ui": "node prisma/seed-demo-ui.cjs",
+    "db:seed-seedsai": "node --env-file=.env -r ts-node/register/transpile-only -r tsconfig-paths/register prisma/seedsai/index.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1142.0",

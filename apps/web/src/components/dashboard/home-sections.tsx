@@ -18,7 +18,7 @@ import {
   UserPlus,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardHeader, Skeleton, Tabs } from '@/components/ui/feedback';
+import { Card, CardError, CardHeader, InlineRetry, Skeleton, Tabs } from '@/components/ui/feedback';
 import { PersonAvatar } from '@/components/profile/person-avatar';
 import { CountUp, Confetti, RevealWords, SkyHero, useReducedMotion } from '@/components/motion/motion';
 import { MomentLayer, type Moment } from '@/components/motion/moments';
@@ -163,6 +163,7 @@ export function MyWeekCard() {
   const a = useCalendar(monthKey(monday));
   const b = useCalendar(monthKey(sunday));
   if (a.isLoading || b.isLoading) return <Skeleton className="h-60 w-full" />;
+  if (a.isLoadingError || b.isLoadingError) return <CardError title="My week" query={a.isLoadingError ? a : b} />;
   if (!a.data) return null;
   const tz = a.data.policy.timeZone;
   const byDate = new Map<string, CalendarDay>([...(a.data.days ?? []), ...(b.data?.days ?? [])].map((d) => [d.date, d]));
@@ -225,6 +226,7 @@ export function LeaveBalanceCard() {
   const q = useLeaveBalances();
   const [style, setStyle] = useChartStyle('leave-balance', LEAVE_STYLES, 'tiles');
   if (q.isLoading) return <Skeleton className="h-48 w-full" />;
+  if (q.isLoadingError) return <CardError title="Leave balance" query={q} />;
   const rows = (q.data?.balances ?? []).filter((b) => b.leaveType.isActive).slice(0, 6);
   if (!rows.length) return null;
   const limited = rows.filter((b) => b.available !== null);
@@ -283,6 +285,7 @@ export function MyProjectsCard() {
   const q = useMyProjects(hasFeature('work.projects') && can('project.view'));
   if (!hasFeature('work.projects') || !can('project.view')) return null;
   if (q.isLoading) return <Skeleton className="h-40 w-full" />;
+  if (q.isLoadingError) return <CardError title="My projects" query={q} />;
   const rows = (q.data ?? []).filter((a) => a.active);
   if (!rows.length) return null;
   const total = rows.reduce((n, a) => n + a.allocation, 0);
@@ -472,6 +475,8 @@ export function KudosTickerCard({ className }: { className?: string }) {
       />
       {q.isLoading ? (
         <div className="space-y-2 px-5 pb-5"><Skeleton className="h-20 w-full" /><Skeleton className="h-20 w-full" /></div>
+      ) : q.isLoadingError ? (
+        <div className="px-5 pb-3"><InlineRetry query={q} /></div>
       ) : !items.length ? (
         <p className="px-5 pb-5 text-sm text-muted-foreground">No kudos yet — thank someone for something great.</p>
       ) : moving ? (

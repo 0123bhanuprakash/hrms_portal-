@@ -1,17 +1,20 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
+import { MutationCache, QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { ThemeProvider as NextThemesProvider } from 'next-themes';
 import { Toaster } from 'sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { MotionVisibility, SuccessTick } from '@/components/motion/motion';
 import { useAuthStore } from '@/store/useAuthStore';
+import { reportUnhandledSaveError } from '@/lib/save-errors';
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
+        // A failed save always tells the user, even where the screen forgot to
+        mutationCache: new MutationCache({ onError: (error, _vars, _ctx, mutation) => reportUnhandledSaveError(error, mutation) }),
         defaultOptions: {
           queries: {
             // Data older than a minute is re-fetched when a screen opens or you come back to the tab
