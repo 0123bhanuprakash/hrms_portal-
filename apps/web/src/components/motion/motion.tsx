@@ -309,3 +309,71 @@ export function HeartBurst({ fire, children }: { fire: number; children: React.R
     </span>
   );
 }
+
+/**
+ * A list that scrolls itself slowly and loops. Put the items in twice inside
+ * `children` (the second copy aria-hidden). While the pointer is over it, or it
+ * has keyboard focus, it stops and the person can scroll it themselves (wheel,
+ * trackpad, swipe); it carries on from there afterwards. Scrolling past either
+ * end wraps round, so the list never runs out.
+ */
+export function Ticker({ seconds, label, className, children }: { seconds: number; label: string; className?: string; children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let hover = false;
+    let focus = false;
+    let touchUntil = 0;
+    let pos = el.scrollTop;
+    let last = 0;
+    let frame = 0;
+    const half = () => el.scrollHeight / 2;
+    // Keep the view inside the first copy so both directions loop
+    const wrap = () => {
+      const h = half();
+      if (h <= el.clientHeight) return;
+      if (el.scrollTop >= h) el.scrollTop -= h;
+      else if (el.scrollTop <= 0 && (hover || focus || touchUntil)) el.scrollTop += h;
+      pos = el.scrollTop;
+    };
+    const tick = (t: number) => {
+      const dt = last ? Math.min(t - last, 100) : 0;
+      last = t;
+      const idle = !hover && !focus && Date.now() > touchUntil && !document.hidden;
+      if (idle) {
+        // A person scrolled meanwhile → continue from where they left it
+        if (Math.abs(el.scrollTop - pos) > 1) pos = el.scrollTop;
+        pos += (half() / (seconds * 1000)) * dt;
+        el.scrollTop = pos;
+        if (pos >= half()) wrap();
+      }
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    const on = (type: string, fn: () => void) => {
+      el.addEventListener(type, fn, { passive: true });
+      return () => el.removeEventListener(type, fn);
+    };
+    const offs = [
+      on('pointerenter', () => { hover = true; }),
+      on('pointerleave', () => { hover = false; pos = el.scrollTop; }),
+      on('focusin', () => { focus = true; }),
+      on('focusout', () => { focus = false; pos = el.scrollTop; }),
+      on('touchstart', () => { touchUntil = Number.MAX_SAFE_INTEGER; }),
+      on('touchend', () => { touchUntil = Date.now() + 3000; }),
+      on('scroll', () => { if (hover || focus || touchUntil > Date.now()) wrap(); }),
+      // Already at the very top: no scroll event fires, so jump to the end first
+      on('wheel', () => { if (el.scrollTop <= 0) { el.scrollTop += half(); pos = el.scrollTop; } }),
+    ];
+    return () => {
+      cancelAnimationFrame(frame);
+      offs.forEach((off) => off());
+    };
+  }, [seconds]);
+  return (
+    <div ref={ref} className={cn('m-ticker', className)} tabIndex={0} aria-label={label}>
+      {children}
+    </div>
+  );
+}

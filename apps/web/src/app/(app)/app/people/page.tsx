@@ -2,7 +2,6 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Emoji } from '@/components/motion/emoji';
-import Link from 'next/link';
 import { Building2, LayoutGrid, List, MapPin, Search, ShieldCheck, Users, UsersRound, X } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, EmptyState, ErrorState, Pagination, Skeleton } from '@/components/ui/feedback';
@@ -11,7 +10,9 @@ import { Photo, PhotoCard, StatusPill, TODAY, todayText } from '@/components/peo
 import { QuickLook } from '@/components/people/quick-look';
 import { useAccess } from '@/lib/access/use-access';
 import { useDepartments, useLocations } from '@/lib/company/org';
-import { useDirectory, usePeopleHighlights, type DirectoryPerson, type TodayStatus } from '@/lib/company/profile';
+import { useDirectory, useMyCard, usePeopleHighlights, type DirectoryPerson, type TodayStatus } from '@/lib/company/profile';
+import { useCelebrationsToday } from '@/lib/company/celebrations';
+import { WishDialog } from '@/components/engagement/wish-dialog';
 import { useUiState } from '@/lib/preferences/ui-state';
 import { getApiErrorMessage } from '@/lib/errors';
 import { cn } from '@/lib/cn';
@@ -80,6 +81,12 @@ export default function PeopleDirectoryPage() {
     allowed,
   );
   const highlights = usePeopleHighlights(allowed);
+  // Birthday wishes (a celebration, not kudos) — never to yourself
+  const meId = useMyCard(allowed).data?.employee?.id;
+  const birthdaysToday = (highlights.data?.birthdays ?? []).filter((b) => b.inDays === 0 && b.id !== meId);
+  const wishToday = useCelebrationsToday(birthdaysToday.length > 0);
+  const [wishing, setWishing] = useState(false);
+  const wishedBirthdays = new Set((wishToday.data?.wished ?? []).filter((w) => w.kind === 'birthday').map((w) => w.employeeId));
   const departments = useDepartments();
   const locations = useLocations();
   // Full profiles only for people who can see beyond themselves (the API re-checks)
@@ -123,7 +130,12 @@ export default function PeopleDirectoryPage() {
               <b className="block text-sm">{h.birthdays.find((b) => b.inDays === 0) ? `${h.birthdays.filter((b) => b.inDays === 0).map((b) => b.firstName).join(', ')}’s birthday today` : h.birthdays.length ? `${h.birthdays.length} birthday${h.birthdays.length === 1 ? '' : 's'} this week` : 'No birthdays this week'}</b>
               <span className="block truncate text-xs text-muted-foreground">{h.birthdays.filter((b) => b.inDays > 0).slice(0, 2).map((b) => `${b.firstName} in ${b.inDays} day${b.inDays === 1 ? '' : 's'}`).join(' · ') || 'Day and month only'}</span>
             </span>
-            {h.birthdays[0] && h.birthdays[0].inDays === 0 && <Link href={`/app/kudos?to=${h.birthdays[0].id}`} className="rounded-md border border-border px-2.5 py-1 text-xs font-semibold hover:bg-subtle">Wish</Link>}
+            {birthdaysToday.length > 0 &&
+              (birthdaysToday.every((b) => wishedBirthdays.has(b.id)) ? (
+                <span className="rounded-md px-2.5 py-1 text-xs font-semibold text-success">Wished ✓</span>
+              ) : (
+                <button type="button" onClick={() => setWishing(true)} className="rounded-md border border-border px-2.5 py-1 text-xs font-semibold hover:bg-subtle">Wish</button>
+              ))}
           </Card>
           <Card className="flex items-center gap-3 p-4">
             <span className="flex">{h.away.slice(0, 3).map((p, i) => <button key={p.id} type="button" onClick={() => setOpen(p.id)} className={cn('rounded-full ring-2 ring-surface', i > 0 && '-ml-2.5')}><Photo person={p} className="h-10 w-10" rounded="rounded-full" textClass="text-xs" /></button>)}</span>
@@ -210,6 +222,7 @@ export default function PeopleDirectoryPage() {
         </div>
       )}
       <QuickLook id={open} onClose={() => setOpen(null)} onOpen={setOpen} canOpenProfile={canOpenProfile} />
+      {wishing && <WishDialog kind="birthday" people={birthdaysToday} wished={wishedBirthdays} onClose={() => setWishing(false)} />}
     </div>
   );
 }

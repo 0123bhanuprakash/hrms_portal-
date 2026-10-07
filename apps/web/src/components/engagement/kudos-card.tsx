@@ -14,7 +14,7 @@ import { cn } from '@/lib/cn';
 import { HeartBurst } from '@/components/motion/motion';
 
 /** One kudos: recipients' photos, value colour, message, reactions and "add my thanks". */
-export function KudosCard({ k, compact }: { k: KudosItem; compact?: boolean }) {
+export function KudosCard({ k, compact, onRemoved }: { k: KudosItem; compact?: boolean; onRemoved?: () => void }) {
   const react = useReact();
   const remove = useRemoveKudos();
   const thank = useThankKudos();
@@ -87,6 +87,7 @@ export function KudosCard({ k, compact }: { k: KudosItem; compact?: boolean }) {
                 try {
                   await remove.mutateAsync(k.id);
                   toast.success('Kudos removed');
+                  onRemoved?.();
                 } catch (err) {
                   toast.error(getApiErrorMessage(err, 'Could not remove'));
                 }

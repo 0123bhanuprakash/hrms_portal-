@@ -26,3 +26,4 @@
 - [UI polish round](ui-polish-round.md) — dropdowns, branding, theme reveal, chart motion, instant nav, Rail removed, Glide + Peek menus BUILT (uncommitted)
 - [Resource requests design](resource-requests-design.md) — Lead→PM→DD→PMO requests, hold, release, PMO reporting layer; screens in design (2026-10-07), build after approval
 - [SeedsAI test company](seedsai-test-company.md) — full-year seed for 136 people, all modules; run db:seed-seedsai after the resource-request session finishes
+- [Celebration wishes](celebration-wishes.md) — wishes ≠ kudos; grouped festive notification, no self-wish, /app/wishes; BUILT 2026-10-08 (uncommitted)

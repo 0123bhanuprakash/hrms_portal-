@@ -96,6 +96,23 @@ export class GiveKudosDto {
   @IsOptional() @IsUUID() valueId?: string | null;
 }
 
+// ─── Celebration wishes (birthdays, work anniversaries — not kudos) ───
+
+export const WISH_KINDS = ['birthday', 'anniversary'] as const;
+export type WishKind = (typeof WISH_KINDS)[number];
+export const WISH_STICKERS: Record<WishKind, readonly string[]> = {
+  birthday: ['🎂', '🎉', '🥳', '🎈', '🎁', '💐'],
+  anniversary: ['🏆', '🎉', '👏', '🌟', '🙌', '💐'],
+};
+
+export class SendWishDto {
+  /** Today's birthday people can be wished together */
+  @IsArray() @ArrayMinSize(1) @ArrayMaxSize(20) @ArrayUnique() @IsUUID('all', { each: true }) employeeIds!: string[];
+  @IsIn(WISH_KINDS) kind!: WishKind;
+  @IsString() @MaxLength(8) sticker!: string;
+  @IsOptional() @Transform(trim) @IsString() @MaxLength(280) message?: string;
+}
+
 export class KudosQueryDto {
   /** Kudos received by this employee */
   @IsOptional() @IsUUID() employeeId?: string;

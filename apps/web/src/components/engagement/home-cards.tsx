@@ -6,7 +6,7 @@ import { Heart, Megaphone, Pin } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, Skeleton } from '@/components/ui/feedback';
 import { KudosCard } from '@/components/engagement/kudos-card';
-import { useReducedMotion } from '@/components/motion/motion';
+import { Ticker, useReducedMotion } from '@/components/motion/motion';
 import { plain } from '@/components/engagement/announcement-ui';
 import { useAccess } from '@/lib/access/use-access';
 import { HOME_ANNOUNCEMENTS, useAnnouncements, useKudosFeed } from '@/lib/company/engagement';
@@ -58,12 +58,12 @@ export function HomeAnnouncements() {
       />
       {pinned.length > 0 && <ul className="flex flex-col gap-2 px-3 pb-2">{pinned.slice(0, 2).map((a) => row(a))}</ul>}
       {moving ? (
-        <div className="m-ticker mx-3 mb-3 min-h-[220px] flex-1 basis-0" style={{ ['--m-dur' as string]: `${rest.length * 6}s` }} tabIndex={0} aria-label="Latest announcements (hover or focus to pause)">
+        <Ticker seconds={rest.length * 6} label="Latest announcements (hover to pause and scroll)" className="mx-3 mb-3 min-h-[220px] flex-1 basis-0">
           <ul className="flex flex-col gap-2">
             {rest.map((a) => row(a))}
             {rest.map((a) => row(a, true))}
           </ul>
-        </div>
+        </Ticker>
       ) : (
         rest.length > 0 && <ul className="flex flex-col gap-2 px-3 pb-3">{rest.slice(0, 3).map((a) => row(a))}</ul>
       )}

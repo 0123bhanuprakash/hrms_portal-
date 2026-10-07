@@ -136,10 +136,13 @@
 @keyframes m-flip { 0%, 60% { transform: none; } 80% { transform: rotateY(180deg); } 100% { transform: rotateY(360deg); } }
 
 /* ── Kudos ticker (pauses on hover / focus) ──────────────────── */
-.m-ticker { overflow: hidden; -webkit-mask-image: linear-gradient(transparent, #000 10%, #000 90%, transparent); mask-image: linear-gradient(transparent, #000 10%, #000 90%, transparent); }
-.m-ticker > ul { animation: m-ticker var(--m-dur, 30s) linear infinite; }
-.m-ticker:hover > ul, .m-ticker:focus-within > ul { animation-play-state: paused; }
-@keyframes m-ticker { to { transform: translateY(-50%); } }
+/* Scrolled by <Ticker> (motion.tsx); people can scroll it too. No scrollbar — the faded edges show there's more. */
+.m-ticker { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; -webkit-mask-image: linear-gradient(transparent, #000 10%, #000 90%, transparent); mask-image: linear-gradient(transparent, #000 10%, #000 90%, transparent); }
+.m-ticker::-webkit-scrollbar { display: none; }
+
+/* ── Celebration wishes: warm, festive look (bell row, pop-up, preview) ── */
+.celebrate-note { border-color: hsl(var(--warning) / 0.35); background: linear-gradient(120deg, hsl(var(--warning-soft)), hsl(var(--destructive-soft)) 60%, hsl(var(--primary-soft))); }
+.celebrate-icon { background: linear-gradient(135deg, hsl(40 96% 70%), hsl(340 82% 72%)); color: hsl(0 0% 100%); box-shadow: 0 2px 8px hsl(340 82% 60% / 0.3); }
 
 /* ── Kudos heart burst ───────────────────────────────────────── */
 .m-heart { position: relative; display: inline-flex; }
@@ -245,7 +248,7 @@ html.m-reveal::view-transition-group(theme-glow) {
 @keyframes m-reveal-glow { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
 
 /* Pause any loop while the tab is hidden (set by MotionVisibility) */
-html[data-hidden] .m-ticker > ul, html[data-hidden] .m-pulse::before, html[data-hidden] .m-pulse::after, html[data-hidden] .m-sun, html[data-hidden] .m-cloud, html[data-hidden] .m-confetti i, html[data-hidden] .m-medal > * { animation-play-state: paused; }
+html[data-hidden] .m-pulse::before, html[data-hidden] .m-pulse::after, html[data-hidden] .m-sun, html[data-hidden] .m-cloud, html[data-hidden] .m-confetti i, html[data-hidden] .m-medal > * { animation-play-state: paused; }
 
 /* ── 3D ID badge (My profile): flips once on load, and on hover ─ */
 .m-badge3d { perspective: 700px; }

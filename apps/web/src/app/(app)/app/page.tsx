@@ -4,27 +4,13 @@ import { CompleteProfileNudge } from '@/components/profile/no-profile';
 import React from 'react';
 import Link from 'next/link';
 import {
-  ArrowRight,
   BarChart3,
-  FolderKanban,
-  Receipt,
-  CalendarCheck,
-  CalendarClock,
-  ClipboardCheck,
-  Home,
-  IdCard,
   ImageIcon,
   Megaphone,
-  Network,
   Palette,
-  Plane,
   SlidersHorizontal,
   UserPlus,
   Users,
-  UsersRound,
-  PackageCheck,
-  LifeBuoy,
-  Timer,
 } from 'lucide-react';
 import { Card, CardHeader, InlineRetry } from '@/components/ui/feedback';
 import { PersonAvatar, PersonRow } from '@/components/profile/person-avatar';
@@ -58,23 +44,6 @@ export default function HomePage() {
   const needs = useNeedsAction(me.data);
   const celebrating = [...(spotlight.data?.birthdays ?? []), ...(spotlight.data?.anniversaries ?? [])].filter((p) => p.inDays === 0).map((p) => p.firstName);
   const employeeHero = useEmployeeHero(needs.loading ? undefined : needs.rows.length, [...new Set(celebrating)]);
-
-  const quick = [
-    { href: '/app/profile', icon: IdCard, title: 'My profile', text: 'Personal, bank & documents', show: isEmployee },
-    { href: '/app/people', icon: Users, title: 'People', text: 'Find a colleague', show: can('org.view') && hasFeature('people.directory') },
-    { href: '/app/org', icon: Network, title: 'Org chart', text: 'Teams and reporting lines', show: can('org.view') },
-    { href: '/app/projects', icon: FolderKanban, title: 'Projects', text: can('project.manage') ? 'Create projects, allocate people' : 'Who works on what', show: hasFeature('work.projects') && can('project.view') },
-    { href: '/app/attendance', icon: CalendarCheck, title: 'My attendance', text: 'Calendar and corrections', show: isEmployee && hasFeature('time.attendance') && can('attendance.view') },
-    { href: '/app/leave?apply=', icon: Plane, title: 'Apply leave', text: 'Casual, sick, earned and more', show: isEmployee && hasFeature('time.leave') && can('leave.request') },
-    { href: '/app/leave?apply=WFH', icon: Home, title: 'Work from home', text: 'Request a WFH day', show: isEmployee && hasFeature('time.leave') && can('leave.request') },
-    { href: '/app/expenses', icon: Receipt, title: 'Claim expenses', text: 'Get reimbursed for work spend', show: isEmployee && hasFeature('ops.expenses') && can('expense.submit') },
-    { href: '/app/assets/mine', icon: PackageCheck, title: 'My assets', text: 'Your equipment, or request something', show: isEmployee && hasFeature('ops.assets') && can('asset.view') },
-    { href: '/app/helpdesk', icon: LifeBuoy, title: 'Get help', text: 'Raise a ticket to IT, HR or Finance', show: isEmployee && hasFeature('ops.helpdesk') && can('ticket.create') },
-    { href: '/app/timesheets', icon: Timer, title: 'Timesheet', text: 'Log today’s work', show: isEmployee && hasFeature('work.timesheets') && can('timesheet.submit') },
-    { href: '/app/leave/approvals', icon: CalendarClock, title: 'Leave approvals', text: 'Requests waiting for you', show: hasFeature('time.leave') && can('leave.approve') },
-    { href: '/app/attendance/approvals', icon: ClipboardCheck, title: 'Attendance approvals', text: 'Corrections waiting for you', show: hasFeature('time.attendance') && can('attendance.approve') },
-    { href: '/app/employees', icon: UsersRound, title: 'Employees', text: 'Manage employee records', show: can('employee.view') && scopeOf('employee.view') !== 'own' },
-  ].filter((q) => q.show);
 
   // ── Hero ───────────────────────────────────────────────────
   let hero: { title: string; subtitle?: string; stats: HeroStat[]; actions: HeroAction[] };
@@ -151,26 +120,6 @@ export default function HomePage() {
     </Card>
   );
 
-  const quickCard = quick.length > 0 && (
-    <Card>
-      <CardHeader title="Quick actions" />
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-2 px-4 pb-4">
-        {quick.map(({ href, icon: Icon, title, text }) => (
-          <Link key={href} href={href} className="m-lift group flex items-center gap-3 rounded-lg border border-border p-2.5 transition-colors hover:border-foreground/20 hover:bg-subtle">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary-soft-foreground">
-              <Icon className="h-4 w-4" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-semibold">{title}</span>
-              <span className="block truncate text-xs text-muted-foreground">{text}</span>
-            </span>
-            <ArrowRight className="h-4 w-4 -translate-x-1 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100" />
-          </Link>
-        ))}
-      </div>
-    </Card>
-  );
-
   const makeItYours = (
     <Card>
       <CardHeader title="Make it yours" />
@@ -234,7 +183,7 @@ export default function HomePage() {
                 {isEmployee && <NeedsActionCard me={me.data} />}
                 <ProbationCard />
               </Pair>
-              {quickCard}
+              {!hidden.has('announcements') && <HomeAnnouncements />}
             </>
           ) : (
             <>
@@ -245,7 +194,7 @@ export default function HomePage() {
                 <MyProjectsCard />
               </Pair>
               <ApprovalsCard />
-              {quickCard}
+              {!hidden.has('announcements') && <HomeAnnouncements />}
             </>
           )}
         </div>
@@ -260,7 +209,6 @@ export default function HomePage() {
         </div>
       </div>
 
-      {!hidden.has('announcements') && <HomeAnnouncements />}
     </div>
   );
 }

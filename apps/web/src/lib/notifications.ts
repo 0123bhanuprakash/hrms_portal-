@@ -65,9 +65,10 @@ export const useMarkRead = () => useInboxMutation(async (id: string) => api.post
 export const useMarkAllRead = () => useInboxMutation(async () => api.post('/notifications/read-all'));
 
 /** Icon + colour per notification family. */
-export function notificationKind(type: string): 'leave' | 'attendance' | 'delegation' | 'announcement' | 'kudos' | 'other' {
+export function notificationKind(type: string): 'leave' | 'attendance' | 'delegation' | 'announcement' | 'kudos' | 'celebration' | 'other' {
   if (type.startsWith('announcement.')) return 'announcement';
   if (type.startsWith('kudos.')) return 'kudos';
+  if (type.startsWith('celebration.')) return 'celebration';
   if (type.startsWith('leave.')) return 'leave';
   if (type.startsWith('attendance.')) return 'attendance';
   if (type.startsWith('delegation.')) return 'delegation';

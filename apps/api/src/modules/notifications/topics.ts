@@ -7,7 +7,7 @@ export const NOTIFICATION_TOPICS = [
   { key: 'expenses', label: 'Expenses', prefixes: ['expense.'] },
   { key: 'helpdesk', label: 'Helpdesk', prefixes: ['ticket.'] },
   { key: 'announcements', label: 'Announcements', prefixes: ['announcement.'] },
-  { key: 'kudos', label: 'Kudos & celebrations', prefixes: ['kudos.'] },
+  { key: 'kudos', label: 'Kudos & celebrations', prefixes: ['kudos.', 'celebration.'] },
   { key: 'assets', label: 'Assets', prefixes: ['asset.'] },
 ] as const;
 

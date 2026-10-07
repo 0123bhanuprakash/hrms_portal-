@@ -4,8 +4,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import type { AccessContext } from '../access/access.types';
 import { ProfileService } from './profile.service';
 import type { DirectoryQueryDto } from './dto';
-import { addDays, dateFromKey, isValidTimeZone, keyFromDate, localDateKey, zonedInstant } from '../attendance/time-zone';
+import { addDays, dateFromKey, keyFromDate } from '../attendance/time-zone';
 import { dayContext, statusesOn, weekKeys } from './people-today';
+import { companyToday, monthDay, nextOccurrence, startOfDay } from './celebration-dates';
 import { wordsWhere } from '../../common/word-search';
 
 /** What any colleague may see about anyone — no personal data. */
@@ -255,9 +256,7 @@ export class PeopleService {
    */
   async spotlight(companyId: string) {
     // "Today" in the company's time zone (UTC midnight of that calendar date)
-    const settings = await this.prisma.companySettings.findUnique({ where: { companyId }, select: { timezone: true } });
-    const timeZone = settings?.timezone && isValidTimeZone(settings.timezone) ? settings.timezone : 'Asia/Kolkata';
-    const today = dateFromKey(localDateKey(new Date(), timeZone));
+    const { today } = await companyToday(this.prisma, companyId);
     const people = await this.prisma.employee.findMany({
       where: { companyId, employmentStatus: { not: EmploymentStatus.TERMINATED } },
       select: { ...BASIC, dateOfBirth: true, joiningDate: true },
@@ -285,14 +284,13 @@ export class PeopleService {
       if (years >= 1 && inDays <= SPOTLIGHT_DAYS) anniversaries.push({ ...basic(person), date: monthDay(next), inDays, years });
     }
 
-    // Kudos sent today to people celebrating today (wishes count up live on Home)
+    // Wishes for people celebrating today (count up live on Home)
     const celebrating = [...birthdays, ...anniversaries].filter((x) => x.inDays === 0).map((x) => x.id);
     const wishes = new Map<string, number>();
     if (celebrating.length) {
-      const since = zonedInstant(keyFromDate(today), '00:00', timeZone);
-      const rows = await this.prisma.kudosRecipient.groupBy({
+      const rows = await this.prisma.celebrationWish.groupBy({
         by: ['employeeId'],
-        where: { employeeId: { in: celebrating }, kudos: { companyId, deletedAt: null, createdAt: { gte: since } } },
+        where: { companyId, employeeId: { in: celebrating }, occasion: today },
         _count: { _all: true },
       });
       for (const r of rows) wishes.set(r.employeeId, r._count._all);
@@ -315,24 +313,4 @@ export class PeopleService {
       holidays,
     };
   }
-}
-
-/** Dates are calendar dates (@db.Date → UTC midnight); compare in UTC. */
-function startOfDay(d: Date): Date {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-}
-
-/** Next anniversary of a date (today counts); 29 Feb falls on 28 Feb in non-leap years. */
-function nextOccurrence(date: Date, today: Date): Date {
-  const at = (year: number) => {
-    const d = new Date(Date.UTC(year, date.getUTCMonth(), date.getUTCDate()));
-    return d.getUTCMonth() === date.getUTCMonth() ? d : new Date(Date.UTC(year, date.getUTCMonth() + 1, 0));
-  };
-  const thisYear = at(today.getUTCFullYear());
-  return thisYear >= today ? thisYear : at(today.getUTCFullYear() + 1);
-}
-
-/** "MM-DD" — no year, so birthdays never reveal age. */
-function monthDay(d: Date): string {
-  return `${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
 }
