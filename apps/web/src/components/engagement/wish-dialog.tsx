@@ -25,16 +25,17 @@ export interface WishPerson {
  * add a line (optional), see how it will reach them, send. Birthdays on the
  * same day can be wished together; people already wished are ticked.
  */
-export function WishDialog({ kind, people, years, wished, onClose }: { kind: WishKind; people: WishPerson[]; years?: number; wished: Set<string>; onClose: () => void }) {
+export function WishDialog({ kind, people, preselect, years, wished, onClose }: { kind: WishKind; people: WishPerson[]; preselect?: string[]; years?: number; wished: Set<string>; onClose: () => void }) {
   const me = useAuthStore((s) => s.user);
   const send = useSendWish();
   const open = people.filter((p) => !wished.has(p.id));
-  const [picked, setPicked] = useState<Set<string>>(() => new Set(open.map((p) => p.id)));
+  // Starts with the person on the card (or everyone not wished yet); others can be ticked too
+  const [picked, setPicked] = useState<Set<string>>(() => new Set(open.filter((p) => !preselect || preselect.includes(p.id)).map((p) => p.id)));
   const [sticker, setSticker] = useState(WISH_STICKERS[kind][0]!);
   const [message, setMessage] = useState('');
   const [fire, setFire] = useState(0);
   const birthday = kind === 'birthday';
-  const one = people.length === 1 ? people[0] : null;
+  const one = people.length === 1 ? people[0] : preselect?.length === 1 ? people.find((p) => p.id === preselect[0]) : null;
   const to = people.filter((p) => picked.has(p.id));
 
   const submit = async (e: React.FormEvent) => {

@@ -331,14 +331,18 @@ async function cleanup() {
     // Wishes so far today (birthday today)
     const today = new Date();
     await p.employee.update({ where: { id: mgrRow.id }, data: { dateOfBirth: new Date(Date.UTC(1990, today.getMonth(), today.getDate())) } });
-    const wishPings = H.got.filter((g) => g.event === 'changed' && g.data.topic === 'celebrations').length;
+    const wishPings = M.got.filter((g) => g.event === 'changed' && g.data.topic === 'celebrations').length;
+    const hrPings = H.got.filter((g) => g.event === 'changed' && g.data.topic === 'celebrations').length;
     const wish = await call(emp.h, 'POST', '/celebrations/wishes', { employeeIds: [mgrRow.id], kind: 'birthday', sticker: '🎂', message: 'Happy birthday, have a great day!' });
     check('Send a birthday wish', wish.status === 201, JSON.stringify(wish.body).slice(0, 200));
-    await wait(3600);
-    check('Everyone’s count refreshes live (celebrations)', H.got.filter((g) => g.event === 'changed' && g.data.topic === 'celebrations').length > wishPings);
-    const spot = await call(emp.h, 'GET', '/people/spotlight');
+    await wait(600);
+    check('Celebrant’s count refreshes live (celebrations)', M.got.filter((g) => g.event === 'changed' && g.data.topic === 'celebrations').length > wishPings);
+    check('Others aren’t pinged (counts are private)', H.got.filter((g) => g.event === 'changed' && g.data.topic === 'celebrations').length === hrPings);
+    const spot = await call(mgr.h, 'GET', '/people/spotlight');
     const bday = (spot.data?.birthdays ?? []).find((b) => b.id === mgrRow.id && b.inDays === 0);
-    check('Birthday shows wishes so far today', bday?.wishesToday === 1, JSON.stringify(bday));
+    check('Celebrant sees wishes so far today', bday?.wishesToday === 1, JSON.stringify(bday));
+    const colleagueView = ((await call(emp.h, 'GET', '/people/spotlight')).data?.birthdays ?? []).find((b) => b.id === mgrRow.id);
+    check('Colleagues don’t see the count', colleagueView && !('wishesToday' in colleagueView), JSON.stringify(colleagueView));
   } catch (err) {
     check('No crash', false, err.stack);
   } finally {

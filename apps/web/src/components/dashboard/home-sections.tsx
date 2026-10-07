@@ -329,16 +329,15 @@ function Wishes({ n }: { n: number }) {
     </span>
   );
 }
-type Slide = { kind: 'birthday'; people: Person[] } | { kind: 'anniversary'; person: Spotlight['anniversaries'][number] };
+type Slide = { kind: 'birthday'; person: Spotlight['birthdays'][number] } | { kind: 'anniversary'; person: Spotlight['anniversaries'][number] };
 
-/** Today’s birthdays (all of them together) and each work anniversary, as a moving card. */
+/** Today’s birthdays and work anniversaries, one person per slide, as a moving card. */
 export function CelebrationsCard({ data, loading }: { data?: Spotlight; loading: boolean }) {
   const { can } = useAccess();
   const reduced = useReducedMotion();
   const slides = useMemo<Slide[]>(() => {
     if (!data) return [];
-    const bdays = data.birthdays.filter((b) => b.inDays === 0);
-    const out: Slide[] = bdays.length ? [{ kind: 'birthday', people: bdays }] : [];
+    const out: Slide[] = data.birthdays.filter((b) => b.inDays === 0).map((person) => ({ kind: 'birthday', person }));
     for (const a of data.anniversaries.filter((x) => x.inDays === 0)) out.push({ kind: 'anniversary', person: a });
     return out;
   }, [data]);
@@ -353,7 +352,7 @@ export function CelebrationsCard({ data, loading }: { data?: Spotlight; loading:
   const meId = useMyCard().data?.employee?.id;
   const today = useCelebrationsToday(slides.length > 0);
   const wished = (kind: WishKind) => new Set((today.data?.wished ?? []).filter((w) => w.kind === kind).map((w) => w.employeeId));
-  const [wishing, setWishing] = useState<{ kind: WishKind; people: WishPerson[]; years?: number } | null>(null);
+  const [wishing, setWishing] = useState<{ kind: WishKind; people: WishPerson[]; preselect: string[]; years?: number } | null>(null);
   const canWish = can('org.view');
 
   if (loading) return <Skeleton className="h-72 w-full" />;
@@ -382,8 +381,10 @@ export function CelebrationsCard({ data, loading }: { data?: Spotlight; loading:
   }
 
   const cur = slides[i % slides.length]!;
-  const bCount = slides[0]?.kind === 'birthday' ? slides[0].people.length : 0;
-  const aCount = slides.length - (bCount ? 1 : 0);
+  const birthdays = slides.flatMap((x) => (x.kind === 'birthday' ? [x.person] : []));
+  const bCount = birthdays.length;
+  const aCount = slides.length - bCount;
+  const n = i % slides.length;
   return (
     <Card className="relative overflow-hidden" >
       <div onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
@@ -402,23 +403,26 @@ export function CelebrationsCard({ data, loading }: { data?: Spotlight; loading:
           <div key={i} className="m-slide flex min-h-[220px] flex-col items-center justify-center gap-2.5 text-center">
             {cur.kind === 'birthday' ? (
               <>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-destructive-soft px-2.5 py-0.5 text-2xs font-bold uppercase tracking-wide text-destructive"><Cake className="h-3 w-3" />{cur.people.length === 1 ? 'Birthday today' : `${cur.people.length} birthdays today`}</span>
-                <div className="flex justify-center">
-                  {cur.people.slice(0, 4).map((p, k) => <PersonAvatar key={p.id} person={p} size="xl" className={cn('m-pop ring-4 ring-surface', k > 0 && '-ml-5')} />)}
-                  {cur.people.length > 4 && <span className="-ml-5 flex h-20 w-20 items-center justify-center rounded-full bg-muted text-base font-bold ring-4 ring-surface">+{cur.people.length - 4}</span>}
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-destructive-soft px-2.5 py-0.5 text-2xs font-bold uppercase tracking-wide text-destructive">
+                  <Cake className="h-3 w-3" />Birthday today{bCount > 1 && ` · ${birthdays.indexOf(cur.person) + 1} of ${bCount}`}
+                </span>
+                <div className="flex items-center gap-3">
+                  <PersonAvatar person={cur.person} size="xl" className="m-pop ring-4 ring-surface" />
+                  <span className="m-medal text-4xl" aria-hidden>🎂</span>
                 </div>
                 <div>
-                  <p className="text-base font-bold">{cur.people.length <= 2 ? cur.people.map((p) => `${p.firstName} ${p.lastName}`).join(' & ') : `${cur.people.slice(0, 2).map((p) => p.firstName).join(', ')} and ${cur.people.length - 2} more`}</p>
-                  <p className="text-xs text-muted-foreground">{[...new Set(cur.people.map((p) => p.department?.name).filter(Boolean))].join(' · ') || 'Wish them a happy birthday'}</p>
+                  <p className="text-base font-bold">{cur.person.firstName} {cur.person.lastName}</p>
+                  <p className="text-xs text-muted-foreground">{[cur.person.designation?.name, cur.person.department?.name].filter(Boolean).join(' · ') || 'Wish them a happy birthday'}</p>
                 </div>
-                <Wishes n={cur.people.reduce((t, p) => t + (p.wishesToday ?? 0), 0)} />
+                <Wishes n={cur.person.wishesToday ?? 0} />
                 <WishActions
                   kind="birthday"
-                  people={cur.people}
+                  people={[cur.person]}
                   meId={meId}
                   canWish={canWish}
                   wished={wished('birthday')}
-                  onWish={(people) => setWishing({ kind: 'birthday', people })}
+                  // Opens on this person; the others celebrating today can be ticked too
+                  onWish={() => setWishing({ kind: 'birthday', people: [cur.person, ...birthdays.filter((b) => b.id !== cur.person.id && b.id !== meId)], preselect: [cur.person.id] })}
                 />
               </>
             ) : (
@@ -441,7 +445,7 @@ export function CelebrationsCard({ data, loading }: { data?: Spotlight; loading:
                   meId={meId}
                   canWish={canWish}
                   wished={wished('anniversary')}
-                  onWish={(people) => setWishing({ kind: 'anniversary', people, years: cur.person.years })}
+                  onWish={(people) => setWishing({ kind: 'anniversary', people, preselect: people.map((x) => x.id), years: cur.person.years })}
                 />
               </>
             )}
@@ -449,15 +453,19 @@ export function CelebrationsCard({ data, loading }: { data?: Spotlight; loading:
           {slides.length > 1 && (
             <div className="mt-2 flex items-center justify-center gap-2">
               <button type="button" aria-label="Previous" onClick={() => setI((n) => (n - 1 + slides.length) % slides.length)} className="rounded-full p-1 text-muted-foreground hover:bg-subtle hover:text-foreground"><ChevronLeft className="h-4 w-4" /></button>
-              {slides.map((_, k) => (
-                <button key={k} type="button" aria-label={`Show celebration ${k + 1} of ${slides.length}`} aria-current={k === i % slides.length} onClick={() => setI(k)} className={cn('h-1.5 rounded-full transition-all', k === i % slides.length ? 'w-5 bg-primary' : 'w-1.5 bg-border')} />
-              ))}
+              {slides.length > 6 ? (
+                <span className="min-w-[3.5rem] text-center text-xs tabular-nums text-muted-foreground" aria-live="polite">{n + 1} / {slides.length}</span>
+              ) : (
+                slides.map((_, k) => (
+                  <button key={k} type="button" aria-label={`Show celebration ${k + 1} of ${slides.length}`} aria-current={k === n} onClick={() => setI(k)} className={cn('h-1.5 rounded-full transition-all', k === n ? 'w-5 bg-primary' : 'w-1.5 bg-border')} />
+                ))
+              )}
               <button type="button" aria-label="Next" onClick={() => setI((n) => (n + 1) % slides.length)} className="rounded-full p-1 text-muted-foreground hover:bg-subtle hover:text-foreground"><ChevronRight className="h-4 w-4" /></button>
             </div>
           )}
         </div>
       </div>
-      {wishing && <WishDialog kind={wishing.kind} people={wishing.people} years={wishing.years} wished={wished(wishing.kind)} onClose={() => setWishing(null)} />}
+      {wishing && <WishDialog kind={wishing.kind} people={wishing.people} preselect={wishing.preselect} years={wishing.years} wished={wished(wishing.kind)} onClose={() => setWishing(null)} />}
     </Card>
   );
 }

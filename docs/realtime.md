@@ -35,7 +35,7 @@ Everything in the app that updates without a reload, who receives it, and how to
 | Announcements: post, edit, pin, delete, react, RSVP | Whole company | Feed, Home ticker |
 | Announcements: read, confirm | People who manage announcements only | Read / confirmation counts |
 | Kudos: give, react, thank, delete | Whole company | Kudos feed, Home ticker |
-| Celebration wish sent (birthday / work anniversary) — topic `celebrations` via `realtime.soon` in `CelebrationsService` | Whole company | Home Celebrations "N wishes so far today", wishes state |
+| Celebration wish sent (birthday / work anniversary) — topic `celebrations` in `CelebrationsService` | The person celebrating + the sender's own tabs (counts are private) | Celebrant's "N wishes so far today", sender's "Wished ✓" |
 | Celebration wish received — one grouped notification per occasion (`NotificationsService.notifyGrouped`, rewritten + unread again on each wish) | The person celebrating | Bell, festive pop-up, `/app/wishes` |
 | Branding, theme, page defaults, seasonal themes | Whole company | Logo, colours, sign-in look, re-themes every open screen |
 | People: employees, departments, designations, locations, org chart, profiles, CSV import | Whole company | Org chart, directory, profiles |
