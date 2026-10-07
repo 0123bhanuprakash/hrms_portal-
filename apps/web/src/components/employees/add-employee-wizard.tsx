@@ -18,6 +18,7 @@ import { formatDate, initials } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import { addDaysKey, addMonthsKey } from './lifecycle-ui';
 import { DateInput, PersonSelect, Select } from '@/components/ui/pickers';
+import { ReportsTo } from '@/components/employees/reports-to';
 
 const STEPS = ['Basics', 'Job', 'Manager', 'Review'] as const;
 const DRAFT_KEY = 'hrms:add-employee-draft';
@@ -36,11 +37,12 @@ interface Draft {
   probation: 'none' | '3' | '6' | 'custom';
   probationEnd: string;
   reportingManagerId: string;
+  reportsToPmo: boolean;
 }
 
 const blank = (locationId = ''): Draft => ({
   firstName: '', lastName: '', email: '', phone: '', designationId: '', departmentId: '', locationId,
-  employmentType: 'FULL_TIME', joiningDate: addDaysKey(0), probation: '6', probationEnd: '', reportingManagerId: '',
+  employmentType: 'FULL_TIME', joiningDate: addDaysKey(0), probation: '6', probationEnd: '', reportingManagerId: '', reportsToPmo: false,
 });
 
 function readDraft(): Draft | null {
@@ -130,7 +132,7 @@ export function AddEmployeeWizard({ open, onClose }: { open: boolean; onClose: (
         joiningDate: d.joiningDate, employmentType: d.employmentType,
         employmentStatus: probationEnd ? 'PROBATION' : 'ACTIVE', confirmationDate: probationEnd ?? undefined,
         departmentId: d.departmentId || undefined, designationId: d.designationId || undefined,
-        locationId: d.locationId || undefined, reportingManagerId: d.reportingManagerId || undefined,
+        locationId: d.locationId || undefined, reportingManagerId: d.reportsToPmo ? undefined : d.reportingManagerId || undefined, reportsToPmo: d.reportsToPmo,
       });
       writeDraft(null);
       toast.success(`${e.firstName} added — welcome email sent to ${e.email}`);
@@ -243,10 +245,10 @@ export function AddEmployeeWizard({ open, onClose }: { open: boolean; onClose: (
             )}
             {step === 2 && (
               <>
-                <Field label="Reporting manager" htmlFor="w-mgr" hint="Approves their leave and timesheets, and sees them under “my team”.">
-                  <PersonSelect id="w-mgr" value={d.reportingManagerId} onChange={(v) => set('reportingManagerId', v)} emptyLabel="— Nobody (top of the organisation)" people={managers.map((m) => ({ ...m, sub: m.designation?.name ?? null }))} />
+                <Field label="Reports to" htmlFor="w-mgr" hint="A person approves their leave and timesheets and sees them under “my team” — or they report to the PMO.">
+                  <ReportsTo id="w-mgr" managerId={d.reportingManagerId} pmo={d.reportsToPmo} onChange={(v) => { set('reportingManagerId', v.managerId); set('reportsToPmo', v.pmo); }} people={managers.map((m) => ({ ...m, sub: m.designation?.name ?? null }))} />
                 </Field>
-                {suggested.length > 0 && (
+                {suggested.length > 0 && !d.reportsToPmo && (
                   <div>
                     <p className="mb-2 text-xs font-medium text-muted-foreground">Managers in {dept?.name}</p>
                     <div className="flex flex-wrap gap-2">
@@ -271,7 +273,7 @@ export function AddEmployeeWizard({ open, onClose }: { open: boolean; onClose: (
                   ['Type', TYPES.find((t) => t[0] === d.employmentType)?.[1]],
                   ['Joins', formatDate(d.joiningDate)],
                   ['Probation', probationEnd ? `Until ${formatDate(probationEnd)}` : 'None — starts as Active'],
-                  ['Manager', manager ? `${manager.firstName} ${manager.lastName}` : 'Nobody'],
+                  ['Reports to', d.reportsToPmo ? 'The PMO (pool)' : manager ? `${manager.firstName} ${manager.lastName}` : 'Nobody'],
                 ].map(([k, v]) => (
                   <div key={k} className="flex gap-3 px-3 py-2">
                     <dt className="w-28 shrink-0 text-muted-foreground">{k}</dt>

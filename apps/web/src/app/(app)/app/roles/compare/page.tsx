@@ -6,7 +6,8 @@ import { useSearchParams } from 'next/navigation';
 import { AlertTriangle, ArrowLeft, Check, Copy, Crown, ShieldCheck } from 'lucide-react';
 import type { AccessScope } from '@hrms/types';
 import { Button } from '@/components/ui/button';
-import { Card, EmptyState, Skeleton } from '@/components/ui/feedback';
+import { Card, EmptyState, ErrorState, Skeleton } from '@/components/ui/feedback';
+import { getApiErrorMessage } from '@/lib/errors';
 import { RoleChip, roleStyle, roleText, SCOPE_ORDER } from '@/components/admin/role-look';
 import { SCOPE_LABELS, useAccess, useAccessCatalog } from '@/lib/access/use-access';
 import { useRole, type RoleDetail } from '@/lib/company/user-management';
@@ -24,6 +25,7 @@ function CompareContent() {
   const c = useRole(ids[2] ?? null);
   const [onlyDiff, setOnlyDiff] = useState(true);
   const roles = [a.data, b.data, c.data].filter(Boolean) as RoleDetail[];
+  const failed = [catalog, a, b, c].slice(0, ids.length + 1).find((q) => q.isLoadingError);
   const loading = catalog.isLoading || [a, b, c].slice(0, ids.length).some((q) => q.isLoading);
 
   const cell = (r: RoleDetail, key: string, scopes: AccessScope[]): Cell =>
@@ -87,7 +89,9 @@ function CompareContent() {
         )}
       </div>
 
-      {loading ? (
+      {failed ? (
+        <ErrorState message={getApiErrorMessage(failed.error, 'Could not load the roles')} onRetry={() => void failed.refetch()} />
+      ) : loading ? (
         <Skeleton className="h-96" />
       ) : (
         <>

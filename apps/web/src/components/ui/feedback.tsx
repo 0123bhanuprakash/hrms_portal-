@@ -3,6 +3,7 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { AlertTriangle, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { getApiErrorMessage } from '@/lib/errors';
 import { Button } from './button';
 
 /** Shimmering placeholder block. */
@@ -98,6 +99,41 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
         )
       }
     />
+  );
+}
+
+/** One-line "couldn't load" with a retry, for a failed section inside a card. */
+export function InlineRetry({ query, message }: { query: { error: unknown; refetch: () => unknown }; message?: string }) {
+  return (
+    <div role="alert" className="flex items-center gap-3 py-2">
+      <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" aria-hidden />
+      <p className="min-w-0 flex-1 text-sm text-muted-foreground">{getApiErrorMessage(query.error, message ?? 'Couldn’t load this.')}</p>
+      <Button variant="secondary" size="sm" icon={<RefreshCw />} onClick={() => void query.refetch()}>
+        Try again
+      </Button>
+    </div>
+  );
+}
+
+/** A dashboard card whose data failed to load: keeps its place with a short message and a retry. */
+export function CardError({
+  title,
+  icon,
+  query,
+  className,
+}: {
+  title: React.ReactNode;
+  icon?: React.ReactNode;
+  query: { error: unknown; refetch: () => unknown };
+  className?: string;
+}) {
+  return (
+    <Card className={className}>
+      <CardHeader icon={icon} title={title} />
+      <div className="px-5 pb-3">
+        <InlineRetry query={query} />
+      </div>
+    </Card>
   );
 }
 

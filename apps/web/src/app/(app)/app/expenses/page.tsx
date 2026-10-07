@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { Copy, Plus, Receipt, ShieldCheck } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
-import { Card, EmptyState, Skeleton, Tabs } from '@/components/ui/feedback';
+import { Card, EmptyState, ErrorState, Skeleton, Tabs } from '@/components/ui/feedback';
 import { Field, Input, inputClass } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { ClaimList } from '@/components/expenses/claim-list';
@@ -35,6 +35,7 @@ export default function MyExpensesPage() {
   const copy = useCopyClaim();
 
   if (!accessLoading && !allowed) return <EmptyState icon={<ShieldCheck />} title="Expenses aren’t available" />;
+  if (me.isLoadingError) return <ErrorState message={getApiErrorMessage(me.error, 'Could not load your profile')} onRetry={() => void me.refetch()} />;
   if (me.isSuccess && !me.data?.employee) return <NoProfile icon={<Receipt />} what="Expense claims need an employee profile." />;
   const s = summary.data;
 
@@ -57,7 +58,9 @@ export default function MyExpensesPage() {
         action={<Button onClick={() => setCreating(true)}><Plus /> New claim</Button>}
       />
 
-      {!s ? (
+      {summary.isLoadingError ? (
+        <ErrorState message={getApiErrorMessage(summary.error, 'Could not load your expense summary')} onRetry={() => void summary.refetch()} />
+      ) : !s ? (
         <Skeleton className="h-24 w-full" />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { EmploymentStatus, Prisma, ProjectRole, ProjectStatus, ProjectType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { dateFromKey, isValidTimeZone, keyFromDate, localDateKey } from '../attendance/time-zone';
+import { addDays, dateFromKey, isValidTimeZone, keyFromDate, localDateKey } from '../attendance/time-zone';
 import { allocationOn, peakAllocation, type Span } from './allocation';
 import type { CapacityQueryDto, ProjectQueryDto, SaveMemberDto, SaveProjectDto } from './dto';
 
@@ -27,6 +27,15 @@ const MEMBER_SELECT = {
 } satisfies Prisma.ProjectMemberSelect;
 
 const ROLE_LABEL: Record<ProjectRole, string> = { MEMBER: 'Member', TEAM_LEAD: 'Team lead', MANAGER: 'Project manager' };
+/** Picking a project manager books this much of their time unless the PMO says otherwise */
+const DEFAULT_PM_ALLOCATION = 30;
+
+/** How a member change shows in the person's assignment history */
+export interface MemberLog {
+  requestId?: string;
+  action?: string;
+  note?: string;
+}
 const fmt = (k: string) => new Date(`${k}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 
 /**
@@ -104,6 +113,8 @@ export class ProjectsService {
         status: true,
         startDate: true,
         endDate: true,
+        techStack: true,
+        deliveryDirector: { select: PERSON },
         members: { select: MEMBER_SELECT, orderBy: [{ role: 'desc' }, { startDate: 'asc' }] },
       },
     });
@@ -120,16 +131,27 @@ export class ProjectsService {
 
   async create(companyId: string, userId: string, dto: SaveProjectDto) {
     this.assertDates(dto.startDate, dto.endDate ?? null, 'The project');
+    await this.assertPerson(companyId, dto.deliveryDirectorId, 'Delivery Director');
+    let id: string;
     try {
       const p = await this.prisma.project.create({
-        data: { ...this.projectData(dto), companyId, createdById: userId },
+        data: { ...this.projectData(dto), deliveryDirectorId: dto.deliveryDirectorId ?? null, companyId, createdById: userId },
         select: { id: true, type: true },
       });
+      id = p.id;
       await this.event(companyId, p.id, userId, 'created', `created the project (${p.type === ProjectType.CLIENT ? 'client — billable' : 'internal — investment'})`);
-      return this.get(companyId, p.id);
     } catch (err) {
       throw this.duplicateCode(err, dto.code);
     }
+    if (dto.managerEmployeeId) {
+      try {
+        await this.saveMember(companyId, id, null, { employeeId: dto.managerEmployeeId, role: ProjectRole.MANAGER, allocation: dto.managerAllocation ?? DEFAULT_PM_ALLOCATION, startDate: dto.startDate, endDate: dto.endDate ?? null }, userId);
+      } catch (err) {
+        // The project exists; say why the PM couldn't be booked
+        throw new BadRequestException(`Project created, but the project manager couldn’t be added: ${(err as Error).message}`);
+      }
+    }
+    return this.get(companyId, id);
   }
 
   async update(companyId: string, id: string, dto: SaveProjectDto, actorUserId: string | null = null) {
@@ -158,7 +180,82 @@ export class ProjectsService {
     if (dto.status && dto.status !== before.status) {
       await this.event(companyId, id, actorUserId, 'status', `set the status to ${dto.status.toLowerCase().replace('_', ' ')}`);
     }
+    await this.setPeopleInCharge(companyId, id, dto, actorUserId);
     return this.get(companyId, id);
+  }
+
+  /**
+   * People in charge: the Delivery Director (a setting, no time booked) and the
+   * one project manager (picking a new one ends the old PM's booking here).
+   * Open resource requests follow automatically — they wait on a step, not a person.
+   */
+  private async setPeopleInCharge(companyId: string, projectId: string, dto: SaveProjectDto, actorUserId: string | null) {
+    if (dto.deliveryDirectorId !== undefined) {
+      await this.assertPerson(companyId, dto.deliveryDirectorId, 'Delivery Director');
+      const p = await this.prisma.project.findUniqueOrThrow({ where: { id: projectId }, select: { deliveryDirectorId: true } });
+      if ((dto.deliveryDirectorId ?? null) !== p.deliveryDirectorId) {
+        await this.prisma.project.update({ where: { id: projectId }, data: { deliveryDirectorId: dto.deliveryDirectorId ?? null } });
+        const who = dto.deliveryDirectorId ? await this.prisma.employee.findUnique({ where: { id: dto.deliveryDirectorId }, select: { firstName: true, lastName: true } }) : null;
+        await this.event(companyId, projectId, actorUserId, 'people', who ? `made ${who.firstName} ${who.lastName} the Delivery Director` : 'removed the Delivery Director');
+      }
+    }
+    if (dto.managerEmployeeId === undefined) return;
+    const today = await this.todayKey(companyId);
+    const current = await this.prisma.projectMember.findFirst({
+      where: { projectId, role: ProjectRole.MANAGER, OR: [{ endDate: null }, { endDate: { gte: dateFromKey(today) } }] },
+      orderBy: { startDate: 'desc' },
+      select: { id: true, employeeId: true, startDate: true, allocation: true },
+    });
+    if ((current?.employeeId ?? null) === (dto.managerEmployeeId ?? null)) {
+      // Same PM: only their % may change
+      if (current && dto.managerAllocation && dto.managerAllocation !== current.allocation) {
+        const m = await this.prisma.projectMember.findUniqueOrThrow({ where: { id: current.id }, select: { startDate: true, endDate: true, nightShift: true, billed: true } });
+        await this.saveMember(companyId, projectId, current.id, { employeeId: current.employeeId, role: ProjectRole.MANAGER, allocation: dto.managerAllocation, startDate: keyFromDate(m.startDate), endDate: m.endDate ? keyFromDate(m.endDate) : null, nightShift: m.nightShift, billed: m.billed }, actorUserId);
+      }
+      return;
+    }
+    const project = await this.exists(companyId, projectId);
+    const start = keyFromDate(project.startDate) > today ? keyFromDate(project.startDate) : today;
+    if (current) {
+      // The old PM's booking ends the day before the new one starts (or goes if it hadn't started)
+      if (keyFromDate(current.startDate) >= start) await this.removeMember(companyId, projectId, current.id, actorUserId);
+      else await this.endMember(companyId, projectId, current.id, addDays(start, -1), actorUserId, 'changed');
+    }
+    if (dto.managerEmployeeId) {
+      await this.saveMember(companyId, projectId, null, { employeeId: dto.managerEmployeeId, role: ProjectRole.MANAGER, allocation: dto.managerAllocation ?? DEFAULT_PM_ALLOCATION, startDate: start, endDate: project.endDate ? keyFromDate(project.endDate) : null }, actorUserId);
+    }
+  }
+
+  /** Technologies used on the project — its leads, PM, Delivery Director or the PMO keep it. */
+  async setTechStack(companyId: string, projectId: string, techStack: string[], actorUserId: string | null) {
+    await this.exists(companyId, projectId);
+    const clean = [...new Map(techStack.map((t) => t.trim()).filter(Boolean).map((t) => [t.toLowerCase(), t])).values()].slice(0, 30);
+    await this.prisma.project.update({ where: { id: projectId }, data: { techStack: clean } });
+    await this.event(companyId, projectId, actorUserId, 'tech_stack', clean.length ? `set the tech stack: ${clean.join(', ')}` : 'cleared the tech stack');
+    return { id: projectId, techStack: clean };
+  }
+
+  /** End someone's assignment on a date (release / reassignment / PM change). */
+  async endMember(companyId: string, projectId: string, memberId: string, lastDay: string, actorUserId: string | null, action = 'released', opts: { requestId?: string; note?: string } = {}) {
+    const m = await this.prisma.projectMember.findFirst({ where: { id: memberId, projectId }, select: { id: true, employeeId: true, allocation: true, startDate: true, employee: { select: { firstName: true, lastName: true } } } });
+    if (!m) throw new NotFoundException('Assignment not found');
+    if (lastDay < keyFromDate(m.startDate)) {
+      // Never started: just remove it
+      await this.removeMember(companyId, projectId, memberId, actorUserId, { action, ...opts });
+      return;
+    }
+    await this.prisma.$transaction(async (tx) => {
+      await tx.projectMember.update({ where: { id: memberId }, data: { endDate: dateFromKey(lastDay) } });
+      await tx.projectEvent.create({ data: { companyId, projectId, actorUserId, kind: 'member_updated', text: `ended ${m.employee.firstName} ${m.employee.lastName}'s time here on ${fmt(lastDay)}` } });
+      await tx.assignmentLog.create({ data: { companyId, employeeId: m.employeeId, projectId, requestId: opts.requestId ?? null, actorUserId, action, allocation: m.allocation, note: opts.note ?? `Last day ${fmt(lastDay)}` } });
+    });
+  }
+
+  private async assertPerson(companyId: string, employeeId: string | null | undefined, what: string) {
+    if (!employeeId) return;
+    const e = await this.prisma.employee.findFirst({ where: { id: employeeId, companyId }, select: { employmentStatus: true, firstName: true } });
+    if (!e) throw new NotFoundException(`${what} not found`);
+    if (e.employmentStatus === EmploymentStatus.TERMINATED) throw new BadRequestException(`${e.firstName} has left the company`);
   }
 
   private projectData(dto: SaveProjectDto) {
@@ -177,12 +274,12 @@ export class ProjectsService {
 
   // ─── Members ───────────────────────────────────────────────
 
-  async addMember(companyId: string, projectId: string, dto: SaveMemberDto, actorUserId: string | null = null) {
-    return this.saveMember(companyId, projectId, null, dto, actorUserId);
+  async addMember(companyId: string, projectId: string, dto: SaveMemberDto, actorUserId: string | null = null, log: MemberLog = {}) {
+    return this.saveMember(companyId, projectId, null, dto, actorUserId, log);
   }
 
-  async updateMember(companyId: string, projectId: string, memberId: string, dto: SaveMemberDto, actorUserId: string | null = null) {
-    return this.saveMember(companyId, projectId, memberId, dto, actorUserId);
+  async updateMember(companyId: string, projectId: string, memberId: string, dto: SaveMemberDto, actorUserId: string | null = null, log: MemberLog = {}) {
+    return this.saveMember(companyId, projectId, memberId, dto, actorUserId, log);
   }
 
   /** PMO: does the client pay for this person on this project? */
@@ -197,7 +294,7 @@ export class ProjectsService {
     return { id: memberId, billed };
   }
 
-  private async saveMember(companyId: string, projectId: string, memberId: string | null, dto: SaveMemberDto, actorUserId: string | null = null) {
+  private async saveMember(companyId: string, projectId: string, memberId: string | null, dto: SaveMemberDto, actorUserId: string | null = null, log: MemberLog = {}) {
     const project = await this.exists(companyId, projectId);
     const existing = memberId ? await this.prisma.projectMember.findFirst({ where: { id: memberId, projectId }, select: { id: true, employeeId: true, role: true } }) : null;
     if (memberId && !existing) throw new NotFoundException('Assignment not found');
@@ -232,6 +329,15 @@ export class ProjectsService {
       // One allocation decision per employee at a time (concurrent PMO edits)
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${dto.employeeId}))`;
 
+      // One project manager per project at a time
+      if (dto.role === ProjectRole.MANAGER) {
+        const otherPm = await tx.projectMember.findFirst({
+          where: { projectId, role: ProjectRole.MANAGER, employeeId: { not: dto.employeeId }, ...(memberId && { id: { not: memberId } }), ...this.overlapping(dto.startDate, end) },
+          select: { employee: { select: { firstName: true, lastName: true } } },
+        });
+        if (otherPm) throw new ConflictException(`This project already has a project manager (${otherPm.employee.firstName} ${otherPm.employee.lastName}) — change the PM in the project settings`);
+      }
+
       const same = await tx.projectMember.count({
         where: { projectId, employeeId: dto.employeeId, ...(memberId && { id: { not: memberId } }), ...this.overlapping(dto.startDate, end) },
       });
@@ -265,6 +371,10 @@ export class ProjectsService {
         unassigned = (await tx.projectMember.updateMany({ where: { projectId, leadEmployeeId: dto.employeeId }, data: { leadEmployeeId: null } })).count;
       }
       const row = await tx.projectMember.findUniqueOrThrow({ where: { id: saved.id }, select: MEMBER_SELECT });
+      // Their assignment history
+      await tx.assignmentLog.create({
+        data: { companyId, employeeId: dto.employeeId, projectId, requestId: log.requestId ?? null, actorUserId, action: log.action ?? (memberId ? 'changed' : 'assigned'), allocation: dto.allocation, note: log.note ?? `${ROLE_LABEL[row.role]} · ${dto.allocation}%` },
+      });
       await tx.projectEvent.create({
         data: {
           companyId, projectId, actorUserId,
@@ -278,7 +388,7 @@ export class ProjectsService {
     });
   }
 
-  async removeMember(companyId: string, projectId: string, memberId: string, actorUserId: string | null = null) {
+  async removeMember(companyId: string, projectId: string, memberId: string, actorUserId: string | null = null, log: MemberLog = {}) {
     await this.exists(companyId, projectId);
     const m = await this.prisma.projectMember.findFirst({ where: { id: memberId, projectId }, select: { id: true, employeeId: true, role: true, employee: { select: { firstName: true, lastName: true } } } });
     if (!m) throw new NotFoundException('Assignment not found');
@@ -289,6 +399,7 @@ export class ProjectsService {
         if (!stillLeads) unassigned = (await tx.projectMember.updateMany({ where: { projectId, leadEmployeeId: m.employeeId }, data: { leadEmployeeId: null } })).count;
       }
       await tx.projectMember.delete({ where: { id: m.id } });
+      await tx.assignmentLog.create({ data: { companyId, employeeId: m.employeeId, projectId, requestId: log.requestId ?? null, actorUserId, action: log.action ?? 'removed', note: log.note ?? null } });
       await tx.projectEvent.create({ data: { companyId, projectId, actorUserId, kind: 'member_removed', text: `removed ${m.employee.firstName} ${m.employee.lastName}` } });
       return { id: m.id, projectId, employee: m.employee, unassignedMembers: unassigned };
     });

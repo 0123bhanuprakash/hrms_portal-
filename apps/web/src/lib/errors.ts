@@ -16,7 +16,15 @@ interface ProblemDetails {
   errors?: Record<string, string[]>;
 }
 
+let lastMessageAt = 0;
+
+/** When an error was last turned into a message (a toast or an inline error). See lib/save-errors.ts. */
+export function lastErrorMessageAt(): number {
+  return lastMessageAt;
+}
+
 export function getApiErrorMessage(error: unknown, fallback = 'Something went wrong. Please try again.'): string {
+  lastMessageAt = Date.now();
   if (!isAxiosError<ProblemDetails>(error)) {
     return fallback;
   }

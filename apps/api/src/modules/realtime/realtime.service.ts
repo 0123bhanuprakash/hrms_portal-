@@ -25,7 +25,7 @@ import type { Server } from 'socket.io';
 export const LIVE_AREAS = ['attendance', 'leave', 'expenses', 'timesheets', 'assets', 'announcements', 'kudos', 'projects', 'branding', 'people'] as const;
 export type LiveArea = (typeof LIVE_AREAS)[number];
 
-export type LiveTopic = 'notifications' | 'helpdesk' | 'system' | 'access' | 'delegations' | LiveArea;
+export type LiveTopic = 'notifications' | 'helpdesk' | 'system' | 'access' | 'delegations' | 'resources' | LiveArea;
 
 export interface LiveNotification {
   id: string;

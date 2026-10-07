@@ -8,6 +8,7 @@ import { ApprovalRouterService } from '../projects/approval-router.service';
 import { addDays, dateFromKey, isValidTimeZone, keyFromDate, localDateKey, localMinutes } from '../attendance/time-zone';
 import type { ApproveBlocksDto, BlockDto, CalendarQueryDto, ComplianceQueryDto, CopyDayDto, PickBlocksDto, RecallDto, SendBackDto, SubmitDto, TimesheetQueryDto } from './dto';
 import { wordsWhere } from '../../common/word-search';
+import { pmoLeadUserIds, reportsToPmo } from '../projects/pmo-pool';
 
 const APPROVE = 'timesheet.approve';
 const VIEW = 'timesheet.view';
@@ -688,6 +689,8 @@ export class TimesheetsService {
     ]);
     const covers = (m: { startDate: Date; endDate: Date | null }, d: string) => keyFromDate(m.startDate) <= d && (!m.endDate || keyFromDate(m.endDate) >= d);
     const lineManager = line && line.ancestor.userId !== selfUserId ? line.ancestor.userId : null;
+    // Reports to the PMO instead of a person → the PMO lead(s) stand in for a line manager
+    const pmoLeads = !lineManager && (await reportsToPmo(this.prisma, employeeId)) ? (await pmoLeadUserIds(this.prisma, companyId)).filter((u) => u !== selfUserId) : [];
     for (const k of keys) {
       const key = `${k.projectId ?? '-'}|${k.date}`;
       if (out.has(key)) continue;
@@ -704,7 +707,7 @@ export class TimesheetsService {
           }
         }
       }
-      r ??= lineManager ? { approverIds: [lineManager], label: 'Line manager' } : { approverIds: [], label: 'HR' };
+      r ??= lineManager ? { approverIds: [lineManager], label: 'Line manager' } : pmoLeads.length ? { approverIds: pmoLeads, label: 'PMO lead' } : { approverIds: [], label: 'HR' };
       out.set(key, r);
     }
     return out;

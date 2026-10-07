@@ -1,0 +1,962 @@
+<title>Clear Desk Home</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
+<style>
+/* Layout concept: "Clear desk". Top = your day + what needs you + what you can do.
+   Below = information you check less often. Phone = the same order in one column,
+   with the check-in button always within thumb reach. */
+:root {
+  --bg: #F6F6F9;
+  --surface: #FFFFFF;
+  --subtle: #F0F0F5;
+  --text: #17171C;
+  --text-2: #4F5260;
+  --text-3: #626574;
+  --border: #DEDFE6;
+  --border-strong: #8E91A0;
+  --primary: #4B44D6;
+  --on-primary: #FFFFFF;
+  --primary-soft: #EEEDFC;
+  --ok: #1A7543;
+  --ok-soft: #E7F4EC;
+  --warn: #8A5300;
+  --warn-soft: #FBF1DE;
+  --bad: #B42318;
+  --bad-soft: #FCEBE9;
+  --on-bad: #FFFFFF;
+  --info: #1D5FA8;
+  --info-soft: #E6EFFA;
+  --shadow: 0 1px 2px rgb(16 16 24 / .06), 0 10px 28px -10px rgb(16 16 24 / .22);
+  --scrim: rgb(16 16 24 / .45);
+
+  --f-ui: "Public Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --ease: cubic-bezier(.2,.7,.2,1);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101015; --surface: #18181F; --subtle: #212129; --text: #EDEDF2; --text-2: #B9BBC7; --text-3: #9EA0AD;
+    --border: #2C2C36; --border-strong: #6E7080; --primary: #A09CFF; --on-primary: #12121A; --primary-soft: #26244A;
+    --ok: #63CF92; --ok-soft: #13291D; --warn: #F0B957; --warn-soft: #2E2310; --bad: #FF8F80; --bad-soft: #3A1714; --on-bad: #2A0A06;
+    --info: #82B6F7; --info-soft: #132338; --shadow: 0 1px 2px rgb(0 0 0 / .5), 0 14px 32px -10px rgb(0 0 0 / .7);
+    --scrim: rgb(0 0 0 / .6); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101015; --surface: #18181F; --subtle: #212129; --text: #EDEDF2; --text-2: #B9BBC7; --text-3: #9EA0AD;
+  --border: #2C2C36; --border-strong: #6E7080; --primary: #A09CFF; --on-primary: #12121A; --primary-soft: #26244A;
+  --ok: #63CF92; --ok-soft: #13291D; --warn: #F0B957; --warn-soft: #2E2310; --bad: #FF8F80; --bad-soft: #3A1714; --on-bad: #2A0A06;
+  --info: #82B6F7; --info-soft: #132338; --shadow: 0 1px 2px rgb(0 0 0 / .5), 0 14px 32px -10px rgb(0 0 0 / .7);
+  --scrim: rgb(0 0 0 / .6); color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--f-ui); font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums; }
+a { color: inherit; }
+button { font: inherit; color: inherit; }
+svg { flex: none; }
+/* WCAG 2.2 focus appearance: 3px ring, 2px gap, on every control */
+:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; border-radius: 6px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ── Concept chrome ───────────────────────────────────────── */
+.stage { max-width: 1560px; margin: 0 auto; padding-inline: 16px; padding-block: 18px 56px; display: grid; gap: 16px; }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
+.bar h1 { font-size: 18px; font-weight: 700; margin: 0; }
+.bar .ver { font-size: 13px; color: var(--text-3); }
+.bar .spacer { flex: 1; }
+.ctl { display: flex; align-items: center; gap: 8px; }
+.ctl > span { font-size: 12px; font-weight: 600; color: var(--text-2); }
+.seg { display: inline-flex; background: var(--subtle); border: 1px solid var(--border); border-radius: 8px; padding: 2px; }
+.seg button { border: 1px solid transparent; background: none; padding: 4px 10px; border-radius: 6px; font-size: 13px; font-weight: 500; color: var(--text-2); cursor: pointer; min-height: 30px; }
+.seg button[aria-pressed="true"] { background: var(--surface); border-color: var(--border); color: var(--text); font-weight: 600; }
+
+/* ── Frame ────────────────────────────────────────────────── */
+.frame { container-type: inline-size; container-name: frame; width: 100%; margin-inline: auto; border: 1px solid var(--border); border-radius: 12px; overflow: clip; background: var(--bg); transition: max-width 240ms var(--ease); position: relative; }
+.frame.phone { max-width: 390px; }
+.app { display: grid; grid-template-columns: minmax(0, 1fr); min-height: 860px; }
+@container frame (min-width: 1000px) { .app { grid-template-columns: 240px minmax(0, 1fr); } }
+
+/* Sidebar (same items and order as today; calmer look, bigger targets) */
+.side { display: none; flex-direction: column; gap: 16px; padding: 14px 12px; background: var(--surface); border-right: 1px solid var(--border); }
+@container frame (min-width: 1000px) { .side { display: flex; } }
+.org { display: flex; align-items: center; gap: 10px; padding: 4px 6px 12px; border-bottom: 1px solid var(--border); }
+.mark { width: 32px; height: 32px; border-radius: 8px; background: var(--primary); color: var(--on-primary); display: grid; place-items: center; font-weight: 700; font-size: 13px; }
+.org b { display: block; font-size: 14px; line-height: 1.2; }
+.org small { font-size: 12px; color: var(--text-3); }
+.nav { display: grid; gap: 14px; }
+.nav p { margin: 0 0 2px; padding: 0 10px; font-size: 12px; font-weight: 600; color: var(--text-3); }
+.nav ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
+.nav a { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 10px; border-radius: 8px; text-decoration: none; font-size: 14px; color: var(--text-2); }
+.nav a svg { width: 18px; height: 18px; color: var(--text-3); }
+.nav a:hover { background: var(--subtle); color: var(--text); }
+.nav a[aria-current="page"] { background: var(--primary-soft); color: var(--text); font-weight: 600; }
+.nav a[aria-current="page"] svg { color: var(--primary); }
+.nav .ct { margin-left: auto; min-width: 22px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--primary); color: var(--on-primary); font-size: 12px; font-weight: 600; display: grid; place-items: center; }
+.me { margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 12px 6px 0; border-top: 1px solid var(--border); }
+.me b { display: block; font-size: 14px; line-height: 1.2; }
+.me small { font-size: 12px; color: var(--text-3); }
+
+/* Top bar */
+.main { min-width: 0; display: flex; flex-direction: column; }
+.top { position: sticky; top: 0; z-index: 5; height: 56px; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: var(--surface); border-bottom: 1px solid var(--border); }
+@container frame (min-width: 1000px) { .top { padding: 0 28px; } .top .mob { display: none; } }
+.crumb { font-size: 14px; font-weight: 600; }
+.top .right { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+.iconbtn { position: relative; width: 44px; height: 44px; display: grid; place-items: center; border: 0; border-radius: 8px; background: none; color: var(--text-2); cursor: pointer; }
+.iconbtn:hover { background: var(--subtle); color: var(--text); }
+.iconbtn svg { width: 20px; height: 20px; }
+.iconbtn .dot { position: absolute; top: 6px; right: 5px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; background: var(--bad); color: var(--on-bad); font-size: 11px; font-weight: 700; line-height: 18px; }
+.live { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-2); margin-right: 4px; }
+.live svg { width: 14px; height: 14px; color: var(--ok); }
+@container frame (max-width: 520px) { .live span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } }
+
+/* Content */
+.content { padding: 20px 16px 28px; min-width: 0; display: grid; gap: 20px; }
+@container frame (min-width: 760px) { .content { padding: 28px 28px 40px; gap: 24px; } }
+.hello h1 { margin: 0; font-size: 24px; line-height: 1.25; font-weight: 700; letter-spacing: -.01em; text-wrap: balance; }
+.hello p { margin: 4px 0 0; color: var(--text-2); font-size: 15px; }
+@container frame (min-width: 760px) { .hello h1 { font-size: 28px; } }
+
+.layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+.col { display: grid; gap: 20px; min-width: 0; }
+@container frame (min-width: 1100px) { .layout { grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; } .col { gap: 24px; } }
+/* Phone + tablet: one column in task order (day → needs you → actions → the rest) */
+@container frame (max-width: 1099px) {
+  .layout { display: flex; flex-direction: column; }
+  .col { display: contents; }
+  .o1 { order: 1; } .o2 { order: 2; } .o3 { order: 3; } .o4 { order: 4; } .o5 { order: 5; }
+}
+
+/* Panels */
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; min-width: 0; }
+.ph { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; padding: 16px 18px 6px; }
+.ph h2 { margin: 0; font-size: 17px; font-weight: 700; line-height: 1.3; }
+.ph .count { min-width: 24px; height: 22px; padding: 0 7px; border-radius: 11px; background: var(--subtle); font-size: 13px; font-weight: 700; display: grid; place-items: center; }
+.ph .count.hot { background: var(--text); color: var(--bg); }
+.ph .hint { font-size: 13px; color: var(--text-3); }
+.ph .right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.pb { padding: 6px 18px 18px; }
+.panel.proposal { border-style: dashed; border-color: var(--border-strong); }
+.tag { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: var(--warn-soft); color: var(--warn); }
+.split { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+@container frame (min-width: 860px) { .split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; } }
+
+/* Text link: always underlined so it reads as a link without colour */
+.tlink { font-size: 14px; font-weight: 600; color: var(--primary); text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; display: inline-flex; align-items: center; min-height: 32px; cursor: pointer; background: none; border: 0; padding: 0; }
+.tlink:hover { text-decoration-thickness: 2px; }
+
+/* Buttons: 40px desktop, 48px on phone */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; white-space: nowrap; transition: background-color 120ms ease-out, transform 80ms ease-out; }
+.btn svg { width: 18px; height: 18px; }
+.btn:hover { background: var(--subtle); }
+.btn:active { transform: translateY(1px); background: var(--border); }
+.btn.primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+.btn.primary:hover { filter: brightness(1.1); }
+.btn.primary:active { filter: brightness(.95); }
+.btn[aria-busy="true"] { pointer-events: none; opacity: .75; }
+.btn.small { min-height: 36px; padding: 0 12px; font-size: 13.5px; }
+@container frame (max-width: 759px) { .btn { min-height: 48px; } .btn.small { min-height: 44px; } }
+.spin { width: 16px; height: 16px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; display: inline-block; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Status: icon + word, never colour alone */
+.st { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; white-space: nowrap; }
+.st svg { width: 18px; height: 18px; }
+.st.ok { color: var(--ok); } .st.warn { color: var(--warn); } .st.bad { color: var(--bad); } .st.info { color: var(--info); } .st.muted { color: var(--text-2); }
+
+/* Your day */
+.day { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 18px; }
+@container frame (min-width: 760px) { .day { grid-template-columns: minmax(0, 1fr) auto; align-items: center; padding: 20px 22px; } }
+.day .state { display: flex; gap: 14px; align-items: flex-start; }
+.day .ico { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; flex: none; }
+.day .ico svg { width: 22px; height: 22px; }
+.day .ico.ok { background: var(--ok-soft); color: var(--ok); }
+.day .ico.muted { background: var(--subtle); color: var(--text-2); }
+.day .ico.info { background: var(--info-soft); color: var(--info); }
+.day h2 { margin: 0; font-size: 19px; line-height: 1.3; font-weight: 700; }
+.day .meta { margin: 2px 0 0; color: var(--text-2); font-size: 14.5px; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
+.progress { margin-top: 10px; display: grid; gap: 4px; max-width: 460px; }
+.progress .track { height: 8px; border-radius: 4px; background: var(--subtle); box-shadow: inset 0 0 0 1px var(--border); overflow: hidden; }
+.progress .fill { height: 100%; background: var(--ok); border-radius: 4px; transform-origin: left; }
+.progress .lbl { font-size: 13px; color: var(--text-2); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 12px; }
+.day .do { display: flex; gap: 10px; flex-wrap: wrap; }
+@container frame (max-width: 759px) { .day .do { display: none; } }
+.disclose { border-top: 1px solid var(--border); }
+.disclose > button { width: 100%; display: flex; align-items: center; gap: 8px; background: none; border: 0; padding: 12px 22px; font-size: 14px; font-weight: 600; color: var(--text-2); cursor: pointer; min-height: 44px; text-align: left; }
+.disclose > button:hover { color: var(--text); background: var(--subtle); }
+.disclose > button svg { width: 18px; height: 18px; transition: transform 160ms var(--ease); }
+.disclose > button[aria-expanded="true"] svg { transform: rotate(90deg); }
+.disclose .inner { padding: 0 22px 16px; }
+
+/* Phone dock: check-in always in reach */
+.dock { display: none; }
+@container frame (max-width: 759px) {
+  .dock { display: flex; position: sticky; bottom: 0; z-index: 6; align-items: center; gap: 12px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px)); background: var(--surface); border-top: 1px solid var(--border); box-shadow: 0 -6px 18px -12px rgb(0 0 0 / .3); }
+  .dock .txt { flex: 1; min-width: 0; font-size: 14px; line-height: 1.3; }
+  .dock .txt b { display: block; }
+  .dock .txt span { color: var(--text-2); font-size: 13px; }
+}
+
+/* Needs you list */
+.groupl { margin: 10px 0 2px; font-size: 13px; font-weight: 700; color: var(--text-2); }
+.list { list-style: none; margin: 0; padding: 0; }
+.item { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--border); }
+.list > .item:first-child { border-top: 0; }
+.item .ic { width: 28px; height: 28px; display: grid; place-items: center; align-self: start; margin-top: 1px; }
+.item .ic svg { width: 22px; height: 22px; }
+.item .ic.bad { color: var(--bad); } .item .ic.warn { color: var(--warn); } .item .ic.info { color: var(--info); } .item .ic.pri { color: var(--primary); } .item .ic.muted { color: var(--text-2); }
+.item .t { min-width: 0; }
+.item .t b { display: block; font-size: 15px; font-weight: 600; line-height: 1.35; }
+.item .t span { display: block; font-size: 14px; color: var(--text-2); }
+.item .t .why { font-size: 13px; font-weight: 600; }
+.item .t .why.bad { color: var(--bad); } .item .t .why.warn { color: var(--warn); }
+@container frame (max-width: 520px) { .item { grid-template-columns: 28px minmax(0, 1fr); } .item .act { grid-column: 2; justify-self: start; } }
+.big { font-size: 15px; font-weight: 700; }
+
+/* Empty / error / loading */
+.empty { display: flex; gap: 12px; align-items: flex-start; padding: 14px 0 6px; }
+.empty svg { width: 26px; height: 26px; color: var(--ok); }
+.empty b { display: block; font-size: 15px; }
+.empty span { color: var(--text-2); font-size: 14px; }
+.error { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; margin-top: 8px; border-radius: 8px; background: var(--bad-soft); }
+.error svg { width: 22px; height: 22px; color: var(--bad); }
+.error b { display: block; font-size: 15px; }
+.error span { display: block; font-size: 14px; color: var(--text-2); margin-bottom: 8px; }
+.sk { display: block; border-radius: 6px; background: var(--subtle); height: 14px; }
+.skrow { display: grid; grid-template-columns: 28px minmax(0, 1fr) 90px; gap: 12px; align-items: center; padding: 14px 0; border-top: 1px solid var(--border); }
+.skrow:first-child { border-top: 0; }
+.skrow .c { width: 24px; height: 24px; border-radius: 50%; }
+[data-motion="lively"] .sk { background: linear-gradient(90deg, var(--subtle) 25%, var(--border) 50%, var(--subtle) 75%); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+/* Quick actions */
+.qa { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.qa a { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; line-height: 1.25; background: var(--surface); transition: background-color 120ms ease-out, border-color 120ms ease-out; }
+.qa a svg { width: 20px; height: 20px; color: var(--primary); }
+.qa a:hover { background: var(--subtle); border-color: var(--border-strong); }
+.qa a:active { transform: translateY(1px); }
+.more { margin-top: 10px; }
+.more ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; }
+.more li a { display: flex; align-items: center; min-height: 40px; font-size: 14px; text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 3px; }
+.more li a:hover { text-decoration-color: var(--text); }
+.more h3 { margin: 12px 0 0; font-size: 13px; font-weight: 700; color: var(--text-2); }
+
+/* Today counts (company / team) */
+.counts { display: grid; gap: 12px; }
+.crow { display: grid; grid-template-columns: 170px minmax(0, 1fr) 48px; gap: 12px; align-items: center; }
+@container frame (max-width: 520px) { .crow { grid-template-columns: minmax(0, 1fr) 40px; } .crow .bar2 { grid-column: 1 / -1; grid-row: 2; } }
+.bar2 { height: 10px; border-radius: 5px; background: var(--subtle); overflow: hidden; }
+.bar2 i { display: block; height: 100%; border-radius: 5px; transform-origin: left; }
+.crow .n { text-align: right; font-size: 17px; font-weight: 700; }
+.fill-ok { background: var(--ok); } .fill-info { background: var(--info); } .fill-warn { background: var(--warn); } .fill-muted { background: var(--border-strong); } .fill-pri { background: var(--primary); }
+.sum { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 2px 0 12px; }
+.sum b { font-size: 28px; line-height: 1.1; font-weight: 700; }
+.sum span { color: var(--text-2); }
+.vs { display: inline-flex; background: var(--subtle); border: 1px solid var(--border); border-radius: 8px; padding: 2px; }
+.vs button { border: 1px solid transparent; background: none; min-height: 30px; padding: 0 10px; border-radius: 6px; font-size: 13px; font-weight: 500; color: var(--text-2); cursor: pointer; }
+.vs button[aria-pressed="true"] { background: var(--surface); border-color: var(--border); color: var(--text); font-weight: 600; }
+
+/* People rows */
+.prow { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); }
+.prow:first-child { border-top: 0; }
+.prow .t { flex: 1; min-width: 0; }
+.prow .t b { display: block; font-size: 15px; font-weight: 600; line-height: 1.3; }
+.prow .t span { display: block; font-size: 14px; color: var(--text-2); }
+.prow .when { font-size: 14px; color: var(--text-2); text-align: right; white-space: nowrap; }
+.av { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; flex: none; background: var(--subtle); color: var(--text); font-size: 13px; font-weight: 700; box-shadow: inset 0 0 0 1px var(--border); }
+.av.sm { width: 30px; height: 30px; font-size: 12px; }
+.av svg { width: 16px; height: 16px; color: var(--text-2); }
+
+/* Tables (My week) */
+.tw { overflow-x: auto; }
+table.tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
+.tbl th { text-align: left; font-size: 13px; font-weight: 600; color: var(--text-2); padding: 8px 10px 8px 0; border-bottom: 1px solid var(--border-strong); white-space: nowrap; }
+.tbl td { padding: 10px 10px 10px 0; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.tbl tr.today td { background: var(--primary-soft); }
+.tbl tr.today td:first-child { box-shadow: inset 3px 0 0 var(--primary); padding-left: 10px; }
+.tbl td.r, .tbl th.r { text-align: right; }
+.tbl .dim { color: var(--text-3); }
+
+/* Leave balance */
+.lb { display: grid; gap: 14px; }
+.lb .row { display: grid; gap: 6px; }
+.lb .top2 { display: flex; justify-content: space-between; gap: 8px; font-size: 15px; }
+.lb .top2 b { font-weight: 600; }
+.lb .top2 span { color: var(--text-2); }
+.lb .top2 span strong { color: var(--text); font-size: 17px; }
+.lb .bar2 i { background: var(--primary); }
+.lb .note { font-size: 13px; color: var(--warn); font-weight: 600; display: inline-flex; gap: 5px; align-items: center; }
+.lb .note svg { width: 15px; height: 15px; }
+
+/* Tabs */
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 6px; overflow-x: auto; }
+.tabs button { border: 0; background: none; min-height: 40px; padding: 0 10px; font-size: 14px; font-weight: 500; color: var(--text-2); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+.tabs button[aria-selected="true"] { color: var(--text); font-weight: 700; border-color: var(--primary); }
+.tabs button:hover { color: var(--text); }
+
+/* Kudos */
+.kudo { padding: 12px 0; border-top: 1px solid var(--border); }
+.kudo:first-child { border-top: 0; padding-top: 4px; }
+.kudo .hd { font-size: 14px; }
+.kudo .hd b { font-weight: 700; }
+.kudo p { margin: 4px 0; font-size: 14.5px; }
+.kudo .ft { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-2); }
+
+/* Announcements */
+.ann .item .t b { font-size: 16px; }
+
+/* Joiners mini table */
+.jt { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.jt div b { display: block; font-size: 24px; font-weight: 700; line-height: 1.2; }
+.jt div span { font-size: 13.5px; color: var(--text-2); }
+
+/* Moment */
+.moment { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 10px; background: var(--primary-soft); font-size: 15px; }
+.moment svg { width: 22px; height: 22px; color: var(--primary); }
+.moment .x { margin-left: auto; }
+
+/* Toast (top-right, as decided earlier) */
+.toasts { position: fixed; top: 16px; right: 16px; z-index: 60; display: grid; gap: 8px; width: min(360px, calc(100vw - 32px)); }
+.toast { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); font-size: 14px; }
+.toast svg { width: 20px; height: 20px; color: var(--ok); }
+.toast.info svg { color: var(--info); }
+.toast b { display: block; }
+.toast span { color: var(--text-2); }
+
+/* Dialog */
+.scrim { position: fixed; inset: 0; z-index: 70; background: var(--scrim); display: grid; place-items: center; padding: 16px; }
+.dialog { width: min(440px, 100%); background: var(--surface); border-radius: 12px; border: 1px solid var(--border); box-shadow: var(--shadow); padding: 20px; }
+.dialog h2 { margin: 0 0 6px; font-size: 18px; }
+.dialog p { margin: 0 0 14px; color: var(--text-2); }
+.dialog label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+.dialog textarea { width: 100%; min-height: 72px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--text); font: inherit; padding: 8px 10px; }
+.dialog textarea::placeholder { color: var(--text-3); opacity: 1; }
+.dialog .help { font-size: 13px; color: var(--text-2); margin-top: 4px; }
+.dialog .foot { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+
+/* Keyboard order overlay */
+.kbshow [data-kb] { position: relative; }
+.kbshow [data-kb]::after { content: attr(data-kb); position: absolute; top: -8px; left: -8px; z-index: 4; min-width: 20px; height: 20px; padding: 0 4px; border-radius: 10px; background: var(--text); color: var(--bg); font-size: 11px; font-weight: 700; line-height: 20px; text-align: center; pointer-events: none; }
+
+/* Motion: Lively / Calm / Off (+ device reduce-motion) */
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } }
+@keyframes fade { from { opacity: 0; } }
+@keyframes grow { from { transform: scaleX(0); } }
+@keyframes tin { from { opacity: 0; transform: translateY(-8px); } }
+[data-motion="lively"] .view { animation: rise 200ms var(--ease) both; }
+[data-motion="calm"] .view { animation: fade 150ms ease-out both; }
+[data-motion="lively"] .grow { animation: grow 500ms var(--ease) 150ms both; }
+[data-motion="lively"] .toast, [data-motion="calm"] .toast { animation: tin 180ms var(--ease) both; }
+[data-motion="lively"] .item.leaving { transition: opacity 200ms, transform 200ms; opacity: 0; transform: translateX(16px); }
+[data-motion="off"] *, [data-motion="off"] *::before, [data-motion="off"] *::after { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+/* ── Notes ────────────────────────────────────────────────── */
+.notes { display: grid; gap: 28px; grid-template-columns: minmax(0, 1fr); padding-top: 8px; }
+@media (min-width: 1000px) { .notes { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.notes section { min-width: 0; }
+.notes .wide { grid-column: 1 / -1; }
+.notes h2 { font-size: 19px; margin: 0 0 10px; }
+.notes p, .notes li { font-size: 14.5px; color: var(--text-2); max-width: 75ch; }
+.notes b { color: var(--text); }
+.notes ol, .notes ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+table.nt { border-collapse: collapse; width: 100%; font-size: 14px; }
+.nt th { text-align: left; font-size: 13px; font-weight: 700; color: var(--text-2); background: var(--subtle); padding: 8px 10px; border-bottom: 1px solid var(--border-strong); }
+.nt td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.nt td.r { text-align: right; white-space: nowrap; }
+.nt .sm { font-size: 13px; color: var(--text-3); }
+</style>
+
+<div class="stage">
+  <div class="bar" role="toolbar" aria-label="Concept controls">
+    <h1>Home · Clear desk</h1><span class="ver">concept v1.0 · 6 Oct 2026 · awaiting approval</span>
+    <span class="spacer"></span>
+    <div class="ctl"><span>Who</span><div class="seg" id="ctl-role"><button type="button" data-v="emp" aria-pressed="true">Employee</button><button type="button" data-v="mgr" aria-pressed="false">Manager / lead</button><button type="button" data-v="admin" aria-pressed="false">HR / Company Admin</button></div></div>
+    <div class="ctl"><span>Theme</span><div class="seg" id="ctl-theme"><button type="button" data-v="light">Light</button><button type="button" data-v="dark">Dark</button></div></div>
+    <div class="ctl"><span>Width</span><div class="seg" id="ctl-width"><button type="button" data-v="desk" aria-pressed="true">Desktop</button><button type="button" data-v="phone" aria-pressed="false">Phone</button></div></div>
+    <div class="ctl"><span>Motion</span><div class="seg" id="ctl-motion"><button type="button" data-v="lively" aria-pressed="true">Lively</button><button type="button" data-v="calm" aria-pressed="false">Calm</button><button type="button" data-v="off" aria-pressed="false">Off</button></div></div>
+    <div class="ctl"><span>Your day</span><div class="seg" id="ctl-day"><button type="button" data-v="out" aria-pressed="false">Not in yet</button><button type="button" data-v="working" aria-pressed="true">Working</button><button type="button" data-v="done" aria-pressed="false">Done</button></div></div>
+    <div class="ctl"><span>Data</span><div class="seg" id="ctl-data"><button type="button" data-v="ok" aria-pressed="true">Normal</button><button type="button" data-v="loading" aria-pressed="false">Loading</button><button type="button" data-v="empty" aria-pressed="false">Empty</button><button type="button" data-v="error" aria-pressed="false">Error</button></div></div>
+    <div class="ctl"><span>Extras</span><div class="seg" id="ctl-extra"><button type="button" data-v="kb" aria-pressed="false">Keyboard order</button><button type="button" data-v="bday" aria-pressed="false">Birthday moment</button></div></div>
+  </div>
+
+  <div class="frame" id="frame">
+    <div class="app">
+      <aside class="side" id="side" aria-label="Main menu"></aside>
+      <div class="main">
+        <header class="top">
+          <button class="iconbtn mob" type="button" aria-label="Open menu" id="mob-menu"></button>
+          <nav class="crumb" aria-label="Breadcrumb">Home</nav>
+          <div class="right">
+            <span class="live" id="live"></span>
+            <button class="iconbtn" type="button" id="bell" aria-label="Notifications, 3 unread"></button>
+            <button class="iconbtn" type="button" id="themebtn" aria-label="Switch to dark theme"></button>
+          </div>
+        </header>
+        <main class="content view" id="view" aria-labelledby="hello-h"></main>
+        <div class="dock" id="dock" aria-label="Your day"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <section class="wide">
+      <h2>Who uses Home, and what they need</h2>
+      <div class="tw"><table class="nt">
+        <thead><tr><th>Person</th><th>Top jobs on Home (most often first)</th><th>How often</th><th>Where it is now</th></tr></thead>
+        <tbody>
+          <tr><td><b>Employee</b><br><span class="sm">Amit, Neha, Sara</span></td><td>1. Check in / check out<br>2. Fix what was sent back, confirm things (timesheet, laptop, missed check-out, announcement)<br>3. Apply leave or WFH, log timesheet, claim expense<br>4. See my week and leave left<br>5. See celebrations, kudos, news</td><td>1–4 times a day<br>a few times a week<br>weekly<br>weekly<br>casual</td><td>Your day (top, and the bottom bar on phone)<br>Needs you (2nd)<br>Quick actions (3rd)<br>My week, Leave balance<br>Right column / end</td></tr>
+          <tr><td><b>Manager / lead</b><br><span class="sm">Priya, Karan, Ravi, Vikram</span></td><td>1. Approve what waits for me (leave, timesheets, corrections)<br>2. Everything an employee does<br>3. Know who in my team is in or off</td><td>daily<br>daily<br>daily</td><td>Needs you: "Waiting for your approval" first<br>Same as employee<br>Team today (proposal, Q1)</td></tr>
+          <tr><td><b>HR / Company Admin</b><br><span class="sm">Hema, Bhanu</span></td><td>1. Approvals across modules<br>2. Who is in, off, not in yet today<br>3. Add people, post news, open reports<br>4. Watch probation, notice, joiners, departments<br>5. Their own employee jobs</td><td>daily<br>daily<br>weekly<br>weekly<br>daily</td><td>Needs you<br>Company today + Who's off<br>Quick actions<br>Workforce<br>Your day</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+    <section>
+      <h2>What changed and why</h2>
+      <ul>
+        <li><b>The top answers "what now?"</b> Your day, then everything that needs you in one list, then quick actions. Before, the top was a picture with a greeting.</li>
+        <li><b>One list for "needs you".</b> Approvals and your own to-dos sit together, most urgent first. Each row says why it matters and has one clear button.</li>
+        <li><b>One place per number.</b> "Waiting for you" is only the count on that list. It is no longer repeated in the hero and a card.</li>
+        <li><b>One Quick actions list.</b> Quick actions, Admin shortcuts and Make it yours become one list. The 6 most-used are tiles. "All shortcuts" shows the rest. Every link stays.</li>
+        <li><b>Plain words and numbers.</b> "5 of 8 days left" instead of rings. My week is a real table that screen readers can read.</li>
+        <li><b>Phone first.</b> Same order as desktop. The check-in button sits in a bar at the bottom, in thumb reach.</li>
+        <li><b>Calm look.</b> No sky, glass, glow or tilt. Colour is used for status and the main action only.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Accessibility built in</h2>
+      <div class="tw"><table class="nt">
+        <thead><tr><th>Rule</th><th>How</th></tr></thead>
+        <tbody>
+          <tr><td>Contrast (WCAG 2.2 AA)</td><td>Checked with the WCAG formula. Body text 17.9:1 light / 15.1:1 dark. Secondary text 7.8:1 / 9.3:1. Small grey text 5.4:1 / 6.8:1. Main colour 6.8:1 / 7.3:1. Status colours 5.6–9.9:1. Control borders 3.1:1 / 3.6:1.</td></tr>
+          <tr><td>Text size</td><td>15 px body on desktop, 16 px on phone, nothing under 13 px. Works with the existing text-size setting.</td></tr>
+          <tr><td>Focus</td><td>3 px ring with a 2 px gap on every control. Try Tab, or turn on "Keyboard order".</td></tr>
+          <tr><td>Targets</td><td>40 px controls on desktop, 44–48 px on phone.</td></tr>
+          <tr><td>Status</td><td>Always an icon and a word ("On leave", "11 min late"). Colour is extra.</td></tr>
+          <tr><td>Motion</td><td>Lively / Calm / Off and the device "reduce motion" setting. Nothing moves on its own forever.</td></tr>
+          <tr><td>Screen readers</td><td>Landmarks: menu, main, "Your day". One h1, an h2 per block. Buttons say what they act on ("Review 3 leave requests"). Counts and toasts are announced (live region). Loading blocks are marked busy.</td></tr>
+          <tr><td>Links</td><td>Text links are underlined, so they don't depend on colour.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+    <section>
+      <h2>Try the interactions</h2>
+      <ul>
+        <li><b>Check out:</b> it's before 18:30, so a short "early check-out" dialog asks for a reason (as today). Esc or Cancel closes it. After that, Your day changes and a toast confirms.</li>
+        <li><b>Review / Fix / Confirm:</b> opens the right page (here a toast says which).</li>
+        <li><b>Data switch:</b> shows loading, empty and error states for "Needs you" and the today blocks. "Try again" reloads.</li>
+        <li><b>Coming up tabs:</b> click, or use the arrow keys.</li>
+        <li><b>All shortcuts</b> and <b>This week</b> open and close in place.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Questions for you</h2>
+      <ol>
+        <li><b>Team today for managers.</b> Should team leads and managers see who in their team is in, on leave or not in yet on Home (dashed box in the Manager view)? This needs a small data change.</li>
+        <li><b>Moving cards.</b> You liked the moving Celebrations and Kudos cards. Moving content is hard to read for some people. Keep them still (my suggestion), or keep moving with a Pause button?</li>
+        <li><b>Sky picture and moments.</b> The sky picture goes away. Moments (birthday, festivals) become one short line you can close. OK?</li>
+        <li><b>Approve on Home.</b> Do you want to approve or decline simple requests right in the "Needs you" list, without opening the page? This would be a new feature.</li>
+        <li><b>Font.</b> Public Sans is used for easier reading (clear letters and numbers). OK as the default? People can still pick fonts later (phase 3).</li>
+      </ol>
+    </section>
+    <section class="wide">
+      <h2>Review scores</h2>
+      <div class="tw"><table class="nt">
+        <thead><tr><th>Area</th><th class="r">Current Home</th><th class="r">This concept</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>Clarity ("what now?")</td><td class="r">4</td><td class="r">9</td><td>Your day → Needs you → Quick actions, in that order on every size</td></tr>
+          <tr><td>Usability</td><td class="r">6</td><td class="r">9</td><td>One button per item, one place per number, bottom check-in bar on phone</td></tr>
+          <tr><td>Accessibility</td><td class="r">5</td><td class="r">9</td><td>AA contrast both themes, icon + word status, 44 px targets, labels, focus ring</td></tr>
+          <tr><td>Information hierarchy</td><td class="r">4</td><td class="r">8</td><td>Daily things top, weekly things lower</td></tr>
+          <tr><td>Enterprise quality</td><td class="r">5</td><td class="r">8</td><td>Calm, consistent, dense where needed</td></tr>
+          <tr><td>Premium feel</td><td class="r">5</td><td class="r">7</td><td>Quality comes from order and type, not effects</td></tr>
+          <tr><td>Visual identity / distinctiveness</td><td class="r">3</td><td class="r">6</td><td>Identity comes from behaviour (one list, plain words). It looks less unusual than Roster.</td></tr>
+          <tr><td>Consistency</td><td class="r">5</td><td class="r">8</td><td>One button set, one status style, one panel style</td></tr>
+          <tr><td>Motion quality</td><td class="r">5</td><td class="r">8</td><td>Motion only shows a change: arrival, progress, done, toast</td></tr>
+          <tr><td>AI-generated feel <span class="sm">(lower is better)</span></td><td class="r">8</td><td class="r">3</td><td>No gradient hero, glass or glow. Panels are still rounded boxes.</td></tr>
+          <tr><td>Visual noise <span class="sm">(lower is better)</span></td><td class="r">7</td><td class="r">3</td><td>~15 cards became about 8 clear blocks</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+  </div>
+</div>
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  // ── Icons ───────────────────────────────────────────────
+  const c = (x, y, r) => `M${x - r} ${y}a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0`;
+  const P = {
+    home: 'M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z',
+    user: c(12, 8, 4) + 'M4 21c0-4 4-6 8-6s8 2 8 6',
+    chart: 'M4 20V10M10 20V4M16 20v-7M2 20h20',
+    contact: 'M3 5h18v14H3zM13 9h5M13 13h5' + c(8, 10, 2) + 'M5.5 16c.6-1.4 1.5-2 2.5-2s1.9.6 2.5 2',
+    users: c(9, 7, 4) + 'M2 21c0-3.5 3-6 7-6s7 2.5 7 6M16 3.5a4 4 0 0 1 0 7M18 15c2 .6 4 2.4 4 6',
+    network: 'M9 3h6v6H9zM2 15h6v6H2zM16 15h6v6h-6zM12 9v3M5 15v-3h14v3',
+    megaphone: 'M3 10v4h4l7 5V5L7 10zM18 9a4 4 0 0 1 0 6',
+    heart: 'M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z',
+    folder: 'M3 6h6l2 2h10v11H3z',
+    timer: 'M10 2h4M12 14l3-3' + c(12, 14, 8),
+    receipt: 'M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6',
+    clipcheck: 'M8 4h8v3H8zM6 5H4v16h16V5h-2M9 14l2 2 4-4',
+    wallet: 'M3 7h18v12H3zM3 7l3-3h12v3M16 13h2',
+    tag: 'M3 3h8l10 10-8 8L3 11zM7.5 7.5h.01',
+    package: 'M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10',
+    drive: 'M2 13h20v6H2zM5 13l3-8h8l3 8M6 16h.01',
+    lifebuoy: c(12, 12, 9) + c(12, 12, 4) + 'M5.6 5.6l3.6 3.6M14.8 14.8l3.6 3.6M18.4 5.6l-3.6 3.6M9.2 14.8l-3.6 3.6',
+    headset: 'M4 15v-3a8 8 0 0 1 16 0v3M4 14h3v6H4zM17 14h3v6h-3z',
+    calcheck: 'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4M9 15l2 2 4-4',
+    plane: 'M21 4 3 11l7 3 3 7zM10 14 21 4',
+    calclock: 'M3 5h18v5M3 5v16h8M3 10h18M8 3v4M16 3v4M17 15v2.5l1.5 1' + c(17, 17, 5),
+    calrange: 'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4M7 14h4M13 17h4',
+    cal: 'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4',
+    clock: c(12, 12, 9) + 'M12 7v5l3 2',
+    shield: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z',
+    usercog: c(9, 7, 4) + 'M2 21c0-3.5 3-6 7-6' + c(18, 18, 3),
+    scan: 'M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5M17 17l-2.5-2.5' + c(11, 11, 4),
+    image: 'M3 4h18v16H3zM21 16l-5-5-9 9' + c(8.5, 9.5, 1.5),
+    palette: 'M12 21a9 9 0 1 1 9-9c0 2-1.5 3-3 3h-2a2 2 0 0 0-1 3.7c.6.5.4 2.3-3 2.3zM7.5 11h.01M10 7h.01M15 7h.01',
+    swap: 'M4 8h15l-3-3M20 16H5l3 3',
+    sliders: 'M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1M15 4v4M9 10v4M17 16v4',
+    bell: 'M6 16v-5a6 6 0 0 1 12 0v5l2 2H4zM10 21h4',
+    sun: c(12, 12, 4) + 'M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4',
+    moon: 'M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z',
+    menu: 'M4 6h16M4 12h16M4 18h16',
+    plus: 'M12 5v14M5 12h14',
+    out: 'M15 4h4v16h-4M10 8l-4 4 4 4M6 12h11',
+    inn: 'M9 4H5v16h4M14 8l4 4-4 4M18 12H7',
+    check: c(12, 12, 9) + 'M8 12l3 3 5-6',
+    alert: 'M12 3 2 20h20zM12 10v4M12 17h.01',
+    info: c(12, 12, 9) + 'M12 11v5M12 8h.01',
+    chev: 'M9 6l6 6-6 6',
+    x: 'M6 6l12 12M18 6 6 18',
+    cake: 'M4 21h16v-8H4zM4 16c2 1 4 1 6 0s4-1 6 0 4 1 4 0M12 13V9M12 6v.01',
+    award: c(12, 9, 6) + 'M8.5 14 7 22l5-3 5 3-1.5-8',
+    sparkle: 'M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18',
+    wifi: 'M2 9a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 19.5h.01',
+    pin: 'M12 17v5M8 3h8l-1 6 3 3v2H6v-2l3-3z',
+    eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z' + c(12, 12, 3),
+    refresh: 'M20 11a8 8 0 0 0-14.5-4.5L4 8M4 4v4h4M4 13a8 8 0 0 0 14.5 4.5L20 16M20 20v-4h-4',
+    door: 'M5 21V4h11v17M16 4l3 2v15M12 12h.01M3 21h18',
+  };
+  const ic = (n) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${P[n]}"/></svg>`;
+
+  // ── Demo data: aakash-portal, Tue 6 Oct 2026, 10:42 IST ─
+  const NAV = {
+    emp: [
+      ['Overview', [['home', 'Home', 0, 1], ['user', 'My profile'], ['contact', 'People']]],
+      ['Organization', [['network', 'Organisation']]],
+      ['Engagement', [['megaphone', 'Announcements', 1], ['heart', 'Kudos']]],
+      ['Work', [['folder', 'Projects'], ['timer', 'My timesheet']]],
+      ['Expenses', [['receipt', 'My expenses']]],
+      ['Assets', [['package', 'My assets']]],
+      ['Helpdesk', [['lifebuoy', 'My tickets']]],
+      ['Time', [['calcheck', 'My attendance'], ['plane', 'My leave'], ['calrange', 'Who’s off'], ['cal', 'Holidays']]],
+      ['Settings', [['swap', 'Delegation'], ['sliders', 'Preferences']]],
+    ],
+    mgr: [
+      ['Overview', [['home', 'Home', 0, 1], ['user', 'My profile'], ['chart', 'Reports & analytics'], ['contact', 'People']]],
+      ['Organization', [['network', 'Organisation']]],
+      ['Engagement', [['megaphone', 'Announcements', 1], ['heart', 'Kudos']]],
+      ['Work', [['folder', 'Projects'], ['timer', 'My timesheet'], ['clipcheck', 'Timesheet approvals', 2]]],
+      ['Expenses', [['receipt', 'My expenses'], ['clipcheck', 'Expense approvals']]],
+      ['Assets', [['package', 'My assets']]],
+      ['Helpdesk', [['lifebuoy', 'My tickets']]],
+      ['Time', [['calcheck', 'My attendance'], ['users', 'Team attendance'], ['clipcheck', 'Attendance approvals', 1], ['plane', 'My leave'], ['calclock', 'Leave approvals', 1], ['calrange', 'Who’s off'], ['cal', 'Holidays']]],
+      ['Settings', [['swap', 'Delegation'], ['sliders', 'Preferences']]],
+    ],
+    admin: [
+      ['Overview', [['home', 'Home', 0, 1], ['user', 'My profile'], ['chart', 'Reports & analytics'], ['contact', 'People']]],
+      ['Organization', [['users', 'Employees'], ['network', 'Organisation']]],
+      ['Engagement', [['megaphone', 'Announcements', 1], ['heart', 'Kudos']]],
+      ['Work', [['folder', 'Projects'], ['timer', 'My timesheet']]],
+      ['Expenses', [['receipt', 'My expenses'], ['clipcheck', 'Expense approvals', 4]]],
+      ['Assets', [['package', 'My assets'], ['package', 'Asset requests', 1], ['drive', 'Asset register']]],
+      ['Helpdesk', [['lifebuoy', 'My tickets']]],
+      ['Time', [['calcheck', 'My attendance'], ['users', 'Team attendance'], ['clipcheck', 'Attendance approvals', 2], ['plane', 'My leave'], ['calclock', 'Leave approvals', 3], ['calrange', 'Who’s off'], ['cal', 'Holidays'], ['clock', 'Attendance settings'], ['tag', 'Leave types']]],
+      ['Administration', [['usercog', 'Users'], ['shield', 'Roles & permissions'], ['scan', 'Access explorer']]],
+      ['Settings', [['image', 'Branding'], ['palette', 'Theme'], ['swap', 'Delegation'], ['sliders', 'Preferences']]],
+    ],
+  };
+
+  const ROLES = {
+    emp: {
+      first: 'Amit', full: 'Amit Verma', ini: 'AV', job: 'Software Engineer', place: 'Engineering · Bengaluru HQ',
+      inAt: '09:41', worked: 61, late: 11,
+      approvals: [],
+      todos: [
+        ['bad', 'alert', 'Your timesheet was sent back', 'Week of 28 Sep · Priya: “Split Apollo hours by task”', 'Sent back', 'Fix timesheet', 'My timesheet'],
+        ['info', 'package', 'Confirm you received your laptop', 'AAK-LT-014 · Dell Latitude 7440', '', 'Confirm', 'My assets'],
+      ],
+      quick: [['plane', 'Apply leave'], ['home', 'Work from home'], ['timer', 'Log timesheet'], ['receipt', 'Claim expense'], ['heart', 'Give kudos'], ['lifebuoy', 'Get help']],
+      more: [['For you', ['My profile', 'My attendance', 'My assets', 'People', 'Org chart', 'Projects']], ['Make it yours', ['Preferences']]],
+      reportsTo: ['PS', 'Priya Sharma', 'Engineering Lead'], reports: [],
+      projects: [['Apollo', 'Acme Retail · lead Priya Sharma', 80], ['Zeus', 'Northwind Bank · manager Ravi Kumar', 20]],
+      week: [['Mon 5 Oct', 'ok', 'Present', '09:28', '18:41', '8h 31m', '2 sessions'], ['Tue 6 Oct', 'warn', 'Late 11 min', '09:41', '—', '1h 01m', 'working', 1]],
+    },
+    mgr: {
+      first: 'Priya', full: 'Priya Sharma', ini: 'PS', job: 'Engineering Lead', place: 'Engineering · Bengaluru HQ',
+      inAt: '09:31', worked: 71, late: 1,
+      approvals: [
+        ['pri', 'calclock', 'Leave requests', '1 request · Sara Khan, 12–13 Oct', 'Review', 'Leave approvals', 'Review 1 leave request'],
+        ['pri', 'timer', 'Timesheets', '2 weeks to check · Amit Verma, Neha Gupta', 'Review', 'Timesheet approvals', 'Review 2 timesheets'],
+        ['pri', 'clipcheck', 'Attendance corrections', '1 correction · Neha Gupta, 1 Oct', 'Review', 'Attendance approvals', 'Review 1 attendance correction'],
+      ],
+      todos: [['muted', 'megaphone', 'Confirm you’ve read an announcement', 'Diwali office hours and gifting', '', 'Read', 'Announcements']],
+      quick: [['plane', 'Apply leave'], ['timer', 'Log timesheet'], ['calclock', 'Leave approvals'], ['clipcheck', 'Attendance approvals'], ['home', 'Work from home'], ['heart', 'Give kudos']],
+      more: [['For you', ['Claim expense', 'Get help', 'My profile', 'My attendance', 'My assets', 'People', 'Org chart', 'Projects']], ['Make it yours', ['Preferences']]],
+      reportsTo: ['RK', 'Ravi Kumar', 'Engineering Manager'], reports: [['AV', 'Amit Verma'], ['NG', 'Neha Gupta']],
+      projects: [['Apollo', 'Acme Retail · you lead the team', 100]],
+      week: [['Mon 5 Oct', 'ok', 'Present', '09:22', '18:35', '9h 13m', ''], ['Tue 6 Oct', 'warn', 'Late 1 min', '09:31', '—', '1h 11m', 'working', 1]],
+    },
+    admin: {
+      first: 'Hema', full: 'Hema Iyer', ini: 'HI', job: 'HR Manager', place: 'Human Resources · Bengaluru HQ',
+      inAt: '09:20', worked: 82, late: 0,
+      approvals: [
+        ['pri', 'receipt', 'Expense claims', '4 claims at the HR step · ₹18,640 in total', 'Review', 'Expense approvals', 'Review 4 expense claims'],
+        ['pri', 'calclock', 'Leave requests', '3 requests', 'Review', 'Leave approvals', 'Review 3 leave requests'],
+        ['pri', 'clipcheck', 'Attendance corrections', '2 corrections', 'Review', 'Attendance approvals', 'Review 2 attendance corrections'],
+        ['pri', 'package', 'Asset requests', '1 request at the HR step', 'Review', 'Asset requests', 'Review 1 asset request'],
+      ],
+      todos: [
+        ['warn', 'door', 'You missed a check-out', 'Thursday 1 Oct · send a correction', 'Missed', 'Fix', 'My attendance'],
+        ['muted', 'megaphone', 'Confirm you’ve read an announcement', 'Diwali office hours and gifting', '', 'Read', 'Announcements'],
+      ],
+      quick: [['plus', 'Add employee'], ['megaphone', 'Post announcement'], ['plane', 'Apply leave'], ['chart', 'Reports'], ['usercog', 'Invite user'], ['home', 'Work from home']],
+      more: [['For the company', ['Import employees', 'Roles', 'Employees', 'People', 'Org chart', 'Projects', 'Leave approvals', 'Attendance approvals']], ['For you', ['My profile', 'My attendance', 'Claim expense', 'My assets', 'Get help', 'Give kudos', 'Log timesheet']], ['Make it yours', ['Theme', 'Branding', 'Preferences']]],
+      reportsTo: ['VR', 'Vikram Rao', 'Head of Operations'], reports: [['DN', 'Divya Nair']],
+      projects: [],
+      week: [['Mon 5 Oct', 'ok', 'Present', '09:18', '18:36', '9h 18m', ''], ['Tue 6 Oct', 'ok', 'Present', '09:20', '—', '1h 22m', 'working', 1]],
+    },
+  };
+
+  const UP = {
+    Birthdays: [['RK', 'Ravi Kumar', 'Engineering', 'Wed 14 Oct'], ['DN', 'Divya Nair', 'Human Resources', 'Thu 22 Oct'], ['KM', 'Karan Mehta', 'Engineering', 'Tue 3 Nov']],
+    Anniversaries: [['VR', 'Vikram Rao', '6 years', 'Mon 19 Oct'], ['NG', 'Neha Gupta', '2 years', 'Wed 28 Oct']],
+    'New joiners': [['KP', 'Kavya Pillai', 'Sales Executive · Mumbai', 'Joined 1 Oct']],
+    Holidays: [['', 'Dussehra', 'Company holiday', 'Tue 20 Oct'], ['', 'Kannada Rajyotsava', 'Bengaluru office', 'Sun 1 Nov']],
+  };
+
+  // ── State ───────────────────────────────────────────────
+  const state = { role: 'emp', day: 'working', data: 'ok', up: 'Birthdays', more: false, week: false, kb: false, bday: false, done: new Set(), checkoutAt: '10:43' };
+
+  // ── Helpers ─────────────────────────────────────────────
+  const hm = (m) => `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m`;
+  const av = (i, cls = '') => `<span class="av ${cls}" aria-hidden="true">${i || ic('cal')}</span>`;
+  const st = (tone, icon, word) => `<span class="st ${tone}">${ic(icon)}${word}</span>`;
+  const panel = (id, title, count, right, body, opts = {}) => `<section class="panel ${opts.cls || ''} ${opts.order || ''}" aria-labelledby="${id}-h" ${opts.busy ? 'aria-busy="true"' : ''}>
+      <div class="ph"><h2 id="${id}-h">${title}</h2>${count != null ? `<span class="count ${opts.hot ? 'hot' : ''}" aria-label="${count} items">${count}</span>` : ''}${opts.hint ? `<span class="hint">${opts.hint}</span>` : ''}${right ? `<span class="right">${right}</span>` : ''}</div>
+      <div class="pb">${body}</div></section>`;
+  const go = (label, page, aria) => `<button type="button" class="btn small act" data-go="${page}" ${aria ? `aria-label="${aria}"` : ''}>${label}</button>`;
+  const tlink = (t, page) => `<button type="button" class="tlink" data-go="${page || t}">${t}</button>`;
+
+  // ── Blocks ──────────────────────────────────────────────
+  function yourDay(r) {
+    const s = state.day;
+    let icoCls, icon, title, meta, progress = '', actions;
+    if (s === 'out') {
+      icoCls = 'muted'; icon = 'clock'; title = 'You haven’t checked in yet';
+      meta = `<span>Shift 09:30 – 18:30</span><span>It’s 10:42</span>`;
+      actions = `<button type="button" class="btn primary" data-act="checkin">${ic('inn')}Check in</button>`;
+    } else if (s === 'working') {
+      icoCls = 'ok'; icon = 'check'; title = 'You’re checked in';
+      meta = `<span>Since ${r.inAt}</span>${r.late ? st('warn', 'alert', r.late + ' min late') : st('ok', 'check', 'On time')}`;
+      progress = `<div class="progress"><div class="track" role="progressbar" aria-label="Hours worked today" aria-valuemin="0" aria-valuemax="540" aria-valuenow="${r.worked}" aria-valuetext="${hm(r.worked)} of 9 hours"><div class="fill grow" style="width:${(r.worked / 540) * 100}%"></div></div><div class="lbl"><span>${hm(r.worked)} worked</span><span>of 9h 00m · shift ends 18:30</span></div></div>`;
+      actions = `<button type="button" class="btn" data-act="checkout">${ic('out')}Check out</button>`;
+    } else {
+      icoCls = 'info'; icon = 'door'; title = 'You’ve checked out';
+      meta = `<span>${r.inAt} – ${state.checkoutAt}</span><span>${hm(r.worked + 1)} today</span>`;
+      actions = `<button type="button" class="btn" data-act="checkin">${ic('inn')}Check in again</button>`;
+    }
+    const weekRows = r.week.concat([['Wed 7 Oct', 'muted', 'Upcoming', '', '', '', ''], ['Thu 8 Oct', 'muted', 'Upcoming', '', '', '', ''], ['Fri 9 Oct', 'muted', 'Upcoming', '', '', '', '']]);
+    const weekTable = myWeekTable(weekRows);
+    const showWeekInline = state.role === 'admin';
+    return `<section class="panel o1" aria-labelledby="day-h">
+        <div class="day"><div class="state"><span class="ico ${icoCls}">${ic(icon)}</span><div style="min-width:0;flex:1"><h2 id="day-h">${title}</h2><p class="meta">${meta}</p>${progress}</div></div><div class="do">${actions}</div></div>
+        ${showWeekInline ? `<div class="disclose"><button type="button" aria-expanded="${state.week}" aria-controls="wk-inner" data-act="week">${ic('chev')}My week · 5–11 Oct</button><div class="inner" id="wk-inner" ${state.week ? '' : 'hidden'}>${weekTable}</div></div>` : ''}
+      </section>`;
+  }
+
+  function dock(r) {
+    const s = state.day;
+    if (s === 'out') return `<span class="txt"><b>Not checked in</b><span>Shift 09:30 – 18:30</span></span><button type="button" class="btn primary" data-act="checkin">${ic('inn')}Check in</button>`;
+    if (s === 'working') return `<span class="txt"><b>Checked in · ${r.inAt}</b><span>${hm(r.worked)} worked</span></span><button type="button" class="btn" data-act="checkout">${ic('out')}Check out</button>`;
+    return `<span class="txt"><b>Checked out · ${state.checkoutAt}</b><span>${hm(r.worked + 1)} today</span></span><button type="button" class="btn" data-act="checkin">Check in again</button>`;
+  }
+
+  function myWeekTable(rows) {
+    return `<div class="tw"><table class="tbl"><caption class="sr">My attendance, 5 to 11 October</caption>
+      <thead><tr><th scope="col">Day</th><th scope="col">Status</th><th scope="col" class="r">In</th><th scope="col" class="r">Out</th><th scope="col" class="r">Worked</th></tr></thead><tbody>
+      ${rows.map((w) => `<tr class="${w[7] ? 'today' : ''}"><td>${w[0]}${w[7] ? ' <span class="sr">(today)</span>' : ''}</td><td>${w[1] === 'muted' ? `<span class="dim">${w[2]}</span>` : st(w[1], w[1] === 'ok' ? 'check' : 'alert', w[2])}</td><td class="r">${w[3] || '<span class="dim">—</span>'}</td><td class="r">${w[4] && w[4] !== '—' ? w[4] : w[6] === 'working' ? '<span class="dim">working</span>' : '<span class="dim">—</span>'}</td><td class="r">${w[5] || '<span class="dim">—</span>'}${w[6] && w[6] !== 'working' ? `<br><span class="dim" style="font-size:13px">${w[6]}</span>` : ''}</td></tr>`).join('')}
+      <tr><td class="dim">Sat–Sun</td><td colspan="4" class="dim">Weekly off</td></tr>
+      </tbody></table></div>`;
+  }
+
+  function needsYou(r) {
+    const aps = r.approvals.filter((a) => !state.done.has(a[2]));
+    const tds = r.todos.filter((t) => !state.done.has(t[2]));
+    const total = aps.length ? aps.reduce((n, a) => n + parseInt(a[3], 10), 0) + tds.length : tds.length;
+    let body;
+    if (state.data === 'loading') {
+      body = `<div aria-hidden="true">${[0, 1, 2].map(() => `<div class="skrow"><span class="sk c"></span><span><span class="sk" style="width:60%"></span><span class="sk" style="width:40%;margin-top:8px;height:12px"></span></span><span class="sk" style="height:36px"></span></div>`).join('')}</div><span class="sr">Loading what needs you</span>`;
+    } else if (state.data === 'error') {
+      body = `<div class="error" role="alert">${ic('alert')}<div><b>We couldn’t load your list.</b><span>Your approvals and to-dos are safe. Check your connection and try again.</span><button type="button" class="btn small" data-act="retry">${ic('refresh')}Try again</button></div></div>`;
+    } else if (state.data === 'empty' || (!aps.length && !tds.length)) {
+      body = `<div class="empty">${ic('check')}<div><b>You’re all caught up.</b><span>New approvals and to-dos will show here.</span></div></div>`;
+    } else {
+      const row = (x, isAp) => `<li class="item" data-key="${x[2]}"><span class="ic ${x[0]}">${ic(x[1])}</span><span class="t"><b>${x[2]}</b><span>${x[3]}</span>${x[4] && !isAp ? `<span class="why ${x[0]}">${x[4]}</span>` : ''}</span>${go(isAp ? x[4] : x[5], isAp ? x[5] : x[6], isAp ? x[6] : `${x[5]}: ${x[2]}`)}</li>`;
+      body = '';
+      if (aps.length) body += `<p class="groupl" id="ap-l">Waiting for your approval</p><ul class="list" aria-labelledby="ap-l">${aps.map((a) => row(a, true)).join('')}</ul>`;
+      if (tds.length) body += `<p class="groupl" id="td-l">Your to-dos</p><ul class="list" aria-labelledby="td-l">${tds.map((t) => row(t, false)).join('')}</ul>`;
+    }
+    const showCount = state.data === 'ok' && (aps.length || tds.length);
+    return panel('needs', 'Needs you', showCount ? total : null, '', body, { hot: true, order: 'o2', busy: state.data === 'loading', hint: showCount ? (aps.length ? 'Most urgent first' : '') : '' });
+  }
+
+  function quick(r) {
+    const tiles = `<div class="qa">${r.quick.map(([i, t]) => `<a href="#" data-go="${t}">${ic(i)}<span>${t}</span></a>`).join('')}</div>`;
+    const count = r.more.reduce((n, g) => n + g[1].length, 0);
+    const more = `<div class="more"><button type="button" class="tlink" aria-expanded="${state.more}" aria-controls="more-list" data-act="more">${state.more ? 'Hide shortcuts' : `All shortcuts (${count})`}</button><div id="more-list" ${state.more ? '' : 'hidden'}>${r.more.map(([g, items]) => `<h3>${g}</h3><ul>${items.map((t) => `<li><a href="#" data-go="${t}">${t}</a></li>`).join('')}</ul>`).join('')}</div></div>`;
+    return panel('quick', 'Quick actions', null, '', tiles + more, { order: 'o3' });
+  }
+
+  function countsBlock(rows, total, totalLabel) {
+    if (state.data === 'loading') return `<div aria-hidden="true"><span class="sk" style="width:40%;height:26px"></span>${[0, 1, 2, 3].map(() => `<span class="sk" style="margin-top:14px"></span>`).join('')}</div><span class="sr">Loading</span>`;
+    if (state.data === 'error') return `<div class="error" role="alert">${ic('alert')}<div><b>We couldn’t load today’s attendance.</b><span>Try again in a moment.</span><button type="button" class="btn small" data-act="retry">${ic('refresh')}Try again</button></div></div>`;
+    if (state.data === 'empty') return `<div class="empty">${ic('cal')}<div><b>Not a working day.</b><span>Nobody is expected in today.</span></div></div>`;
+    return `<div class="sum"><b>${rows[0][3]}</b><span>of ${total} ${totalLabel}</span></div>
+      <div class="counts">${rows.map(([tone, icon, label, n, fill]) => `<div class="crow">${st(tone, icon, label)}<span class="bar2" aria-hidden="true"><i class="grow ${fill}" style="width:${(n / total) * 100}%"></i></span><span class="n">${n}</span></div>`).join('')}</div>`;
+  }
+
+  function companyToday() {
+    const rows = [['ok', 'check', 'In office', 11, 'fill-ok'], ['info', 'home', 'Work from home', 2, 'fill-info'], ['warn', 'plane', 'On leave', 2, 'fill-warn'], ['muted', 'clock', 'Not in yet', 1, 'fill-muted']];
+    const right = `<span class="vs" role="group" aria-label="Show as"><button type="button" aria-pressed="true">List</button><button type="button" aria-pressed="false">Donut</button></span>`;
+    return panel('co', 'Company today', null, right, countsBlock(rows, 16, 'people are in') + (state.data === 'ok' ? `<p style="margin:14px 0 0">${tlink('See who is in or not', 'Team attendance')}</p>` : ''), { busy: state.data === 'loading' });
+  }
+
+  function teamToday() {
+    const rows = [['ok', 'check', 'In office', 1, 'fill-ok'], ['warn', 'plane', 'On leave', 1, 'fill-warn']];
+    const body = `<p style="margin:0 0 10px;font-size:14px;color:var(--text-2)">Your 2 direct reports. Amit is in since 09:41. Neha is on casual leave until Wed 7 Oct.</p>` + countsBlock(rows, 2, 'people are in').replace('<div class="sum">', '<div class="sum" style="display:none">');
+    return panel('team', 'My team today', null, '<span class="tag">' + ic('info').replace('<svg', '<svg width="14" height="14"') + 'Proposal · Q1</span>', body, { cls: 'proposal' });
+  }
+
+  function whosOff() {
+    const rows = [
+      ['NG', 'Neha Gupta', 'warn', 'plane', 'Casual leave', 'Mon 5 – Wed 7 Oct'],
+      ['AN', 'Arjun Nair', 'warn', 'plane', 'Sick leave', 'Today'],
+      ['KM', 'Karan Mehta', 'info', 'home', 'Work from home', 'Today'],
+      ['RD', 'Rahul Das', 'info', 'home', 'Work from home', 'Today'],
+      ['PS', 'Priya Sharma', 'warn', 'plane', 'Earned leave', 'Fri 9 Oct'],
+    ];
+    const right = `<span class="vs" role="group" aria-label="Show as"><button type="button" aria-pressed="true">List</button><button type="button" aria-pressed="false">Calendar</button></span>`;
+    const body = state.data === 'empty' ? '<div class="empty">'+ic('check')+'<div><b>No one is off this week.</b><span>Approved leave and WFH days will show here.</span></div></div>' : state.data !== 'ok' ? countsBlock([], 1, '') : `<div>${rows.map((x) => `<div class="prow">${av(x[0], 'sm')}<span class="t"><b>${x[1]}</b>${st(x[2], x[3], x[4])}</span><span class="when">${x[5]}</span></div>`).join('')}</div><p style="margin:8px 0 0">${tlink('Open calendar', 'Who’s off')}</p>`;
+    return panel('off', 'Who’s off this week', state.data === 'ok' ? 5 : null, right, body);
+  }
+
+  function workforce() {
+    const depts = [['Engineering', 8], ['Operations', 2], ['Human Resources', 2], ['Sales', 3], ['Finance', 1]];
+    const dept = `<div class="counts">${depts.map(([d, n]) => `<div class="crow"><span style="font-size:14px;font-weight:600">${d}</span><span class="bar2" aria-hidden="true"><i class="grow fill-pri" style="width:${(n / 8) * 100}%"></i></span><span class="n">${n}</span></div>`).join('')}</div>`;
+    const jl = `<div class="jt"><div><b>+1</b><span>joined in October<br>Kavya Pillai</span></div><div><b>0</b><span>left in October</span></div><div><b>16</b><span>people now<br>+5 in 12 months</span></div></div><p style="margin:10px 0 0">${tlink('Joiners & leavers report', 'Reports')}</p>`;
+    const prob = `<div>${[['DN', 'Divya Nair', 'Probation ends', 'Thu 15 Oct', 'warn', 'clock', 'In 9 days'], ['RD', 'Rahul Das', 'Notice period · last day', 'Fri 30 Oct', 'muted', 'door', 'Leaving'], ['KP', 'Kavya Pillai', 'Probation until', '31 Mar 2027', 'muted', 'user', 'New joiner']].map((x) => `<div class="prow">${av(x[0], 'sm')}<span class="t"><b>${x[1]}</b><span>${x[2]} ${x[3]}</span></span>${st(x[4], x[5], x[6])}</div>`).join('')}</div>`;
+    return `<div class="split">${panel('dept', 'People by department', 16, `<span class="vs" role="group" aria-label="Show as"><button type="button" aria-pressed="true">Bars</button><button type="button" aria-pressed="false">Table</button></span>`, dept)}${panel('prob', 'Probation &amp; notice', 3, '', prob)}</div>
+      ${panel('jl', 'Joiners &amp; leavers', null, `<span class="vs" role="group" aria-label="Show as"><button type="button" aria-pressed="true">Summary</button><button type="button" aria-pressed="false">Mirror</button><button type="button" aria-pressed="false">Bridge</button><button type="button" aria-pressed="false">Faces</button></span>`, jl)}`;
+  }
+
+  function leaveBalance() {
+    const b = [['Casual leave', 5, 8, 1], ['Sick leave', 6, 7, 0], ['Earned leave', 3, 12, 0]];
+    const body = `<div class="lb">${b.map(([n, left, tot, pend]) => `<div class="row"><div class="top2"><b>${n}</b><span><strong>${left}</strong> of ${tot} days left</span></div><span class="bar2" role="img" aria-label="${left} of ${tot} days left"><i class="grow" style="width:${(left / tot) * 100}%"></i></span>${pend ? `<span class="note">${ic('clock')}${pend} day waiting for approval</span>` : ''}</div>`).join('')}
+      <div class="row"><div class="top2"><b>Work from home</b><span>No limit</span></div></div></div>`;
+    const right = `<span class="vs" role="group" aria-label="Show as"><button type="button" aria-pressed="true">Bars</button><button type="button" aria-pressed="false">Rings</button><button type="button" aria-pressed="false">Donut</button></span>`;
+    return panel('lb', 'Leave balance', null, right, body + `<p style="margin:12px 0 0;display:flex;gap:16px;flex-wrap:wrap">${tlink('Apply leave')}${tlink('My leave')}</p>`, { hint: '14 days left' });
+  }
+
+  function projects(r) {
+    if (!r.projects.length) return '';
+    const total = r.projects.reduce((n, p) => n + p[2], 0);
+    const body = `<div>${r.projects.map((p) => `<div class="prow" style="display:grid;grid-template-columns:minmax(0,1fr) 56px;gap:6px 12px"><span class="t"><b>${p[0]}</b><span>${p[1]}</span></span><span class="n" style="text-align:right;font-weight:700">${p[2]}%</span><span class="bar2" style="grid-column:1/-1" role="img" aria-label="${p[2]}% of your time"><i class="grow fill-pri" style="width:${p[2]}%"></i></span></div>`).join('')}</div><p style="margin:10px 0 0">${tlink('Open projects', 'Projects')}</p>`;
+    return panel('proj', 'My projects', null, '', body, { hint: `${total}% of your time is planned` });
+  }
+
+  function myWeek(r) {
+    const rows = r.week.concat([['Wed 7 Oct', 'muted', 'Upcoming', '', '', '', ''], ['Thu 8 Oct', 'muted', 'Upcoming', '', '', '', ''], ['Fri 9 Oct', 'muted', 'Upcoming', '', '', '', '']]);
+    const body = state.data === 'loading' || state.data === 'error' ? countsBlock([], 1, '') : myWeekTable(rows);
+    return panel('wk', 'My week', null, tlink('Full calendar', 'My attendance'), body, { hint: '5 – 11 Oct' });
+  }
+
+  function announcements() {
+    const a = [
+      ['Diwali office hours and gifting', 'Hema Iyer · Sun 4 Oct', 'Please confirm you’ve read this', 'Read'],
+      ['New expense limits from 1 November', 'Pooja Reddy · Thu 1 Oct', '', 'Open'],
+      ['Welcome Kavya Pillai to the Mumbai sales team', 'Meena Joshi · Thu 1 Oct', '', 'Open'],
+    ];
+    return panel('ann', 'Announcements', null, tlink('See all', 'Announcements'), `<ul class="list ann">${a.map((x, i) => `<li class="item"><span class="ic ${i === 0 ? 'pri' : 'muted'}">${ic(i === 0 ? 'pin' : 'megaphone')}</span><span class="t"><b>${x[0]}</b><span>${x[1]}${i === 0 ? ' · Pinned' : ''}</span>${x[2] ? `<span class="why warn">${x[2]}</span>` : ''}</span>${go(x[3], 'Announcements', `${x[3]}: ${x[0]}`)}</li>`).join('')}</ul>`, { order: 'o4' });
+  }
+
+  function celebrations() {
+    const rows = [['SK', 'Sara Khan', 'Birthday today', 'cake'], ['PR', 'Pooja Reddy', '3 years at Aakash today', 'award']];
+    return panel('cel', 'Celebrations today', null, '', rows.map((x) => `<div class="prow">${av(x[0])}<span class="t"><b>${x[1]}</b><span>${x[2]}</span></span><button type="button" class="btn small" data-go="Kudos" aria-label="Send wishes to ${x[1]}">${ic('heart')}Wish</button></div>`).join(''));
+  }
+
+  function comingUp() {
+    const keys = Object.keys(UP);
+    const tabs = `<div class="tabs" role="tablist" aria-label="Coming up">${keys.map((k, i) => `<button type="button" role="tab" id="tab-${i}" aria-controls="up-panel" aria-selected="${k === state.up}" tabindex="${k === state.up ? 0 : -1}" data-up="${k}">${k} (${UP[k].length})</button>`).join('')}</div>`;
+    const list = `<div id="up-panel" role="tabpanel" aria-labelledby="tab-${keys.indexOf(state.up)}">${UP[state.up].map((r) => `<div class="prow">${av(r[0], 'sm')}<span class="t"><b>${r[1]}</b><span>${r[2]}</span></span><span class="when">${r[3]}</span></div>`).join('')}</div>`;
+    return panel('up', 'Coming up', null, '', tabs + list, { hint: 'Next 30 days' });
+  }
+
+  function myTeam(r) {
+    return panel('mt', 'My team', null, '', `<div class="prow">${av(r.reportsTo[0], 'sm')}<span class="t"><span style="font-size:13px">Reports to</span><b>${r.reportsTo[1]}</b><span>${r.reportsTo[2]}</span></span></div>${r.reports.length ? `<div class="prow"><span class="t"><span style="font-size:13px">Direct reports (${r.reports.length})</span><b>${r.reports.map((x) => x[1]).join(', ')}</b></span></div>` : ''}`);
+  }
+
+  function kudos() {
+    const k = [
+      ['Priya', 'Amit and Neha', 'Shipped the Apollo release a day early and wrote clear notes for support.', 'Ownership', '2 hours ago'],
+      ['Hema', 'Divya', 'Ran Kavya’s first day on her own. Smooth from start to end.', 'Teamwork', 'Yesterday'],
+      ['Ravi', 'Dev', 'Fixed the build server late at night so the bank demo could go ahead.', 'Above and beyond', 'Fri 2 Oct'],
+    ];
+    return panel('kd', 'Kudos', null, tlink('Give kudos', 'Kudos'), `<div>${k.map((x) => `<div class="kudo"><div class="hd"><b>${x[0]}</b> thanked <b>${x[1]}</b></div><p>${x[2]}</p><div class="ft"><span>${x[3]}</span><span>${x[4]}</span></div></div>`).join('')}</div>`);
+  }
+
+  function view() {
+    const r = ROLES[state.role];
+    const moment = state.bday ? `<div class="moment" role="note">${ic('cake')}<span><b>Happy birthday, ${r.first}!</b> Your team can see it on their Home today.</span><button type="button" class="iconbtn x" aria-label="Hide birthday message" data-act="bday-x">${ic('x')}</button></div>` : '';
+    const hello = `<div class="hello">${moment}<h1 id="hello-h" ${moment ? 'style="margin-top:14px"' : ''}>Good morning, ${r.first}</h1><p>Tuesday 6 October 2026 · ${r.job}, ${r.place}</p></div>`;
+
+    let main = yourDay(r) + needsYou(r);
+    let rest = '';
+    if (state.role === 'admin') rest = `<div class="split o4">${companyToday()}${whosOff()}</div><div class="o4" style="display:grid;gap:inherit">${workforce()}</div>`;
+    if (state.role === 'mgr') rest = `<div class="o4" style="display:grid;gap:inherit">${teamToday()}${myWeek(r)}<div class="split">${leaveBalance()}${projects(r)}</div></div>`;
+    if (state.role === 'emp') rest = `<div class="o4" style="display:grid;gap:inherit">${myWeek(r)}<div class="split">${leaveBalance()}${projects(r)}</div></div>`;
+    main += rest + announcements();
+    const side = quick(r) + `<div class="o5" style="display:grid;gap:inherit">${celebrations()}${comingUp()}${myTeam(r)}${kudos()}</div>`;
+    return hello + `<div class="layout"><div class="col">${main}</div><div class="col">${side}</div></div>`;
+  }
+
+  function sidebar() {
+    const r = ROLES[state.role];
+    return `<div class="org"><span class="mark" aria-hidden="true">AP</span><span><b>Aakash Portal</b><small>HR workspace</small></span></div>
+      <nav class="nav" aria-label="Sections">${NAV[state.role].map(([g, items]) => `<div><p>${g}</p><ul>${items.map(([i, n, ct, cur]) => `<li><a href="#" ${cur ? 'aria-current="page"' : ''} data-go="${n}">${ic(i)}<span>${n}</span>${ct ? `<span class="ct" aria-label="${ct} waiting">${ct}</span>` : ''}</a></li>`).join('')}</ul></div>`).join('')}</nav>
+      <div class="me"><span class="av sm" aria-hidden="true">${r.ini}</span><span><b>${r.full}</b><small>${r.job}</small></span></div>`;
+  }
+
+  // ── Render ──────────────────────────────────────────────
+  const $view = document.getElementById('view');
+  function render(animate = true) {
+    const r = ROLES[state.role];
+    document.getElementById('side').innerHTML = sidebar();
+    $view.innerHTML = view();
+    document.getElementById('dock').innerHTML = dock(r);
+    if (animate) { $view.classList.remove('view'); void $view.offsetWidth; $view.classList.add('view'); }
+    applyKb();
+  }
+  function applyKb() {
+    document.getElementById('frame').classList.toggle('kbshow', state.kb);
+    const els = document.querySelectorAll('#frame a[href], #frame button:not([tabindex="-1"]), #frame [tabindex="0"]');
+    let n = 0;
+    els.forEach((el) => { if (state.kb && el.offsetParent !== null) el.setAttribute('data-kb', ++n); else el.removeAttribute('data-kb'); });
+  }
+
+  // ── Toasts ──────────────────────────────────────────────
+  const $toasts = document.getElementById('toasts');
+  function toast(title, text, tone = '') {
+    const t = document.createElement('div');
+    t.className = 'toast ' + tone;
+    t.innerHTML = `${ic(tone === 'info' ? 'info' : 'check')}<div><b>${title}</b>${text ? `<span>${text}</span>` : ''}</div>`;
+    $toasts.appendChild(t);
+    while ($toasts.children.length > 3) $toasts.firstChild.remove();
+    setTimeout(() => t.remove(), 4500);
+  }
+
+  // ── Early check-out dialog (same flow as today) ─────────
+  let lastFocus = null;
+  function openCheckout() {
+    lastFocus = document.activeElement;
+    const s = document.createElement('div');
+    s.className = 'scrim';
+    s.innerHTML = `<div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-h" aria-describedby="dlg-p">
+      <h2 id="dlg-h">Check out early?</h2><p id="dlg-p">It’s 10:43. Your shift ends at 18:30.</p>
+      <label for="dlg-reason">Reason (optional)</label><textarea id="dlg-reason" placeholder="For example: doctor’s appointment"></textarea><p class="help">You can check in again later today.</p>
+      <div class="foot"><button type="button" class="btn" data-dlg="cancel">Cancel</button><button type="button" class="btn primary" data-dlg="ok">${ic('out')}Check out</button></div></div>`;
+    document.body.appendChild(s);
+    s.querySelector('textarea').focus();
+    const close = () => { s.remove(); lastFocus && lastFocus.focus && lastFocus.focus(); };
+    s.addEventListener('click', (e) => {
+      if (e.target === s || e.target.closest('[data-dlg="cancel"]')) close();
+      const ok = e.target.closest('[data-dlg="ok"]');
+      if (ok) {
+        ok.setAttribute('aria-busy', 'true'); ok.innerHTML = '<span class="spin" aria-hidden="true"></span>Checking out…';
+        setTimeout(() => { s.remove(); state.day = 'done'; syncSeg('ctl-day', 'done'); render(false); toast('Checked out at 10:43', 'Have a good rest of the day.'); const b = document.querySelector('[data-act="checkin"]'); b && b.focus(); }, 650);
+      }
+    });
+    s.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') close();
+      if (e.key === 'Tab') { const f = s.querySelectorAll('textarea, button'); const first = f[0], last = f[f.length - 1]; if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); } }
+    });
+  }
+
+  // ── Events ──────────────────────────────────────────────
+  document.getElementById('frame').addEventListener('click', (e) => {
+    const act = e.target.closest('[data-act]');
+    if (act) {
+      const a = act.dataset.act;
+      if (a === 'checkout') return openCheckout();
+      if (a === 'checkin') {
+        act.setAttribute('aria-busy', 'true'); act.innerHTML = '<span class="spin" aria-hidden="true"></span>Checking in…';
+        return setTimeout(() => { state.day = 'working'; syncSeg('ctl-day', 'working'); render(false); toast('Checked in at 10:43', 'Your day has started.'); }, 650);
+      }
+      if (a === 'more') { state.more = !state.more; render(false); document.querySelector('[data-act="more"]').focus(); return; }
+      if (a === 'week') { state.week = !state.week; render(false); document.querySelector('[data-act="week"]').focus(); return; }
+      if (a === 'retry') { state.data = 'loading'; syncSeg('ctl-data', 'loading'); render(false); return setTimeout(() => { state.data = 'ok'; syncSeg('ctl-data', 'ok'); render(false); toast('Loaded again', ''); }, 900); }
+      if (a === 'bday-x') { state.bday = false; syncExtra(); render(false); return; }
+    }
+    const up = e.target.closest('[data-up]');
+    if (up) { state.up = up.dataset.up; render(false); document.querySelector(`[data-up="${state.up}"]`).focus(); return; }
+    const vb = e.target.closest('.vs button');
+    if (vb) { vb.parentElement.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === vb))); toast('View saved', `Shown as ${vb.textContent}. Your choice is remembered.`, 'info'); return; }
+    const g = e.target.closest('[data-go]');
+    if (g) { e.preventDefault(); toast(`Opens ${g.dataset.go}`, 'In the real app this goes to that page.', 'info'); }
+  });
+  // Arrow keys move between Coming up tabs
+  document.getElementById('frame').addEventListener('keydown', (e) => {
+    const t = e.target.closest('[role="tab"]');
+    if (!t || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+    e.preventDefault();
+    const keys = Object.keys(UP); let i = keys.indexOf(state.up);
+    i = e.key === 'Home' ? 0 : e.key === 'End' ? keys.length - 1 : (i + (e.key === 'ArrowRight' ? 1 : -1) + keys.length) % keys.length;
+    state.up = keys[i]; render(false); document.querySelector(`[data-up="${state.up}"]`).focus();
+  });
+
+  // Concept controls
+  function syncSeg(id, v) { document.querySelectorAll(`#${id} button`).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === v))); }
+  function syncExtra() { document.querySelector('#ctl-extra [data-v="kb"]').setAttribute('aria-pressed', String(state.kb)); document.querySelector('#ctl-extra [data-v="bday"]').setAttribute('aria-pressed', String(state.bday)); }
+  function bind(id, fn) { document.getElementById(id).addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; fn(b.dataset.v); }); }
+  bind('ctl-role', (v) => { state.role = v; state.done.clear(); state.week = false; state.more = false; syncSeg('ctl-role', v); render(); });
+  bind('ctl-day', (v) => { state.day = v; syncSeg('ctl-day', v); render(false); });
+  bind('ctl-data', (v) => { state.data = v; syncSeg('ctl-data', v); render(false); });
+  bind('ctl-motion', (v) => { document.documentElement.setAttribute('data-motion', v); syncSeg('ctl-motion', v); render(); });
+  bind('ctl-width', (v) => { document.getElementById('frame').classList.toggle('phone', v === 'phone'); syncSeg('ctl-width', v); setTimeout(applyKb, 300); });
+  bind('ctl-extra', (v) => { if (v === 'kb') state.kb = !state.kb; else state.bday = !state.bday; syncExtra(); render(v === 'bday'); });
+  bind('ctl-theme', (v) => setTheme(v));
+
+  const root = document.documentElement;
+  const theme = () => root.getAttribute('data-theme') || (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  function syncTheme() {
+    const t = theme(); syncSeg('ctl-theme', t);
+    const tb = document.getElementById('themebtn');
+    tb.innerHTML = ic(t === 'dark' ? 'sun' : 'moon'); tb.setAttribute('aria-label', t === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+  }
+  function setTheme(t) { root.setAttribute('data-theme', t); syncTheme(); }
+  document.getElementById('themebtn').addEventListener('click', () => setTheme(theme() === 'dark' ? 'light' : 'dark'));
+  if (window.matchMedia) { const mq = matchMedia('(prefers-color-scheme: dark)'); mq.addEventListener && mq.addEventListener('change', syncTheme); }
+  document.getElementById('bell').innerHTML = ic('bell') + '<span class="dot" aria-hidden="true">3</span>';
+  document.getElementById('mob-menu').innerHTML = ic('menu');
+  document.getElementById('live').innerHTML = ic('wifi') + '<span>Live</span>';
+
+  root.setAttribute('data-motion', 'lively');
+  syncTheme();
+  render();
+})();
+</script>

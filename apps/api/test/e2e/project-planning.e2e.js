@@ -75,11 +75,13 @@ const D = (k) => new Date(`${k}T00:00:00Z`);
     await call(S.pm, 'POST', `/projects/${atl}/milestones`, { title: 'UAT sign-off', dueDate: addDays(today, 3) });
     atlRow = (await call(S.pmo, 'GET', '/projects')).data?.find((x) => x.id === atl);
     check('Milestone due in 3 days → at risk; next milestone', atlRow?.health.level === 'at_risk' && atlRow.milestones.done === 1 && atlRow.milestones.total === 2 && atlRow.milestones.next.title === 'UAT sign-off', JSON.stringify(atlRow?.milestones));
-    r = await call(S.pm, 'POST', `/projects/${atl}/roles`, { title: 'QA engineer', allocation: 50, fromDate: addDays(today, 5) });
-    check('Open a role', r.status === 201);
+    // Open roles became resource requests (2026-10-07): the PM asks → no DD here → waits for the PMO
+    r = await call(S.pm, 'POST', '/resources/requests', { projectId: atl, title: 'QA engineer', allocation: 50, fromDate: addDays(today, 5), reason: 'UAT needs a tester' });
+    check('Open a role (a resource request)', r.status === 201 && r.data.step === 'PMO', JSON.stringify(r.body).slice(0, 200));
+    check('Old open-role route is gone → 404', (await call(S.pm, 'POST', `/projects/${atl}/roles`, { title: 'X', allocation: 50, fromDate: addDays(today, 5) })).status === 404);
     const role = r.data.id;
     atlRow = (await call(S.pmo, 'GET', '/projects')).data?.find((x) => x.id === atl);
-    check('Open role shows as a reason', atlRow?.openRoles === 1 && atlRow.health.reasons.includes('Open role: QA engineer'));
+    check('Open role shows as a reason', atlRow?.openRoles === 1 && atlRow.health.reasons.includes('Needs a person: QA engineer'));
     r = await call(S.pm, 'POST', `/projects/${atl}/updates`, { health: 'on_track', note: 'UAT starts Monday — we are fine.' });
     check('PM posts an update', r.status === 201);
     await wait(300);
@@ -137,8 +139,8 @@ const D = (k) => new Date(`${k}T00:00:00Z`);
     check('My projects: approver, last update, billing', r.data?.assignments.length === 2 && a1.approver.firstName === 'pm' && a1.approver.as === 'Project manager' && a1.lastUpdate.health === 'on_track' && r.data.billing.investment === 100, JSON.stringify(a1?.approver));
     check('My projects: coming milestones, who’s away', r.data.milestones[0]?.title === 'UAT sign-off' && r.data.away.some((x) => x.employee.id === P.ben.id), JSON.stringify(r.data.away));
     check('Detail: away today', (await call(S.pm, 'GET', `/projects/${atl}`)).data?.awayToday.includes(P.ben.id));
-    r = await call(S.pm, 'PUT', `/projects/${atl}/roles/${role}?filled=true`);
-    check('Fill the open role', r.status === 200 && (await p.projectOpenRole.findUnique({ where: { id: role } })).filledAt !== null);
+    r = await call(S.pm, 'POST', `/resources/requests/${role}/withdraw`, { note: 'Filled from the shared QA team' });
+    check('Close the open role (withdraw the request)', r.status === 200 && r.data.status === 'WITHDRAWN', JSON.stringify(r.body).slice(0, 200));
 
     // ── Reminder: no update for 14 days ──
     const job = new ProjectPlanningService(p, new ProjectsService(p), new NotificationsService(p, { queueNotification: async () => undefined }, { get: () => undefined }, new (require(require('path').resolve('dist/apps/api/src/modules/realtime/realtime.service.js')).RealtimeService)()), { get: () => undefined });

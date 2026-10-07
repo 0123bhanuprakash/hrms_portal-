@@ -45,6 +45,8 @@ import {
   HardDrive,
   PackageCheck,
   PackageOpen,
+  Inbox,
+  Users2,
   LifeBuoy,
   Headset,
   Timer,
@@ -64,6 +66,7 @@ import { usePendingExpenses } from '@/lib/company/expenses';
 import { usePendingAssetRequests } from '@/lib/company/assets';
 import { useHelpdeskCounts } from '@/lib/company/helpdesk';
 import { usePendingTimesheets } from '@/lib/company/timesheets';
+import { usePendingResourceRequests, useResourceContext } from '@/lib/company/resources';
 import { changePasswordPath, loginPathFor, useAuthHydrated, withNext } from '@/lib/auth/portal';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { NotificationBell } from '@/components/notifications/notification-bell';
@@ -101,8 +104,10 @@ interface NavItem {
   anyOf?: string[];
   /** Only when the permission reaches the whole company */
   companyWide?: boolean;
+  /** Resource requests: leads, PMs, Delivery Directors and the PMO (their role on projects) */
+  projectRole?: boolean;
   /** Live count shown on the item */
-  badge?: 'attendanceApprovals' | 'leaveApprovals' | 'announcements' | 'expenseApprovals' | 'assetRequests' | 'myTickets' | 'ticketQueue' | 'timesheetApprovals';
+  badge?: 'attendanceApprovals' | 'leaveApprovals' | 'announcements' | 'expenseApprovals' | 'assetRequests' | 'myTickets' | 'ticketQueue' | 'timesheetApprovals' | 'resourceRequests';
 }
 
 const NAV_GROUPS: Array<{ label: string; icon: React.ElementType; items: NavItem[] }> = [
@@ -137,6 +142,8 @@ const NAV_GROUPS: Array<{ label: string; icon: React.ElementType; items: NavItem
     icon: FolderKanban,
     items: [
       { name: 'Projects', href: '/app/projects', icon: FolderKanban, permission: 'project.view', feature: 'work.projects' },
+      { name: 'Resource requests', href: '/app/resources', icon: Inbox, permission: 'project.view', feature: 'work.projects', projectRole: true, badge: 'resourceRequests' },
+      { name: 'PMO pool', href: '/app/pmo-pool', icon: Users2, permission: 'project.manage', feature: 'work.projects' },
       { name: 'My timesheet', href: '/app/timesheets', icon: Timer, exact: true, permission: 'timesheet.submit', feature: 'work.timesheets' },
       { name: 'Timesheet approvals', href: '/app/timesheets/approvals', icon: ClipboardCheck, permission: 'timesheet.approve', feature: 'work.timesheets', orDelegated: true, badge: 'timesheetApprovals' },
     ],
@@ -248,6 +255,8 @@ const SEGMENT_LABELS: Record<string, string> = {
   edit: 'Edit',
   insights: 'Insights',
   planner: 'Resource planner',
+  resources: 'Resource requests',
+  'pmo-pool': 'PMO pool',
 };
 
 
@@ -322,6 +331,8 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
   const pendingAssets = usePendingAssetRequests();
   const tickets = useHelpdeskCounts();
   const pendingTimesheets = usePendingTimesheets();
+  const resourceContext = useResourceContext();
+  const pendingResources = usePendingResourceRequests();
   const [mobileOpen, setMobileOpen] = useState(false);
   const branding = useCompanyBranding(hydrated ? companyId : null);
   const companyTheme = useCompanyTheme(hydrated ? companyId : null);
@@ -394,6 +405,7 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
     myTickets: tickets.data?.mine,
     ticketQueue: tickets.data?.queue,
     timesheetApprovals: pendingTimesheets.data,
+    resourceRequests: pendingResources.data,
   };
   const groups: SidebarGroup[] = NAV_GROUPS.map((group) => ({
     label: group.label,
@@ -404,7 +416,8 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
           (can(i.permission) || (i.orDelegated && (isApprover || (i.href.startsWith('/app/expenses') && (can('expense.finance') || can('expense.hr'))))) || (i.href === '/app/expenses/payments' && can('expense.hr')) || Boolean(i.anyOf?.some((p) => can(p)))) &&
           (!i.companyWide || user!.isSuperAdmin || scopeOf(i.permission!) === 'company') &&
           (!i.feature || user!.isSuperAdmin || hasFeature(i.feature)) &&
-          (!i.beyondOwn || user!.isSuperAdmin || scopeOf(i.permission!) !== 'own'),
+          (!i.beyondOwn || user!.isSuperAdmin || scopeOf(i.permission!) !== 'own') &&
+          (!i.projectRole || Boolean(resourceContext.data?.involved)),
       )
       .map(({ name, href, icon, exact, soon, badge }) => ({ name, href, icon, exact, soon, count: badge ? counts[badge] : undefined })),
   })).filter((g) => g.items.length);

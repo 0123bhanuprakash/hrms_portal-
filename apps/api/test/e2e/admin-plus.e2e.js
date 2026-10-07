@@ -83,7 +83,7 @@ const { check } = t;
     r = await call(A, 'GET', `/company/roles/${roles.manager}`);
     check('Role detail has holders', r.data?.holders.some((h) => h.firstName === 'karan'));
     r = await call(A, 'GET', '/company/roles/templates');
-    check('5 templates', r.status === 200 && r.data?.length === 5 && r.data.some((x) => x.key === 'auditor'), JSON.stringify(r.body).slice(0, 200));
+    check('6 templates (incl. PMO lead)', r.status === 200 && r.data?.length === 6 && r.data.some((x) => x.key === 'auditor'), JSON.stringify(r.body).slice(0, 200));
     const auditor = r.data.find((x) => x.key === 'auditor');
     r = await call(A, 'POST', '/company/roles', { name: 'Auditor E2E', grants: auditor.grants.map((g) => (g.scope ? g : { key: g.key })) });
     check('A template saves as a role', r.status === 201, JSON.stringify(r.body).slice(0, 300));

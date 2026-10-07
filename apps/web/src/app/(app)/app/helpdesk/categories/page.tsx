@@ -6,7 +6,7 @@ import { BookOpen, ChartNoAxesColumn, GripVertical, Pencil, Plus, Route, ShieldC
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, EmptyState, Skeleton, Tabs } from '@/components/ui/feedback';
+import { Card, EmptyState, ErrorState, Skeleton, Tabs } from '@/components/ui/feedback';
 import { TeamsPanel } from '@/components/helpdesk/teams-panel';
 import { TopicEditor } from '@/components/helpdesk/topic-editor';
 import { useAccess } from '@/lib/access/use-access';
@@ -42,6 +42,8 @@ export default function TicketCategoriesPage() {
         <TeamsPanel />
       ) : cats.isLoading ? (
         <Skeleton className="h-64 w-full" />
+      ) : cats.isLoadingError ? (
+        <ErrorState message={getApiErrorMessage(cats.error, 'Could not load the topics')} onRetry={() => void cats.refetch()} />
       ) : (
         <>
           <div className="grid items-start gap-4 xl:grid-cols-2">

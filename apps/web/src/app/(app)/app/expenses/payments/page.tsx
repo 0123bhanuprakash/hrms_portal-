@@ -2,11 +2,11 @@
 
 import React, { useState } from 'react';
 import { toast } from 'sonner';
-import { BarChart3, Clock, Download, ShieldCheck, Wallet } from 'lucide-react';
+import { BarChart3, CalendarRange, Clock, Download, ShieldCheck, Wallet } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardHeader, EmptyState, Skeleton, Tabs } from '@/components/ui/feedback';
+import { Card, CardHeader, EmptyState, ErrorState, Skeleton, Tabs } from '@/components/ui/feedback';
 
 import { StatCard } from '@/components/ui/stat-card';
 import { ClaimList } from '@/components/expenses/claim-list';
@@ -126,7 +126,11 @@ function Report() {
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">Approved and paid claims, by the date of each expense.</p>
-      {report.isLoading || !r ? (
+      {report.isLoadingError ? (
+        <ErrorState message={getApiErrorMessage(report.error, 'Could not load the report')} onRetry={() => void report.refetch()} />
+      ) : from > to ? (
+        <EmptyState icon={<CalendarRange />} title="Pick a valid range" description="The start date is after the end date." />
+      ) : report.isLoading || !r ? (
         <Skeleton className="h-64 w-full" />
       ) : (
         <>

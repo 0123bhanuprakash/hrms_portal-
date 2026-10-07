@@ -1,21 +1,5 @@
 import { Transform, Type } from 'class-transformer';
-import {
-  IsBoolean,
-  IsDateString,
-  IsEmail,
-  IsEnum,
-  IsIn,
-  IsInt,
-  IsOptional,
-  IsString,
-  IsUUID,
-  Matches,
-  Max,
-  MaxLength,
-  Min,
-  MinLength,
-  ValidateNested,
-} from 'class-validator';
+import { IsBoolean, IsDateString, IsEmail, IsEnum, IsIn, IsInt, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min, MinLength, ValidateNested, IsArray, ArrayMaxSize } from 'class-validator';
 import { Gender, TaxRegime } from '@prisma/client';
 
 /** '' → null (clear the field), trims strings. */
@@ -46,6 +30,11 @@ export class AddressDto {
 }
 
 /** Personal details. Omitted = unchanged, null / '' = cleared. */
+/** Skills on the profile */
+export class UpdateSkillsDto {
+  @IsArray() @ArrayMaxSize(40) @IsString({ each: true }) @MaxLength(40, { each: true }) skills!: string[];
+}
+
 export class UpdatePersonalDto {
   @IsOptional() @Transform(blankToNull) @IsString() @MaxLength(40) phone?: string | null;
   @IsOptional() @IsEnum(Gender) gender?: Gender | null;

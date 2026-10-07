@@ -62,6 +62,10 @@ export interface ProjectDetail {
   endDate: string | null;
   today: string;
   members: Assignment[];
+  /** Set by the PMO; oversees the PM (resource requests go Lead → PM → Delivery Director → PMO) */
+  deliveryDirector?: ProjectPerson | null;
+  /** Technologies used here (kept by the project's leads) */
+  techStack?: string[];
 }
 
 export interface Capacity {
@@ -160,7 +164,21 @@ function useProjectMutation<V, R>(fn: (v: V) => Promise<R>) {
   return useMutation({ mutationFn: fn, onSuccess: () => void qc.invalidateQueries({ queryKey: projectKeys.all }) });
 }
 
-export type ProjectInput = { name: string; code: string; description?: string | null; clientName?: string | null; type?: ProjectType; color?: string | null; status: ProjectStatus; startDate: string; endDate?: string | null };
+export type ProjectInput = {
+  name: string;
+  code: string;
+  description?: string | null;
+  clientName?: string | null;
+  type?: ProjectType;
+  color?: string | null;
+  status: ProjectStatus;
+  startDate: string;
+  endDate?: string | null;
+  /** People in charge (PMO): the one PM (their time is booked) and the Delivery Director (a setting) */
+  managerEmployeeId?: string | null;
+  managerAllocation?: number;
+  deliveryDirectorId?: string | null;
+};
 export const useSaveProject = () =>
   useProjectMutation(async ({ id, ...body }: ProjectInput & { id?: string }) => unwrap<ProjectDetail>(id ? await api.patch(`/projects/${id}`, body) : await api.post('/projects', body)));
 
@@ -371,9 +389,5 @@ export const useUpdateMilestone = (projectId: string) =>
   useProjectMutation(async ({ id, ...body }: { id: string; title?: string; dueDate?: string; ownerEmployeeId?: string | null; done?: boolean }) => unwrap(await api.patch(`/projects/${projectId}/milestones/${id}`, body)));
 export const useRemoveMilestone = (projectId: string) => useProjectMutation(async (id: string) => unwrap(await api.delete(`/projects/${projectId}/milestones/${id}`)));
 export const usePostUpdate = (projectId: string) => useProjectMutation(async (body: { health: Health; note: string }) => unwrap(await api.post(`/projects/${projectId}/updates`, body)));
-export const useOpenRole = (projectId: string) =>
-  useProjectMutation(async (body: { title: string; allocation: number; fromDate: string }) => unwrap(await api.post(`/projects/${projectId}/roles`, body)));
-export const useCloseRole = (projectId: string) =>
-  useProjectMutation(async ({ id, filled }: { id: string; filled: boolean }) => unwrap(await api.put(`/projects/${projectId}/roles/${id}`, undefined, { params: { filled } })));
 export const useSetBilled = (projectId: string) =>
   useProjectMutation(async ({ memberId, billed }: { memberId: string; billed: boolean }) => unwrap(await api.put(`/projects/${projectId}/members/${memberId}/billed`, { billed })));

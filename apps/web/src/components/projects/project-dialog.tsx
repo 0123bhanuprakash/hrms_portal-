@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Briefcase, Building2, FolderKanban } from 'lucide-react';
+import { Briefcase, Building2, FolderKanban, UserCog } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Field, Input, Textarea, inputClass, FormError } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
@@ -11,14 +11,17 @@ import { cn } from '@/lib/cn';
 
 const COLORS = ['#4F46E5', '#0D9488', '#DB2777', '#F59E0B', '#0EA5E9', '#7C3AED', '#16A34A', '#EF4444'];
 import { getApiErrorMessage } from '@/lib/errors';
-import { DateInput, Select } from '@/components/ui/pickers';
+import { DateInput, PersonSelect, Select } from '@/components/ui/pickers';
+import { usePeoplePicker } from '@/lib/company/org';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
 /** Create / edit a project (PMO). */
 export function ProjectDialog({ value, onClose, onSaved }: { value: ProjectDetail | 'new' | null; onClose: () => void; onSaved?: (p: ProjectDetail) => void }) {
   const save = useSaveProject();
-  const [f, setF] = useState<ProjectInput>({ name: '', code: '', clientName: '', description: '', type: 'CLIENT', color: null, status: 'ACTIVE', startDate: today(), endDate: '' });
+  const people = usePeoplePicker();
+  const [f, setF] = useState<ProjectInput>({ name: '', code: '', clientName: '', description: '', type: 'CLIENT', color: null, status: 'ACTIVE', startDate: today(), endDate: '', managerEmployeeId: null, managerAllocation: 30, deliveryDirectorId: null });
+  const [ddTouched, setDdTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -30,9 +33,23 @@ export function ProjectDialog({ value, onClose, onSaved }: { value: ProjectDetai
         : {
             name: value.name, code: value.code, clientName: value.clientName ?? '', description: value.description ?? '', status: value.status, startDate: value.startDate, endDate: value.endDate ?? '',
             type: (value as ProjectDetail & { type?: ProjectType }).type ?? 'INTERNAL', color: (value as ProjectDetail & { color?: string | null }).color ?? null,
+            ...(() => {
+              const pm = value.members.find((m) => m.role === 'MANAGER' && (m.active || m.upcoming));
+              return { managerEmployeeId: pm?.employee.id ?? null, managerAllocation: pm?.allocation ?? 30, deliveryDirectorId: value.deliveryDirector?.id ?? null };
+            })(),
           },
     );
+    setDdTouched(value !== 'new' && Boolean(value.deliveryDirector));
   }, [value]);
+  const options = useMemo(() => (people.data?.employees ?? []).map((e) => ({ id: e.id, firstName: e.firstName, lastName: e.lastName, avatarUrl: e.avatarUrl, sub: e.designation?.name ?? null })), [people.data]);
+  // Picking a PM suggests their reporting manager as Delivery Director (until the PMO picks one)
+  const pickPm = (id: string) => {
+    setF((p) => {
+      const manager = (people.data?.employees ?? []).find((e) => e.id === id)?.reportingManagerId ?? null;
+      return { ...p, managerEmployeeId: id || null, ...(!ddTouched && { deliveryDirectorId: manager }) };
+    });
+  };
+  const suggestedDd = useMemo(() => (people.data?.employees ?? []).find((e) => e.id === f.managerEmployeeId)?.reportingManagerId ?? null, [people.data, f.managerEmployeeId]);
   if (!value) return null;
   const set = <K extends keyof ProjectInput>(k: K, v: ProjectInput[K]) => setF((p) => ({ ...p, [k]: v }));
 
@@ -96,6 +113,23 @@ export function ProjectDialog({ value, onClose, onSaved }: { value: ProjectDetai
             {COLORS.map((c) => <button key={c} type="button" aria-label={`Colour ${c}`} aria-pressed={f.color === c} onClick={() => set('color', c)} className={cn('h-7 w-7 rounded-full transition-shadow', f.color === c && 'ring-2 ring-offset-2 ring-offset-surface')} style={{ background: c, ['--tw-ring-color' as string]: c } as React.CSSProperties} />)}
           </div>
         </Field>
+        <fieldset className="space-y-2 rounded-xl border border-border p-3 sm:col-span-2">
+          <legend className="flex items-center gap-1.5 px-1 text-xs font-semibold text-muted-foreground"><UserCog className="h-3.5 w-3.5" /> People in charge</legend>
+          <div className="grid gap-3 sm:grid-cols-[1fr_110px]">
+            <Field label="Project manager" htmlFor="pj-pm" hint="One per project. Their time here is booked too.">
+              <PersonSelect id="pj-pm" people={options} value={f.managerEmployeeId ?? ''} onChange={pickPm} emptyLabel="No project manager yet" />
+            </Field>
+            <Field label="Their time" htmlFor="pj-pm-alloc">
+              <div className="relative">
+                <Input id="pj-pm-alloc" type="number" min={1} max={100} value={f.managerAllocation ?? 30} disabled={!f.managerEmployeeId} onChange={(e) => set('managerAllocation', Math.max(1, Math.min(100, Number(e.target.value) || 1)))} className="pr-7" />
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+              </div>
+            </Field>
+          </div>
+          <Field label="Delivery Director" htmlFor="pj-dd" hint={f.deliveryDirectorId && f.deliveryDirectorId === suggestedDd ? 'Suggested: the PM’s reporting manager. Requests go Lead → PM → Delivery Director → PMO.' : 'Requests go Lead → PM → Delivery Director → PMO. No time is booked.'}>
+            <PersonSelect id="pj-dd" people={options} value={f.deliveryDirectorId ?? ''} onChange={(v) => { setDdTouched(true); set('deliveryDirectorId', v || null); }} emptyLabel="No Delivery Director (PM → PMO)" />
+          </Field>
+        </fieldset>
         <Field label="Description" htmlFor="pj-desc" className="sm:col-span-2"><Textarea id="pj-desc" value={f.description ?? ''} onChange={(e) => set('description', e.target.value)} maxLength={500} rows={2} /></Field>
         <p className="text-xs text-muted-foreground sm:col-span-2">
           Only active (and on-hold) projects route leave and attendance approvals. Completed projects don’t count towards anyone’s allocation.

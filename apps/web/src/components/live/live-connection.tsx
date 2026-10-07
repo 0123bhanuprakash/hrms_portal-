@@ -21,6 +21,7 @@ const FAMILY: Record<string, string[]> = {
   timesheet: ['timesheets'],
   project: ['projects'],
   delegation: ['delegations'],
+  resource: ['resources'],
 };
 const TOPIC: Record<LiveChange['topic'], string[] | string[][]> = {
   notifications: ['notifications'],
@@ -43,6 +44,8 @@ const TOPIC: Record<LiveChange['topic'], string[] | string[][]> = {
   branding: [['company'], ['seasons']],
   // Joiners, manager changes and team moves: org chart, directory, profiles
   people: [['org'], ['people'], ['employee']],
+  // Resource requests moved a step; assignments may have changed
+  resources: [['resources'], ['projects']],
   // Cover started or ended on its own clock
   delegations: ['delegations'],
 };

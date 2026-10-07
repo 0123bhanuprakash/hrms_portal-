@@ -14,6 +14,7 @@ import { ProjectsPanel } from '@/components/projects/projects-panel';
 import { useCapacity } from '@/lib/company/projects';
 import { useEmployeeAssets } from '@/lib/company/assets';
 import { HeldAssets } from '@/components/assets/asset-lists';
+import { ProfileResourcing } from '@/components/resources/profile-resourcing';
 
 type Tab = 'overview' | 'personal' | 'bank' | 'documents' | 'leave' | 'projects' | 'assets';
 
@@ -62,7 +63,12 @@ export function ProfileTabs({ employeeId, isSelf, overview }: { employeeId: stri
       {tab === 'bank' && privateData.data && <BankIdsSection employeeId={employeeId} data={privateData.data} isSelf={isSelf} />}
       {tab === 'documents' && <DocumentsSection employeeId={employeeId} />}
       {tab === 'leave' && <BalanceCards employeeId={employeeId} year={year} canAdjust={can('leave.adjust_balance')} />}
-      {tab === 'projects' && projects.data && <ProjectsPanel capacity={projects.data} />}
+      {tab === 'projects' && projects.data && (
+        <div className="space-y-4">
+          <ProjectsPanel capacity={projects.data} />
+          <ProfileResourcing employeeId={employeeId} canEditSkills={isSelf || can('employee.edit')} />
+        </div>
+      )}
       {tab === 'assets' && assets.data && <HeldAssets data={assets.data} linkToAsset={can('asset.manage') || scopeOf('asset.view') === 'company'} />}
     </div>
   );

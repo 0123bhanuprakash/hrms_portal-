@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { BadgeCheck, CalendarX2, LifeBuoy, LogIn, LogOut, Megaphone, PackageCheck, PartyPopper, Receipt, Timer, UserRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardHeader, Skeleton } from '@/components/ui/feedback';
+import { Card, CardError, CardHeader, InlineRetry, Skeleton } from '@/components/ui/feedback';
 import { ActionRow, IconTile, Meter, MiniBars, Ring } from '@/components/dashboard/widgets';
 import { Burst, Milestones } from '@/components/motion/motion';
 import { useAccess } from '@/lib/access/use-access';
@@ -38,6 +38,7 @@ export function TodayCard() {
   }, []);
 
   if (today.isLoading) return <Skeleton className="h-56 w-full" />;
+  if (today.isLoadingError) return <CardError title="Today" query={today} />;
   const t = today.data;
   if (!t?.hasProfile) return null;
   const tz = t.policy.timeZone;
@@ -109,6 +110,7 @@ export function MonthCard() {
   const month = thisMonth();
   const cal = useCalendar(month);
   if (cal.isLoading) return <Skeleton className="h-56 w-full" />;
+  if (cal.isLoadingError) return <CardError title="This month" query={cal} />;
   if (!cal.data) return null;
   const s = cal.data.summary;
   const todayKey = cal.data.today;
@@ -152,6 +154,7 @@ export function MonthCard() {
 export function BalancesCard() {
   const q = useLeaveBalances();
   if (q.isLoading) return <Skeleton className="h-56 w-full" />;
+  if (q.isLoadingError) return <CardError title="Leave balance" query={q} />;
   const rows = (q.data?.balances ?? []).filter((b) => b.leaveType.isActive).slice(0, 5);
   if (!rows.length) return null;
   return (
@@ -211,18 +214,26 @@ export function useNeedsAction(me: MyCard | undefined) {
   }
 
   const loading = sheets.isLoading || claims.isLoading || tickets.isLoading || acks.isLoading;
-  return { rows, loading };
+  // Some checks failed: say so rather than "all caught up"
+  const broken = [sheets, claims, tickets, assets, latest, acks, cal].filter((q) => q.isLoadingError);
+  const failed = broken.length ? { error: broken[0]!.error, refetch: () => Promise.all(broken.map((q) => q.refetch())) } : null;
+  return { rows, loading, failed };
 }
 
 export function NeedsActionCard({ me }: { me: MyCard | undefined }) {
-  const { rows, loading } = useNeedsAction(me);
+  const { rows, loading, failed } = useNeedsAction(me);
   return (
     <Card className="flex flex-col">
       <CardHeader title="Needs your action" action={rows.length ? <Badge tone="danger">{rows.length}</Badge> : undefined} />
       {loading && !rows.length ? (
         <div className="space-y-2 px-5 pb-5">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
       ) : rows.length ? (
-        <ul className="divide-y divide-border px-5 pb-2">{rows}</ul>
+        <>
+          <ul className="divide-y divide-border px-5 pb-2">{rows}</ul>
+          {failed && <div className="px-5 pb-3"><InlineRetry query={failed} message="Some items couldn’t be checked." /></div>}
+        </>
+      ) : failed ? (
+        <div className="px-5 pb-3"><InlineRetry query={failed} message="Couldn’t check what needs you." /></div>
       ) : (
         <div className="flex items-center gap-3 px-5 pb-5 text-sm text-muted-foreground">
           <BadgeCheck className="h-5 w-5 text-success" /> You’re all caught up.

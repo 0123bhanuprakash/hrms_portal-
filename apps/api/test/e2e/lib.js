@@ -126,6 +126,7 @@ async function dropCompany(slug) {
     () => prisma.assetAssignment.deleteMany({ where: { companyId: id } }),
     () => prisma.asset.deleteMany({ where: { companyId: id } }),
     () => prisma.assetType.deleteMany({ where: { companyId: id } }),
+    () => prisma.assignmentLog.deleteMany({ where: { companyId: id } }),
     () => prisma.projectMember.deleteMany({ where: { companyId: id } }),
     () => prisma.project.deleteMany({ where: { companyId: id } }),
     () => prisma.approvalDelegation.deleteMany({ where: { companyId: id } }),

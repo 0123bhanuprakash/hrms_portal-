@@ -4,7 +4,8 @@ import React, { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Inbox, List, PackageCheck, ShieldCheck, UserPlus } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
-import { EmptyState, Skeleton, Tabs } from '@/components/ui/feedback';
+import { EmptyState, ErrorState, Skeleton, Tabs } from '@/components/ui/feedback';
+import { getApiErrorMessage } from '@/lib/errors';
 import { RequestList } from '@/components/assets/asset-lists';
 import { useAccess } from '@/lib/access/use-access';
 import { useAssetRequests, type RequestQuery } from '@/lib/company/assets';
@@ -39,6 +40,7 @@ function Requests() {
   const list = useAssetRequests({ view, page }, enabled && (seeAll || view === 'review'));
 
   if (accessLoading || review.isLoading) return <Skeleton className="h-64 w-full" />;
+  if (review.isLoadingError) return <ErrorState message={getApiErrorMessage(review.error, 'Could not load asset requests')} onRetry={() => void review.refetch()} />;
   if (!enabled || (!seeAll && reviewCount === 0)) return <EmptyState icon={<ShieldCheck />} title="Nothing for you here" description="Asset requests that need your approval will show up here." />;
 
   return (

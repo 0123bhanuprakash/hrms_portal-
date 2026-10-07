@@ -1,5 +1,5 @@
 - [Company test account](company-test-account.md) — aakash-portal Company Admin login for browser tests (password not stored)
-- [Next session plan](next-session-plan.md) — steps 1–4 done, Redis deferred; next API speed → UI → real-user readiness
+- [Next session plan](next-session-plan.md) — 2026-10-07: all work committed + merged to main; read docs/handoff/HANDOFF.md first
 - [Aakash demo org](aakash-demo-org.md) — 12 seeded test accounts (<first>.aakash@yopmail.com), re-seed via db:seed-demo
 - [Roadmap decisions](roadmap-decisions.md) — PII encryption, local-disk docs, WFH as leave type, projects after payroll
 - [Project approval routing](project-approval-routing.md) — project-based leave/correction approvers, PMO role, allocation ≤100%
@@ -15,9 +15,14 @@
 - [Design canvas link](design-canvas-link.md) — new canvas artifact URL, republish steps, hrms-designer agent
 - [Helpdesk design](helpdesk-design.md) — 13 CAHelp* boards; answers: DevOps team, heads assign, WebSocket live, priority targets
 - [Emoji animations](emoji-animations.md) — BUILT 2026-10-06 (uncommitted): <Emoji> + emoji-motion.css, wired app-wide
-- [Live updates](live-updates.md) — WebSocket (Socket.IO) BUILT 2026-10-05, uncommitted; rooms, events, next steps
+- [Live updates](live-updates.md) — WebSocket high+medium+polish groups BUILT 2026-10-07, see docs/realtime.md; COMMITTED 0a8bd46, merged to main 2756160 + pushed 2026-10-07
 - [Time module design](time-module-design.md) — Time module BUILT 2026-10-06 (uncommitted) — see note
 - [Everyone is an employee](everyone-is-employee.md) — admin = employee #1 automatically; invited users get profiles; self-create button
 - [Admin + forms design](admin-forms-design.md) — Administration + popup-form kit BUILT 2026-10-06 (uncommitted)
 - [Settings design](settings-design.md) — Settings round + seasonal themes BUILT 2026-10-06 (uncommitted)
 - [Perf findings](perf-findings.md) — fixes 1–5 DONE (turbo dev, light pending count, deduped calls, /org/people, quicker motion)
+- [Design director agent](design-director-agent.md) — tried + rejected 2026-10-06; paused, use hrms-designer again
+- [API + access audit](api-access-audit.md) — PLANNED (asked 2026-10-07): per-role network calls, unguarded routes, unbounded lists; pending-count leak already fixed
+- [UI polish round](ui-polish-round.md) — dropdowns, branding, theme reveal, chart motion, instant nav, Rail removed, Glide + Peek menus BUILT (uncommitted)
+- [Resource requests design](resource-requests-design.md) — Lead→PM→DD→PMO requests, hold, release, PMO reporting layer; screens in design (2026-10-07), build after approval
+- [SeedsAI test company](seedsai-test-company.md) — full-year seed for 136 people, all modules; run db:seed-seedsai after the resource-request session finishes

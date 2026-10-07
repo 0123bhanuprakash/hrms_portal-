@@ -22,7 +22,7 @@ export interface LiveNotification {
   createdAt: string;
 }
 export interface LiveChange {
-  topic: 'notifications' | 'helpdesk' | 'system' | 'access' | 'delegations' | 'attendance' | 'leave' | 'expenses' | 'timesheets' | 'assets' | 'announcements' | 'kudos' | 'projects' | 'branding' | 'people';
+  topic: 'notifications' | 'helpdesk' | 'system' | 'access' | 'delegations' | 'attendance' | 'leave' | 'expenses' | 'timesheets' | 'assets' | 'announcements' | 'kudos' | 'projects' | 'branding' | 'people' | 'resources';
   ticketId?: string;
 }
 /** Records that show who else is viewing them */

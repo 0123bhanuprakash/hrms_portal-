@@ -5,7 +5,7 @@ import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 import { Bell, Check, Eye, Globe, Keyboard, LayoutDashboard, Mail, Moon, MoonStar, Palette, RotateCcw, Search, Sparkles, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, Skeleton } from '@/components/ui/feedback';
+import { Card, CardHeader, ErrorState, Skeleton } from '@/components/ui/feedback';
 import { Input } from '@/components/ui/field';
 import { SearchSelect } from '@/components/ui/pickers';
 import { PageHeader } from '@/components/ui/page-header';
@@ -123,7 +123,9 @@ export default function PreferencesPage() {
         </nav>
 
         <div className="min-w-0 space-y-8">
-          {!prefs.data ? (
+          {prefs.isLoadingError ? (
+            <ErrorState message={getApiErrorMessage(prefs.error, 'Could not load your preferences')} onRetry={() => void prefs.refetch()} />
+          ) : !prefs.data ? (
             <Skeleton className="h-96" />
           ) : (
             <>

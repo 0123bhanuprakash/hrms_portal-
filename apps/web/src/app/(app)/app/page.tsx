@@ -26,7 +26,7 @@ import {
   LifeBuoy,
   Timer,
 } from 'lucide-react';
-import { Card, CardHeader } from '@/components/ui/feedback';
+import { Card, CardHeader, InlineRetry } from '@/components/ui/feedback';
 import { PersonAvatar, PersonRow } from '@/components/profile/person-avatar';
 import { NeedsActionCard, TodayCard, useNeedsAction } from '@/components/dashboard/employee-sections';
 import { AdminActionsCard, ApprovalsCard, AttendanceTodayCard, DepartmentsCard, JoinersCard, ProbationCard, WhosOffCard, useApprovals, useCompanyToday } from '@/components/dashboard/admin-sections';
@@ -207,6 +207,11 @@ export default function HomePage() {
     <div className="space-y-5">
       {look.season && <SeasonBanner season={look.season} firstName={user?.firstName} />}
       <CompleteProfileNudge />
+      {me.isLoadingError && (
+        <Card className="px-5 py-2">
+          <InlineRetry query={me} message="Couldn’t load your profile, so some cards are hidden." />
+        </Card>
+      )}
       {/* Hero + today */}
       <div className={cn('m-stagger grid gap-5', heroSide && 'lg:grid-cols-12')}>
         <HomeHero className={cn(heroSide && 'lg:col-span-8')} title={hero.title} subtitle={hero.subtitle} stats={hero.stats} actions={hero.actions} moment={moment} />
