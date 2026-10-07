@@ -63,6 +63,13 @@ export class KudosService {
     return { data: rows.map((r) => this.present(r, access, names)), meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
 
+  /** One kudos, shaped like a feed item — for its own page (home card, notifications). */
+  async one(companyId: string, access: AccessContext, id: string) {
+    const row = await this.prisma.kudos.findFirst({ where: { id, companyId, deletedAt: null }, select: SELECT });
+    if (!row) throw new NotFoundException('Kudos not found');
+    return this.present(row, access, await this.userNames(row.thanks.slice(0, 3).map((t) => t.userId)));
+  }
+
   async give(companyId: string, access: AccessContext, dto: GiveKudosDto) {
     const people = await this.prisma.employee.findMany({
       where: { companyId, id: { in: dto.recipientIds }, employmentStatus: { not: EmploymentStatus.TERMINATED } },
@@ -89,7 +96,7 @@ export class KudosService {
       type: 'kudos.received',
       title: `${created.from.firstName} ${created.from.lastName} gave you kudos${value ? ` —${value}` : ''}`,
       body: created.message,
-      link: '/app/kudos',
+      link: `/app/kudos/${created.id}`,
       email: false,
       // Lets a deleted kudos take its notifications back (see remove)
       dedupeKey: `kudos:${created.id}:received`,
@@ -108,7 +115,7 @@ export class KudosService {
         type: 'kudos.team',
         title: `${created.from.firstName} thanked ${firstNames.join(' & ')} from your team${value ? ` —${value}` : ''}`,
         body: created.message,
-        link: '/app/kudos',
+        link: `/app/kudos/${created.id}`,
         email: false,
         dedupeKey: `kudos:${created.id}:team`,
       });
@@ -135,7 +142,7 @@ export class KudosService {
         type: 'kudos.thanks',
         title: `${me ? name(me) : 'A colleague'} added their thanks to your kudos`,
         body: row.message,
-        link: '/app/kudos?filter=for-me',
+        link: `/app/kudos/${id}`,
         email: false,
         dedupeKey: `kudos-thanks:${id}:${access.userId}`,
       });

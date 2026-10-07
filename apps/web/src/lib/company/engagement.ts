@@ -191,6 +191,7 @@ export const engageKeys = {
   audience: (q: object) => ['announcements', 'audience', q] as const,
   kudos: ['kudos'] as const,
   feed: (q: object) => ['kudos', 'feed', q] as const,
+  one: (id: string) => ['kudos', 'one', id] as const,
   values: (all: boolean) => ['kudos', 'values', all] as const,
   stats: (employeeId: string) => ['kudos', 'stats', employeeId] as const,
   leaderboard: ['kudos', 'leaderboard'] as const,
@@ -396,6 +397,16 @@ export function useKudosFeed(q: { employeeId?: string; filter?: KudosFilter; val
     },
     placeholderData: keepPreviousData,
     enabled: enabled && hasFeature('engage.kudos') && can('kudos.view'),
+  });
+}
+
+/** One kudos for its own page (home card and notifications link here). */
+export function useKudos(id: string | undefined) {
+  const { hasFeature, can } = useAccess();
+  return useQuery({
+    queryKey: engageKeys.one(id ?? ''),
+    queryFn: async () => unwrap<KudosItem>(await api.get(`/kudos/${id}`)),
+    enabled: Boolean(id) && hasFeature('engage.kudos') && can('kudos.view'),
   });
 }
 

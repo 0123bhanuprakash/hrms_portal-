@@ -137,6 +137,10 @@ async function cleanup() {
     await wait();
     const kn = await inbox('dev2', 'kudos.received');
     check('Recipients notified in-app (no email)', kn.length === 1 && !kn[0].emailedAt && kn[0].title.includes('🤝 Teamwork'), JSON.stringify(kn[0]));
+    check('Notification opens this kudos', kn[0]?.link === `/app/kudos/${k1.data.id}`, kn[0]?.link);
+    const one = await call(H, 'GET', `/kudos/${k1.data.id}`);
+    check('Open one kudos (its own page)', one.status === 200 && one.data.id === k1.data.id && one.data.recipients.length === 2 && one.data.canThank === true, JSON.stringify(one.body).slice(0, 300));
+    check('Unknown kudos → 404', (await call(S, 'GET', `/kudos/${P.dev.id}`)).status === 404);
     check('Kudos to yourself → 400', (await call(D, 'POST', '/kudos', { recipientIds: [P.dev.id], message: 'I am great' })).status === 400);
     check('No recipients → 400', (await call(D, 'POST', '/kudos', { recipientIds: [], message: 'Hello there' })).status === 400);
     check('Unknown value → 404', (await call(D, 'POST', '/kudos', { recipientIds: [P.dev2.id], message: 'Hello there', valueId: P.dev.id })).status === 404);
@@ -152,6 +156,7 @@ async function cleanup() {
     check('Someone else cannot remove → 403', (await call(S, 'DELETE', `/kudos/${k1.data.id}`)).status === 403);
     check('Giver can take it back', (await call(D, 'DELETE', `/kudos/${k1.data.id}`)).status === 200 && (await call(S, 'GET', '/kudos')).body.data.length === 0);
     const k2 = await call(S, 'POST', '/kudos', { recipientIds: [P.dev.id], message: 'Something not ok' });
+    check('Removed kudos → 404', (await call(S, 'GET', `/kudos/${k1.data.id}`)).status === 404);
     check('HR (kudos.manage) can remove any', (await call(H, 'DELETE', `/kudos/${k2.data.id}`)).status === 200);
     check('Employee cannot add values → 403', (await call(D, 'POST', '/kudos/values', { name: 'Speed', emoji: '⚡' })).status === 403);
     check('HR adds a value', (await call(H, 'POST', '/kudos/values', { name: 'Speed', emoji: '⚡' })).status === 201);

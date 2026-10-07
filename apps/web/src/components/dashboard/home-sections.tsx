@@ -6,6 +6,7 @@ import {
   Award,
   Cake,
   CalendarDays,
+  Check,
   ChevronLeft,
   ChevronRight,
   FolderKanban,
@@ -20,7 +21,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Card, CardError, CardHeader, InlineRetry, Skeleton, Tabs } from '@/components/ui/feedback';
 import { PersonAvatar } from '@/components/profile/person-avatar';
-import { CountUp, Confetti, RevealWords, SkyHero, useReducedMotion } from '@/components/motion/motion';
+import { CountUp, Confetti, RevealWords, SkyHero, Ticker, useReducedMotion } from '@/components/motion/motion';
 import { MomentLayer, type Moment } from '@/components/motion/moments';
 import { Donut, HBars, RingsRow, ViewAs, useChartStyle } from '@/components/dashboard/charts';
 import { useAccess } from '@/lib/access/use-access';
@@ -29,7 +30,9 @@ import { STATUS_META, clock, hours, useCalendar, useToday, type CalendarDay } fr
 import { useLeaveBalances } from '@/lib/company/leave';
 import { useMyProjects } from '@/lib/company/projects';
 import { useKudosFeed } from '@/lib/company/engagement';
-import type { Spotlight } from '@/lib/company/profile';
+import { useMyCard, type Spotlight } from '@/lib/company/profile';
+import { useCelebrationsToday, type WishKind } from '@/lib/company/celebrations';
+import { WishDialog, type WishPerson } from '@/components/engagement/wish-dialog';
 import { formatDate, formatRelative } from '@/lib/format';
 import { cn } from '@/lib/cn';
 
@@ -330,7 +333,7 @@ type Slide = { kind: 'birthday'; people: Person[] } | { kind: 'anniversary'; per
 
 /** Today’s birthdays (all of them together) and each work anniversary, as a moving card. */
 export function CelebrationsCard({ data, loading }: { data?: Spotlight; loading: boolean }) {
-  const { can, hasFeature } = useAccess();
+  const { can } = useAccess();
   const reduced = useReducedMotion();
   const slides = useMemo<Slide[]>(() => {
     if (!data) return [];
@@ -346,7 +349,12 @@ export function CelebrationsCard({ data, loading }: { data?: Spotlight; loading:
     const t = setInterval(() => setI((n) => (n + 1) % slides.length), 5000);
     return () => clearInterval(t);
   }, [slides.length, paused, reduced]);
-  const kudos = hasFeature('engage.kudos') && can('kudos.give');
+  // Wishes are a celebration thing (not kudos); never to yourself
+  const meId = useMyCard().data?.employee?.id;
+  const today = useCelebrationsToday(slides.length > 0);
+  const wished = (kind: WishKind) => new Set((today.data?.wished ?? []).filter((w) => w.kind === kind).map((w) => w.employeeId));
+  const [wishing, setWishing] = useState<{ kind: WishKind; people: WishPerson[]; years?: number } | null>(null);
+  const canWish = can('org.view');
 
   if (loading) return <Skeleton className="h-72 w-full" />;
   if (!data) return null;
@@ -404,7 +412,14 @@ export function CelebrationsCard({ data, loading }: { data?: Spotlight; loading:
                   <p className="text-xs text-muted-foreground">{[...new Set(cur.people.map((p) => p.department?.name).filter(Boolean))].join(' · ') || 'Wish them a happy birthday'}</p>
                 </div>
                 <Wishes n={cur.people.reduce((t, p) => t + (p.wishesToday ?? 0), 0)} />
-                {kudos && <Link href={`/app/kudos?to=${cur.people.map((p) => p.id).join(',')}`} className="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-3.5 text-xs font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5"><Cake className="h-3.5 w-3.5" />Send wishes</Link>}
+                <WishActions
+                  kind="birthday"
+                  people={cur.people}
+                  meId={meId}
+                  canWish={canWish}
+                  wished={wished('birthday')}
+                  onWish={(people) => setWishing({ kind: 'birthday', people })}
+                />
               </>
             ) : (
               <>
@@ -420,7 +435,14 @@ export function CelebrationsCard({ data, loading }: { data?: Spotlight; loading:
                   <p className="text-xs text-muted-foreground">{cur.person.designation?.name ?? cur.person.department?.name ?? 'Thank you for your work'}</p>
                 </div>
                 <Wishes n={cur.person.wishesToday ?? 0} />
-                {kudos && <Link href={`/app/kudos?to=${cur.person.id}`} className="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-3.5 text-xs font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5"><Heart className="h-3.5 w-3.5" />Give kudos</Link>}
+                <WishActions
+                  kind="anniversary"
+                  people={[cur.person]}
+                  meId={meId}
+                  canWish={canWish}
+                  wished={wished('anniversary')}
+                  onWish={(people) => setWishing({ kind: 'anniversary', people, years: cur.person.years })}
+                />
               </>
             )}
           </div>
@@ -435,7 +457,38 @@ export function CelebrationsCard({ data, loading }: { data?: Spotlight; loading:
           )}
         </div>
       </div>
+      {wishing && <WishDialog kind={wishing.kind} people={wishing.people} years={wishing.years} wished={wished(wishing.kind)} onClose={() => setWishing(null)} />}
     </Card>
+  );
+}
+
+/**
+ * Under a celebration: "Send wishes" for colleagues, "Wished ✓" once done, and
+ * for the person celebrating a link to their own wishes (never a button to
+ * wish themselves).
+ */
+function WishActions({ kind, people, meId, canWish, wished, onWish }: { kind: WishKind; people: WishPerson[]; meId?: string; canWish: boolean; wished: Set<string>; onWish: (people: WishPerson[]) => void }) {
+  const mine = Boolean(meId && people.some((p) => p.id === meId));
+  const others = people.filter((p) => p.id !== meId);
+  const allDone = others.length > 0 && others.every((p) => wished.has(p.id));
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-2">
+      {mine && (
+        <Link href="/app/wishes" className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border bg-surface px-3.5 text-xs font-semibold transition-transform hover:-translate-y-0.5">
+          <PartyPopper className="h-3.5 w-3.5" />
+          {kind === 'birthday' ? 'It’s your birthday!' : 'Your work anniversary!'} See your wishes
+        </Link>
+      )}
+      {canWish && others.length > 0 &&
+        (allDone ? (
+          <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-success-soft px-3.5 text-xs font-semibold text-success"><Check className="h-3.5 w-3.5" />Wished</span>
+        ) : (
+          <button type="button" onClick={() => onWish(others)} className="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-3.5 text-xs font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5">
+            {kind === 'birthday' ? <Cake className="h-3.5 w-3.5" /> : <Award className="h-3.5 w-3.5" />}
+            Send wishes{mine && others.length > 1 ? ' to the others' : ''}
+          </button>
+        ))}
+    </div>
   );
 }
 
@@ -451,19 +504,25 @@ export function KudosTickerCard({ className }: { className?: string }) {
   const items = q.data?.data ?? [];
   const moving = items.length >= 3 && !reduced;
   const row = (k: (typeof items)[number], hidden = false) => (
-    <li key={`${hidden ? 'b' : 'a'}-${k.id}`} aria-hidden={hidden || undefined} className="rounded-lg border border-border bg-surface p-3">
-      <div className="flex items-center gap-1.5 text-xs">
-        <PersonAvatar person={k.from} size="xs" />
-        <b className="truncate">{k.from.firstName}</b>
-        <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
-        <div className="flex -space-x-1.5">{k.recipients.slice(0, 3).map((r) => <PersonAvatar key={r.id} person={r} size="xs" className="ring-2 ring-surface" />)}</div>
-        <b className="truncate">{k.recipients.map((r) => r.firstName).join(', ')}</b>
-      </div>
-      <p className="mt-1.5 line-clamp-2 text-sm">{k.message}</p>
-      <div className="mt-2 flex items-center gap-2 text-2xs text-muted-foreground">
-        {k.value && <span className="rounded-full px-2 py-0.5 font-semibold" style={{ backgroundColor: `${k.value.color}22`, color: k.value.color }}>{k.value.name}</span>}
-        <span className="ml-auto">{formatRelative(k.createdAt)}</span>
-      </div>
+    <li key={`${hidden ? 'b' : 'a'}-${k.id}`} aria-hidden={hidden || undefined}>
+      <Link
+        href={`/app/kudos/${k.id}`}
+        tabIndex={hidden ? -1 : undefined}
+        className="block rounded-lg border border-border bg-surface p-3 transition-colors hover:border-primary/40 hover:bg-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <div className="flex items-center gap-1.5 text-xs">
+          <PersonAvatar person={k.from} size="xs" />
+          <b className="truncate">{k.from.firstName}</b>
+          <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
+          <div className="flex -space-x-1.5">{k.recipients.slice(0, 3).map((r) => <PersonAvatar key={r.id} person={r} size="xs" className="ring-2 ring-surface" />)}</div>
+          <b className="truncate">{k.recipients.map((r) => r.firstName).join(', ')}</b>
+        </div>
+        <p className="mt-1.5 line-clamp-2 text-sm">{k.message}</p>
+        <div className="mt-2 flex items-center gap-2 text-2xs text-muted-foreground">
+          {k.value && <span className="rounded-full px-2 py-0.5 font-semibold" style={{ backgroundColor: `${k.value.color}22`, color: k.value.color }}>{k.value.name}</span>}
+          <span className="ml-auto">{formatRelative(k.createdAt)}</span>
+        </div>
+      </Link>
     </li>
   );
   return (
@@ -480,12 +539,12 @@ export function KudosTickerCard({ className }: { className?: string }) {
       ) : !items.length ? (
         <p className="px-5 pb-5 text-sm text-muted-foreground">No kudos yet — thank someone for something great.</p>
       ) : moving ? (
-        <div className="m-ticker mx-3 mb-3 min-h-[240px] flex-1 basis-0" style={{ ['--m-dur' as string]: `${items.length * 5}s` }} tabIndex={0} aria-label="Recent kudos (hover or focus to pause)">
+        <Ticker seconds={items.length * 5} label="Recent kudos (hover to pause and scroll)" className="mx-3 mb-3 min-h-[240px] flex-1 basis-0">
           <ul className="flex flex-col gap-2">
             {items.map((k) => row(k))}
             {items.map((k) => row(k, true))}
           </ul>
-        </div>
+        </Ticker>
       ) : (
         <ul className="flex flex-col gap-2 px-3 pb-3">{items.map((k) => row(k))}</ul>
       )}

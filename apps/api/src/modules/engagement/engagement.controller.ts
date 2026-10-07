@@ -5,8 +5,9 @@ import type { TenantContext } from '../../common/types/request.types';
 import { holds, type AccessContext } from '../access/access.types';
 import { AnnouncementsService } from './announcements.service';
 import { KudosService } from './kudos.service';
+import { CelebrationsService } from './celebrations.service';
 import { Live, NoLive } from '../realtime/live.decorator';
-import { SeenDto, AnnouncementAudienceDto, AnnouncementQueryDto, AnnouncementReactDto, GiveKudosDto, KudosHintDto, KudosInsightsQueryDto, KudosQueryDto, ReactDto, RsvpDto, SaveAnnouncementDto, SaveKudosValueDto } from './dto';
+import { SeenDto, AnnouncementAudienceDto, AnnouncementQueryDto, AnnouncementReactDto, GiveKudosDto, KudosHintDto, KudosInsightsQueryDto, KudosQueryDto, ReactDto, RsvpDto, SaveAnnouncementDto, SaveKudosValueDto, SendWishDto } from './dto';
 
 @RequireFeature('engage.announcements')
 @Live('announcements', 'company')
@@ -244,6 +245,12 @@ export class KudosController {
   }
 
   @RequirePermission('kudos.view')
+  @Get(':id')
+  one(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Param('id', ParseUUIDPipe) id: string) {
+    return this.kudos.one(ctx.companyId!, access, id);
+  }
+
+  @RequirePermission('kudos.view')
   @Post(':id/reactions')
   @HttpCode(HttpStatus.OK)
   react(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ReactDto) {
@@ -263,5 +270,30 @@ export class KudosController {
   @Delete(':id')
   remove(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Param('id', ParseUUIDPipe) id: string) {
     return this.kudos.remove(ctx.companyId!, access, id);
+  }
+}
+
+/** Birthday and work-anniversary wishes (Home → Celebrations). Not kudos. */
+@Controller('celebrations')
+export class CelebrationsController {
+  constructor(private readonly celebrations: CelebrationsService) {}
+
+  /** Wish one or more people celebrating today (never yourself). */
+  @RequirePermission('org.view')
+  @Post('wishes')
+  send(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Body() dto: SendWishDto) {
+    return this.celebrations.send(ctx.companyId!, access, dto);
+  }
+
+  /** The caller's own day: whom they wished, and wishes they got. */
+  @Get('today')
+  today(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext) {
+    return this.celebrations.today(ctx.companyId!, access);
+  }
+
+  /** The caller's wishes from the last 12 months, by occasion. */
+  @Get('wishes/mine')
+  mine(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext) {
+    return this.celebrations.mine(ctx.companyId!, access);
   }
 }

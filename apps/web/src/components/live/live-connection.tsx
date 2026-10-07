@@ -13,6 +13,7 @@ import { cn } from '@/lib/cn';
 const FAMILY: Record<string, string[]> = {
   announcement: ['announcements'],
   kudos: ['kudos'],
+  celebration: ['celebrations'],
   leave: ['leave'],
   attendance: ['attendance'],
   expense: ['expenses'],
@@ -37,8 +38,9 @@ const TOPIC: Record<LiveChange['topic'], string[] | string[][]> = {
   assets: ['assets'],
   // New posts, reactions and read counts; kudos feed and ticker; project teams
   announcements: ['announcements'],
-  // Kudos also feed the Home celebrations ("wishes so far today")
-  kudos: [['kudos'], ['people', 'spotlight']],
+  kudos: ['kudos'],
+  // Someone sent wishes: Home's "N wishes so far today" counts up
+  celebrations: [['celebrations'], ['people', 'spotlight']],
   projects: ['projects'],
   // Logo, colours, page defaults and seasonal themes re-theme every open screen
   branding: [['company'], ['seasons']],
@@ -89,6 +91,8 @@ export function LiveConnection() {
           description: n.body ? (n.body.length > 140 ? `${n.body.slice(0, 137)}…` : n.body) : undefined,
           position: 'bottom-right',
           duration: 6000,
+          // Wishes arrive as a little greeting card
+          ...(n.type.startsWith('celebration.') && { icon: <span aria-hidden>{n.type === 'celebration.anniversary' ? '🏆' : '🎂'}</span>, className: 'celebrate-note' }),
           ...(n.link && { action: { label: 'Open', onClick: () => router.push(n.link!) } }),
         });
       }),

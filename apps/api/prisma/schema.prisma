@@ -317,6 +317,7 @@ model User {
   announcements       Announcement[]             @relation("AnnouncementAuthor")
   announcementReads   AnnouncementRead[]
   kudosGiven          Kudos[]                    @relation("KudosFrom")
+  celebrationWishes   CelebrationWish[]          @relation("CelebrationWishFrom")
   kudosReactions      KudosReaction[]
   companyNotes        CompanyNote[]
   activityDays        UserActivityDay[]
@@ -752,6 +753,7 @@ model Employee {
   timesheetEntries  TimesheetEntry[]           @relation("TimesheetEntryEmployee")
   regularisations   AttendanceRegularisation[]
   kudosReceived     KudosRecipient[]
+  wishesReceived    CelebrationWish[]          @relation("CelebrationWishTo")
   expenseClaims     ExpenseClaim[]
   assetAssignments  AssetAssignment[]
   assetRequests     AssetRequest[]
@@ -1897,6 +1899,32 @@ model Kudos {
 
   @@index([companyId, createdAt])
   @@map("kudos")
+}
+
+/// A wish for a colleague's birthday or work anniversary — private between the
+/// two people (everyone else only sees the count). Not kudos.
+model CelebrationWish {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId  String   @map("company_id") @db.Uuid
+  fromUserId String   @map("from_user_id") @db.Uuid
+  employeeId String   @map("employee_id") @db.Uuid
+  /// birthday | anniversary
+  kind       String
+  /// The celebration day (company calendar date)
+  occasion   DateTime @db.Date
+  /// Work anniversary: years completed
+  years      Int?
+  sticker    String
+  message    String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  from     User     @relation("CelebrationWishFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  employee Employee @relation("CelebrationWishTo", fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([fromUserId, employeeId, kind, occasion])
+  @@index([employeeId, occasion])
+  @@index([companyId, occasion])
+  @@map("celebration_wishes")
 }
 
 model KudosRecipient {

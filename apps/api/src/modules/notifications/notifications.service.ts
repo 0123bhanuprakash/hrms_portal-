@@ -93,6 +93,32 @@ export class NotificationsService implements OnApplicationBootstrap, OnModuleDes
     }
   }
 
+  /**
+   * One running notification per key that grows instead of piling up (e.g.
+   * "Priya, Amit and 3 others wished you…"): created the first time, then
+   * rewritten, marked unread again and moved to the top. In-app only.
+   */
+  async notifyGrouped(input: { companyId: string; userId: string; type: string; dedupeKey: string; title: string; body?: string | null; link?: string | null }): Promise<void> {
+    try {
+      const topic = topicOf(input.type);
+      if (topic) {
+        const prefs = await this.prisma.userPreferences.findUnique({ where: { userId: input.userId }, select: { notificationTopics: true } });
+        if (((prefs?.notificationTopics ?? {}) as TopicPrefs)[topic]?.app === false) return;
+      }
+      const data = { type: input.type, title: input.title.slice(0, 200), body: input.body?.slice(0, 1000) ?? null, link: input.link ?? null, readAt: null, createdAt: new Date() };
+      const n = await this.prisma.notification.upsert({
+        where: { userId_dedupeKey: { userId: input.userId, dedupeKey: input.dedupeKey } },
+        create: { companyId: input.companyId, userId: input.userId, dedupeKey: input.dedupeKey, ...data },
+        update: data,
+        select: { id: true, createdAt: true },
+      });
+      this.realtime.notification(input.userId, { id: n.id, type: input.type, title: data.title, body: data.body, link: data.link, createdAt: n.createdAt });
+      this.realtime.changed([room.user(input.userId)], 'notifications');
+    } catch (err) {
+      this.logger.error(`Could not update the "${input.type}" notification`, err as Error);
+    }
+  }
+
   /** Emails the new notifications to users who allow notification emails. */
   private async emailOut(ids: string[], input: NotifyInput): Promise<void> {
     try {

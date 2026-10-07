@@ -230,6 +230,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   projects: 'Projects',
   announcements: 'Announcements',
   kudos: 'Kudos',
+  wishes: 'Your wishes',
   expenses: 'Expenses',
   payments: 'Payments & reports',
   categories: 'Categories',

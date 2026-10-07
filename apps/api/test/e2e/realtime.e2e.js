@@ -49,6 +49,7 @@ async function cleanup() {
   await p.notification.deleteMany({ where: { userId: { in: ids } } });
   await p.ticketMessage.deleteMany({ where: { companyId: c.id } });
   await p.ticket.deleteMany({ where: { companyId: c.id } });
+  await p.celebrationWish.deleteMany({ where: { companyId: c.id } });
   await p.kudos.deleteMany({ where: { companyId: c.id } });
   await p.kudosValue.deleteMany({ where: { companyId: c.id } });
   await p.announcement.deleteMany({ where: { companyId: c.id } });
@@ -330,7 +331,11 @@ async function cleanup() {
     // Wishes so far today (birthday today)
     const today = new Date();
     await p.employee.update({ where: { id: mgrRow.id }, data: { dateOfBirth: new Date(Date.UTC(1990, today.getMonth(), today.getDate())) } });
-    await call(emp.h, 'POST', '/kudos', { recipientIds: [mgrRow.id], message: 'Happy birthday, have a great day!' });
+    const wishPings = H.got.filter((g) => g.event === 'changed' && g.data.topic === 'celebrations').length;
+    const wish = await call(emp.h, 'POST', '/celebrations/wishes', { employeeIds: [mgrRow.id], kind: 'birthday', sticker: '🎂', message: 'Happy birthday, have a great day!' });
+    check('Send a birthday wish', wish.status === 201, JSON.stringify(wish.body).slice(0, 200));
+    await wait(3600);
+    check('Everyone’s count refreshes live (celebrations)', H.got.filter((g) => g.event === 'changed' && g.data.topic === 'celebrations').length > wishPings);
     const spot = await call(emp.h, 'GET', '/people/spotlight');
     const bday = (spot.data?.birthdays ?? []).find((b) => b.id === mgrRow.id && b.inDays === 0);
     check('Birthday shows wishes so far today', bday?.wishesToday === 1, JSON.stringify(bday));
