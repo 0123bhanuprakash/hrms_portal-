@@ -67,7 +67,7 @@ export function QuickLook({ id, onClose, onOpen, canOpenProfile }: { id: string 
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <a href={`mailto:${c.email}`} className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90"><Mail className="h-3.5 w-3.5" />Email</a>
-                  <Link href={`/app/kudos?to=${c.id}`} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-semibold hover:bg-subtle"><Heart className="h-3.5 w-3.5" />Send kudos</Link>
+                  <Link href={`/app/kudos?to=${c.id}`} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-semibold hover:bg-subtle"><Heart className="h-3.5 w-3.5" />Send a shout-out</Link>
                   <button type="button" onClick={() => void navigator.clipboard?.writeText(c.email).then(() => toast.success('Email copied'))} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-semibold hover:bg-subtle"><Copy className="h-3.5 w-3.5" />Copy email</button>
                   {canOpenProfile && <Link href={`/app/employees/${c.id}`} className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-3 text-xs font-semibold hover:bg-subtle">Full profile<ChevronRight className="h-3.5 w-3.5" /></Link>}
                 </div>
@@ -114,7 +114,7 @@ export function QuickLook({ id, onClose, onOpen, canOpenProfile }: { id: string 
               <div className="grid grid-cols-2 gap-2.5">
                 {c.birthday && <Fact label={<EmojiText text="🎂 Birthday" />} value={md(c.birthday)} />}
                 <Fact label={<EmojiText text="🏆 Work anniversary" />} value={`${md(c.anniversary.date.slice(5))} · ${c.anniversary.years} year${c.anniversary.years === 1 ? '' : 's'}`} />
-                <Fact label={<EmojiText text="💛 Kudos received" />} value={`${c.kudos.total}${c.kudos.thisMonth ? ` · ${c.kudos.thisMonth} this month` : ''}`} />
+                <Fact label={<EmojiText text="💛 Shout-outs received" />} value={`${c.kudos.total}${c.kudos.thisMonth ? ` · ${c.kudos.thisMonth} this month` : ''}`} />
               </div>
 
               <section>

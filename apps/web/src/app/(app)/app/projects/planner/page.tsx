@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { ArrowLeft, ChevronLeft, ChevronRight, Search, ShieldCheck, UserPlus, Users, Zap } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, EmptyState, ErrorState, Skeleton } from '@/components/ui/feedback';
+import { Card, CardHeader, EmptyState, ErrorState, LoadMore, Pagination, Skeleton } from '@/components/ui/feedback';
 import { Field, Input, inputClass } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { PersonAvatar } from '@/components/profile/person-avatar';
@@ -14,7 +14,8 @@ import { AssignDialog, type AssignRequest } from '@/components/projects/assign-d
 import { projectColor, shortDate } from '@/components/projects/project-ui';
 import { useAccess } from '@/lib/access/use-access';
 import { useDepartments } from '@/lib/company/org';
-import { useAvailable, usePlanner, type PlannerCell, type ProjectPerson } from '@/lib/company/projects';
+import { useAvailable, usePlanner, type PlannerCell, type PlannerShow, type ProjectPerson } from '@/lib/company/projects';
+import { FilterChips } from '@/components/ui/list-tools';
 import { getApiErrorMessage } from '@/lib/errors';
 import { cn } from '@/lib/cn';
 import { DateInput, Select } from '@/components/ui/pickers';
@@ -42,7 +43,11 @@ function PlannerContent() {
     const t = setTimeout(() => setDebounced(search.trim()), 300);
     return () => clearTimeout(t);
   }, [search]);
-  const q = usePlanner({ from, weeks, departmentId: departmentId || undefined, search: debounced || undefined }, allowed);
+  const [show, setShow] = useState<PlannerShow>('all');
+  const [page, setPage] = useState(1);
+  // Any new filter starts again on page 1
+  useEffect(() => setPage(1), [from, weeks, departmentId, debounced, show]);
+  const q = usePlanner({ from, weeks, departmentId: departmentId || undefined, search: debounced || undefined, show, page }, allowed);
   const departments = useDepartments();
   const focusRole = params.get('role');
 
@@ -82,6 +87,20 @@ function PlannerContent() {
           <option value="">All departments</option>
           {departments.data?.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
         </Select>
+        {d && (
+          <FilterChips
+            label="Show"
+            value={show}
+            onChange={setShow}
+            options={[
+              { key: 'all', label: 'Everyone', count: d.counts.all },
+              { key: 'full', label: 'Fully booked', count: d.counts.full },
+              { key: 'partly', label: 'Partly booked', count: d.counts.partly },
+              { key: 'free', label: 'Free', count: d.counts.free },
+              { key: 'bench', label: 'Bench next month', count: d.counts.benchNextMonth },
+            ]}
+          />
+        )}
         <div className="ml-auto inline-flex rounded-lg border border-border bg-surface p-0.5" role="group" aria-label="Weeks">
           {[4, 8, 13].map((w) => (
             <button key={w} type="button" aria-pressed={weeks === w} onClick={() => setWeeks(w)} className={cn('h-7 rounded-md px-3 text-xs font-semibold', weeks === w ? 'bg-primary-soft text-primary-soft-foreground' : 'text-muted-foreground')}>{w === 13 ? 'Quarter' : `${w} weeks`}</button>
@@ -131,6 +150,7 @@ function PlannerContent() {
               ))}
             </tbody>
           </table>
+          <Pagination page={d.meta.page} totalPages={d.meta.totalPages} total={d.meta.total} limit={d.meta.limit} onPageChange={setPage} />
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border px-4 py-2.5 text-xs text-muted-foreground">
             {[['bg-success-soft', '100%'], ['bg-primary-soft', '50–99%'], ['bg-warning-soft', '1–49%'], ['bg-muted', 'Free']].map(([c, l]) => <span key={l} className="flex items-center gap-1.5"><i className={cn('h-3 w-3 rounded', c)} />{l}</span>)}
             <span className="flex items-center gap-1.5"><i className="h-1 w-4 rounded bg-primary" /> billable</span>
@@ -234,9 +254,10 @@ function FindFree({ onAssign, today }: { onAssign: (r: AssignRequest) => void; t
         </div>
         <Button size="sm" onClick={() => setQuery({ from, to: addDays(from, weeksFor * 7 - 1), min })}><Search /> Search</Button>
         {r.data && (
+          <>
           <ul className="space-y-1.5">
-            {!r.data.length && <li className="text-sm text-muted-foreground">Nobody is that free then.</li>}
-            {r.data.slice(0, 8).map((x) => (
+            {!r.data.pages[0]?.rows.length && <li className="text-sm text-muted-foreground">Nobody is that free then.</li>}
+            {r.data.pages.flatMap((pg) => pg.rows).map((x) => (
               <li key={x.employee.id} className="flex items-center gap-2 text-sm">
                 <PersonAvatar person={x.employee} size="xs" />
                 <span className="min-w-0 flex-1 truncate">{x.employee.firstName} {x.employee.lastName} <span className="text-xs text-muted-foreground">· {x.employee.designation?.name ?? x.employee.department?.name ?? ''}</span></span>
@@ -245,6 +266,8 @@ function FindFree({ onAssign, today }: { onAssign: (r: AssignRequest) => void; t
               </li>
             ))}
           </ul>
+          <LoadMore shown={r.data.pages.reduce((n, pg) => n + pg.rows.length, 0)} total={r.data.pages[0]?.meta.total ?? 0} loading={r.isFetchingNextPage} onMore={() => void r.fetchNextPage()} />
+          </>
         )}
       </div>
     </Card>

@@ -11,17 +11,16 @@ import { Badge } from '@/components/ui/badge';
 import { Card, EmptyState, InlineRetry, Skeleton } from '@/components/ui/feedback';
 import { Field, Input, Textarea, inputClass } from '@/components/ui/field';
 import { PersonAvatar } from '@/components/profile/person-avatar';
-import { QUEUE_EMOJI, replyTime } from '@/components/helpdesk/ticket-visuals';
+import { replyTime } from '@/components/helpdesk/ticket-visuals';
 import { useReducedMotion } from '@/components/motion/motion';
 import { useAccess } from '@/lib/access/use-access';
 import { useMyAssets } from '@/lib/company/assets';
 import {
   PRIORITY,
-  QUEUES,
-  QUEUE_INFO,
   SLA_HOURS,
   useCreateTicket,
   useHelpdeskDirectory,
+  useHelpdeskQueues,
   useQuickAnswers,
   useTicketCategories,
   useTopicHelped,
@@ -62,11 +61,12 @@ function RaiseTicket() {
   const allowed = hasFeature('ops.helpdesk') && can('ticket.create');
   const cats = useTicketCategories(false, allowed);
   const directory = useHelpdeskDirectory(allowed);
+  const queues = useHelpdeskQueues();
   const create = useCreateTicket();
   const thanks = useTopicHelped();
   const reduced = useReducedMotion();
 
-  const [queue, setQueue] = useState<Queue | null>(() => (QUEUES.includes(params.get('queue') as Queue) ? (params.get('queue') as Queue) : null));
+  const [queue, setQueue] = useState<Queue | null>(() => (/^(IT|HR|FINANCE|DEVOPS|T[0-9A-F]{8})$/.test(params.get('queue') ?? '') ? params.get('queue') : null));
   const [topicId, setTopicId] = useState(params.get('topic') ?? '');
   const [subject, setSubject] = useState(params.get('subject') ?? '');
   const [details, setDetails] = useState('');
@@ -77,6 +77,10 @@ function RaiseTicket() {
   const [flying, setFlying] = useState<{ x: number; y: number } | null>(null);
   const sendRef = useRef<HTMLButtonElement>(null);
   const teamRefs = useRef<Partial<Record<Queue, HTMLButtonElement | null>>>({});
+  // A link to a team that was archived (or never existed): start without a team
+  useEffect(() => {
+    if (!queues.loading && queue && !queues.open.some((x) => x.queue === queue)) setQueue(null);
+  }, [queues.loading, queues.open, queue]);
 
   const topics = useMemo(() => (cats.data ?? []).filter((c) => c.queue === queue), [cats.data, queue]);
   const topic = topics.find((c) => c.id === topicId);
@@ -103,8 +107,8 @@ function RaiseTicket() {
   const priority: Priority = urgency ?? startPriority;
   const team = directory.data?.find((d) => d.queue === queue);
   const who = topic?.routeTo ? { name: `${topic.routeTo.firstName} ${topic.routeTo.lastName}`, person: topic.routeTo, note: `Topic “${topic.name}” goes straight to ${topic.routeTo.firstName}` }
-    : team?.head ? { name: `${QUEUE_INFO[team.queue].label} team · ${team.head.firstName} ${team.head.lastName} (head)`, person: team.head, note: `${team.head.firstName} assigns it to someone in the team` }
-    : queue ? { name: `The ${QUEUE_INFO[queue].label} team`, person: null, note: 'Anyone in the team picks it up' } : null;
+    : team?.head ? { name: `${queues.info(team.queue).label} team · ${team.head.firstName} ${team.head.lastName} (head)`, person: team.head, note: `${team.head.firstName} assigns it to someone in the team` }
+    : queue ? { name: `The ${queues.info(queue).label} team`, person: null, note: 'Anyone in the team picks it up' } : null;
   const step = !queue ? 1 : !topicId && topics.length ? 2 : 3;
   const ready = Boolean(queue && subject.trim().length >= 5 && details.trim().length >= 10);
 
@@ -135,7 +139,7 @@ function RaiseTicket() {
         answers: topic?.questions.length ? answers : undefined,
         file,
       });
-      toast.success(`Ticket #${t.number} sent to ${QUEUE_INFO[queue].label}`);
+      toast.success(`Ticket #${t.number} sent to ${queues.info(queue).label}`);
       const from = sendRef.current?.getBoundingClientRect();
       const to = teamRefs.current[queue]?.getBoundingClientRect();
       if (reduced || !from || !to) return router.push(`/app/helpdesk/${t.id}`);
@@ -174,7 +178,7 @@ function RaiseTicket() {
         <div className={cn('space-y-4', flying && 'hd-fold')}>
           {/* 1 · Team */}
           <div className="grid grid-cols-2 gap-3 xl:grid-cols-4" role="radiogroup" aria-label="Which team">
-            {QUEUES.map((qq) => {
+            {queues.open.map(({ queue: qq, label, emoji, text }) => {
               const d = directory.data?.find((x) => x.queue === qq);
               const on = queue === qq;
               return (
@@ -188,9 +192,9 @@ function RaiseTicket() {
                   className={cn('emo-host m-lift relative rounded-xl border-2 bg-card p-3.5 text-left transition-colors', on ? 'border-primary ring-4 ring-primary/10' : 'border-border hover:border-primary/40', flying && on && 'hd-catch')}
                 >
                   {on && <Check className="absolute right-3 top-3 h-4 w-4 text-primary" />}
-                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-muted text-2xl"><Emoji e={QUEUE_EMOJI[qq]} /></span>
-                  <p className="mt-2 font-semibold">{QUEUE_INFO[qq].label}</p>
-                  <p className="text-xs text-muted-foreground">{QUEUE_INFO[qq].text}</p>
+                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-muted text-2xl"><Emoji e={emoji} /></span>
+                  <p className="mt-2 font-semibold">{label}</p>
+                  {text && <p className="text-xs text-muted-foreground">{text}</p>}
                   {replyTime(d?.typicalReplyMinutes ?? null) && <p className="mt-1.5 flex items-center gap-1 text-2xs text-muted-foreground"><span className="h-1.5 w-1.5 rounded-full bg-success" /> Usually replies in {replyTime(d!.typicalReplyMinutes)}</p>}
                 </button>
               );
@@ -296,7 +300,7 @@ function RaiseTicket() {
               <p className="flex items-center gap-1.5 text-sm font-semibold"><Lightbulb className="h-4 w-4 text-warning" /> Before you send — these may help</p>
               {hints.data.topics.filter((t) => t.id !== topicId).map((t) => (
                 <div key={t.id} className="rounded-md bg-subtle p-2.5 text-xs">
-                  <p className="font-medium">{t.icon} {t.name} · {QUEUE_INFO[t.queue].label}</p>
+                  <p className="font-medium">{t.icon} {t.name} · {queues.info(t.queue).label}</p>
                   <p className="mt-0.5 text-muted-foreground">{t.quickAnswer}</p>
                 </div>
               ))}
@@ -314,7 +318,7 @@ function RaiseTicket() {
             {who ? (
               <>
                 <div className="flex items-center gap-2.5">
-                  {who.person ? <PersonAvatar person={who.person} /> : <span className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-xl" aria-hidden>{QUEUE_EMOJI[queue!]}</span>}
+                  {who.person ? <PersonAvatar person={who.person} /> : <span className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-xl" aria-hidden>{queues.info(queue!).emoji}</span>}
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{who.name}</p>
                     <p className="text-xs text-muted-foreground">{who.note}</p>
@@ -331,7 +335,7 @@ function RaiseTicket() {
             <div className="relative flex justify-end gap-2 border-t border-border pt-3">
               <Button variant="secondary" asChild><Link href="/app/helpdesk">Cancel</Link></Button>
               <Button ref={sendRef} type="submit" loading={create.isPending} disabled={!ready || Boolean(flying)}>
-                <Send /> {queue ? `Send to ${QUEUE_INFO[queue].label}` : 'Send'}
+                <Send /> {queue ? `Send to ${queues.info(queue).label}` : 'Send'}
               </Button>
               {flying && (
                 <span aria-hidden className="hd-plane pointer-events-none absolute bottom-2 right-10 z-50 text-2xl" style={{ ['--hd-x' as string]: `${flying.x}px`, ['--hd-y' as string]: `${flying.y}px` }}>✈️</span>

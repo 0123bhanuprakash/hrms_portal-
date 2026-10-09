@@ -24,10 +24,10 @@ type Kind = 'logo' | 'logo-dark' | 'favicon' | 'sign-in-photo';
 const MB = 1024 * 1024;
 // Animated (GIF, Lottie JSON, MP4/WebM video) and 3D (GLB) files are allowed for logos and the sign-in page
 const MOTION_TYPES = 'image/gif,image/apng,application/json,.json,video/mp4,video/webm,model/gltf-binary,.glb';
-const ASSETS: Record<Kind, { title: string; hint: string; accept: string; maxBytes: number; motionMaxBytes?: number; field?: 'logoUrl' | 'logoDarkUrl' | 'signInPhotoUrl' }> = {
+const ASSETS: Record<Kind, { title: string; hint: string; accept: string; maxBytes: number; motionMaxBytes?: number; field?: 'logoUrl' | 'logoDarkUrl' | 'faviconUrl' | 'signInPhotoUrl' }> = {
   logo: { title: 'Logo', hint: 'Image, GIF, Lottie, video or 3D (GLB) · images up to 2 MB, motion up to 5 MB', accept: `image/png,image/jpeg,image/svg+xml,image/webp,${MOTION_TYPES}`, maxBytes: 2 * MB, motionMaxBytes: 5 * MB, field: 'logoUrl' },
   'logo-dark': { title: 'Logo for dark mode', hint: 'Usually a white version · image, GIF, Lottie, video or 3D', accept: `image/png,image/jpeg,image/svg+xml,image/webp,${MOTION_TYPES}`, maxBytes: 2 * MB, motionMaxBytes: 5 * MB, field: 'logoDarkUrl' },
-  favicon: { title: 'Square icon', hint: 'Browser tabs and bookmarks · up to 500 KB', accept: 'image/x-icon,image/vnd.microsoft.icon,image/png,image/svg+xml,image/jpeg', maxBytes: 500 * 1024 },
+  favicon: { title: 'Square icon', hint: 'Browser tabs and bookmarks · up to 500 KB', accept: 'image/x-icon,image/vnd.microsoft.icon,image/png,image/svg+xml,image/jpeg', maxBytes: 500 * 1024, field: 'faviconUrl' },
   'sign-in-photo': { title: 'Sign-in picture', hint: 'Photo, GIF, Lottie, video (MP4/WebM) or 3D (GLB) · photos up to 4 MB, motion up to 15 MB · wide works best', accept: `image/png,image/jpeg,image/webp,${MOTION_TYPES}`, maxBytes: 4 * MB, motionMaxBytes: 15 * MB, field: 'signInPhotoUrl' },
 };
 const EXT: Record<ReturnType<typeof fileMediaKind>, string> = { image: '', lottie: 'json', video: 'mp4', model: 'glb' };

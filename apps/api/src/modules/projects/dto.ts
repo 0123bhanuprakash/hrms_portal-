@@ -91,13 +91,20 @@ export class TimelineQueryDto {
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(12) months?: number;
 }
 
+export const PLANNER_SHOW = ['all', 'full', 'partly', 'free', 'bench'] as const;
+
 export class PlannerQueryDto {
   /** Any day in the first week shown */
   @IsOptional() @Matches(DATE) from?: string;
   @IsOptional() @Type(() => Number) @IsInt() @Min(4) @Max(13) weeks?: number;
   @IsOptional() @IsUUID() departmentId?: string;
   @IsOptional() @Transform(trim) @IsString() @MaxLength(100) search?: string;
+  /** Quick filter on this week (bench = nothing booked in the next 30 days) */
+  @IsOptional() @IsIn(PLANNER_SHOW) show?: (typeof PLANNER_SHOW)[number];
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit?: number;
 }
+
 
 export class AvailableQueryDto {
   @Matches(DATE) from!: string;
@@ -105,4 +112,7 @@ export class AvailableQueryDto {
   @Type(() => Number) @IsInt() @Min(1) @Max(100) min!: number;
   @IsOptional() @IsUUID() designationId?: string;
   @IsOptional() @IsUUID() departmentId?: string;
+  @IsOptional() @Transform(trim) @IsString() @MaxLength(100) search?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit?: number;
 }

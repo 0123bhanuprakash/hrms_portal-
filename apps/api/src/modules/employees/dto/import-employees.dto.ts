@@ -20,6 +20,8 @@ export class ImportRowDto {
   @IsOptional() @IsString() @MaxLength(100) location?: string;
   @ApiPropertyOptional({ description: "Manager's work email (existing employee or another row)" })
   @IsOptional() @IsString() @MaxLength(200) managerEmail?: string;
+  @ApiPropertyOptional({ example: '4.5', description: 'Work experience before joining, in years (e.g. 3, 4.5, "2y 6m")' })
+  @IsOptional() @IsString() @MaxLength(20) experience?: string;
 }
 
 export class ImportEmployeesDto {

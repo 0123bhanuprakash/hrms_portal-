@@ -21,6 +21,20 @@ export class RangeQueryDto extends FilterQueryDto {
   @IsOptional() @Matches(DATE) to?: string;
 }
 
+export const UTILISATION_SHOW = ['all', 'bench', 'low', 'over', 'nolog'] as const;
+export type UtilisationShow = (typeof UTILISATION_SHOW)[number];
+export const UTILISATION_SORT = ['allocation', 'utilisation', 'name'] as const;
+
+/** Utilisation: totals cover everyone in reach, the people rows come a page at a time. */
+export class UtilisationQueryDto extends RangeQueryDto {
+  @IsOptional() @IsString() @MaxLength(80) search?: string;
+  /** bench = no live project · low = under 50% · over = above 100% · nolog = on a project but nothing logged */
+  @IsOptional() @IsIn(UTILISATION_SHOW) show?: UtilisationShow;
+  @IsOptional() @IsIn(UTILISATION_SORT) sort?: (typeof UTILISATION_SORT)[number];
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit?: number;
+}
+
 export const DRILL_DIMENSIONS = ['all', 'department', 'location', 'level', 'tenure', 'type', 'gender', 'status', 'joined', 'left'] as const;
 export type DrillDimension = (typeof DRILL_DIMENSIONS)[number];
 
@@ -29,10 +43,27 @@ export class DrillQueryDto extends FilterQueryDto {
   @IsIn(DRILL_DIMENSIONS) dimension!: DrillDimension;
   /** Department / location / level id ("none" = not set), enum value, tenure band, or YYYY-MM for joined / left */
   @IsString() @MinLength(1) @MaxLength(60) value!: string;
+  @IsOptional() @IsString() @MaxLength(80) search?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit?: number;
 }
 
+export const DAY_GROUPS = ['present', 'late', 'wfh', 'leave', 'absent', 'notRecorded'] as const;
+export type DayGroup = (typeof DAY_GROUPS)[number];
+
+/** Without `group`: counts + the first 10 of each group. With `group`: that group a page at a time. */
 export class DayQueryDto extends FilterQueryDto {
   @Matches(DATE) date!: string;
+  @IsOptional() @IsIn(DAY_GROUPS) group?: DayGroup;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit?: number;
+}
+
+/** Reports → Leave left: people with 15+ days of a leave type left; typeId = one type, a page at a time */
+export class LeaveLeftQueryDto extends FilterQueryDto {
+  @IsOptional() @IsUUID() typeId?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit?: number;
 }
 
 export const SCHEDULE_REPORTS = ['overview', 'people', 'attendance', 'utilisation'] as const;

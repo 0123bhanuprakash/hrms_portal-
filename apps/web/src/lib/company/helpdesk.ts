@@ -1,30 +1,44 @@
 'use client';
 
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAccess } from '@/lib/access/use-access';
 import { isLive } from '@/lib/live/socket';
 import { notificationKeys } from '@/lib/notifications';
 
 // ============================================================
-// Helpdesk: tickets to the IT, HR, Finance or DevOps queue.
+// Helpdesk: tickets to a team — IT, HR, Finance, DevOps or one the
+// company made (Helpdesk → Teams). Team keys: the built-in four or
+// "T" + 8 hex for company-made teams.
 // ============================================================
 
-export type Queue = 'IT' | 'HR' | 'FINANCE' | 'DEVOPS';
+export type Queue = string;
 export type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'WAITING' | 'RESOLVED' | 'CLOSED';
 export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 type Tone = 'neutral' | 'warning' | 'success' | 'danger' | 'info' | 'primary';
 
-export const QUEUES: Queue[] = ['IT', 'HR', 'FINANCE', 'DEVOPS'];
-export const QUEUE_PERMISSION: Record<Queue, string> = { IT: 'ticket.handle_it', HR: 'ticket.handle_hr', FINANCE: 'ticket.handle_finance', DEVOPS: 'ticket.handle_devops' };
-/** Any of these = works a helpdesk queue (sidebar, dashboards) */
-export const QUEUE_PERMISSIONS = Object.values(QUEUE_PERMISSION);
-export const QUEUE_INFO: Record<Queue, { label: string; text: string }> = {
-  IT: { label: 'IT', text: 'Laptop, software, access, email, network' },
-  HR: { label: 'HR', text: 'Leave, letters, policies, benefits, profile' },
-  FINANCE: { label: 'Finance', text: 'Salary, payslips, reimbursements, tax' },
-  DEVOPS: { label: 'DevOps', text: 'Servers, deployments, CI/CD, cloud access' },
-};
+/** One helpdesk team as the browser sees it (GET /helpdesk/queues). */
+export interface HelpdeskQueue {
+  queue: Queue;
+  label: string;
+  emoji: string;
+  /** What it helps with */
+  text: string;
+  /** Made by the company (members picked on the team) — not one of the built-in four */
+  custom: boolean;
+  /** Takes no new tickets; old tickets still show its name */
+  archived: boolean;
+  /** I work this team */
+  works: boolean;
+}
+/** The built-in four, used until the company's list has loaded */
+const BUILT_IN: HelpdeskQueue[] = [
+  { queue: 'IT', label: 'IT', emoji: '💻', text: 'Laptop, software, access, email, network', custom: false, archived: false, works: false },
+  { queue: 'HR', label: 'HR', emoji: '🧑‍💼', text: 'Leave, letters, policies, benefits, profile', custom: false, archived: false, works: false },
+  { queue: 'FINANCE', label: 'Finance', emoji: '💰', text: 'Salary, payslips, reimbursements, tax', custom: false, archived: false, works: false },
+  { queue: 'DEVOPS', label: 'DevOps', emoji: '🚀', text: 'Servers, deployments, CI/CD, cloud access', custom: false, archived: false, works: false },
+];
 export const STATUS: Record<TicketStatus, { label: string; tone: Tone }> = {
   OPEN: { label: 'Open', tone: 'warning' },
   IN_PROGRESS: { label: 'In progress', tone: 'info' },
@@ -104,6 +118,9 @@ export interface Ticket {
   lastActivityAt: string;
   createdAt: string;
   category: { id: string; name: string; icon: string | null } | null;
+  /** The team's name and emoji */
+  queueLabel: string;
+  queueEmoji: string;
   employee: { id: string; employeeId: string; firstName: string; lastName: string; email: string; avatarUrl: string | null; designation: { name: string } | null; department: { name: string } | null };
   assignee: Named | null;
   responseOverdue: boolean;
@@ -162,6 +179,7 @@ export const helpdeskKeys = {
   counts: ['helpdesk', 'counts'] as const,
   summary: ['helpdesk', 'summary'] as const,
   agents: (q: Queue) => ['helpdesk', 'agents', q] as const,
+  queues: ['helpdesk', 'queues'] as const,
   teams: ['helpdesk', 'teams'] as const,
 };
 
@@ -169,10 +187,30 @@ const unwrap = <T,>(r: { data: { data: T } }) => r.data.data;
 type Page<T> = { data: T[]; meta: { total: number; page: number; limit: number; totalPages: number } };
 const clean = (q: object) => Object.fromEntries(Object.entries(q).filter(([, v]) => v !== undefined && v !== ''));
 
-/** Queues the user works (agent). */
+/**
+ * The company's helpdesk teams. `open` take new tickets, `mine` are the ones
+ * I work (archived ones included, so their last tickets can be finished) and
+ * `info(key)` names any team, even before the list has loaded.
+ */
+export function useHelpdeskQueues() {
+  const { hasFeature, can } = useAccess();
+  const q = useQuery({
+    queryKey: helpdeskKeys.queues,
+    queryFn: async () => unwrap<HelpdeskQueue[]>(await api.get('/helpdesk/queues')),
+    enabled: hasFeature('ops.helpdesk') && can('ticket.view'),
+    staleTime: 5 * 60_000,
+  });
+  return useMemo(() => {
+    const all = q.data ?? BUILT_IN;
+    const byKey = new Map(all.map((x) => [x.queue, x]));
+    const info = (key: Queue): HelpdeskQueue => byKey.get(key) ?? { queue: key, label: 'Team', emoji: '🎫', text: '', custom: true, archived: false, works: false };
+    return { loading: q.isLoading, all, open: all.filter((x) => !x.archived), mine: all.filter((x) => x.works).map((x) => x.queue), info };
+  }, [q.data, q.isLoading]);
+}
+
+/** Teams the user works (agent). */
 export function useMyQueues(): Queue[] {
-  const { can } = useAccess();
-  return QUEUES.filter((q) => can(QUEUE_PERMISSION[q]));
+  return useHelpdeskQueues().mine;
 }
 
 export function useTicketCategories(all = false, enabled = true) {
@@ -206,6 +244,19 @@ export function useTickets(q: TicketQuery, enabled = true) {
   });
 }
 
+/** Tickets 100 at a time with "Load more" (the board shows every lane at once). */
+export function useTicketPages(q: TicketQuery) {
+  const { hasFeature } = useAccess();
+  return useInfiniteQuery({
+    queryKey: [...helpdeskKeys.list(q), 'pages'],
+    queryFn: async ({ pageParam }) => (await api.get('/helpdesk/tickets', { params: clean({ ...q, page: pageParam, limit: 100 }) })).data as Page<Ticket>,
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.meta.page < last.meta.totalPages ? last.meta.page + 1 : undefined),
+    placeholderData: keepPreviousData,
+    enabled: hasFeature('ops.helpdesk'),
+  });
+}
+
 export function useTicket(id: string | undefined) {
   return useQuery({ queryKey: helpdeskKeys.ticket(id ?? ''), queryFn: async () => unwrap<TicketDetail>(await api.get(`/helpdesk/tickets/${id}`)), enabled: Boolean(id), retry: false });
 }
@@ -215,7 +266,7 @@ export function useHelpdeskCounts() {
   const { hasFeature, can } = useAccess();
   return useQuery({
     queryKey: helpdeskKeys.counts,
-    queryFn: async () => unwrap<{ mine: number; queue: number }>(await api.get('/helpdesk/counts')),
+    queryFn: async () => unwrap<{ mine: number; queue: number; works: boolean }>(await api.get('/helpdesk/counts')),
     enabled: hasFeature('ops.helpdesk') && can('ticket.view'),
     // Live updates refresh it while connected; poll only when the connection is down
     refetchInterval: () => (isLive() ? false : 2 * 60_000),
@@ -337,7 +388,7 @@ export interface TeamMember {
   avatarUrl: string | null;
   designation: string | null;
   active: boolean;
-  /** Holds the queue permission (a head/backup who lost it shows as false) */
+  /** Works the team: holds the team permission, or is a member of a company-made team (a head/backup who lost it shows as false) */
   inQueue: boolean;
   open: number;
   awayToday: boolean;
@@ -345,6 +396,11 @@ export interface TeamMember {
 export interface HelpdeskTeam {
   queue: Queue;
   label: string;
+  emoji: string;
+  description: string;
+  /** Company-made: name, members and archiving are edited here */
+  custom: boolean;
+  archived: boolean;
   headId: string | null;
   backupId: string | null;
   unassigned: number;
@@ -360,10 +416,19 @@ export function useHelpdeskTeams(enabled = true) {
   });
 }
 
+export interface TeamFields {
+  label: string;
+  emoji: string | null;
+  description: string | null;
+  memberIds: string[];
+}
+/** Head / backup of any team; name, emoji, description, members and archived of a company-made one. Only what is sent changes. */
 export const useSaveTeam = () =>
-  useHelpdeskMutation(async ({ queue, ...body }: { queue: Queue; headId: string | null; backupId: string | null }) =>
+  useHelpdeskMutation(async ({ queue, ...body }: { queue: Queue } & Partial<TeamFields> & { headId?: string | null; backupId?: string | null; archived?: boolean; force?: boolean }) =>
     unwrap<{ canManage: boolean; teams: HelpdeskTeam[] }>(await api.put(`/helpdesk/teams/${queue}`, body)),
   );
+export const useCreateTeam = () =>
+  useHelpdeskMutation(async (body: TeamFields) => unwrap<{ queue: Queue; canManage: boolean; teams: HelpdeskTeam[] }>(await api.post('/helpdesk/teams', body)));
 
 /** Who to suggest first: in the team, not away today, fewest open tickets. */
 export function suggestAssignee(team: HelpdeskTeam | undefined, exclude?: string | null): TeamMember | null {

@@ -6,14 +6,13 @@ import { AlertTriangle, ArrowRight, Eye, EyeOff, GitBranch, Loader2, Minus } fro
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
-import { inputClass } from '@/components/ui/field';
 import { useReportingPreview, useSetReportingLine, type ChartEmployee, type ReportingPreview } from '@/lib/company/org';
 import { getApiErrorMessage } from '@/lib/errors';
 import { cn } from '@/lib/cn';
-import { Select } from '@/components/ui/pickers';
+import { PersonSearch } from '@/components/people/person-search';
 
 export interface MoveRequest {
-  employee: ChartEmployee;
+  employee: Pick<ChartEmployee, 'id' | 'firstName' | 'lastName'>;
   /** undefined = let the user pick in the dialog; null = top of the organisation */
   managerId?: string | null;
 }
@@ -22,15 +21,7 @@ export interface MoveRequest {
  * Change someone's manager. Always previews first: loops are blocked, and
  * the admin sees who gains / loses visibility before confirming.
  */
-export function MoveDialog({
-  request,
-  employees,
-  onClose,
-}: {
-  request: MoveRequest | null;
-  employees: ChartEmployee[];
-  onClose: () => void;
-}) {
+export function MoveDialog({ request, onClose }: { request: MoveRequest | null; onClose: () => void }) {
   const preview = useReportingPreview();
   const save = useSetReportingLine();
   const [managerId, setManagerId] = useState<string | null | undefined>(undefined);
@@ -87,22 +78,14 @@ export function MoveDialog({
       <div className="space-y-4">
         <label className="block space-y-1.5">
           <span className="text-[13px] font-medium">New manager</span>
-          <Select
-            className={inputClass}
+          <PersonSearch
+            aria-label="New manager"
             value={managerId === undefined ? '' : managerId ?? '__top'}
-            onChange={(ev) => setManagerId(ev.target.value === '' ? undefined : ev.target.value === '__top' ? null : ev.target.value)}
-          >
-            <option value="">Choose…</option>
-            <option value="__top">— Nobody (top of the organisation)</option>
-            {employees
-              .filter((x) => x.id !== e.id)
-              .map((x) => (
-                <option key={x.id} value={x.id}>
-                  {x.firstName} {x.lastName}
-                  {x.designation ? ` — ${x.designation.name}` : ''}
-                </option>
-              ))}
-          </Select>
+            onChange={(v) => setManagerId(v === '' ? undefined : v === '__top' ? null : v)}
+            placeholder="Choose…"
+            exclude={e.id}
+            extra={[{ value: '__top', label: '— Nobody (top of the organisation)' }]}
+          />
         </label>
 
         {managerId !== undefined && (preview.isPending || !result) && (

@@ -45,13 +45,13 @@ export default function KudosPage() {
   const board = useKudosLeaderboard(enabled);
   const mine = useMyKudos(enabled);
   const suggestions = useKudosSuggestions(enabled && can('kudos.give'));
-  if (!accessLoading && !enabled) return <EmptyState icon={<ShieldCheck />} title="Kudos aren’t available" />;
+  if (!accessLoading && !enabled) return <EmptyState icon={<ShieldCheck />} title="Shout-outs aren’t available" />;
 
   return (
     <div className="space-y-6">
       <PageHeader
         eyebrow="Engagement"
-        title="Kudos"
+        title="Shout-outs"
         description="Say thank you in public — tag a company value so it counts."
         action={
           can('kudos.manage') && (
@@ -81,9 +81,9 @@ export default function KudosPage() {
           {feed.isLoading ? (
             <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-36 w-full" />)}</div>
           ) : feed.isError ? (
-            <ErrorState message={getApiErrorMessage(feed.error, 'Could not load kudos')} onRetry={() => feed.refetch()} />
+            <ErrorState message={getApiErrorMessage(feed.error, 'Could not load shout-outs')} onRetry={() => feed.refetch()} />
           ) : !feed.data?.data.length ? (
-            <EmptyState icon={<Heart />} title={filter === 'all' && !valueId ? 'No kudos yet' : 'Nothing here yet'} description={filter === 'all' && !valueId ? 'Be the first to thank a colleague.' : 'Try another filter.'} />
+            <EmptyState icon={<Heart />} title={filter === 'all' && !valueId ? 'No shout-outs yet' : 'Nothing here yet'} description={filter === 'all' && !valueId ? 'Be the first to thank a colleague.' : 'Try another filter.'} />
           ) : (
             <div className="space-y-3">
               {feed.data.data.map((k) => <KudosCard key={k.id} k={k} />)}
@@ -114,7 +114,7 @@ export default function KudosPage() {
           </Card>
           {mine.data && (
             <Card>
-              <CardHeader icon={<Heart />} title="Your kudos" />
+              <CardHeader icon={<Heart />} title="Your shout-outs" />
               <div className="space-y-3 px-5 pb-5">
                 <div className="grid grid-cols-3 gap-2">
                   {[['Received', mine.data.received], ['Given', mine.data.given], ['This month', mine.data.thisMonth]].map(([l, v]) => (
@@ -181,12 +181,12 @@ function Composer({ values, pickRequest }: { values: KudosValue[]; pickRequest: 
     e.preventDefault();
     try {
       await give.mutateAsync({ recipientIds: picked.map((p) => p.id), message, valueId });
-      toast.success(<>Kudos sent to {picked.map((p) => p.firstName).join(', ')} <Emoji e="🎉" play="appear" /></>);
+      toast.success(<>Shout-out sent to {picked.map((p) => p.firstName).join(', ')} <Emoji e="🎉" play="appear" /></>);
       setPicked([]);
       setMessage('');
       setValueId(null);
     } catch (err) {
-      toast.error(getApiErrorMessage(err, 'Could not send kudos'));
+      toast.error(getApiErrorMessage(err, 'Could not send the shout-out'));
     }
   };
 
@@ -257,7 +257,7 @@ function Composer({ values, pickRequest }: { values: KudosValue[]; pickRequest: 
         )}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-xs text-muted-foreground">Everyone sees it on the wall · {picked.length ? `${picked.map((p) => p.firstName).join(', ')} and their manager${picked.length > 1 ? 's are' : ' is'} told` : 'the people you thank are told'}</span>
-          <Button type="submit" loading={give.isPending} disabled={!picked.length || message.trim().length < 3}><Send /> Send kudos</Button>
+          <Button type="submit" loading={give.isPending} disabled={!picked.length || message.trim().length < 3}><Send /> Send shout-out</Button>
         </div>
       </form>
     </Card>
@@ -282,7 +282,7 @@ function ValuesDialog({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <Modal open onClose={onClose} icon={<Sparkles />} title="Company values" description="People tag kudos with these." size="md" footer={<Button variant="secondary" onClick={onClose}>Close</Button>}>
+    <Modal open onClose={onClose} icon={<Sparkles />} title="Company values" description="People tag shout-outs with these." size="md" footer={<Button variant="secondary" onClick={onClose}>Close</Button>}>
       {editing ? (
         <form onSubmit={submit} className="grid gap-3 sm:grid-cols-[80px_1fr]">
           <Field label="Emoji" htmlFor="kv-emoji"><Input id="kv-emoji" value={editing.emoji} onChange={(e) => setEditing({ ...editing, emoji: e.target.value })} maxLength={8} required /></Field>

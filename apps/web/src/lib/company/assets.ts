@@ -1,6 +1,6 @@
 'use client';
 
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAccess } from '@/lib/access/use-access';
 import { isLive } from '@/lib/live/socket';
@@ -189,11 +189,15 @@ export interface CheckOverview {
     done: number;
     reported: number;
     notAnswered: number;
-    reports: Array<{ answer: string; note: string | null; answeredAt: string; employee: Person | null; asset: { id: string; tag: string; name: string } | null }>;
+    /** The newest 10 problems (see reportsTotal) */
+    reports: CheckReport[];
+    reportsTotal: number;
   } | null;
   past: Array<{ id: string; name: string; dueOn: string; startedAt: string; closedAt: string }>;
   canRun: boolean;
 }
+
+export type CheckReport = { answer: string; note: string | null; answeredAt: string; employee: Person | null; asset: { id: string; tag: string; name: string } | null };
 
 export interface Returns {
   today: string;
@@ -439,6 +443,17 @@ export const useCancelAssetRequest = () => useAssetMutation(async (id: string) =
 export type KitInput = { id?: string; name: string; isBase?: boolean; roleKeys?: string[]; designationContains?: string | null; departmentIds?: string[]; items: Array<{ typeId: string; qty: number }>; onPromotion?: boolean; isActive?: boolean };
 export const useSaveKit = () => useAssetMutation(async ({ id, ...body }: KitInput) => unwrap<KitRule>(id ? await api.patch(`/assets/kits/${id}`, body) : await api.post('/assets/kits', body)));
 export const useRemoveKit = () => useAssetMutation(async (id: string) => unwrap<unknown>(await api.delete(`/assets/kits/${id}`)));
+
+/** Every problem reported in a check ("See all"), 25 at a time. */
+export function useCheckReports(checkId: string | null) {
+  return useInfiniteQuery({
+    queryKey: [...assetKeys.checks, 'reports', checkId],
+    queryFn: async ({ pageParam }) => unwrap<{ rows: CheckReport[]; meta: { total: number; page: number; limit: number; totalPages: number } }>(await api.get(`/assets/checks/${checkId}/reports`, { params: { page: pageParam, limit: 25 } })),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.meta.page < last.meta.totalPages ? last.meta.page + 1 : undefined),
+    enabled: Boolean(checkId),
+  });
+}
 
 export const useStartCheck = () => useAssetMutation(async (body: { name: string; dueOn: string }) => unwrap<CheckOverview>(await api.post('/assets/checks', body)));
 export const useRemindCheck = () => useAssetMutation(async (id: string) => unwrap<{ reminded: number }>(await api.post(`/assets/checks/${id}/remind`)));

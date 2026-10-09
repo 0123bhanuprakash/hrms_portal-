@@ -10,30 +10,30 @@ import { Card, EmptyState, ErrorState, Skeleton, Tabs } from '@/components/ui/fe
 import { TeamsPanel } from '@/components/helpdesk/teams-panel';
 import { TopicEditor } from '@/components/helpdesk/topic-editor';
 import { useAccess } from '@/lib/access/use-access';
-import { PRIORITY, QUEUE_INFO, useMyQueues, useReorderTopics, useTicketCategories, type Queue, type TicketCategory } from '@/lib/company/helpdesk';
+import { PRIORITY, useHelpdeskQueues, useReorderTopics, useTicketCategories, type Queue, type TicketCategory } from '@/lib/company/helpdesk';
 import { getApiErrorMessage } from '@/lib/errors';
 import { cn } from '@/lib/cn';
 
-const TEAM_EMOJI: Record<Queue, string> = { IT: '💻', HR: '🧑‍💼', FINANCE: '💰', DEVOPS: '🚀' };
-
 export default function TicketCategoriesPage() {
   const { hasFeature, can, isLoading: accessLoading } = useAccess();
-  const queues = useMyQueues();
+  const hq = useHelpdeskQueues();
+  // Topics of the teams I work; people who manage teams also set up the topics of company-made ones
+  const queues = hq.all.filter((x) => !x.archived && (x.works || (x.custom && can('ticket.manage_teams')))).map((x) => x.queue);
   const allowed = hasFeature('ops.helpdesk') && (queues.length > 0 || can('ticket.manage_teams'));
   const cats = useTicketCategories(true, allowed && queues.length > 0);
   const [editing, setEditing] = useState<TicketCategory | Queue | null>(null);
   const [picked, setTab] = useState<'topics' | 'teams'>('topics');
-  // Company Admins without a queue of their own only manage heads
+  // People who manage teams but work none (and no company-made team yet) only see Teams
   const tab = queues.length ? picked : 'teams';
   if (!accessLoading && !allowed) return <EmptyState icon={<ShieldCheck />} title="No access" />;
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Helpdesk" title="Ticket topics" description="The topics employees pick when they raise a ticket, and who leads each team. Each team manages its own topics." />
+      <PageHeader eyebrow="Helpdesk" title="Ticket topics" description="The topics employees pick when they raise a ticket, and the teams that answer them. Each team manages its own topics." />
       <Tabs
         tabs={[
           ...(queues.length ? [{ id: 'topics' as const, label: 'Topics', icon: <Tags /> }] : []),
-          { id: 'teams' as const, label: 'Teams & heads', icon: <Users /> },
+          { id: 'teams' as const, label: 'Teams', icon: <Users /> },
         ]}
         value={tab}
         onChange={setTab}
@@ -66,6 +66,7 @@ export default function TicketCategoriesPage() {
 
 function TeamTopics({ queue, topics, onEdit }: { queue: Queue; topics: TicketCategory[]; onEdit: (t: TicketCategory | Queue) => void }) {
   const reorder = useReorderTopics();
+  const hq = useHelpdeskQueues();
   const [drag, setDrag] = useState<string | null>(null);
   const [over, setOver] = useState<string | null>(null);
   const busiest = Math.max(1, ...topics.map((t) => t.used30 ?? 0));
@@ -89,8 +90,8 @@ function TeamTopics({ queue, topics, onEdit }: { queue: Queue; topics: TicketCat
   return (
     <Card className="overflow-hidden">
       <div className="flex items-center gap-2 border-b border-border bg-subtle/40 px-5 py-3">
-        <span className="text-lg" aria-hidden>{TEAM_EMOJI[queue]}</span>
-        <h2 className="text-sm font-semibold">{QUEUE_INFO[queue].label}</h2>
+        <span className="text-lg" aria-hidden>{hq.info(queue).emoji}</span>
+        <h2 className="text-sm font-semibold">{hq.info(queue).label}</h2>
         <span className="text-xs text-muted-foreground">{topics.filter((t) => t.isActive).length} topics</span>
         <Button size="sm" variant="secondary" className="ml-auto" onClick={() => onEdit(queue)}><Plus /> Add</Button>
       </div>

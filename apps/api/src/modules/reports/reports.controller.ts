@@ -7,7 +7,7 @@ import type { AccessContext } from '../access/access.types';
 import { ReportsService } from './reports.service';
 import { ReportsOverviewService } from './reports-overview.service';
 import { ReportSchedulesService } from './report-schedules.service';
-import { DayQueryDto, DrillQueryDto, FilterQueryDto, MonthQueryDto, RangeQueryDto, SaveScheduleDto } from './dto';
+import { DayQueryDto, DrillQueryDto, FilterQueryDto, MonthQueryDto, RangeQueryDto, SaveScheduleDto, UtilisationQueryDto, LeaveLeftQueryDto } from './dto';
 
 const file = (body: string, name: string) => new StreamableFile(Buffer.from(body, 'utf8'), { type: 'text/csv; charset=utf-8', disposition: `attachment; filename="${name}"` });
 const uuid = new ParseUUIDPipe({ version: '4' });
@@ -80,10 +80,18 @@ export class ReportsController {
     return this.reports.attendanceDay(ctx.companyId!, access, q);
   }
 
+  /** "15+ days left" drawer: per leave type, counts and the first few; typeId pages through one type. */
+  @RequireFeature('insights.reports')
+  @RequirePermission('report.view')
+  @Get('attendance/leave-left')
+  leaveLeft(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Query() q: LeaveLeftQueryDto) {
+    return this.reports.leaveLeft(ctx.companyId!, access, q);
+  }
+
   /** PMO (project.manage) sees everyone; managers with report.view see their scope. */
   @RequireFeature('work.projects')
   @Get('utilisation')
-  utilisation(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Query() q: RangeQueryDto) {
+  utilisation(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Query() q: UtilisationQueryDto) {
     return this.reports.utilisation(ctx.companyId!, access, q);
   }
 

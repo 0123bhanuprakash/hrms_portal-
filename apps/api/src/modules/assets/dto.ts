@@ -183,3 +183,8 @@ export class CheckAnswerDto {
 export class CheckAnswersDto {
   @IsArray() @ArrayMaxSize(100) @ValidateNested({ each: true }) @Type(() => CheckAnswerDto) answers!: CheckAnswerDto[];
 }
+
+export class PageQueryDto {
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit?: number;
+}

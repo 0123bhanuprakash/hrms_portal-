@@ -16,6 +16,9 @@ const PERSON = { id: true, employeeId: true, firstName: true, lastName: true, av
  *    answers per asset (have it / problem / not with me); IT sees progress.
  * IT runs checks; HR can look.
  */
+/** Problems listed on the check card before "See all" */
+const REPORTS_SHOWN = 10;
+
 @Injectable()
 export class AssetChecksService {
   constructor(
@@ -74,6 +77,32 @@ export class AssetChecksService {
   }
 
   /** IT / HR: the running check and past ones. */
+  /** Every problem reported in a check, newest first, a page at a time. */
+  async reports(companyId: string, access: AccessContext, checkId: string, q: { page?: number; limit?: number }) {
+    if (!this.sees(access)) throw new ForbiddenException('You do not have permission to perform this action. Required: asset.manage');
+    const check = await this.prisma.assetCheck.findFirst({ where: { id: checkId, companyId }, select: { id: true } });
+    if (!check) throw new NotFoundException('Check not found');
+    return this.problemPage(check.id, q.page ?? 1, q.limit ?? 25);
+  }
+
+  private async problemPage(checkId: string, page: number, limit: number) {
+    const where = { checkId, answer: { not: 'HAVE' as const } };
+    const [total, rows] = await Promise.all([
+      this.prisma.assetCheckAnswer.count({ where }),
+      this.prisma.assetCheckAnswer.findMany({ where, orderBy: [{ answeredAt: 'desc' }, { id: 'asc' }], skip: (page - 1) * limit, take: limit, select: { employeeId: true, answer: true, note: true, answeredAt: true, assetId: true } }),
+    ]);
+    const [who, assets] = await Promise.all([
+      this.prisma.employee.findMany({ where: { id: { in: rows.map((i) => i.employeeId) } }, select: PERSON }),
+      this.prisma.asset.findMany({ where: { id: { in: rows.map((i) => i.assetId) } }, select: { id: true, tag: true, name: true } }),
+    ]);
+    const person = new Map(who.map((w) => [w.id, w]));
+    const asset = new Map(assets.map((a) => [a.id, a]));
+    return {
+      rows: rows.map((i) => ({ answer: i.answer, note: i.note, answeredAt: i.answeredAt, employee: person.get(i.employeeId) ?? null, asset: asset.get(i.assetId) ?? null })),
+      meta: { total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)) },
+    };
+  }
+
   async overview(companyId: string, access: AccessContext) {
     if (!this.sees(access)) throw new ForbiddenException('You do not have permission to perform this action. Required: asset.manage');
     const checks = await this.prisma.assetCheck.findMany({ where: { companyId }, orderBy: { startedAt: 'desc' }, take: 5, select: { id: true, name: true, dueOn: true, startedAt: true, closedAt: true } });
@@ -98,16 +127,14 @@ export class AssetChecksService {
       }
       const all = [...people.values()];
       const issues = answers.filter((a) => a.answer !== 'HAVE');
-      const [who, assets] = await Promise.all([
-        this.prisma.employee.findMany({ where: { id: { in: issues.map((i) => i.employeeId) } }, select: PERSON }),
-        this.prisma.asset.findMany({ where: { id: { in: issues.map((i) => i.assetId) } }, select: { id: true, tag: true, name: true } }),
-      ]);
       progress = {
         people: all.length,
         done: all.filter((p) => p.answered === p.total && !p.issues).length,
         reported: all.filter((p) => p.issues).length,
         notAnswered: all.filter((p) => p.answered < p.total).length,
-        reports: issues.map((i) => ({ answer: i.answer, note: i.note, answeredAt: i.answeredAt, employee: who.find((w) => w.id === i.employeeId) ?? null, asset: assets.find((a) => a.id === i.assetId) ?? null })),
+        // The newest few problems; reports() pages through all of them
+        reports: (await this.problemPage(open.id, 1, REPORTS_SHOWN)).rows,
+        reportsTotal: issues.length,
       };
     }
     return {

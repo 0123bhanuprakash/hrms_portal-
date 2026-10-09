@@ -146,7 +146,7 @@ export function useEmployeeHero(needsCount: number | undefined, celebrating: str
     actions.push({ href: '/app/leave?apply=WFH', label: 'Work from home', icon: <Home /> });
   }
   if (hasFeature('work.timesheets') && can('timesheet.submit')) actions.push({ href: '/app/timesheets', label: 'Timesheet', icon: <Timer /> });
-  if (hasFeature('engage.kudos') && can('kudos.give')) actions.push({ href: '/app/kudos', label: 'Give kudos', icon: <Heart /> });
+  if (hasFeature('engage.kudos') && can('kudos.give')) actions.push({ href: '/app/kudos', label: 'Give a shout-out', icon: <Heart /> });
 
   return { title: `${greeting()}, ${user?.firstName ?? ''}`, subtitle: parts.join(' '), stats, actions };
 }
@@ -537,17 +537,17 @@ export function KudosTickerCard({ className }: { className?: string }) {
     <Card className={cn('flex flex-col', className)}>
       <CardHeader
         icon={<Heart />}
-        title="Kudos"
-        action={<Link href="/app/kudos" className="text-xs font-medium text-primary hover:underline">{can('kudos.give') ? 'Give kudos' : 'See all'}</Link>}
+        title="Shout-outs"
+        action={<Link href="/app/kudos" className="text-xs font-medium text-primary hover:underline">{can('kudos.give') ? 'Give a shout-out' : 'See all'}</Link>}
       />
       {q.isLoading ? (
         <div className="space-y-2 px-5 pb-5"><Skeleton className="h-20 w-full" /><Skeleton className="h-20 w-full" /></div>
       ) : q.isLoadingError ? (
         <div className="px-5 pb-3"><InlineRetry query={q} /></div>
       ) : !items.length ? (
-        <p className="px-5 pb-5 text-sm text-muted-foreground">No kudos yet — thank someone for something great.</p>
+        <p className="px-5 pb-5 text-sm text-muted-foreground">No shout-outs yet — thank someone for something great.</p>
       ) : moving ? (
-        <Ticker seconds={items.length * 5} label="Recent kudos (hover to pause and scroll)" className="mx-3 mb-3 min-h-[240px] flex-1 basis-0">
+        <Ticker seconds={items.length * 5} label="Recent shout-outs (hover to pause and scroll)" className="mx-3 mb-3 min-h-[240px] flex-1 basis-0">
           <ul className="flex flex-col gap-2">
             {items.map((k) => row(k))}
             {items.map((k) => row(k, true))}
@@ -557,7 +557,7 @@ export function KudosTickerCard({ className }: { className?: string }) {
         <ul className="flex flex-col gap-2 px-3 pb-3">{items.map((k) => row(k))}</ul>
       )}
       <Link href="/app/kudos" className="flex items-center justify-center gap-1.5 border-t border-border px-5 py-2.5 text-xs font-semibold text-primary hover:bg-subtle">
-        View all kudos <ChevronRight className="h-3.5 w-3.5" />
+        View all shout-outs <ChevronRight className="h-3.5 w-3.5" />
       </Link>
     </Card>
   );

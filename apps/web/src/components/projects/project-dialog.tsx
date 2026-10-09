@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Briefcase, Building2, FolderKanban, UserCog } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,15 +11,15 @@ import { cn } from '@/lib/cn';
 
 const COLORS = ['#4F46E5', '#0D9488', '#DB2777', '#F59E0B', '#0EA5E9', '#7C3AED', '#16A34A', '#EF4444'];
 import { getApiErrorMessage } from '@/lib/errors';
-import { DateInput, PersonSelect, Select } from '@/components/ui/pickers';
-import { usePeoplePicker } from '@/lib/company/org';
+import { DateInput, Select } from '@/components/ui/pickers';
+import { usePeopleByIds, type PickPerson } from '@/lib/company/org';
+import { PersonSearch } from '@/components/people/person-search';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
 /** Create / edit a project (PMO). */
 export function ProjectDialog({ value, onClose, onSaved }: { value: ProjectDetail | 'new' | null; onClose: () => void; onSaved?: (p: ProjectDetail) => void }) {
   const save = useSaveProject();
-  const people = usePeoplePicker();
   const [f, setF] = useState<ProjectInput>({ name: '', code: '', clientName: '', description: '', type: 'CLIENT', color: null, status: 'ACTIVE', startDate: today(), endDate: '', managerEmployeeId: null, managerAllocation: 30, deliveryDirectorId: null });
   const [ddTouched, setDdTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,15 +41,12 @@ export function ProjectDialog({ value, onClose, onSaved }: { value: ProjectDetai
     );
     setDdTouched(value !== 'new' && Boolean(value.deliveryDirector));
   }, [value]);
-  const options = useMemo(() => (people.data?.employees ?? []).map((e) => ({ id: e.id, firstName: e.firstName, lastName: e.lastName, avatarUrl: e.avatarUrl, sub: e.designation?.name ?? null })), [people.data]);
   // Picking a PM suggests their reporting manager as Delivery Director (until the PMO picks one)
-  const pickPm = (id: string) => {
-    setF((p) => {
-      const manager = (people.data?.employees ?? []).find((e) => e.id === id)?.reportingManagerId ?? null;
-      return { ...p, managerEmployeeId: id || null, ...(!ddTouched && { deliveryDirectorId: manager }) };
-    });
+  const pickPm = (id: string, person: PickPerson | null) => {
+    setF((p) => ({ ...p, managerEmployeeId: id || null, ...(!ddTouched && { deliveryDirectorId: person?.reportingManagerId ?? null }) }));
   };
-  const suggestedDd = useMemo(() => (people.data?.employees ?? []).find((e) => e.id === f.managerEmployeeId)?.reportingManagerId ?? null, [people.data, f.managerEmployeeId]);
+  const pm = usePeopleByIds(f.managerEmployeeId ? [f.managerEmployeeId] : []);
+  const suggestedDd = pm.data?.[0]?.reportingManagerId ?? null;
   if (!value) return null;
   const set = <K extends keyof ProjectInput>(k: K, v: ProjectInput[K]) => setF((p) => ({ ...p, [k]: v }));
 
@@ -117,7 +114,7 @@ export function ProjectDialog({ value, onClose, onSaved }: { value: ProjectDetai
           <legend className="flex items-center gap-1.5 px-1 text-xs font-semibold text-muted-foreground"><UserCog className="h-3.5 w-3.5" /> People in charge</legend>
           <div className="grid gap-3 sm:grid-cols-[1fr_110px]">
             <Field label="Project manager" htmlFor="pj-pm" hint="One per project. Their time here is booked too.">
-              <PersonSelect id="pj-pm" people={options} value={f.managerEmployeeId ?? ''} onChange={pickPm} emptyLabel="No project manager yet" />
+              <PersonSearch id="pj-pm" value={f.managerEmployeeId ?? ''} onChange={pickPm} emptyLabel="No project manager yet" />
             </Field>
             <Field label="Their time" htmlFor="pj-pm-alloc">
               <div className="relative">
@@ -127,7 +124,7 @@ export function ProjectDialog({ value, onClose, onSaved }: { value: ProjectDetai
             </Field>
           </div>
           <Field label="Delivery Director" htmlFor="pj-dd" hint={f.deliveryDirectorId && f.deliveryDirectorId === suggestedDd ? 'Suggested: the PM’s reporting manager. Requests go Lead → PM → Delivery Director → PMO.' : 'Requests go Lead → PM → Delivery Director → PMO. No time is booked.'}>
-            <PersonSelect id="pj-dd" people={options} value={f.deliveryDirectorId ?? ''} onChange={(v) => { setDdTouched(true); set('deliveryDirectorId', v || null); }} emptyLabel="No Delivery Director (PM → PMO)" />
+            <PersonSearch id="pj-dd" value={f.deliveryDirectorId ?? ''} onChange={(v) => { setDdTouched(true); set('deliveryDirectorId', v || null); }} emptyLabel="No Delivery Director (PM → PMO)" />
           </Field>
         </fieldset>
         <Field label="Description" htmlFor="pj-desc" className="sm:col-span-2"><Textarea id="pj-desc" value={f.description ?? ''} onChange={(e) => set('description', e.target.value)} maxLength={500} rows={2} /></Field>

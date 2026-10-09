@@ -1,13 +1,21 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseEnumPipe, ParseUUIDPipe, Patch, Post, Put, Query, StreamableFile, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, type PipeTransform, Patch, Post, Put, Query, StreamableFile, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { TicketQueue } from '@prisma/client';
 import { Audit, CurrentAccess, RequireFeature, RequirePermission, TenantCtx } from '../../common';
 import type { TenantContext } from '../../common/types/request.types';
-import type { AccessContext } from '../access/access.types';
+import { holds, type AccessContext } from '../access/access.types';
+import { QUEUE_KEY } from './sla';
 import { TicketCategoriesService } from './ticket-categories.service';
 import { TicketsService } from './tickets.service';
 import { HelpdeskTeamsService } from './teams.service';
-import { AnswersQueryDto, AssignDto, BulkTicketsDto, CloseDto, CreateTicketDto, MessageDto, ReopenDto, ResolveDto, SaveCategoryDto, SaveTeamDto, ReorderCategoriesDto, SummaryQueryDto, TicketQueryDto, UpdateTicketDto } from './dto';
+import { AnswersQueryDto, AssignDto, BulkTicketsDto, CloseDto, CreateTeamDto, CreateTicketDto, MessageDto, ReopenDto, ResolveDto, SaveCategoryDto, SaveTeamDto, ReorderCategoriesDto, SummaryQueryDto, TicketQueryDto, UpdateTicketDto } from './dto';
+
+/** A team key in the URL: IT, HR, FINANCE, DEVOPS or a company-made team's key */
+const TeamKey: PipeTransform<string, string> = {
+  transform: (v: string) => {
+    if (!QUEUE_KEY.test(v)) throw new BadRequestException('Pick a helpdesk team');
+    return v;
+  },
+};
 
 const attachment = FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024, files: 1 } });
 
@@ -28,6 +36,20 @@ export class HelpdeskController {
     return this.teams.list(ctx.companyId!, access);
   }
 
+  /** Every team of the company (archived ones too, for old tickets) and which ones I work. */
+  @RequirePermission('ticket.view')
+  @Get('queues')
+  queues(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext) {
+    return this.teams.queues(ctx.companyId!, access);
+  }
+
+  @Audit('helpdesk:team:create', 'helpdesk_team')
+  @RequirePermission('ticket.manage_teams')
+  @Post('teams')
+  createTeam(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Body() dto: CreateTeamDto) {
+    return this.teams.create(ctx.companyId!, access, dto);
+  }
+
   /** Employees: usual reply time and head per team (raise-a-ticket page, My tickets). */
   @RequirePermission('ticket.view')
   @Get('directory')
@@ -38,7 +60,7 @@ export class HelpdeskController {
   @Audit('helpdesk:team:update', 'helpdesk_team')
   @RequirePermission('ticket.manage_teams')
   @Put('teams/:queue')
-  saveTeam(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Param('queue', new ParseEnumPipe(TicketQueue)) queue: TicketQueue, @Body() dto: SaveTeamDto) {
+  saveTeam(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Param('queue', TeamKey) queue: string, @Body() dto: SaveTeamDto) {
     return this.teams.save(ctx.companyId!, access, queue, dto);
   }
 
@@ -46,9 +68,9 @@ export class HelpdeskController {
 
   @RequirePermission('ticket.view')
   @Get('categories')
-  listCategories(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Query('all') all?: string, @Query('queue') queue?: string) {
-    const q = queue && (Object.values(TicketQueue) as string[]).includes(queue) ? (queue as TicketQueue) : undefined;
-    const agent = all === 'true' && this.tickets.queuesOf(access).length > 0;
+  async listCategories(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Query('all') all?: string, @Query('queue') queue?: string) {
+    const q = queue && QUEUE_KEY.test(queue) ? queue : undefined;
+    const agent = all === 'true' && (holds(access, 'ticket.manage_teams') || (await this.tickets.queuesOf(ctx.companyId!, access)).length > 0);
     return this.categories.list(ctx.companyId!, agent, q, agent);
   }
 
@@ -69,15 +91,15 @@ export class HelpdeskController {
   @Audit('helpdesk:category:reorder', 'ticket_category')
   @HttpCode(HttpStatus.OK)
   @Post('categories/reorder')
-  reorderCategories(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Body() dto: ReorderCategoriesDto) {
-    this.tickets.assertHandles(access, dto.queue);
+  async reorderCategories(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Body() dto: ReorderCategoriesDto) {
+    await this.tickets.assertHandles(ctx.companyId!, access, dto.queue);
     return this.categories.reorder(ctx.companyId!, dto);
   }
 
   @Audit('helpdesk:category:create', 'ticket_category')
   @Post('categories')
-  createCategory(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Body() dto: SaveCategoryDto) {
-    this.tickets.assertHandles(access, dto.queue);
+  async createCategory(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Body() dto: SaveCategoryDto) {
+    await this.tickets.assertHandles(ctx.companyId!, access, dto.queue);
     return this.categories.save(ctx.companyId!, null, dto);
   }
 
@@ -85,8 +107,8 @@ export class HelpdeskController {
   @Patch('categories/:id')
   async updateCategory(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Param('id', ParseUUIDPipe) id: string, @Body() dto: SaveCategoryDto) {
     const current = await this.categories.get(ctx.companyId!, id);
-    this.tickets.assertHandles(access, current.queue);
-    this.tickets.assertHandles(access, dto.queue);
+    await this.tickets.assertHandles(ctx.companyId!, access, current.queue);
+    await this.tickets.assertHandles(ctx.companyId!, access, dto.queue);
     return this.categories.save(ctx.companyId!, id, dto);
   }
 
@@ -109,7 +131,7 @@ export class HelpdeskController {
   }
 
   @Get('agents/:queue')
-  agents(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Param('queue', new ParseEnumPipe(TicketQueue)) queue: TicketQueue) {
+  agents(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Param('queue', TeamKey) queue: string) {
     return this.tickets.agents(ctx.companyId!, access, queue);
   }
 

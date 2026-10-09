@@ -1,6 +1,6 @@
 'use client';
 
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { LIVE } from '@/lib/live';
 import { useAccess } from '@/lib/access/use-access';
@@ -198,8 +198,13 @@ export interface Insights {
   absent: Array<{ employee: PersonLite; dates: string[] }>;
   lateOften: Array<{ employee: PersonLite; count: number }>;
   manyCorrections: Array<{ employee: PersonLite; count: number }>;
+  /** Everyone per list — each list above holds only the first 5 */
+  counts: Record<InsightList, number>;
+  missingCheckoutIds: string[];
   thresholds: { late: number; corrections: number };
 }
+export type InsightList = 'missingCheckout' | 'absent' | 'lateOften' | 'manyCorrections';
+export type InsightRow = { employee: PersonLite; date?: string; dates?: string[]; count?: number };
 
 export interface ShiftsList {
   general: { name: string; startTime: string; endTime: string };
@@ -384,6 +389,17 @@ export function useTeamMonth(q: { month: string; departmentId?: string; search?:
 
 export function useInsights(enabled = true) {
   return useQuery({ queryKey: attendanceKeys.insights, queryFn: async () => unwrap<Insights>(await api.get('/attendance/insights')), enabled, staleTime: 60_000 });
+}
+
+/** Everyone in one insight ("See all"), 25 at a time. */
+export function useInsightList(list: InsightList | null) {
+  return useInfiniteQuery({
+    queryKey: [...attendanceKeys.insights, 'list', list],
+    queryFn: async ({ pageParam }) => unwrap<{ rows: InsightRow[]; meta: { total: number; page: number; limit: number; totalPages: number } }>(await api.get('/attendance/insights', { params: { list, page: pageParam, limit: 25 } })),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.meta.page < last.meta.totalPages ? last.meta.page + 1 : undefined),
+    enabled: Boolean(list),
+  });
 }
 
 export function useShifts(enabled = true) {

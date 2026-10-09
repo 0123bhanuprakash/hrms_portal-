@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dueDates, QUEUE_PERMISSION, QUEUES, SLA_HOURS } from './sla';
+import { dueDates, isBuiltIn, QUEUE_KEY, QUEUE_PERMISSION, QUEUES, SLA_HOURS } from './sla';
 
 describe('helpdesk response targets', () => {
   const raised = new Date('2026-10-05T10:00:00Z');
@@ -19,8 +19,12 @@ describe('helpdesk response targets', () => {
     for (const h of Object.values(SLA_HOURS)) expect(h.response).toBeLessThan(h.resolution);
   });
 
-  it('only IT, HR, Finance and DevOps take tickets', () => {
+  it('IT, HR, Finance and DevOps are built in; company teams get generated keys', () => {
     expect(QUEUES).toEqual(['IT', 'HR', 'FINANCE', 'DEVOPS']);
+    expect(isBuiltIn('HR')).toBe(true);
+    expect(isBuiltIn('T0A1B2C3D')).toBe(false);
+    expect(QUEUE_KEY.test('T0A1B2C3D')).toBe(true);
+    expect(QUEUE_KEY.test('hr')).toBe(false);
     expect(QUEUE_PERMISSION.FINANCE).toBe('ticket.handle_finance');
     expect(QUEUE_PERMISSION.DEVOPS).toBe('ticket.handle_devops');
   });

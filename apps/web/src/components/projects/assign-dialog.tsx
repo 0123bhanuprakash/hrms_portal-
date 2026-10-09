@@ -5,6 +5,7 @@ import { UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/feedback';
 import { Modal } from '@/components/ui/modal';
+import { SearchField, useDebounced } from '@/components/ui/list-tools';
 import { MemberDialog } from '@/components/projects/member-dialog';
 import { projectColor, shortDate } from '@/components/projects/project-ui';
 import { usePortfolio, useProjectPlan, type PortfolioProject, type ProjectPerson } from '@/lib/company/projects';
@@ -25,7 +26,9 @@ export interface AssignRequest {
 export function AssignDialog({ request, person, allocation, onClose }: { request?: AssignRequest; person?: AssignRequest['employee']; allocation?: number; onClose: () => void }) {
   const req: AssignRequest = request ?? { employee: person!, allocation: allocation ?? 100, startDate: today() };
   const [projectId, setProjectId] = useState(req.projectId ?? '');
-  const projects = usePortfolio({});
+  const [search, setSearch] = useState('');
+  const typed = useDebounced(search.trim());
+  const projects = usePortfolio({ search: typed || undefined, sort: 'name', limit: 50 });
   const plan = useProjectPlan(projectId || undefined);
   const preset = useMemo(() => ({ employeeId: req.employee.id, allocation: req.allocation, startDate: req.startDate }), [req.employee.id, req.allocation, req.startDate]);
   const choices = (projects.data?.data ?? []).filter((p): p is PortfolioProject => !p.limited && p.status !== 'COMPLETED' && (!p.endDate || p.endDate >= req.startDate));
@@ -35,6 +38,8 @@ export function AssignDialog({ request, person, allocation, onClose }: { request
       {projectId && plan.isLoading ? (
         <Skeleton className="h-24" />
       ) : (
+        <>
+        <SearchField value={search} onChange={setSearch} placeholder="Project name, code or client" label="Search projects" className="mb-2" />
         <ul className="max-h-80 divide-y divide-border overflow-y-auto">
           {!choices.length && <li className="py-4 text-sm text-muted-foreground">No open projects run then.</li>}
           {choices.map((p) => (
@@ -47,6 +52,8 @@ export function AssignDialog({ request, person, allocation, onClose }: { request
             </li>
           ))}
         </ul>
+        {(projects.data?.meta.total ?? 0) > (projects.data?.data.length ?? 0) && <p className="pt-2 text-xs text-muted-foreground">Showing the first {projects.data!.data.length} of {projects.data!.meta.total} — type to find another.</p>}
+        </>
       )}
     </Modal>
   );

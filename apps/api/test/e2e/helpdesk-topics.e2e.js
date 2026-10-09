@@ -149,6 +149,7 @@ async function raise(h, fields) {
     for (const mins of [30, 90, 120]) {
       await p.ticket.create({ data: { companyId: company.id, number: 900 + mins, queue: 'IT', employeeId: P.other.id, subject: 'Old one', description: 'Old ticket for reply time', firstResponseDueAt: new Date(), resolutionDueAt: new Date(), createdAt: new Date(Date.now() - 86400_000), firstRespondedAt: new Date(Date.now() - 86400_000 + mins * 60_000), status: 'CLOSED' } });
     }
+    await new Promise((r) => setTimeout(r, 3100)); // the API reuses a company's team list for 3 s (this head was written straight to the DB)
     const dir = await call(H.emp, 'GET', '/helpdesk/directory');
     const itDir = dir.data?.find((d) => d.queue === 'IT');
     check('Directory lists all 4 teams', dir.data?.map((d) => d.queue).join() === 'IT,HR,FINANCE,DEVOPS', dir.status);

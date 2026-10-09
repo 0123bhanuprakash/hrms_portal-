@@ -33,7 +33,7 @@ export default function KudosInsightsPage() {
         description="Who is being thanked, for what, and who might be missed. Only HR sees this page."
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="ghost" asChild><Link href="/app/kudos"><ArrowLeft /> Kudos</Link></Button>
+            <Button variant="ghost" asChild><Link href="/app/kudos"><ArrowLeft /> Shout-outs</Link></Button>
             <div className="inline-flex rounded-lg border border-border bg-surface p-0.5" role="group" aria-label="Period">
               {PERIODS.map(([m, l]) => (
                 <button key={m} type="button" aria-pressed={months === m} onClick={() => setMonths(m)} className={cn('h-8 rounded-md px-3 text-xs font-semibold', months === m ? 'bg-primary-soft text-primary-soft-foreground' : 'text-muted-foreground')}>{l}</button>
@@ -60,7 +60,7 @@ function Body({ d }: { d: KudosInsights }) {
   const maxValue = Math.max(1, ...d.values.map((v) => v.count));
   const quiet = d.values.filter((v) => v.value && v.count / Math.max(1, d.sent) < 0.1);
   const tiles: Array<[string, string, string, string]> = [
-    ['Kudos sent', String(d.sent), change === null ? 'First period' : `${change >= 0 ? '+' : ''}${change}% vs the period before`, change !== null && change < 0 ? 'text-destructive' : 'text-success'],
+    ['Shout-outs sent', String(d.sent), change === null ? 'First period' : `${change >= 0 ? '+' : ''}${change}% vs the period before`, change !== null && change < 0 ? 'text-destructive' : 'text-success'],
     ['People thanked', `${d.peopleThanked} of ${d.headcount}`, `${d.headcount ? Math.round((d.peopleThanked / d.headcount) * 100) : 0}% of the company`, 'text-success'],
     ['People giving', String(d.givers), `${d.headcount ? Math.round((d.givers / d.headcount) * 100) : 0}% gave at least once`, d.givers / Math.max(1, d.headcount) < 0.5 ? 'text-warning' : 'text-success'],
     ['Not thanked · 90 days', String(d.notThanked.length), d.notThanked.length ? 'see the list below' : 'everyone was thanked', d.notThanked.length ? 'text-destructive' : 'text-success'],
@@ -78,7 +78,7 @@ function Body({ d }: { d: KudosInsights }) {
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader icon={<BarChart3 />} title="Kudos per month" />
+          <CardHeader icon={<BarChart3 />} title="Shout-outs per month" />
           <div className="flex h-48 items-end gap-3 px-5 pb-5">
             {d.monthly.map((m) => (
               <div key={m.month} className="flex h-full flex-1 flex-col items-center justify-end gap-1.5">
@@ -92,7 +92,7 @@ function Body({ d }: { d: KudosInsights }) {
         <Card>
           <CardHeader icon={<Sparkles />} title="What people are thanked for" />
           <div className="space-y-2.5 px-5 pb-5">
-            {!d.values.length && <p className="text-sm text-muted-foreground">No kudos in this period.</p>}
+            {!d.values.length && <p className="text-sm text-muted-foreground">No shout-outs in this period.</p>}
             {d.values.map((v) => (
               <div key={v.value?.id ?? 'none'}>
                 <div className="flex text-xs"><span className="flex-1 font-semibold">{v.value ? `${v.value.emoji} ${v.value.name}` : 'No value tagged'}</span><span className="text-muted-foreground tabular-nums">{v.count} · {Math.round((v.count / Math.max(1, d.sent)) * 100)}%</span></div>
@@ -118,7 +118,7 @@ function Matrix({ d }: { d: KudosInsights }) {
     return (
       <Card>
         <CardHeader icon={<Network />} title="Who thanks whom" />
-        <p className="px-5 pb-5 text-sm text-muted-foreground">Needs kudos between at least two departments.</p>
+        <p className="px-5 pb-5 text-sm text-muted-foreground">Needs shout-outs between at least two departments.</p>
       </Card>
     );
   }
@@ -145,7 +145,7 @@ function Matrix({ d }: { d: KudosInsights }) {
             ))}
           </tbody>
         </table>
-        <p className="mt-2 text-xs text-muted-foreground">{total ? `${Math.round((across / total) * 100)}% of kudos cross departments.` : ''} The diagonal is thanks inside a team.</p>
+        <p className="mt-2 text-xs text-muted-foreground">{total ? `${Math.round((across / total) * 100)}% of shout-outs cross departments.` : ''} The diagonal is thanks inside a team.</p>
       </div>
     </Card>
   );
@@ -203,10 +203,10 @@ function NotThanked({ d }: { d: KudosInsights }) {
 
 function exportCsv(d: KudosInsights) {
   const rows: string[][] = [
-    ['Month', 'Kudos'],
+    ['Month', 'Shout-outs'],
     ...d.monthly.map((m) => [m.month, String(m.count)]),
     [],
-    ['Value', 'Kudos'],
+    ['Value', 'Shout-outs'],
     ...d.values.map((v) => [v.value?.name ?? 'No value', String(v.count)]),
     [],
     ['Not thanked in 90 days', 'Department', 'Manager', 'Last thanked'],

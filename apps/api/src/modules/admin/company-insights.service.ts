@@ -107,23 +107,32 @@ export class CompanyInsightsService {
         ],
       }),
     };
-    // Tenants are few (hundreds at most): compute on all matches, then sort and page
-    const rows = await this.prisma.company.findMany({
-      where,
-      take: 2000,
-      include: {
-        branding: { select: { logoUrl: true, primaryColor: true, displayName: true } },
-        settings: { select: { employeeIdPrefix: true } },
-        plan: { select: { key: true, name: true, limits: true } },
-        _count: { select: { users: true, employees: true } },
-      },
-    });
+    const include = {
+      branding: { select: { logoUrl: true, primaryColor: true, displayName: true } },
+      settings: { select: { employeeIdPrefix: true } },
+      plan: { select: { key: true, name: true, limits: true } },
+      _count: { select: { users: true, employees: true } },
+    } satisfies Prisma.CompanyInclude;
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const dir = query.sortOrder === 'asc' ? 1 : -1;
+    const key = query.sortBy ?? 'createdAt';
+    // Sorting by a plain column with no health filter: page in the database and work out health for that page only
+    if (!query.health && (key === 'createdAt' || key === 'name' || key === 'status')) {
+      const order: Prisma.SortOrder = dir === 1 ? 'asc' : 'desc';
+      const [total, pageRows] = await Promise.all([
+        this.prisma.company.count({ where }),
+        this.prisma.company.findMany({ where, include, orderBy: [{ [key]: order }, { id: 'asc' }], skip: (page - 1) * limit, take: limit }),
+      ]);
+      const pm = await this.metrics(pageRows.map((r) => r.id));
+      return { data: pageRows.map((r) => ({ ...r, insights: pm.get(r.id)! })), meta: { total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)) } };
+    }
+    // Sorting / filtering by health, people or last activity needs every company's numbers (tenants are few)
+    const rows = await this.prisma.company.findMany({ where, include });
     const m = await this.metrics(rows.map((r) => r.id));
     let items = rows.map((r) => ({ ...r, insights: m.get(r.id)! }));
     if (query.health) items = items.filter((i) => i.insights.health.label === (query.health as HealthLabel));
 
-    const dir = query.sortOrder === 'asc' ? 1 : -1;
-    const key = query.sortBy ?? 'createdAt';
     const value = (i: (typeof items)[number]): number | string => {
       switch (key) {
         case 'name': return i.name.toLowerCase();
@@ -136,8 +145,6 @@ export class CompanyInsightsService {
     };
     items.sort((a, b) => (value(a) > value(b) ? dir : value(a) < value(b) ? -dir : 0));
 
-    const page = query.page ?? 1;
-    const limit = query.limit ?? 20;
     return { data: items.slice((page - 1) * limit, page * limit), meta: { total: items.length, page, limit, totalPages: Math.max(1, Math.ceil(items.length / limit)) } };
   }
 
@@ -215,7 +222,7 @@ export class CompanyInsightsService {
         { key: 'timesheets', label: 'Timesheets', percent: pct(timesheets) },
         { key: 'expenses', label: 'Expenses', percent: pct(expenses) },
         { key: 'helpdesk', label: 'Helpdesk', percent: pct(tickets) },
-        { key: 'kudos', label: 'Kudos', percent: pct(kudos, Math.max(1, company._count.users)) },
+        { key: 'kudos', label: 'Shout-outs', percent: pct(kudos, Math.max(1, company._count.users)) },
       ],
       storageBytes: storage._sum.sizeBytes ?? 0,
       recentActivity: audit,

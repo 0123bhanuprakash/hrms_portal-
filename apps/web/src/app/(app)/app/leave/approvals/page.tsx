@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { Suspense, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { AlertTriangle, Check, CheckCircle2, FileText, Inbox, List, MessageCircleQuestion, ShieldCheck, Users, X } from 'lucide-react';
+import { AlertTriangle, Check, CheckCircle2, FileText, HandCoins, Inbox, List, MessageCircleQuestion, SearchX, ShieldCheck, Users, X } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,16 +12,30 @@ import { Field, Textarea } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { PersonAvatar } from '@/components/profile/person-avatar';
 import { Confetti } from '@/components/motion/motion';
-import { LeaveRequestCard } from '@/components/leave/request-card';
+import { LeaveRequestCard, useFocusedRequest } from '@/components/leave/request-card';
 import { useAccess } from '@/lib/access/use-access';
 import { useIsApprover } from '@/lib/company/projects';
-import { leaveRange, openLeaveDocument, useAskQuestion, useDecideLeave, useLeaveRequests, useWhosOff, type LeaveRequest, type LeaveStatus } from '@/lib/company/leave';
+import { leaveRange, openLeaveDocument, useAskQuestion, useDecideCancel, useDecideLeave, useLeaveRequests, useWhosOff, type LeaveFacets, type LeaveListQuery, type LeaveRequest, type LeaveStatus } from '@/lib/company/leave';
+import { SearchField, useDebounced } from '@/components/ui/list-tools';
+import { Select } from '@/components/ui/pickers';
+import { inputClass } from '@/components/ui/field';
 import { useSwipeAway } from '@/components/motion/use-swipe-away';
 import { getApiErrorMessage } from '@/lib/errors';
 import { cn } from '@/lib/cn';
 import { ViewingNow } from '@/components/live/viewing-now';
+import { ExtraLeavePanel } from '@/components/leave/extra-leave';
+import { useExtraRequests } from '@/lib/company/leave';
 
-type View = 'review' | 'all';
+type View = 'review' | 'all' | 'extra';
+type When = '' | 'week' | 'month' | 'started';
+type Sort = NonNullable<LeaveListQuery['sort']>;
+const WHEN: Array<{ key: When; label: string }> = [
+  { key: '', label: 'Any dates' },
+  { key: 'week', label: 'Next 7 days' },
+  { key: 'month', label: 'Next 30 days' },
+  { key: 'started', label: 'Already started' },
+];
+const todayKey = () => new Date().toISOString().slice(0, 10);
 const addDays = (k: string, n: number) => {
   const d = new Date(`${k}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + n);
@@ -28,23 +43,60 @@ const addDays = (k: string, n: number) => {
 };
 
 export default function LeaveApprovalsPage() {
+  return (
+    <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+      <LeaveApprovals />
+    </Suspense>
+  );
+}
+
+function LeaveApprovals() {
   const { can, scopeOf, access, hasFeature, isLoading: accessLoading } = useAccess();
+  // Lend / give extra days (role permission; HR by default)
+  const lender = can('leave.extra_decide');
+  const params = useSearchParams();
+  const waitingExtra = useExtraRequests({ view: 'decide' }, hasFeature('time.leave') && lender);
   const delegated = access?.delegations.filter((d) => d.permissions.includes('leave.approve')) ?? [];
   const isApprover = useIsApprover('leave.approve');
   const approver = can('leave.approve') || delegated.length > 0 || isApprover;
   const canSeeAll = can('leave.view') && scopeOf('leave.view') !== 'own';
-  const allowed = hasFeature('time.leave') && (approver || canSeeAll);
+  const allowed = hasFeature('time.leave') && (approver || canSeeAll || lender);
   // Default tab follows access once it has loaded (approvers start on their queue)
-  const [chosen, setView] = useState<View | null>(null);
-  const view: View = chosen ?? (approver ? 'review' : 'all');
+  const [chosen, setView] = useState<View | null>(params.get('tab') === 'extra' ? 'extra' : null);
+  const view: View = chosen ?? (approver ? 'review' : canSeeAll ? 'all' : 'extra');
   const [status, setStatus] = useState<LeaveStatus | ''>('');
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [typeId, setTypeId] = useState('');
+  const [deptId, setDeptId] = useState('');
+  const [when, setWhen] = useState<When>('');
+  const [sort, setSort] = useState<Sort | ''>('');
+  const typed = useDebounced(search.trim(), 300);
+  const filtered = Boolean(typed || typeId || deptId || when);
+  const clearFilters = () => { setSearch(''); setTypeId(''); setDeptId(''); setWhen(''); setPage(1); };
+  const today = todayKey();
+  const range = when === 'week' ? { from: today, to: addDays(today, 7) } : when === 'month' ? { from: today, to: addDays(today, 30) } : when === 'started' ? { to: today } : {};
   const [deciding, setDeciding] = useState<{ request: LeaveRequest; action: 'approve' | 'reject' } | null>(null);
   const [asking, setAsking] = useState<LeaveRequest | null>(null);
   const [cleared, setCleared] = useState(false);
-  const list = useLeaveRequests({ view, status: view === 'all' && status ? status : undefined, page }, allowed);
+  const list = useLeaveRequests(
+    { view: view === 'extra' ? 'review' : view, status: view === 'all' && status ? status : undefined, search: typed || undefined, leaveTypeId: typeId || undefined, departmentId: deptId || undefined, sort: sort || undefined, ...range, page },
+    allowed && view !== 'extra',
+  );
   const swipe = useSwipeAway(list.data?.data, leaveKey);
+  const focused = useFocusedRequest(list.data?.data.map((r) => r.id));
   const decide = useDecideLeave();
+  const decideCancel = useDecideCancel();
+  const settleCancel = async (r: LeaveRequest, approve: boolean) => {
+    try {
+      swipe.markDone(r);
+      await decideCancel.mutateAsync({ id: r.id, approve });
+      toast.success(approve ? `Done — ${r.employee.firstName}'s unused days are back in their balance` : `${r.employee.firstName}'s leave stays as approved`);
+    } catch (err) {
+      swipe.unmark(r);
+      toast.error(getApiErrorMessage(err, 'Could not decide the cancellation'));
+    }
+  };
   const pending = swipe.rows.filter((x) => !x.leaving && x.item.canDecide).map((x) => x.item);
   const clashFree = pending.filter((r) => !(r.team?.overlaps.length));
 
@@ -82,6 +134,7 @@ export default function LeaveApprovalsPage() {
           tabs={[
             ...(approver ? [{ id: 'review' as const, label: 'Waiting for me', icon: <Inbox />, ...(view === 'review' && list.data && { count: list.data.meta.total }) }] : []),
             ...(canSeeAll ? [{ id: 'all' as const, label: 'All requests', icon: <List /> }] : []),
+            ...(lender ? [{ id: 'extra' as const, label: 'Extra leave', icon: <HandCoins />, count: waitingExtra.data?.length || undefined }] : []),
           ]}
           value={view}
           onChange={(v) => { setView(v); setPage(1); setCleared(false); }}
@@ -92,6 +145,27 @@ export default function LeaveApprovalsPage() {
           </Button>
         )}
       </div>
+
+      {view === 'extra' ? (
+        <ExtraLeavePanel />
+      ) : (
+      <>
+      <Filters
+        facets={list.data?.meta.facets}
+        view={view}
+        search={search}
+        onSearch={(v) => { setSearch(v); setPage(1); }}
+        typeId={typeId}
+        onType={(v) => { setTypeId(v); setPage(1); }}
+        deptId={deptId}
+        onDept={(v) => { setDeptId(v); setPage(1); }}
+        when={when}
+        onWhen={(v) => { setWhen(v); setPage(1); }}
+        sort={sort}
+        onSort={(v) => { setSort(v); setPage(1); }}
+        filtered={filtered}
+        onClear={clearFilters}
+      />
 
       {view === 'all' && (
         <div className="flex flex-wrap gap-1.5">
@@ -109,6 +183,8 @@ export default function LeaveApprovalsPage() {
             <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-36 w-full" />)}</div>
           ) : list.isError ? (
             <ErrorState message={getApiErrorMessage(list.error, 'Could not load requests')} onRetry={() => list.refetch()} />
+          ) : !swipe.rows.length && filtered ? (
+            <EmptyState icon={<SearchX />} title="No requests match these filters" description="Try another name, leave type or dates." action={<Button variant="secondary" onClick={clearFilters}>Clear filters</Button>} />
           ) : !swipe.rows.length ? (
             <div className="relative overflow-hidden rounded-xl">
               {cleared && <Confetti />}
@@ -121,9 +197,18 @@ export default function LeaveApprovalsPage() {
                   <LeaveRequestCard
                     request={r}
                     showEmployee
+                    highlight={r.id === focused}
                     footer={r.status === 'PENDING' && (r.team || r.document || r.needsDocument) ? <RequestExtras r={r} /> : null}
                     actions={
-                      !leaving && r.canDecide && (
+                      !leaving && r.canDecideCancel ? (
+                        <div className="flex flex-col items-start gap-1.5 md:items-end">
+                          <div className="flex flex-wrap gap-2">
+                            <Button size="sm" variant="secondary" disabled={decideCancel.isPending} onClick={() => void settleCancel(r, false)}>Keep the leave</Button>
+                            <Button size="sm" disabled={decideCancel.isPending} onClick={() => void settleCancel(r, true)}><Check /> {r.cancelRequest?.lastDay ? 'Agree to end early' : 'Agree to cancel'}</Button>
+                          </div>
+                          <span className="text-xs text-muted-foreground">Cancellation request{r.decideAs === 'override' ? ' · as HR' : ''}</span>
+                        </div>
+                      ) : !leaving && r.canDecide && (
                         <div className="flex flex-col items-start gap-1.5 md:items-end">
                           <div className="flex flex-wrap gap-2">
                             <Button size="sm" variant="ghost" onClick={() => setAsking(r)}><MessageCircleQuestion /> Ask</Button>
@@ -152,6 +237,8 @@ export default function LeaveApprovalsPage() {
           </Card>
         </div>
       </div>
+      </>
+      )}
 
       <DecideDialog
         value={deciding}
@@ -161,6 +248,57 @@ export default function LeaveApprovalsPage() {
         onLast={() => pending.length === 1 && setCleared(true)}
       />
       <AskDialog request={asking} onClose={() => setAsking(null)} />
+    </div>
+  );
+}
+
+/** Search, leave type, department, dates and order — the chips only offer what is in the list. */
+function Filters(p: {
+  facets?: LeaveFacets;
+  view: View;
+  search: string;
+  onSearch: (v: string) => void;
+  typeId: string;
+  onType: (v: string) => void;
+  deptId: string;
+  onDept: (v: string) => void;
+  when: When;
+  onWhen: (v: When) => void;
+  sort: Sort | '';
+  onSort: (v: Sort | '') => void;
+  filtered: boolean;
+  onClear: () => void;
+}) {
+  const types = p.facets?.leaveTypes ?? [];
+  const depts = p.facets?.departments ?? [];
+  // Names seen so far, so a chosen type / department keeps its name when nothing matches any more
+  const seen = useRef(new Map<string, string>()).current;
+  for (const x of [...types, ...depts]) seen.set(x.id, x.name);
+  const field = cn(inputClass, 'h-8 w-auto py-0 text-xs');
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <SearchField className="w-full sm:w-64" value={p.search} onChange={p.onSearch} placeholder="Search name or employee ID" label="Search requests" />
+      <Select aria-label="Leave type" className={field} value={p.typeId} onChange={(e) => p.onType(e.target.value)}>
+        <option value="">All leave types</option>
+        {types.map((t) => <option key={t.id} value={t.id}>{t.name} ({t.count})</option>)}
+        {p.typeId && !types.some((t) => t.id === p.typeId) && <option value={p.typeId}>{seen.get(p.typeId) ?? 'Selected type'} (0)</option>}
+      </Select>
+      {(depts.length > 1 || p.deptId) && (
+        <Select aria-label="Department" className={field} value={p.deptId} onChange={(e) => p.onDept(e.target.value)}>
+          <option value="">All departments</option>
+          {depts.map((d) => <option key={d.id} value={d.id}>{d.name} ({d.count})</option>)}
+          {p.deptId && !depts.some((d) => d.id === p.deptId) && <option value={p.deptId}>{seen.get(p.deptId) ?? 'Selected department'} (0)</option>}
+        </Select>
+      )}
+      <Select aria-label="Dates" className={field} value={p.when} onChange={(e) => p.onWhen(e.target.value as When)}>
+        {WHEN.map((w) => <option key={w.key || 'any'} value={w.key}>{w.label}</option>)}
+      </Select>
+      <Select aria-label="Order" className={field} value={p.sort} onChange={(e) => p.onSort(e.target.value as Sort | '')}>
+        <option value="">{p.view === 'review' ? 'Starting soonest' : 'Latest dates first'}</option>
+        {p.view === 'review' ? <option value="latest">Latest dates first</option> : <option value="soonest">Starting soonest</option>}
+        <option value="newest">Newest applied</option>
+      </Select>
+      {p.filtered && <Button size="sm" variant="ghost" className="h-8" onClick={p.onClear}><X /> Clear</Button>}
     </div>
   );
 }

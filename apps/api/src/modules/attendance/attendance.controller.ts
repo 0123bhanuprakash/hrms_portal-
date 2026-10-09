@@ -25,6 +25,7 @@ import {
   SaveShiftDto,
   ShiftMembersDto,
   TeamMonthQueryDto,
+  InsightsQueryDto,
 } from './dto';
 import { Live } from '../realtime/live.decorator';
 
@@ -86,8 +87,8 @@ export class AttendanceController {
 
   @RequirePermission('attendance.view')
   @Get('insights')
-  insights(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext) {
-    return this.attendance.insights(ctx.companyId!, access);
+  insights(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Query() q: InsightsQueryDto) {
+    return this.attendance.insights(ctx.companyId!, access, q);
   }
 
   /** Team leads, managers and HR remind people they look after (checked per person). */

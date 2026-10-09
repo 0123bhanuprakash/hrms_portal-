@@ -168,7 +168,10 @@ const eventually = async (fn) => {
     check('Peer answers → done', ans.data?.done === true);
     check('Can’t answer for someone else’s asset → 404', (await call(S.peer, 'POST', '/assets/checks/answers', { answers: [{ assignmentId: mine.id, answer: 'HAVE' }] })).status === 404);
     const ov = await call(S.hr, 'GET', '/assets/checks');
-    check('Progress: 1 reported, 1 not answered', ov.data?.progress.reported === 1 && ov.data.progress.notAnswered === 1 && ov.data.progress.reports[0].note === 'Battery swollen', JSON.stringify(ov.data?.progress));
+    check('Progress: 1 reported, 1 not answered', ov.data?.progress.reported === 1 && ov.data.progress.notAnswered === 1 && ov.data.progress.reports[0].note === 'Battery swollen' && ov.data.progress.reportsTotal === 1, JSON.stringify(ov.data?.progress));
+    const cr = await call(S.hr, 'GET', `/assets/checks/${st.data.open.id}/reports?limit=1`);
+    check('"See all" problems, a page at a time', cr.data?.rows.length === 1 && cr.data.rows[0].note === 'Battery swollen' && cr.data.meta.total === 1, JSON.stringify(cr.data?.meta));
+    check('Problems of an unknown check → 404', (await call(S.hr, 'GET', '/assets/checks/00000000-0000-4000-8000-000000000000/reports')).status === 404);
     check('Remind the rest', (await call(S.it, 'POST', `/assets/checks/${st.data.open.id}/remind`)).data?.reminded === 1);
     check('Close the check', (await call(S.it, 'POST', `/assets/checks/${st.data.open.id}/close`)).data?.open === null);
 

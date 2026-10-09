@@ -66,7 +66,7 @@ export class KudosService {
   /** One kudos, shaped like a feed item — for its own page (home card, notifications). */
   async one(companyId: string, access: AccessContext, id: string) {
     const row = await this.prisma.kudos.findFirst({ where: { id, companyId, deletedAt: null }, select: SELECT });
-    if (!row) throw new NotFoundException('Kudos not found');
+    if (!row) throw new NotFoundException('Shout-out not found');
     return this.present(row, access, await this.userNames(row.thanks.slice(0, 3).map((t) => t.userId)));
   }
 
@@ -76,7 +76,7 @@ export class KudosService {
       select: { id: true, userId: true, firstName: true, lastName: true, reportingManager: { select: { userId: true } } },
     });
     if (people.length !== dto.recipientIds.length) throw new NotFoundException('Choose current colleagues only');
-    if (people.some((p) => p.userId === access.userId)) throw new BadRequestException('You can’t give kudos to yourself');
+    if (people.some((p) => p.userId === access.userId)) throw new BadRequestException('You can’t give yourself a shout-out');
     if (dto.valueId && !(await this.prisma.kudosValue.count({ where: { id: dto.valueId, companyId, isActive: true } }))) throw new NotFoundException('Value not found');
 
     const created = await this.prisma.kudos.create({
@@ -94,7 +94,7 @@ export class KudosService {
       companyId,
       userIds: people.map((p) => p.userId),
       type: 'kudos.received',
-      title: `${created.from.firstName} ${created.from.lastName} gave you kudos${value ? ` —${value}` : ''}`,
+      title: `${created.from.firstName} ${created.from.lastName} gave you a shout-out${value ? ` —${value}` : ''}`,
       body: created.message,
       link: `/app/kudos/${created.id}`,
       email: false,
@@ -126,9 +126,9 @@ export class KudosService {
   /** "Add my thanks" — toggles backing someone else's kudos. */
   async thank(companyId: string, access: AccessContext, id: string) {
     const row = await this.prisma.kudos.findFirst({ where: { id, companyId, deletedAt: null }, select: SELECT });
-    if (!row) throw new NotFoundException('Kudos not found');
+    if (!row) throw new NotFoundException('Shout-out not found');
     if (row.fromUserId === access.userId) throw new BadRequestException('You wrote this one');
-    if (row.recipients.some((r) => r.employee.id === access.employee?.id)) throw new BadRequestException('You can’t add thanks to your own kudos');
+    if (row.recipients.some((r) => r.employee.id === access.employee?.id)) throw new BadRequestException('You can’t add thanks to your own shout-out');
     const key = { kudosId_userId: { kudosId: id, userId: access.userId } };
     const existing = await this.prisma.kudosThanks.findUnique({ where: key });
     if (existing) await this.prisma.kudosThanks.delete({ where: key });
@@ -140,7 +140,7 @@ export class KudosService {
         companyId,
         userIds: recipients.map((r) => r.userId),
         type: 'kudos.thanks',
-        title: `${me ? name(me) : 'A colleague'} added their thanks to your kudos`,
+        title: `${me ? name(me) : 'A colleague'} added their thanks to your shout-out`,
         body: row.message,
         link: `/app/kudos/${id}`,
         email: false,
@@ -233,47 +233,62 @@ export class KudosService {
     const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - months + 1, 1));
     const prevStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 2 * months + 1, 1));
     const current = { companyId, employmentStatus: { not: EmploymentStatus.TERMINATED }, joiningDate: { lte: now } };
-    const [kudos, previous, headcount, values, departments] = await Promise.all([
-      this.prisma.kudos.findMany({
-        where: { companyId, deletedAt: null, createdAt: { gte: start } },
-        select: { createdAt: true, fromUserId: true, valueId: true, from: { select: { employee: { select: { departmentId: true } } } }, recipients: { select: { employeeId: true, employee: { select: { departmentId: true } } } } },
-      }),
+    // Everything is counted in the database — no kudos rows are loaded
+    const [totals, monthRows, byValueRows, pairs, previous, headcount, values, departments] = await Promise.all([
+      this.prisma.$queryRaw<Array<{ sent: number; givers: number; thanked: number }>>`
+        SELECT COUNT(DISTINCT k.id)::int AS sent,
+               COUNT(DISTINCT k.from_user_id)::int AS givers,
+               COUNT(DISTINCT kr.employee_id)::int AS thanked
+        FROM kudos k LEFT JOIN kudos_recipients kr ON kr.kudos_id = k.id
+        WHERE k.company_id = ${companyId}::uuid AND k.deleted_at IS NULL AND k.created_at >= ${start}`,
+      this.prisma.$queryRaw<Array<{ month: string; n: number }>>`
+        SELECT to_char(date_trunc('month', k.created_at), 'YYYY-MM') AS month, COUNT(*)::int AS n
+        FROM kudos k
+        WHERE k.company_id = ${companyId}::uuid AND k.deleted_at IS NULL AND k.created_at >= ${start}
+        GROUP BY 1`,
+      this.prisma.kudos.groupBy({ by: ['valueId'], where: { companyId, deletedAt: null, createdAt: { gte: start } }, _count: { _all: true } }),
+      // Who thanks whom, between departments
+      this.prisma.$queryRaw<Array<{ from_dept: string | null; to_dept: string | null; n: number }>>`
+        SELECT fe.department_id::text AS from_dept, te.department_id::text AS to_dept, COUNT(*)::int AS n
+        FROM kudos k
+        JOIN kudos_recipients kr ON kr.kudos_id = k.id
+        JOIN employees te ON te.id = kr.employee_id
+        LEFT JOIN employees fe ON fe.user_id = k.from_user_id
+        WHERE k.company_id = ${companyId}::uuid AND k.deleted_at IS NULL AND k.created_at >= ${start}
+        GROUP BY 1, 2`,
       this.prisma.kudos.count({ where: { companyId, deletedAt: null, createdAt: { gte: prevStart, lt: start } } }),
       this.prisma.employee.count({ where: current }),
       this.prisma.kudosValue.findMany({ where: { companyId }, select: { id: true, name: true, emoji: true, color: true } }),
       this.prisma.department.findMany({ where: { companyId }, select: { id: true, name: true } }),
     ]);
+    const perMonth = new Map(monthRows.map((r) => [r.month, r.n]));
     const monthly: Array<{ month: string; count: number }> = [];
     for (let i = 0; i < months; i++) {
       const key = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + i, 1)).toISOString().slice(0, 7);
-      monthly.push({ month: key, count: kudos.filter((k) => k.createdAt.toISOString().slice(0, 7) === key).length });
+      monthly.push({ month: key, count: perMonth.get(key) ?? 0 });
     }
-    const thanked = new Set(kudos.flatMap((k) => k.recipients.map((r) => r.employeeId)));
-    const givers = new Set(kudos.map((k) => k.fromUserId));
-    const byValue = new Map<string | null, number>();
-    for (const k of kudos) byValue.set(k.valueId, (byValue.get(k.valueId) ?? 0) + 1);
-    // Who thanks whom, between departments (busiest six)
+    const byValue = new Map<string | null, number>(byValueRows.map((r) => [r.valueId, r._count._all]));
+    // Busiest six departments
     const pair = new Map<string, number>();
     const activity = new Map<string, number>();
-    for (const k of kudos) {
-      const from = k.from.employee?.departmentId ?? 'none';
-      for (const r of k.recipients) {
-        const to = r.employee.departmentId ?? 'none';
-        pair.set(`${from}>${to}`, (pair.get(`${from}>${to}`) ?? 0) + 1);
-        activity.set(from, (activity.get(from) ?? 0) + 1);
-        activity.set(to, (activity.get(to) ?? 0) + 1);
-      }
+    for (const r of pairs) {
+      const from = r.from_dept ?? 'none';
+      const to = r.to_dept ?? 'none';
+      pair.set(`${from}>${to}`, (pair.get(`${from}>${to}`) ?? 0) + r.n);
+      activity.set(from, (activity.get(from) ?? 0) + r.n);
+      activity.set(to, (activity.get(to) ?? 0) + r.n);
     }
     const top = [...activity.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([id]) => id);
+    const t = totals[0] ?? { sent: 0, givers: 0, thanked: 0 };
     const deptName = (id: string) => (id === 'none' ? 'No department' : (departments.find((d) => d.id === id)?.name ?? 'Unknown'));
     return {
       months,
       from: start.toISOString().slice(0, 10),
-      sent: kudos.length,
+      sent: t.sent,
       previous,
       headcount,
-      peopleThanked: thanked.size,
-      givers: givers.size,
+      peopleThanked: t.thanked,
+      givers: t.givers,
       monthly,
       values: [
         ...values.map((v) => ({ value: v as typeof v | null, count: byValue.get(v.id) ?? 0 })).filter((v) => v.count > 0).sort((a, b) => b.count - a.count),
@@ -296,12 +311,16 @@ export class KudosService {
       orderBy: { joiningDate: 'desc' },
       take: 50,
     });
-    const last = await this.prisma.kudosRecipient.findMany({
-      where: { employeeId: { in: people.map((p) => p.id) }, kudos: { deletedAt: null } },
-      select: { employeeId: true, kudos: { select: { createdAt: true } } },
-    });
-    const lastAt = new Map<string, Date>();
-    for (const l of last) if (!lastAt.get(l.employeeId) || lastAt.get(l.employeeId)! < l.kudos.createdAt) lastAt.set(l.employeeId, l.kudos.createdAt);
+    // Each person's latest kudos, one row per person
+    const ids = people.map((p) => p.id);
+    const last = ids.length
+      ? await this.prisma.$queryRaw<Array<{ employee_id: string; at: Date }>>`
+          SELECT kr.employee_id::text AS employee_id, MAX(k.created_at) AS at
+          FROM kudos_recipients kr JOIN kudos k ON k.id = kr.kudos_id
+          WHERE kr.employee_id = ANY(${ids}::uuid[]) AND k.deleted_at IS NULL
+          GROUP BY kr.employee_id`
+      : [];
+    const lastAt = new Map(last.map((l) => [l.employee_id, l.at]));
     return people.map(({ reportingManager, department, joiningDate, ...p }) => ({
       employee: p,
       department: department?.name ?? null,
@@ -382,7 +401,7 @@ export class KudosService {
     const row = await this.exists(companyId, id);
     const ownRecent = row.fromUserId === access.userId && Date.now() - row.createdAt.getTime() < UNDO_HOURS * 3_600_000;
     if (!ownRecent && !holds(access, 'kudos.manage')) {
-      throw new ForbiddenException(row.fromUserId === access.userId ? `Kudos can only be taken back within ${UNDO_HOURS} hours` : 'You can’t remove someone else’s kudos');
+      throw new ForbiddenException(row.fromUserId === access.userId ? `A shout-out can only be taken back within ${UNDO_HOURS} hours` : 'You can’t remove someone else’s shout-out');
     }
     await this.prisma.kudos.update({ where: { id }, data: { deletedAt: new Date(), deletedById: access.userId } });
     // Nobody is told it was removed; its notifications quietly leave the bells
@@ -439,7 +458,7 @@ export class KudosService {
 
   private async exists(companyId: string, id: string) {
     const row = await this.prisma.kudos.findFirst({ where: { id, companyId, deletedAt: null }, select: { id: true, fromUserId: true, createdAt: true } });
-    if (!row) throw new NotFoundException('Kudos not found');
+    if (!row) throw new NotFoundException('Shout-out not found');
     return row;
   }
 

@@ -379,7 +379,7 @@ export function OrgVisual({ canManage, onOpenDepartments }: { canManage: boolean
         <DepartmentBars employees={employees} />
       </div>
 
-      <MoveDialog request={move} employees={employees} onClose={() => setMove(null)} />
+      <MoveDialog request={move} onClose={() => setMove(null)} />
     </div>
   );
 }
@@ -428,6 +428,7 @@ export function HealthCard({ health, onPerson, onFocus, onDepartments, compact }
                   {i.people.slice(0, 12).map((p) => (
                     <button key={p.id} type="button" onClick={() => onFocus(p.id)} className="rounded-full border border-border px-2 py-0.5 text-xs hover:bg-subtle">{p.name}</button>
                   ))}
+                  {i.count > i.people.length && <span className="px-1 py-0.5 text-xs text-muted-foreground">+{i.count - i.people.length} more</span>}
                 </div>
               )}
             </div>

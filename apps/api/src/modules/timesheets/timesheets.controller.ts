@@ -85,7 +85,7 @@ export class TimesheetsController {
   /** People whose time I approve, as a people × days grid. */
   @Get('team')
   team(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Query() q: TeamQueryDto) {
-    return this.timesheets.team(ctx.companyId!, access, q.weekStart);
+    return this.timesheets.team(ctx.companyId!, access, q);
   }
 
   @Audit('timesheet:approve', 'timesheet')

@@ -9,7 +9,7 @@ export const HOME_CARDS: Array<{ id: string; label: string; hint: string }> = [
   { id: 'celebrations', label: 'Celebrations', hint: 'Birthdays and work anniversaries' },
   { id: 'comingup', label: 'Coming up', hint: 'Holidays and events soon' },
   { id: 'joiners', label: 'New joiners', hint: 'Who joined recently' },
-  { id: 'kudos', label: 'Kudos', hint: 'The latest thank-yous' },
+  { id: 'kudos', label: 'Shout-outs', hint: 'The latest thank-yous' },
   { id: 'announcements', label: 'Announcements', hint: 'Company news at the bottom of Home' },
 ];
 

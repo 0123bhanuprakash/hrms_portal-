@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Field } from '@/components/ui/field';
-import { useDepartments, useDesignations, useLocations, usePeoplePicker } from '@/lib/company/org';
+import { useDepartments, useDesignations, useLocations } from '@/lib/company/org';
 import { DateInput, SearchSelect } from '@/components/ui/pickers';
 import { ReportsTo } from '@/components/employees/reports-to';
 
@@ -39,7 +39,6 @@ export function EmployeeProfileFields({ value, onChange, idPrefix }: { value: Pr
   const departments = useDepartments();
   const designations = useDesignations();
   const locations = useLocations();
-  const chart = usePeoplePicker();
   const set = <K extends keyof ProfileInput>(k: K, v: ProfileInput[K]) => onChange({ ...value, [k]: v });
   const id = (k: string) => `${idPrefix}-${k}`;
 
@@ -55,7 +54,7 @@ export function EmployeeProfileFields({ value, onChange, idPrefix }: { value: Pr
         <SearchSelect id={id('title')} value={value.designationId} onChange={(v) => set('designationId', v)} emptyLabel="— None" searchPlaceholder="Search job titles…" options={(designations.data ?? []).map((d) => ({ value: d.id, label: d.name, sub: d.orgLevel?.name ?? null }))} />
       </Field>
       <Field label="Reports to" htmlFor={id('mgr')}>
-        <ReportsTo id={id('mgr')} managerId={value.reportingManagerId} pmo={Boolean(value.reportsToPmo)} onChange={(v) => onChange({ ...value, reportingManagerId: v.managerId, reportsToPmo: v.pmo })} people={(chart.data?.employees ?? []).map((m) => ({ ...m, sub: m.designation?.name ?? null }))} />
+        <ReportsTo id={id('mgr')} managerId={value.reportingManagerId} pmo={Boolean(value.reportsToPmo)} onChange={(v) => onChange({ ...value, reportingManagerId: v.managerId, reportsToPmo: v.pmo })} />
       </Field>
       <Field label="Location" htmlFor={id('loc')} className="sm:col-span-2">
         <SearchSelect id={id('loc')} value={value.locationId} onChange={(v) => set('locationId', v)} emptyLabel={locations.data?.some((l) => l.isDefault) ? '— Default location' : '— None'} options={(locations.data ?? []).map((l) => ({ value: l.id, label: l.name }))} />

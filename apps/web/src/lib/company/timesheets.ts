@@ -149,6 +149,10 @@ export interface TeamWeek {
     missingDays: number;
   }>;
   summary: { waitingDays: number; waitingPeople: number; notLogged: number; sentBack: number; totalMinutes: number; billableMinutes: number };
+  /** People per filter (after the search) */
+  counts: { all: number; waiting: number; missing: number };
+  /** Paging of `people` — the summary covers everyone */
+  meta: { total: number; page: number; limit: number; totalPages: number };
 }
 
 export interface SheetSummary {
@@ -202,11 +206,12 @@ export function useSubmitPreview(scope: 'today' | 'all', enabled = true) {
   });
 }
 
-export function useTeamWeek(weekStart: string, enabled = true) {
+export type TeamWeekShow = 'all' | 'waiting' | 'missing';
+export function useTeamWeek(weekStart: string, q: { search?: string; show?: TeamWeekShow; page?: number } = {}, enabled = true) {
   const { hasFeature } = useAccess();
   return useQuery({
-    queryKey: timesheetKeys.team(weekStart),
-    queryFn: async () => unwrap<TeamWeek>(await api.get('/timesheets/team', { params: { weekStart } })),
+    queryKey: [...timesheetKeys.team(weekStart), q],
+    queryFn: async () => unwrap<TeamWeek>(await api.get('/timesheets/team', { params: { weekStart, ...Object.fromEntries(Object.entries(q).filter(([, v]) => v !== undefined && v !== '')) } })),
     enabled: enabled && hasFeature('work.timesheets'),
     placeholderData: keepPreviousData,
   });

@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma, TicketMessageKind, TicketPriority, TicketQueue, TicketStatus } from '@prisma/client';
+import { Prisma, TicketMessageKind, TicketPriority, TicketStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { holds, type AccessContext } from '../access/access.types';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -8,8 +8,8 @@ import { RealtimeService, room } from '../realtime/realtime.service';
 import { PrivateFilesService } from '../employee-profile/private-files.service';
 import { detectFileType, DOCUMENT_TYPES } from '../employee-profile/file-types';
 import { TicketCategoriesService } from './ticket-categories.service';
-import { HelpdeskTeamsService } from './teams.service';
-import { AUTO_CLOSE_DAYS, QUEUE_LABEL, QUEUE_PERMISSION, QUEUES, dueDates } from './sla';
+import { HelpdeskTeamsService, type QueueCatalog } from './teams.service';
+import { AUTO_CLOSE_DAYS, dueDates } from './sla';
 import type { AssignDto, BulkTicketsDto, CloseDto, CreateTicketDto, MessageDto, ReopenDto, ResolveDto, SummaryQueryDto, TicketQueryDto, UpdateTicketDto } from './dto';
 import { wordsWhere } from '../../common/word-search';
 
@@ -46,9 +46,10 @@ type Row = Prisma.TicketGetPayload<{ select: typeof SELECT }>;
 const MESSAGE = { id: true, authorId: true, kind: true, body: true, fileName: true, fileMime: true, fileSize: true, createdAt: true } satisfies Prisma.TicketMessageSelect;
 
 /**
- * Helpdesk: employees raise tickets to the IT, HR, Finance or DevOps queue
- * (never anonymously). Agents of a queue (ticket.handle_<queue>) see its
- * tickets. Without a team head anyone in the queue assigns, answers and
+ * Helpdesk: employees raise tickets to a team — IT, HR, Finance, DevOps or
+ * one the company made (never anonymously). People who work a team (role
+ * permission ticket.handle_<team>, or picked members of a company-made team)
+ * see its tickets. Without a team head anyone in the queue assigns, answers and
  * resolves; with a head (HelpdeskTeamsService) only the head / backup assign
  * and members work the tickets assigned to them (anyone may add a note).
  * The employee can reopen within AUTO_CLOSE_DAYS or close and rate.
@@ -73,13 +74,14 @@ export class TicketsService {
     const now = new Date();
     const where: Prisma.TicketWhereInput = { companyId };
     if (q.view === 'mine') {
-      if (!access.employee) return this.page([], 0, page, limit, access);
+      if (!access.employee) return this.page(await this.teams.catalog(companyId), [], 0, page, limit, access);
       where.employeeId = access.employee.id;
       if (q.queue) where.queue = q.queue;
     } else {
-      const mine = this.queuesOf(access);
-      if (!mine.length) throw new ForbiddenException('You don’t work any helpdesk queue');
-      if (q.queue && !mine.includes(q.queue)) throw new ForbiddenException(`You don’t work the ${QUEUE_LABEL[q.queue]} queue`);
+      const cat = await this.teams.catalog(companyId);
+      const mine = cat.worksOf(access);
+      if (!mine.length) throw new ForbiddenException('You don’t work any helpdesk team');
+      if (q.queue && !mine.includes(q.queue)) throw new ForbiddenException(`You don’t work the ${cat.label(q.queue)} team`);
       where.queue = q.queue ?? { in: mine };
       if (q.assignee === 'me') where.assigneeId = access.userId;
       else if (q.assignee === 'unassigned') where.assigneeId = null;
@@ -110,12 +112,13 @@ export class TicketsService {
       this.prisma.ticket.findMany({ where, select: SELECT, orderBy, skip: (page - 1) * limit, take: limit }),
       this.prisma.ticket.count({ where }),
     ]);
-    return this.page(rows, total, page, limit, access);
+    return this.page(await this.teams.catalog(companyId), rows, total, page, limit, access);
   }
 
   async get(companyId: string, access: AccessContext, id: string) {
-    const row = await this.visible(companyId, access, id);
-    const agent = this.isAgent(access, row);
+    const cat = await this.teams.catalog(companyId);
+    const row = await this.visible(cat, companyId, access, id);
+    const agent = this.isAgent(cat, access, row);
     const messages = await this.prisma.ticketMessage.findMany({
       where: { ticketId: id, ...(!agent && { kind: { not: TicketMessageKind.NOTE } }) },
       select: MESSAGE,
@@ -125,7 +128,7 @@ export class TicketsService {
       this.names(messages.map((m) => m.authorId)),
       row.assetId ? this.prisma.asset.findFirst({ where: { id: row.assetId, companyId }, select: { id: true, tag: true, name: true } }) : null,
     ]);
-    const [t] = await this.present([row], access);
+    const [t] = await this.present(cat, [row], access);
     return {
       ...t!,
       asset,
@@ -138,9 +141,10 @@ export class TicketsService {
     const mine = access.employee
       ? await this.prisma.ticket.count({ where: { companyId, employeeId: access.employee.id, status: { in: [TicketStatus.WAITING, TicketStatus.RESOLVED] } } })
       : 0;
-    const queues = this.queuesOf(access);
+    const cat = await this.teams.catalog(companyId);
+    const queues = cat.worksOf(access);
     const heads = queues.length ? await this.teams.heads(companyId) : new Map();
-    const leadOf = queues.filter((q) => this.teams.isLead(access, heads.get(q), q));
+    const leadOf = queues.filter((q) => this.teams.isLead(cat, access, heads.get(q), q));
     const memberOf = queues.filter((q) => !leadOf.includes(q));
     const queue = queues.length
       ? await this.prisma.ticket.count({
@@ -155,21 +159,23 @@ export class TicketsService {
           },
         })
       : 0;
-    return { mine, queue };
+    /** works: in at least one team (shows the Ticket queue menu) */
+    return { mine, queue, works: queues.length > 0 };
   }
 
   /** People who can take tickets in a queue (for the assign picker). */
-  async agents(companyId: string, access: AccessContext, queue: TicketQueue) {
-    this.assertHandles(access, queue);
-    const ids = await this.notifications.companyWideApprovers(companyId, QUEUE_PERMISSION[queue]);
+  async agents(companyId: string, access: AccessContext, queue: string) {
+    const cat = await this.teams.catalog(companyId);
+    if (!cat.works(access, queue)) throw new ForbiddenException(`You don’t work the ${cat.label(queue)} team`);
+    const ids = await this.teams.agentIds(companyId, queue);
     const users = await this.prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, firstName: true, lastName: true, email: true }, orderBy: { firstName: 'asc' } });
     return users;
   }
 
   /** Queue health for agents: workload, SLA and satisfaction over the last N days. */
   async summary(companyId: string, access: AccessContext, q: SummaryQueryDto) {
-    const queues = this.queuesOf(access);
-    if (!queues.length) throw new ForbiddenException('You don’t work any helpdesk queue');
+    const queues = (await this.teams.catalog(companyId)).worksOf(access);
+    if (!queues.length) throw new ForbiddenException('You don’t work any helpdesk team');
     const now = new Date();
     const since = new Date(now.getTime() - (q.days ?? 30) * 86400_000);
     const f = this.prisma.ticket.fields;
@@ -208,9 +214,10 @@ export class TicketsService {
   }
 
   async file(companyId: string, access: AccessContext, id: string, messageId: string) {
-    const row = await this.visible(companyId, access, id);
+    const cat = await this.teams.catalog(companyId);
+    const row = await this.visible(cat, companyId, access, id);
     const m = await this.prisma.ticketMessage.findFirst({ where: { id: messageId, ticketId: id }, select: { kind: true, fileKey: true, fileName: true, fileMime: true, fileSize: true } });
-    if (!m?.fileKey || (m.kind === TicketMessageKind.NOTE && !this.isAgent(access, row))) throw new NotFoundException('No attachment');
+    if (!m?.fileKey || (m.kind === TicketMessageKind.NOTE && !this.isAgent(cat, access, row))) throw new NotFoundException('No attachment');
     const stream = await this.files.open(m.fileKey).catch(() => {
       throw new NotFoundException('The file is missing');
     });
@@ -221,6 +228,8 @@ export class TicketsService {
 
   async create(companyId: string, access: AccessContext, dto: CreateTicketDto, file?: Express.Multer.File) {
     if (!access.employee) throw new BadRequestException('Your account has no employee profile');
+    const cat = await this.teams.catalog(companyId);
+    cat.assertOpen(dto.queue);
     const topic = dto.categoryId ? await this.categories.get(companyId, dto.categoryId) : null;
     if (topic && (topic.queue !== dto.queue || !topic.isActive)) throw new BadRequestException('Pick a category from this team');
     const priority = TicketCategoriesService.priorityFor(dto.priority, topic);
@@ -266,7 +275,7 @@ export class TicketsService {
     const n = {
       type: 'ticket.created',
       title: `#${t.number} · ${t.employee.firstName} ${t.employee.lastName}: ${t.subject}`,
-      body: `${QUEUE_LABEL[t.queue]}${t.category ? ` · ${t.category.name}` : ''} · ${PRIORITY_LABEL[t.priority]} priority`,
+      body: `${cat.label(t.queue)}${t.category ? ` · ${t.category.name}` : ''} · ${PRIORITY_LABEL[t.priority]} priority`,
       actionLabel: 'Open ticket',
     };
     if (routeTo) void this.notifications.notify({ companyId, userIds: [routeTo], link: `/app/helpdesk/${t.id}`, ...n, title: `New ticket for you — ${n.title}` });
@@ -276,7 +285,7 @@ export class TicketsService {
   }
 
   async reopen(companyId: string, access: AccessContext, id: string, dto: ReopenDto) {
-    const row = await this.visible(companyId, access, id);
+    const row = await this.visible(await this.teams.catalog(companyId), companyId, access, id);
     this.assertRequester(access, row);
     if (row.status !== TicketStatus.RESOLVED) throw new BadRequestException('Only a resolved ticket can be reopened');
     const now = new Date();
@@ -303,7 +312,7 @@ export class TicketsService {
 
   /** The employee closes: rates a resolved ticket, or withdraws an open one. */
   async close(companyId: string, access: AccessContext, id: string, dto: CloseDto) {
-    const row = await this.visible(companyId, access, id);
+    const row = await this.visible(await this.teams.catalog(companyId), companyId, access, id);
     this.assertRequester(access, row);
     if (row.status === TicketStatus.CLOSED) throw new BadRequestException('This ticket is already closed');
     const resolved = row.status === TicketStatus.RESOLVED;
@@ -328,13 +337,14 @@ export class TicketsService {
   // ─── Conversation ──────────────────────────────────────────
 
   async message(companyId: string, access: AccessContext, id: string, dto: MessageDto, file?: Express.Multer.File) {
-    const row = await this.visible(companyId, access, id);
-    const agent = this.isAgent(access, row);
+    const cat = await this.teams.catalog(companyId);
+    const row = await this.visible(cat, companyId, access, id);
+    const agent = this.isAgent(cat, access, row);
     if (row.status === TicketStatus.CLOSED) throw new BadRequestException('This ticket is closed — raise a new one if you still need help');
     if (!agent && (dto.internal || dto.waitForEmployee)) throw new ForbiddenException('Only the team working this ticket can do that');
     if (!agent && row.status === TicketStatus.RESOLVED) throw new BadRequestException('Reopen the ticket to reply');
     if (dto.internal && dto.waitForEmployee) throw new BadRequestException('An internal note can’t ask the employee for anything');
-    if (agent && !dto.internal) this.assertWorks(await this.gate(companyId, access, row), row);
+    if (agent && !dto.internal) this.assertWorks(cat, await this.gate(cat, access, row), row);
 
     const stored = file ? await this.storeFile(companyId, id, file) : null;
     const now = new Date();
@@ -382,7 +392,7 @@ export class TicketsService {
         companyId,
         userIds: [row.employee.userId],
         type: dto.waitForEmployee ? 'ticket.waiting' : 'ticket.reply',
-        title: dto.waitForEmployee ? `${QUEUE_LABEL[row.queue]} needs more information on #${row.number}` : `${who?.firstName ?? QUEUE_LABEL[row.queue]} replied on #${row.number}: ${row.subject}`,
+        title: dto.waitForEmployee ? `${cat.label(row.queue)} needs more information on #${row.number}` : `${who?.firstName ?? cat.label(row.queue)} replied on #${row.number}: ${row.subject}`,
         body: preview,
         link: `/app/helpdesk/${id}`,
         actionLabel: 'Reply',
@@ -401,16 +411,17 @@ export class TicketsService {
   // ─── Agent actions ─────────────────────────────────────────
 
   async assign(companyId: string, access: AccessContext, id: string, dto: AssignDto) {
-    const row = await this.visible(companyId, access, id);
-    this.assertAgent(access, row);
-    if (!(await this.gate(companyId, access, row)).lead) throw new ForbiddenException(`Only the ${QUEUE_LABEL[row.queue]} head assigns tickets`);
+    const cat = await this.teams.catalog(companyId);
+    const row = await this.visible(cat, companyId, access, id);
+    this.assertAgent(cat, access, row);
+    if (!(await this.gate(cat, access, row)).lead) throw new ForbiddenException(`Only the ${cat.label(row.queue)} head assigns tickets`);
     if (row.status === TicketStatus.CLOSED) throw new BadRequestException('This ticket is closed');
     const to = dto.assigneeId ?? null;
     if (to === row.assigneeId) return this.get(companyId, access, id);
     if (to) {
       if (to === row.employee.userId) throw new BadRequestException('A ticket can’t be assigned to the person who raised it');
       const user = await this.prisma.user.findFirst({ where: { id: to, companyId }, select: { id: true } });
-      if (!user || !(await this.notifications.holds(to, QUEUE_PERMISSION[row.queue]))) throw new BadRequestException(`That person doesn’t work the ${QUEUE_LABEL[row.queue]} queue`);
+      if (!user || !(await this.teams.userWorks(companyId, to, row.queue))) throw new BadRequestException(`That person doesn’t work the ${cat.label(row.queue)} team`);
     }
     const names = await this.names([to, access.userId]);
     const n = to ? names.get(to) : null;
@@ -427,7 +438,7 @@ export class TicketsService {
         userIds: [to],
         type: 'ticket.assigned',
         title: `${by?.firstName ?? 'Someone'} assigned you #${row.number}: ${row.subject}`,
-        body: `${QUEUE_LABEL[row.queue]} · ${PRIORITY_LABEL[row.priority]} priority · from ${row.employee.firstName} ${row.employee.lastName}`,
+        body: `${cat.label(row.queue)} · ${PRIORITY_LABEL[row.priority]} priority · from ${row.employee.firstName} ${row.employee.lastName}`,
         link: `/app/helpdesk/${id}`,
         actionLabel: 'Open ticket',
       });
@@ -437,19 +448,24 @@ export class TicketsService {
   }
 
   async update(companyId: string, access: AccessContext, id: string, dto: UpdateTicketDto) {
-    const row = await this.visible(companyId, access, id);
-    this.assertAgent(access, row);
-    this.assertWorks(await this.gate(companyId, access, row), row);
+    const cat = await this.teams.catalog(companyId);
+    const row = await this.visible(cat, companyId, access, id);
+    this.assertAgent(cat, access, row);
+    this.assertWorks(cat, await this.gate(cat, access, row), row);
     if (row.status === TicketStatus.CLOSED) throw new BadRequestException('This ticket is closed');
     const data: Prisma.TicketUncheckedUpdateInput = {};
     const events: string[] = [];
     const queue = dto.queue ?? row.queue;
     const moving = queue !== row.queue;
+    // A resolved ticket keeps the team and topic it was resolved under (reports count it there)
+    const recategorising = moving || (dto.categoryId !== undefined && (dto.categoryId ?? null) !== (row.category?.id ?? null));
+    if (row.status === TicketStatus.RESOLVED && recategorising) throw new BadRequestException('A resolved ticket’s team and topic can’t be changed — reopen it first');
     if (moving) {
+      cat.assertOpen(queue);
       data.queue = queue;
       data.assigneeId = null;
       data.categoryId = null;
-      events.push(`Moved from ${QUEUE_LABEL[row.queue]} to ${QUEUE_LABEL[queue]}`);
+      events.push(`Moved from ${cat.label(row.queue)} to ${cat.label(queue)}`);
     }
     if (dto.categoryId !== undefined && (dto.categoryId ?? null) !== (moving ? null : row.category?.id ?? null)) {
       if (dto.categoryId) {
@@ -474,20 +490,21 @@ export class TicketsService {
     if (moving) {
       void this.notifyNeedsOwner(companyId, { ...row, queue }, access.userId, {
         type: 'ticket.moved',
-        title: `#${row.number} moved to ${QUEUE_LABEL[queue]}: ${row.subject}`,
+        title: `#${row.number} moved to ${cat.label(queue)}: ${row.subject}`,
         body: `From ${row.employee.firstName} ${row.employee.lastName} · ${PRIORITY_LABEL[dto.priority ?? row.priority]} priority`,
         actionLabel: 'Open ticket',
       });
     }
     this.live(companyId, row, { alsoQueue: queue });
     // An agent who moved it out of their own queues can no longer open it
-    return this.queuesOf(access).includes(queue) ? this.get(companyId, access, id) : { id, moved: true, queue };
+    return cat.works(access, queue) ? this.get(companyId, access, id) : { id, moved: true, queue };
   }
 
   async resolve(companyId: string, access: AccessContext, id: string, dto: ResolveDto) {
-    const row = await this.visible(companyId, access, id);
-    this.assertAgent(access, row);
-    this.assertWorks(await this.gate(companyId, access, row), row);
+    const cat = await this.teams.catalog(companyId);
+    const row = await this.visible(cat, companyId, access, id);
+    this.assertAgent(cat, access, row);
+    this.assertWorks(cat, await this.gate(cat, access, row), row);
     if (!ACTIVE.includes(row.status)) throw new BadRequestException('Only an open ticket can be resolved');
     const now = new Date();
     await this.prisma.$transaction([
@@ -539,46 +556,51 @@ export class TicketsService {
   // ─── Helpers ───────────────────────────────────────────────
 
   /** Live: queue lists, the requester's list and open ticket pages reload. Internal notes stay with the team. */
-  live(companyId: string, row: { id: string; queue: TicketQueue; employee: { userId: string } }, opts: { agentsOnly?: boolean; alsoQueue?: TicketQueue } = {}) {
+  live(companyId: string, row: { id: string; queue: string; employee: { userId: string } }, opts: { agentsOnly?: boolean; alsoQueue?: string } = {}) {
     const rooms = [room.queue(companyId, row.queue), ...(opts.alsoQueue ? [room.queue(companyId, opts.alsoQueue)] : [])];
     if (!opts.agentsOnly) rooms.push(room.user(row.employee.userId), room.ticket(row.id));
     this.realtime.changed(rooms, 'helpdesk', { ticketId: row.id });
   }
 
-  queuesOf(access: AccessContext): TicketQueue[] {
-    return QUEUES.filter((q) => holds(access, QUEUE_PERMISSION[q]));
+  /** Teams this person works (lists, topics). */
+  async queuesOf(companyId: string, access: AccessContext): Promise<string[]> {
+    return (await this.teams.catalog(companyId)).worksOf(access);
   }
 
-  assertHandles(access: AccessContext, queue: TicketQueue) {
-    if (!holds(access, QUEUE_PERMISSION[queue])) throw new ForbiddenException(`You don’t work the ${QUEUE_LABEL[queue]} queue`);
+  /** Topics: people who work the team; for company-made teams also whoever manages teams. */
+  async assertHandles(companyId: string, access: AccessContext, queue: string) {
+    const cat = await this.teams.catalog(companyId);
+    const q = cat.get(queue);
+    if (!q) throw new BadRequestException('Pick a helpdesk team');
+    if (!cat.works(access, queue) && !(q.custom && holds(access, 'ticket.manage_teams'))) throw new ForbiddenException(`You don’t work the ${q.label} team`);
   }
 
-  private isAgent(access: AccessContext, row: Pick<Row, 'queue' | 'employee'>) {
-    return row.employee.userId !== access.userId && holds(access, QUEUE_PERMISSION[row.queue]);
+  private isAgent(cat: QueueCatalog, access: AccessContext, row: Pick<Row, 'queue' | 'employee'>) {
+    return row.employee.userId !== access.userId && cat.works(access, row.queue);
   }
 
-  private assertAgent(access: AccessContext, row: Row) {
-    if (!this.isAgent(access, row)) throw new ForbiddenException(row.employee.userId === access.userId ? 'You can’t work your own ticket' : `You don’t work the ${QUEUE_LABEL[row.queue]} queue`);
+  private assertAgent(cat: QueueCatalog, access: AccessContext, row: Row) {
+    if (!this.isAgent(cat, access, row)) throw new ForbiddenException(row.employee.userId === access.userId ? 'You can’t work your own ticket' : `You don’t work the ${cat.label(row.queue)} team`);
   }
 
   /** Team heads: may this agent assign (lead) / work (lead or assignee) this ticket? */
-  private async gate(companyId: string, access: AccessContext, row: Pick<Row, 'queue' | 'assigneeId'>) {
-    const team = (await this.teams.heads(companyId)).get(row.queue);
-    const lead = this.teams.isLead(access, team, row.queue);
+  private gate(cat: QueueCatalog, access: AccessContext, row: Pick<Row, 'queue' | 'assigneeId'>) {
+    const q = cat.get(row.queue);
+    const lead = this.teams.isLead(cat, access, q?.headId ? q : undefined, row.queue);
     return { lead, works: lead || row.assigneeId === access.userId };
   }
 
-  private assertWorks(g: { works: boolean }, row: Pick<Row, 'queue'>) {
-    if (!g.works) throw new ForbiddenException(`This ticket isn’t assigned to you — the ${QUEUE_LABEL[row.queue]} head assigns tickets`);
+  private assertWorks(cat: QueueCatalog, g: { works: boolean }, row: Pick<Row, 'queue'>) {
+    if (!g.works) throw new ForbiddenException(`This ticket isn’t assigned to you — the ${cat.label(row.queue)} head assigns tickets`);
   }
 
   private assertRequester(access: AccessContext, row: Row) {
     if (row.employee.userId !== access.userId) throw new ForbiddenException('Only the person who raised the ticket can do that');
   }
 
-  private async visible(companyId: string, access: AccessContext, id: string) {
+  private async visible(cat: QueueCatalog, companyId: string, access: AccessContext, id: string) {
     const row = await this.prisma.ticket.findFirst({ where: { id, companyId }, select: SELECT });
-    if (!row || (row.employee.userId !== access.userId && !holds(access, QUEUE_PERMISSION[row.queue]))) throw new NotFoundException('Ticket not found');
+    if (!row || (row.employee.userId !== access.userId && !cat.works(access, row.queue))) throw new NotFoundException('Ticket not found');
     return row;
   }
 
@@ -589,22 +611,23 @@ export class TicketsService {
     return new Map(users.map((u) => [u.id, { id: u.id, firstName: u.firstName, lastName: u.lastName, avatarUrl: u.employee?.avatarUrl ?? null }]));
   }
 
-  private async present(rows: Row[], access: AccessContext) {
-    const [names, heads] = await Promise.all([
-      this.names(rows.map((r) => r.assigneeId)),
-      access.companyId && rows.length ? this.teams.heads(access.companyId) : Promise.resolve(new Map<TicketQueue, { headId: string | null; backupId: string | null }>()),
-    ]);
+  private async present(cat: QueueCatalog, rows: Row[], access: AccessContext) {
+    const names = await this.names(rows.map((r) => r.assigneeId));
     const now = Date.now();
     return rows.map((r) => {
-      const agent = this.isAgent(access, r);
-      const team = heads.get(r.queue);
-      const lead = agent && this.teams.isLead(access, team, r.queue);
+      const agent = this.isAgent(cat, access, r);
+      const q = cat.get(r.queue);
+      const team = q?.headId ? q : undefined;
+      const lead = agent && this.teams.isLead(cat, access, team, r.queue);
       const works = agent && (lead || r.assigneeId === access.userId);
       const mine = r.employee.userId === access.userId;
       const { userId: _u, ...employee } = r.employee;
       const running = r.status === TicketStatus.OPEN || r.status === TicketStatus.IN_PROGRESS;
       return {
         ...r,
+        /** Team name and emoji (company-made teams aren't known to the browser otherwise) */
+        queueLabel: cat.label(r.queue),
+        queueEmoji: q?.emoji ?? '🎫',
         employee,
         assignee: r.assigneeId ? names.get(r.assigneeId) ?? null : null,
         responseOverdue: running && !r.firstRespondedAt && r.firstResponseDueAt.getTime() < now,
@@ -627,13 +650,13 @@ export class TicketsService {
     });
   }
 
-  private async page(rows: Row[], total: number, page: number, limit: number, access: AccessContext) {
-    return { data: await this.present(rows, access), meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
+  private async page(cat: QueueCatalog, rows: Row[], total: number, page: number, limit: number, access: AccessContext) {
+    return { data: await this.present(cat, rows, access), meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
 
   /** Everyone in the ticket's queue, except the actor and the requester. */
   private async notifyQueue(companyId: string, row: Pick<Row, 'id' | 'queue' | 'employee'>, actorId: string, n: { type: string; title: string; body?: string; actionLabel?: string; email?: boolean }) {
-    const agents = await this.notifications.companyWideApprovers(companyId, QUEUE_PERMISSION[row.queue]);
+    const agents = await this.teams.agentIds(companyId, row.queue);
     return this.notifications.notify({ companyId, userIds: agents.filter((u) => u !== actorId && u !== row.employee.userId), link: `/app/helpdesk/${row.id}`, ...n });
   }
 

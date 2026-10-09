@@ -1,12 +1,13 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { EmploymentStatus } from '@prisma/client';
+import { EmploymentStatus, Prisma } from '@prisma/client';
 import type { AccessScope } from '@hrms/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { AccessService } from '../access/access.service';
 import { HierarchyService } from '../access/hierarchy.service';
-import type { ReportingLineDto, SaveOrgLevelDto } from './dto';
+import type { ReportingLineDto, SaveOrgLevelDto, PeopleQueryDto } from './dto';
 import { holds, type AccessContext } from '../access/access.types';
 import { EmployeeLifecycleService, WIDE_SPAN } from '../employees/lifecycle.service';
+import { wordsWhere } from '../../common/word-search';
 
 const SUGGESTED_LEVELS: Array<{ name: string; color: string }> = [
   { name: 'Executive', color: '#7C3AED' },
@@ -26,6 +27,9 @@ const REPORTING_PERMISSIONS = ['employee.view', 'attendance.view', 'leave.view',
  * and reporting-line changes with an access-impact preview
  * ("who gains / loses visibility of these people").
  */
+/** People named per org-health problem (the rest are counted) */
+const HEALTH_PEOPLE = 12;
+
 @Injectable()
 export class OrgService {
   constructor(
@@ -102,12 +106,31 @@ export class OrgService {
    * a notice period shows as Active unless the viewer handles exits.
    */
   /** What people pickers need — much lighter than the chart (no levels, emails or statuses). */
-  async people(companyId: string, access: AccessContext) {
+  async people(companyId: string, access: AccessContext, q: PeopleQueryDto = {}) {
     const today = (await this.lifecycle.today(companyId)).date;
     const planners = holds(access, 'org.manage');
+    const current = { subordinates: { some: { employmentStatus: { not: EmploymentStatus.TERMINATED } } } };
+    const search = wordsWhere(q.search, (w): Prisma.EmployeeWhereInput[] => [
+      { firstName: { contains: w, mode: 'insensitive' } },
+      { lastName: { contains: w, mode: 'insensitive' } },
+      { employeeId: { contains: w, mode: 'insensitive' } },
+      { designation: { name: { contains: w, mode: 'insensitive' } } },
+    ]);
+    const byId = Boolean(q.ids?.length || q.userIds?.length);
     const rows = await this.prisma.employee.findMany({
-      where: { companyId, employmentStatus: { not: EmploymentStatus.TERMINATED }, ...(planners ? {} : { joiningDate: { lte: today } }) },
-      orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
+      where: {
+        companyId,
+        employmentStatus: { not: EmploymentStatus.TERMINATED },
+        ...(planners ? {} : { joiningDate: { lte: today } }),
+        ...(q.ids?.length && { id: { in: q.ids } }),
+        ...(q.userIds?.length && { userId: { in: q.userIds } }),
+        ...(q.exclude && !byId && { NOT: { id: q.exclude } }),
+        ...(q.departmentId && !byId && { departmentId: q.departmentId }),
+        ...(q.managers && !byId && current),
+        ...(!byId && search),
+      },
+      orderBy: q.managers && !byId ? [{ subordinates: { _count: 'desc' } }, { firstName: 'asc' }] : [{ firstName: 'asc' }, { lastName: 'asc' }],
+      take: byId ? 50 : q.limit ?? 20,
       select: {
         id: true,
         userId: true,
@@ -173,7 +196,7 @@ export class OrgService {
       this.prisma.department.findMany({ where: { companyId }, select: { id: true, name: true, headEmployeeId: true }, orderBy: { name: 'asc' } }),
       this.prisma.employeeHierarchy.aggregate({ where: { ancestor: { companyId } }, _max: { depth: true } }),
     ]);
-    const person = (p: { id: string; firstName: string; lastName: string; avatarUrl: string | null }) => ({ id: p.id, name: `${p.firstName} ${p.lastName}`, avatarUrl: p.avatarUrl });
+    const person = (p: { id: string; firstName: string; lastName: string; avatarUrl: string | null }) => ({ id: p.id, firstName: p.firstName, lastName: p.lastName, name: `${p.firstName} ${p.lastName}`, avatarUrl: p.avatarUrl });
     const reports = new Map<string, number>();
     for (const p of people) if (p.reportingManagerId) reports.set(p.reportingManagerId, (reports.get(p.reportingManagerId) ?? 0) + 1);
     const byId = new Map(people.map((p) => [p.id, p]));
@@ -207,8 +230,10 @@ export class OrgService {
       items.push({ key: 'no-department', tone: 'neutral', title: `${noDept.length} ${noDept.length === 1 ? 'person isn’t' : 'people aren’t'} in a department`, detail: noDept.slice(0, 3).map((p) => p.firstName).join(', '), people: noDept.map(person), fix: 'employees' });
     }
     const managers = reports.size;
+    const spans = [...reports.values()];
     return {
-      items,
+      // Each problem names at most 12 people; `count` says how many there are in all
+      items: items.map((i) => ({ ...i, count: i.people?.length ?? i.departments?.length ?? 0, people: i.people?.slice(0, HEALTH_PEOPLE), departments: i.departments?.slice(0, HEALTH_PEOPLE) })),
       stats: {
         headcount: people.length,
         managers,
@@ -216,6 +241,8 @@ export class OrgService {
         widestSpan: Math.max(0, ...reports.values()),
         levels: (depth._max.depth ?? 0) + 1,
         departments: departments.length,
+        /** Managers by number of direct reports */
+        spans: { '1–2': spans.filter((n) => n <= 2).length, '3–5': spans.filter((n) => n >= 3 && n <= 5).length, '6–8': spans.filter((n) => n >= 6 && n <= 8).length, '9+': spans.filter((n) => n >= 9).length },
       },
     };
   }

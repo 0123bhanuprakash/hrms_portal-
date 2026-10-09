@@ -6,14 +6,16 @@ import { BarChart3, CalendarRange, Clock, Download, ShieldCheck, Wallet } from '
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardHeader, EmptyState, ErrorState, Skeleton, Tabs } from '@/components/ui/feedback';
+import { Card, CardHeader, EmptyState, ErrorState, LoadMore, Skeleton, Tabs } from '@/components/ui/feedback';
+import { Modal } from '@/components/ui/modal';
 
 import { StatCard } from '@/components/ui/stat-card';
 import { ClaimList } from '@/components/expenses/claim-list';
 import { PayDialog } from '@/components/expenses/claim-dialogs';
 import { useAccess } from '@/lib/access/use-access';
-import { downloadExpensesCsv, money, useClaims, useExpenseReport, type Claim } from '@/lib/company/expenses';
+import { downloadExpensesCsv, money, useClaims, useExpenseBreakdown, useExpenseReport, type Breakdown, type Claim } from '@/lib/company/expenses';
 import { getApiErrorMessage } from '@/lib/errors';
+import { cn } from '@/lib/cn';
 import { DateInput } from '@/components/ui/pickers';
 
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -78,9 +80,10 @@ function Report() {
   const report = useExpenseReport({ from, to }, from <= to);
   const r = report.data;
 
-  const table = (title: string, rows: NonNullable<typeof r>['byCategory']) => (
+  const [seeAll, setSeeAll] = useState<{ by: Breakdown; title: string } | null>(null);
+  const table = (title: string, rows: NonNullable<typeof r>['byCategory'], by: Breakdown) => (
     <Card>
-      <CardHeader title={title} />
+      <CardHeader title={title} action={r!.breakdownCounts[by] > rows.filter((x) => x.key !== '__others').length ? <Button size="sm" variant="ghost" onClick={() => setSeeAll({ by, title })}>See all {r!.breakdownCounts[by]}</Button> : undefined} />
       {!rows.length ? (
         <p className="px-5 pb-5 text-sm text-muted-foreground">No spend in this period.</p>
       ) : (
@@ -90,7 +93,7 @@ function Report() {
             return (
               <li key={row.key} className="px-5 py-2.5 text-sm">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="truncate">{row.label}</span>
+                  <span className={cn('truncate', row.key === '__others' && 'text-muted-foreground')}>{row.label}</span>
                   <span className="font-semibold tabular-nums">{money(row.approvedPaise)}</span>
                 </div>
                 <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} /></div>
@@ -184,13 +187,44 @@ function Report() {
             </Card>
           </div>
           <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
-            {table('By category', r.byCategory)}
-            {table('By team', r.byDepartment)}
-            {table('By person', r.byEmployee)}
-            {table('By project', r.byProject)}
+            {table('By category', r.byCategory, 'category')}
+            {table('By team', r.byDepartment, 'department')}
+            {table('By person', r.byEmployee, 'employee')}
+            {table('By project', r.byProject, 'project')}
           </div>
         </>
       )}
+      {seeAll && <BreakdownDialog from={from} to={to} by={seeAll.by} title={seeAll.title} total={r?.totals.approvedPaise ?? 0} onClose={() => setSeeAll(null)} />}
     </div>
+  );
+}
+
+/** Every row of one breakdown, 25 at a time. */
+function BreakdownDialog({ from, to, by, title, total, onClose }: { from: string; to: string; by: Breakdown; title: string; total: number; onClose: () => void }) {
+  const q = useExpenseBreakdown({ from, to, by });
+  const rows = q.data?.pages.flatMap((p) => p.rows) ?? [];
+  return (
+    <Modal open onClose={onClose} title={title} icon={<BarChart3 />} size="sm">
+      {q.isLoadingError ? (
+        <ErrorState message={getApiErrorMessage(q.error, 'Could not load')} onRetry={() => void q.refetch()} />
+      ) : !q.data ? (
+        <Skeleton className="h-60" />
+      ) : (
+        <>
+          <ul className="divide-y divide-border">
+            {rows.map((row) => (
+              <li key={row.key} className="py-2.5 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="truncate">{row.label}</span>
+                  <span className="font-semibold tabular-nums">{money(row.approvedPaise)}</span>
+                </div>
+                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${total ? Math.round((row.approvedPaise / total) * 100) : 0}%` }} /></div>
+              </li>
+            ))}
+          </ul>
+          <LoadMore shown={rows.length} total={q.data.pages[0]?.meta.total ?? 0} loading={q.isFetchingNextPage} onMore={() => void q.fetchNextPage()} />
+        </>
+      )}
+    </Modal>
   );
 }

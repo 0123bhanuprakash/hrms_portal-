@@ -109,7 +109,9 @@ const D = (k) => new Date(`${k}T00:00:00Z`);
     check('Timeline: me first with my reports', mine?.isMe && r.data.rows.length === 3, JSON.stringify(r.data?.rows?.map((x) => x.firstName)));
     check('…my leave is a gap (no cover)', mine?.off.length === 1 && mine.gaps.length === 1);
     r = await call(S.hema, 'GET', '/delegations/gaps');
-    check('Admins see approvers with no cover', r.data?.some((g) => g.userId === P.karan.user.id && g.from === from), JSON.stringify(r.body).slice(0, 200));
+    check('Admins see approvers with no cover', r.data?.rows?.some((g) => g.userId === P.karan.user.id && g.from === from) && r.data.total >= 1, JSON.stringify(r.body).slice(0, 200));
+    const allDel = await call(S.hema, 'GET', '/delegations/all?limit=1');
+    check('Company hand-overs come a page at a time', allDel.status === 200 && Array.isArray(allDel.data?.rows) && allDel.data.rows.length <= 1 && allDel.data.meta.limit === 1, JSON.stringify(allDel.data?.meta));
     check('Employees can’t see the gaps list', (await call(S.ravi, 'GET', '/delegations/gaps')).status === 403);
 
     // Reminder 2 days before
@@ -132,7 +134,7 @@ const D = (k) => new Date(`${k}T00:00:00Z`);
     check('Set up the cover', r.status === 201, JSON.stringify(r.body).slice(0, 200));
     r = await call(S.karan, 'GET', '/delegations/away');
     check('Away shows who covers', r.data?.[0]?.coveredBy?.id === P.boss.user.id);
-    check('Gap is gone', !(await call(S.hema, 'GET', '/delegations/gaps')).data?.some((g) => g.userId === P.karan.user.id));
+    check('Gap is gone', !(await call(S.hema, 'GET', '/delegations/gaps')).data?.rows.some((g) => g.userId === P.karan.user.id));
 
     // ── Recap: an ended hand-over where Priya decided Ravi's leave for Karan
     const past = await p.approvalDelegation.create({ data: { companyId: company.id, delegatorId: P.karan.user.id, delegateId: P.priya.user.id, startsAt: new Date(Date.now() - 6 * 864e5), endsAt: new Date(Date.now() - 2 * 864e5), createdById: P.karan.user.id } });

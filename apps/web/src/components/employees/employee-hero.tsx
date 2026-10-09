@@ -76,7 +76,7 @@ export function EmployeeHero({ e, perms, onAction, onEdit, onChecklist }: { e: E
 
   const menu: Array<MenuItem | 'separator'> = [];
   if (perms.canEdit) menu.push({ label: 'Edit details', icon: <Pencil />, onSelect: onEdit });
-  if (stage !== 'left' && !perms.isSelf) menu.push({ label: 'Give kudos', icon: <Heart />, onSelect: () => { window.location.href = `/app/kudos?to=${e.id}`; } });
+  if (stage !== 'left' && !perms.isSelf) menu.push({ label: 'Give a shout-out', icon: <Heart />, onSelect: () => { window.location.href = `/app/kudos?to=${e.id}`; } });
   if (others && perms.seesExits && (stage === 'active' || stage === 'probation')) menu.push('separator', { label: 'Start notice period', icon: <DoorOpen />, danger: true, onSelect: () => onAction('notice') });
   if (others && perms.seesExits && stage === 'notice') {
     menu.push('separator', { label: 'Withdraw notice', icon: <RotateCcw />, onSelect: () => onAction('withdraw') }, { label: 'Mark as left', icon: <DoorOpen />, danger: true, onSelect: () => onAction('left') });

@@ -106,6 +106,12 @@ const post = (body) => ({ title: 'Team update', body: 'Hello **team**', audience
     check('Nudge again too soon → 400', (await call(S.mgr, 'POST', `/announcements/${teamPost.id}/nudge`)).status === 400);
     r = await call(S.mgr, 'GET', `/announcements/${teamPost.id}/report`);
     check('Manager sees their post’s report', r.status === 200 && r.data.total === 4 && r.data.acknowledged === 1 && r.data.people.some((x) => x.employee?.department !== undefined));
+    check('Report: counts per tab + departments for everyone', r.data?.counts.waiting === 3 && r.data.counts.done === 1 && r.data.byDepartment.reduce((n, d) => n + d.total, 0) === 4 && r.data.meta.total === 3, JSON.stringify({ c: r.data?.counts, m: r.data?.meta }));
+    r = await call(S.mgr, 'GET', `/announcements/${teamPost.id}/report?tab=waiting&limit=2&page=2`);
+    check('Report: one tab a page at a time', r.data?.people.length === 1 && r.data.meta.totalPages === 2 && r.data.total === 4);
+    r = await call(S.mgr, 'GET', `/announcements/${teamPost.id}/report?tab=done`);
+    check('Report: the "done" tab', r.data?.people.length === 1 && r.data.people[0].acknowledgedAt);
+    check('Report: unknown tab → 400', (await call(S.mgr, 'GET', `/announcements/${teamPost.id}/report?tab=all`)).status === 400);
     check('Manager can’t see HR’s report', (await call(S.mgr, 'GET', `/announcements/${policy.id}/report`)).status === 403);
     check('IT Admin can’t see HR’s report', (await call(S.it, 'GET', `/announcements/${policy.id}/report`)).status === 403);
     check('HR sees the manager’s report', (await call(S.hr, 'GET', `/announcements/${teamPost.id}/report`)).status === 200);

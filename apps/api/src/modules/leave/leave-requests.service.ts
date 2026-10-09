@@ -10,11 +10,13 @@ import { AttendancePolicyService } from '../attendance/policy.service';
 import { HolidaysService } from '../attendance/holidays.service';
 import { addDays, dateFromKey, keyFromDate, localDateKey, monthKeys } from '../attendance/time-zone';
 import { LeaveTypesService, type LeaveTypeRow } from './leave-types.service';
-import { LeaveBalancesService, eligible } from './leave-balances.service';
-import { countLeaveDays } from './leave-rules';
+import { LeaveBalancesService } from './leave-balances.service';
+import { countLeaveDays, isEligible, pickGrant, toHalf } from './leave-rules';
+import { activeGrants, type Person } from './leave-eligibility';
 import { NotificationsService, dateRange } from '../notifications/notifications.service';
 import { ApprovalRouterService } from '../projects/approval-router.service';
-import type { AskQuestionDto, CancelLeaveDto, CreateLeaveRequestDto, DecideLeaveDto, LeaveCalendarQueryDto, LeaveListQueryDto, LeaveRequestInputDto } from './dto';
+import { wordsWhere } from '../../common/word-search';
+import type { AskQuestionDto, LeaveReplyDto, CancelRequestDto, CancelLeaveDto, CreateLeaveRequestDto, DecideLeaveDto, LeaveCalendarQueryDto, LeaveListQueryDto, LeaveRequestInputDto } from './dto';
 
 const DOC_MAX_BYTES = 10 * 1024 * 1024;
 
@@ -39,6 +41,11 @@ const SELECT = {
   documentName: true,
   documentSize: true,
   documentMime: true,
+  questionOpenById: true,
+  cancelRequestedAt: true,
+  cancelRequestReason: true,
+  cancelRequestLastDay: true,
+  comments: { orderBy: { createdAt: 'asc' }, select: { id: true, kind: true, body: true, createdAt: true, authorId: true } },
   employee: {
     select: {
       id: true,
@@ -54,7 +61,7 @@ const SELECT = {
   leaveType: { select: { id: true, name: true, code: true, color: true, countsAsPresent: true, isPaid: true, documentAfterDays: true } },
   approvals: {
     orderBy: { level: 'asc' },
-    select: { level: true, status: true, approverId: true, approverIds: true, label: true, actedById: true, comments: true, actedAt: true, approver: NAME, actedBy: NAME, onBehalfOf: NAME },
+    select: { level: true, status: true, approverId: true, approverIds: true, label: true, actedById: true, onBehalfOfId: true, comments: true, actedAt: true, approver: NAME, actedBy: NAME, onBehalfOf: NAME },
   },
 } satisfies Prisma.LeaveRequestSelect;
 type RequestRow = Prisma.LeaveRequestGetPayload<{ select: typeof SELECT }>;
@@ -64,12 +71,26 @@ const DECIDE_SELECT = {
   id: true,
   status: true,
   currentLevel: true,
+  cancelRequestedAt: true,
   employee: { select: { userId: true } },
-  approvals: { select: { level: true, status: true, approverId: true, approverIds: true, actedById: true } },
+  approvals: { select: { level: true, status: true, approverId: true, approverIds: true, actedById: true, onBehalfOfId: true } },
 } satisfies Prisma.LeaveRequestSelect;
 type DecideRow = Prisma.LeaveRequestGetPayload<{ select: typeof DECIDE_SELECT }>;
 
 type Decider = { mode: 'approver' | 'delegate' | 'override'; onBehalfOf: string | null };
+
+/** Filter chips: what is in a list, counted without the chip's own filter */
+interface LeaveFacets {
+  leaveTypes: Array<{ id: string; name: string; color: string | null; count: number }>;
+  departments: Array<{ id: string; name: string; count: number }>;
+}
+
+/** How many times each value appears */
+const count = <K,>(values: K[]) => {
+  const m = new Map<K, number>();
+  for (const v of values) m.set(v, (m.get(v) ?? 0) + 1);
+  return m;
+};
 
 @Injectable()
 export class LeaveRequestsService {
@@ -117,8 +138,15 @@ export class LeaveRequestsService {
 
     const id = await this.prisma.$transaction(async (tx) => {
       // Re-check balance and overlaps inside the transaction (double submits)
-      if (check.available !== null && (await this.balances.available(tx, companyId, person, type, year))! + type.negativeBalance < check.days) {
-        throw new BadRequestException('Not enough balance');
+      let grantId: string | null = null;
+      if (type.availability === 'GRANT_ONLY') {
+        const picked = pickGrant(await activeGrants(tx, companyId, { employeeId: person.id, leaveTypeId: type.id }), dto.startDate, dto.endDate, check.days);
+        if (!picked.grant) throw new BadRequestException('Not enough days left on your grant');
+        grantId = picked.grant.id;
+        await this.balances.ensure(tx, companyId, person, type, year);
+      } else if (check.available !== null) {
+        const room = await this.balances.limits(tx, companyId, person, type, year);
+        if (room.available! + room.below < check.days) throw new BadRequestException('Not enough balance');
       }
       if (await this.overlapping(tx, companyId, person.id, dto.startDate, dto.endDate)) throw new ConflictException('You already have leave in these dates');
 
@@ -132,6 +160,7 @@ export class LeaveRequestsService {
           halfDay: dto.halfDay ?? null,
           totalDays: check.days,
           reason: dto.reason,
+          leaveGrantId: grantId,
           status: auto ? LeaveStatus.APPROVED : LeaveStatus.PENDING,
           decidedAt: auto ? new Date() : null,
           currentLevel: 1,
@@ -149,14 +178,15 @@ export class LeaveRequestsService {
     return this.getRow(companyId, access, id, true);
   }
 
-  private async evaluate(companyId: string, person: { id: string; joiningDate: Date; gender: string | null; employmentStatus?: EmploymentStatus; locationId?: string | null }, type: LeaveTypeRow, dto: LeaveRequestInputDto) {
+  private async evaluate(companyId: string, person: Person, type: LeaveTypeRow, dto: LeaveRequestInputDto) {
     const errors: string[] = [];
     const warnings: string[] = [];
     const policy = await this.policies.get(companyId);
     const todayKey = localDateKey(new Date(), policy.timeZone);
 
     if (!type.isActive) errors.push(`${type.name} is no longer available`);
-    if (!eligible(type, person)) errors.push(`${type.name} isn’t available to you`);
+    const grants = type.availability === 'GRANT_ONLY' ? await activeGrants(this.prisma, companyId, { employeeId: person.id, leaveTypeId: type.id }) : [];
+    if (!isEligible(type, person, new Date(), grants.length > 0)) errors.push(type.availability === 'GRANT_ONLY' ? `${type.name} is given by HR — ask HR for it first` : `${type.name} isn’t available to you`);
     if (type.blockDuringProbation && person.employmentStatus === EmploymentStatus.PROBATION) errors.push(`${type.name} can be used once your probation is over`);
     if (dto.endDate < dto.startDate) errors.push('The end date is before the start date');
     if (dto.startDate.slice(0, 4) !== dto.endDate.slice(0, 4)) errors.push('Leave can’t span two calendar years — split it into two requests');
@@ -168,7 +198,7 @@ export class LeaveRequestsService {
       errors.push(`${type.name} needs ${type.minNoticeDays} day${type.minNoticeDays === 1 ? '' : 's'}’ notice`);
     }
     if (dto.startDate < todayKey) warnings.push('These dates are in the past');
-    if (errors.length) return { days: 0, dates: [] as string[], available: null as number | null, after: null as number | null, needsDocument: false, errors, warnings };
+    if (errors.length) return { days: 0, dates: [] as string[], available: null as number | null, after: null as number | null, needsDocument: false, errors, warnings, short: 0, canAskMore: false };
 
     // The person's own days off: holidays for everyone / their office, plus optional ones they picked
     const holidayKeys = await this.holidays.keysFor(companyId, { id: person.id, locationId: person.locationId ?? null }, dto.startDate, dto.endDate);
@@ -186,15 +216,40 @@ export class LeaveRequestsService {
     if (await this.overlapping(this.prisma, companyId, person.id, dto.startDate, dto.endDate)) errors.push('You already have leave in these dates');
 
     const year = Number(dto.startDate.slice(0, 4));
-    const available = await this.balances.available(this.prisma, companyId, person, type, year);
-    if (available !== null && days > available + type.negativeBalance) {
-      errors.push(`Not enough balance — ${available} day${available === 1 ? '' : 's'} available${type.negativeBalance ? ` (+${type.negativeBalance} in advance)` : ''}`);
-    } else if (available !== null && days > available) warnings.push(`${days - available} day${days - available === 1 ? '' : 's'} taken in advance — your balance goes below 0`);
+    if (type.availability === 'GRANT_ONLY') {
+      // Days come from a grant whose window covers the dates
+      const picked = pickGrant(grants, dto.startDate, dto.endDate, days);
+      const windows = grants.map((g) => dateRange(g.validFrom, g.validTo)).join(', ');
+      const left = toHalf(grants.filter((g) => g.validFrom <= dto.startDate && dto.endDate <= g.validTo).reduce((n, g) => n + Math.max(0, g.days - g.taken), 0));
+      if (picked.problem === 'dates') errors.push(`Your ${type.name.toLowerCase()} grant covers ${windows} — pick dates inside it`);
+      else if (picked.problem === 'days') errors.push(`Not enough balance — ${left} day${left === 1 ? '' : 's'} left on your grant`);
+      const after = picked.grant ? toHalf(picked.grant.days - picked.grant.taken - days) : null;
+      const needsDocument = type.documentAfterDays !== null && days > type.documentAfterDays;
+      if (needsDocument) warnings.push(`Please attach a document (asked for ${type.name.toLowerCase()} over ${type.documentAfterDays} day${type.documentAfterDays === 1 ? '' : 's'})`);
+      return { days, dates, available: picked.grant ? toHalf(picked.grant.days - picked.grant.taken) : left, after, needsDocument, errors, warnings, short: 0, canAskMore: false };
+    }
+    const { available, below, lent } = await this.balances.limits(this.prisma, companyId, person, type, year);
+    let short = 0;
+    if (available !== null && days > available + below) {
+      short = days - (available + below);
+      const s = (n: number) => `${n} day${n === 1 ? '' : 's'}`;
+      // Lent days used up → ask again; otherwise plain "not enough"
+      errors.push(
+        lent && available + below <= 0
+          ? `You've used all ${s(lent)} lent to you for ${type.name.toLowerCase()} — ask HR for more days`
+          : `Not enough balance — ${s(Math.max(0, available))} available${below ? ` (+${below} below 0 allowed)` : ''}`,
+      );
+    } else if (available !== null && days > available) {
+      const n = days - Math.max(0, available);
+      const owed = type.recoverNegative || lent > 0;
+      warnings.push(`${n} day${n === 1 ? '' : 's'} below 0 — ${owed ? `taken from your ${year + 1} balance` : 'your balance goes below 0'}`);
+    }
     const offInside = dates.filter((d) => holidayKeys.has(d) || !policy.workDays.includes(new Date(d + 'T00:00:00Z').getUTCDay())).length;
     if (type.sandwichRule && !type.includeNonWorkingDays && offInside) warnings.push(`${offInside} weekend / holiday day${offInside === 1 ? '' : 's'} between your leave days count as leave (company rule)`);
     const needsDocument = type.documentAfterDays !== null && days > type.documentAfterDays;
     if (needsDocument) warnings.push(`Please attach a document (asked for ${type.name.toLowerCase()} over ${type.documentAfterDays} day${type.documentAfterDays === 1 ? '' : 's'})`);
-    return { days, dates, available, after: available === null ? null : available - days, needsDocument, errors, warnings };
+    // The balance ran out: the person can ask for more days (lend / give extra)
+    return { days, dates, available, after: available === null ? null : available - days, needsDocument, errors, warnings, short, canAskMore: short > 0 };
   }
 
   private async overlapping(db: PrismaService | Prisma.TransactionClient, companyId: string, employeeId: string, startKey: string, endKey: string) {
@@ -279,7 +334,18 @@ export class LeaveRequestsService {
     });
     if (request.employee.userId !== access.userId) {
       void this.notifyEmployee(companyId, request, 'leave.cancelled', `Your ${request.leaveType.name.toLowerCase()} was cancelled`, dto.reason ? `Reason: ${dto.reason}` : null);
-    } else if (!wasApproved) {
+    } else if (wasApproved) {
+      // Approved leave cancelled before it started: whoever approved it should know (in-app only)
+      void this.notifications.notify({
+        companyId,
+        userIds: this.approvedBy(request),
+        type: 'leave.cancelled',
+        title: `${request.employee.firstName} ${request.employee.lastName} cancelled approved leave`,
+        body: `${request.leaveType.name}, ${dateRange(keyFromDate(request.startDate), keyFromDate(request.endDate))}${dto.reason ? `\nReason: ${dto.reason}` : ''}`,
+        link: '/app/leave/approvals',
+        email: false,
+      });
+    } else {
       // Withdrawn while pending: let the approver know it no longer needs them (in-app only)
       const level = request.approvals.find((a) => a.level === request.currentLevel);
       const pool = level ? this.pool(level) : [];
@@ -295,6 +361,105 @@ export class LeaveRequestsService {
       });
     }
     return this.getRow(companyId, access, id, true);
+  }
+
+  /**
+   * Approved leave that has started (or is over) can't be cancelled directly —
+   * the person asks, and whoever approved it (or HR) decides. "early" keeps the
+   * days up to `lastDay` and gives back the rest.
+   */
+  async requestCancel(companyId: string, access: AccessContext, id: string, dto: CancelRequestDto) {
+    const r = await this.prisma.leaveRequest.findFirst({ where: { id, companyId }, select: SELECT });
+    if (!r || r.employee.userId !== access.userId) throw new NotFoundException('Leave request not found');
+    if (r.status !== LeaveStatus.APPROVED) throw new BadRequestException('Only approved leave needs a cancellation request — cancel a pending one directly');
+    if (r.cancelRequestedAt) throw new ConflictException('You have already asked to cancel this leave');
+    const todayKey = localDateKey(new Date(), (await this.policies.get(companyId)).timeZone);
+    const start = keyFromDate(r.startDate);
+    const end = keyFromDate(r.endDate);
+    if (start > todayKey) throw new BadRequestException('This leave hasn’t started — you can cancel it yourself');
+    if (dto.mode === 'early') {
+      if (start === end) throw new BadRequestException('A one-day leave can only be cancelled as a whole');
+      if (!dto.lastDay || dto.lastDay < start || dto.lastDay >= end) throw new BadRequestException(`Pick your last day off between ${start} and the day before ${end}`);
+    }
+    const lastDay = dto.mode === 'early' ? dto.lastDay! : null;
+    await this.prisma.leaveRequest.update({ where: { id }, data: { cancelRequestedAt: new Date(), cancelRequestReason: dto.reason, cancelRequestLastDay: lastDay ? dateFromKey(lastDay) : null } });
+    const approvers = this.approvedBy(r);
+    const to = approvers.length ? [...approvers, ...(await this.notifications.coveringFor(approvers, APPROVE))] : await this.notifications.companyWideApprovers(companyId, APPROVE);
+    void this.notifications.notify({
+      companyId,
+      userIds: to.filter((u) => u !== access.userId),
+      type: 'leave.cancel_request',
+      title: lastDay
+        ? `${r.employee.firstName} ${r.employee.lastName} came back early — end their ${r.leaveType.name.toLowerCase()} on ${dateRange(lastDay, lastDay)}?`
+        : `${r.employee.firstName} ${r.employee.lastName} asks to cancel their ${r.leaveType.name.toLowerCase()}`,
+      body: `${dateRange(start, end)}\nReason: ${dto.reason}`,
+      link: `/app/leave/approvals?request=${id}`,
+      actionLabel: 'Review',
+      email: false,
+    });
+    return this.getRow(companyId, access, id);
+  }
+
+  /** The person takes their cancellation request back; the leave stays as approved. */
+  async withdrawCancel(companyId: string, access: AccessContext, id: string) {
+    const r = await this.prisma.leaveRequest.findFirst({ where: { id, companyId }, select: { cancelRequestedAt: true, employee: { select: { userId: true } } } });
+    if (!r || r.employee.userId !== access.userId) throw new NotFoundException('Leave request not found');
+    if (!r.cancelRequestedAt) throw new BadRequestException('There is no cancellation request to take back');
+    await this.prisma.leaveRequest.update({ where: { id }, data: { cancelRequestedAt: null, cancelRequestReason: null, cancelRequestLastDay: null } });
+    return this.getRow(companyId, access, id);
+  }
+
+  /** Agree (days go back to the balance) or keep the leave as it is. */
+  async decideCancel(companyId: string, access: AccessContext, id: string, approve: boolean, dto: DecideLeaveDto) {
+    const r = await this.prisma.leaveRequest.findFirst({ where: { id, companyId }, select: SELECT });
+    if (!r || r.employee.userId === access.userId) throw new NotFoundException('Leave request not found');
+    if (r.status !== LeaveStatus.APPROVED || !r.cancelRequestedAt) throw new ConflictException('There is no cancellation request waiting on this leave');
+    if (!this.cancelDeciderFor(access, r)) throw new ForbiddenException('This cancellation is waiting for someone else');
+    const clear = { cancelRequestedAt: null, cancelRequestReason: null, cancelRequestLastDay: null };
+    const year = r.startDate.getUTCFullYear();
+    const lastDay = r.cancelRequestLastDay ? keyFromDate(r.cancelRequestLastDay) : null;
+    let back = 0;
+    if (!approve) {
+      await this.prisma.leaveRequest.update({ where: { id }, data: clear });
+    } else if (!lastDay) {
+      back = r.totalDays;
+      await this.prisma.$transaction(async (tx) => {
+        const { count } = await tx.leaveRequest.updateMany({
+          where: { id, status: LeaveStatus.APPROVED, cancelRequestedAt: { not: null } },
+          data: { ...clear, status: LeaveStatus.CANCELLED, cancelledAt: new Date(), cancelledById: access.userId, cancelReason: r.cancelRequestReason },
+        });
+        if (!count) throw new ConflictException('This request has changed — refresh and try again');
+        await this.balances.change(tx, companyId, r.employee.id, r.leaveType.id, year, { used: -r.totalDays });
+      });
+    } else {
+      // Came back early: count the days up to the last day off with the same rules as applying
+      const [policy, type, person] = await Promise.all([
+        this.policies.get(companyId),
+        this.prisma.leaveType.findUniqueOrThrow({ where: { id: r.leaveType.id }, select: { includeNonWorkingDays: true, sandwichRule: true } }),
+        this.prisma.employee.findUniqueOrThrow({ where: { id: r.employee.id }, select: { id: true, locationId: true } }),
+      ]);
+      const start = keyFromDate(r.startDate);
+      const holidayKeys = await this.holidays.keysFor(companyId, { id: person.id, locationId: person.locationId }, start, lastDay);
+      const { days } = countLeaveDays({ startKey: start, endKey: lastDay, halfDay: null, includeNonWorkingDays: type.includeNonWorkingDays, workDays: policy.workDays, holidayKeys, sandwich: type.sandwichRule });
+      back = Math.max(0, r.totalDays - days);
+      await this.prisma.$transaction(async (tx) => {
+        const { count } = await tx.leaveRequest.updateMany({
+          where: { id, status: LeaveStatus.APPROVED, cancelRequestedAt: { not: null } },
+          data: { ...clear, endDate: dateFromKey(lastDay), totalDays: days },
+        });
+        if (!count) throw new ConflictException('This request has changed — refresh and try again');
+        if (back) await this.balances.change(tx, companyId, r.employee.id, r.leaveType.id, year, { used: -back });
+      });
+    }
+    const type = r.leaveType.name.toLowerCase();
+    const title = !approve
+      ? `Your request to ${lastDay ? 'end' : 'cancel'} your ${type} early was declined — it stays as approved`
+      : lastDay
+        ? `Your ${type} now ends on ${dateRange(lastDay, lastDay)} — ${back} day${back === 1 ? '' : 's'} back in your balance`
+        : `Your ${type} was cancelled — ${back} day${back === 1 ? '' : 's'} back in your balance`;
+    const row = await this.getRow(companyId, access, id, true);
+    void this.notifyEmployee(companyId, r, approve ? 'leave.cancelled' : 'leave.cancel_declined', title, this.decidedBy({ approvals: [] }, dto.note) ?? null);
+    return row;
   }
 
   /** Pending request at a level the caller may decide (never their own). */
@@ -325,6 +490,20 @@ export class LeaveRequestsService {
     const cover = covering(access, APPROVE).find((d) => pool.includes(d.fromUserId));
     if (cover) return { mode: 'delegate', onBehalfOf: cover.fromUserId };
     return null;
+  }
+
+  /** Who decides a cancellation request: whoever approved the leave (or someone covering them), else HR. */
+  private cancelDeciderFor(access: AccessContext, r: { status: LeaveStatus; cancelRequestedAt: Date | null; employee: { userId: string }; approvals: Array<{ status: LeaveApprovalStatus; actedById: string | null; onBehalfOfId: string | null }> }): Decider | null {
+    if (r.status !== LeaveStatus.APPROVED || !r.cancelRequestedAt || r.employee.userId === access.userId) return null;
+    const approvers = this.approvedBy(r);
+    if (approvers.includes(access.userId)) return { mode: 'approver', onBehalfOf: null };
+    const cover = covering(access, APPROVE).find((d) => approvers.includes(d.fromUserId));
+    if (cover) return { mode: 'delegate', onBehalfOf: cover.fromUserId };
+    return this.companyWide(access) ? { mode: 'override', onBehalfOf: null } : null;
+  }
+
+  private approvedBy(r: { approvals: Array<{ status: LeaveApprovalStatus; actedById: string | null; onBehalfOfId: string | null }> }): string[] {
+    return [...new Set(r.approvals.filter((a) => a.status === LeaveApprovalStatus.APPROVED).flatMap((a) => [a.actedById, a.onBehalfOfId]).filter((x): x is string => Boolean(x)))];
   }
 
   /** Everyone who may decide a level (older rows only have approverId). */
@@ -387,61 +566,134 @@ export class LeaveRequestsService {
 
   // ─── Read ──────────────────────────────────────────────────
 
+  /**
+   * view=mine | review (waiting for me) | all. Search (name / employee id),
+   * leave type, department, dates and sort apply to every view. `facets` (review
+   * and all, in `meta`) lists the leave types and departments in the list — counted
+   * without their own filter — so the filter chips only offer what is there.
+   */
   async list(companyId: string, access: AccessContext, query: LeaveListQueryDto) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
-    const filters: Prisma.LeaveRequestWhereInput = {
+    const words = wordsWhere(query.search, (w) => [
+      { firstName: { contains: w, mode: 'insensitive' as const } },
+      { lastName: { contains: w, mode: 'insensitive' as const } },
+      { employeeId: { contains: w, mode: 'insensitive' as const } },
+    ]);
+    /** Everything except the leave type and department (the facets) */
+    const base: Prisma.LeaveRequestWhereInput = {
       companyId,
       ...(query.status && { status: query.status }),
-      ...(query.leaveTypeId && { leaveTypeId: query.leaveTypeId }),
       ...(query.employeeId && { employeeId: query.employeeId }),
       ...(query.to && { startDate: { lte: dateFromKey(query.to) } }),
       ...(query.from && { endDate: { gte: dateFromKey(query.from) } }),
+      ...(words && { AND: [{ employee: words }] }),
     };
+    const byType: Prisma.LeaveRequestWhereInput = query.leaveTypeId ? { leaveTypeId: query.leaveTypeId } : {};
+    const byDept: Prisma.LeaveRequestWhereInput = query.departmentId ? { employee: { departmentId: query.departmentId } } : {};
+    const both = (w: Prisma.LeaveRequestWhereInput, ...more: Prisma.LeaveRequestWhereInput[]): Prisma.LeaveRequestWhereInput => ({ AND: [w, ...more] });
 
-    let where: Prisma.LeaveRequestWhereInput;
     if (query.view === 'mine') {
       if (!access.employee) return this.page(companyId, [], 0, page, limit, access);
-      where = { ...filters, employeeId: access.employee.id };
-    } else if (query.view === 'all') {
-      where = { ...filters, employee: this.access.requireEmployeeScope(access, 'leave.view') };
-    } else {
+      const where = both(base, byType, byDept, { employeeId: access.employee.id });
+      const [rows, total] = await Promise.all([
+        this.prisma.leaveRequest.findMany({ where, select: SELECT, orderBy: this.order(query.sort, 'latest'), skip: (page - 1) * limit, take: limit }),
+        this.prisma.leaveRequest.count({ where }),
+      ]);
+      return this.page(companyId, rows, total, page, limit, access);
+    }
+
+    if (query.view === 'review') {
       // Filter on the light rows, then load full details only for this page
-      const ids = await this.waitingForMe(companyId, access);
+      const light = await this.waitingForMe(companyId, access, base, this.order(query.sort, 'soonest'));
+      const ids = light.filter((r) => (!query.leaveTypeId || r.leaveTypeId === query.leaveTypeId) && (!query.departmentId || r.employee.departmentId === query.departmentId)).map((r) => r.id);
       const pageIds = ids.slice((page - 1) * limit, page * limit);
       const rows = pageIds.length ? await this.prisma.leaveRequest.findMany({ where: { id: { in: pageIds } }, select: SELECT }) : [];
       rows.sort((a, b) => pageIds.indexOf(a.id) - pageIds.indexOf(b.id));
-      return this.page(companyId, rows, ids.length, page, limit, access, true);
+      const facets = await this.facets(
+        companyId,
+        count(light.filter((r) => !query.departmentId || r.employee.departmentId === query.departmentId).map((r) => r.leaveTypeId)),
+        count(light.filter((r) => !query.leaveTypeId || r.leaveTypeId === query.leaveTypeId).map((r) => r.employee.departmentId)),
+      );
+      return this.withFacets(await this.page(companyId, rows, ids.length, page, limit, access, true), facets);
     }
 
-    const [rows, total] = await Promise.all([
-      this.prisma.leaveRequest.findMany({ where, select: SELECT, orderBy: { startDate: 'desc' }, skip: (page - 1) * limit, take: limit }),
+    const scoped = both(base, { employee: this.access.requireEmployeeScope(access, 'leave.view') });
+    const where = both(scoped, byType, byDept);
+    const [rows, total, types, depts] = await Promise.all([
+      this.prisma.leaveRequest.findMany({ where, select: SELECT, orderBy: this.order(query.sort, 'latest'), skip: (page - 1) * limit, take: limit }),
       this.prisma.leaveRequest.count({ where }),
+      this.prisma.leaveRequest.groupBy({ by: ['leaveTypeId'], where: both(scoped, byDept), _count: { _all: true } }),
+      // Department counts in the database (no request rows are loaded)
+      this.prisma.employee.findMany({
+        where: { companyId, departmentId: { not: null }, leaveRequests: { some: both(scoped, byType) } },
+        select: { departmentId: true, _count: { select: { leaveRequests: { where: both(scoped, byType) } } } },
+      }),
     ]);
-    return this.page(companyId, rows, total, page, limit, access, query.view === 'all');
+    const deptCounts = new Map<string, number>();
+    for (const e of depts) deptCounts.set(e.departmentId!, (deptCounts.get(e.departmentId!) ?? 0) + e._count.leaveRequests);
+    const facets = await this.facets(companyId, new Map(types.map((t) => [t.leaveTypeId, t._count._all])), deptCounts);
+    return this.withFacets(await this.page(companyId, rows, total, page, limit, access, true), facets);
   }
 
-  /** Ids of requests waiting for me (soonest first): current level is mine, someone I cover for, or (company-wide) unassigned / anyone. */
-  private async waitingForMe(companyId: string, access: AccessContext): Promise<string[]> {
+  private order(sort: LeaveListQueryDto['sort'], fallback: 'soonest' | 'latest'): Prisma.LeaveRequestOrderByWithRelationInput[] {
+    const s = sort ?? fallback;
+    if (s === 'newest') return [{ createdAt: 'desc' }];
+    return [{ startDate: s === 'soonest' ? 'asc' : 'desc' }, { createdAt: 'desc' }];
+  }
+
+  /** Facets ride in `meta` (a response of only data + meta passes through unwrapped). */
+  private withFacets<T extends { meta: object }>(res: T, facets: LeaveFacets) {
+    return { ...res, meta: { ...res.meta, facets } };
+  }
+
+  /** Names for the filter chips, most used first. */
+  private async facets(companyId: string, types: Map<string, number>, depts: Map<string | null, number>): Promise<LeaveFacets> {
+    const deptIds = [...depts.keys()].filter((x): x is string => Boolean(x));
+    const [typeRows, deptRows] = await Promise.all([
+      types.size ? this.prisma.leaveType.findMany({ where: { companyId, id: { in: [...types.keys()] } }, select: { id: true, name: true, color: true } }) : [],
+      deptIds.length ? this.prisma.department.findMany({ where: { companyId, id: { in: deptIds } }, select: { id: true, name: true } }) : [],
+    ]);
+    const byCount = <T extends { count: number; name: string }>(a: T, b: T) => b.count - a.count || a.name.localeCompare(b.name);
+    return {
+      leaveTypes: typeRows.map((t) => ({ ...t, count: types.get(t.id) ?? 0 })).sort(byCount),
+      departments: deptRows.map((d) => ({ ...d, count: depts.get(d.id) ?? 0 })).sort(byCount),
+    };
+  }
+
+  /**
+   * Requests waiting for me (light rows, `orderBy`, soonest first by default):
+   * current level is mine, someone I cover for, or (company-wide) unassigned / anyone.
+   */
+  private async waitingForMe(companyId: string, access: AccessContext, filters?: Prisma.LeaveRequestWhereInput, orderBy: Prisma.LeaveRequestOrderByWithRelationInput[] = [{ startDate: 'asc' }]) {
     const coveredIds = covering(access, APPROVE).map((d) => d.fromUserId);
     const pending = await this.prisma.leaveRequest.findMany({
       where: {
         companyId,
-        status: LeaveStatus.PENDING,
         employee: { userId: { not: access.userId } },
-        ...(this.companyWide(access) ? {} : { approvals: { some: { status: LeaveApprovalStatus.PENDING, approverIds: { hasSome: [access.userId, ...coveredIds] } } } }),
+        OR: [
+          { status: LeaveStatus.PENDING, ...(this.companyWide(access) ? {} : { approvals: { some: { status: LeaveApprovalStatus.PENDING, approverIds: { hasSome: [access.userId, ...coveredIds] } } } }) },
+          // Asked to cancel approved leave: whoever approved it (or someone covering them), or HR
+          {
+            status: LeaveStatus.APPROVED,
+            cancelRequestedAt: { not: null },
+            ...(this.companyWide(access) ? {} : { approvals: { some: { status: LeaveApprovalStatus.APPROVED, OR: [{ actedById: { in: [access.userId, ...coveredIds] } }, { onBehalfOfId: { in: [access.userId, ...coveredIds] } }] } } }),
+          },
+        ],
+        ...(filters && { AND: [filters] }),
       },
-      select: DECIDE_SELECT,
-      orderBy: { startDate: 'asc' },
+      select: { ...DECIDE_SELECT, leaveTypeId: true, employee: { select: { userId: true, departmentId: true } } },
+      orderBy,
     });
     const mine = pending.filter((r) => {
+      if (r.status === LeaveStatus.APPROVED) return Boolean(this.cancelDeciderFor(access, r));
       const row = r.approvals.find((a) => a.level === r.currentLevel);
       if (!row) return false;
       const pool = this.pool(row);
       if (pool.includes(access.userId) || pool.some((u) => coveredIds.includes(u))) return Boolean(this.deciderFor(access, r));
       return this.companyWide(access) && pool.length === 0;
     });
-    return mine.map((r) => r.id);
+    return mine;
   }
 
   /** The badge: same rule as the approvals list, without building the list. */
@@ -503,19 +755,32 @@ export class LeaveRequestsService {
     return { data: rows.map((r) => ({ ...this.present(r, access, todayKey, names), ...(clashes.get(r.id) && { team: clashes.get(r.id) }) })), meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
 
+  /** Names of approvers and of whoever asked / answered questions */
   private poolNames(rows: RequestRow[]) {
-    return this.router.names(rows.flatMap((r) => r.approvals.flatMap((a) => this.pool(a))));
+    return this.router.names(rows.flatMap((r) => [...r.approvals.flatMap((a) => this.pool(a)), ...r.comments.map((c) => c.authorId)]));
   }
 
   private present(r: RequestRow, access: AccessContext, todayKey: string, names: Map<string, { id: string; firstName: string; lastName: string }> = new Map()) {
     const { userId: _u, ...employee } = r.employee;
     const decider = this.deciderFor(access, r);
+    const { questionOpenById, comments, cancelRequestedAt: _cr, cancelRequestReason: _crr, cancelRequestLastDay: _crl, ...rest } = r;
+    const pending = r.status === LeaveStatus.PENDING;
     return {
-      ...r,
+      ...rest,
       employee,
+      /** Questions from approvers and the person's replies, oldest first */
+      comments: comments.map(({ authorId, ...c }) => ({ ...c, author: names.get(authorId) ?? null, mine: authorId === access.userId })),
+      /** An approver asked and the person hasn't answered yet */
+      questionOpen: pending && Boolean(questionOpenById),
+      canReply: pending && r.employee.userId === access.userId && comments.some((c) => c.kind === 'QUESTION'),
+      /** The person asked to cancel this approved leave (or end it early); waiting for a decision */
+      cancelRequest: r.cancelRequestedAt ? { requestedAt: r.cancelRequestedAt, reason: r.cancelRequestReason, lastDay: r.cancelRequestLastDay ? keyFromDate(r.cancelRequestLastDay) : null } : null,
+      /** Approved, already started (or over): the person can ask to cancel it */
+      canRequestCancel: r.status === LeaveStatus.APPROVED && r.employee.userId === access.userId && !r.cancelRequestedAt && keyFromDate(r.startDate) <= todayKey,
+      canDecideCancel: Boolean(this.cancelDeciderFor(access, r)),
       startDate: keyFromDate(r.startDate),
       endDate: keyFromDate(r.endDate),
-      approvals: r.approvals.map(({ approverId: _a, approverIds: _ids, actedById: _by, ...a }) => ({
+      approvals: r.approvals.map(({ approverId: _a, approverIds: _ids, actedById: _by, onBehalfOfId: _for, ...a }) => ({
         ...a,
         approvers: this.pool({ approverId: _a, approverIds: _ids }).map((id) => names.get(id)).filter(Boolean),
       })),
@@ -558,22 +823,54 @@ export class LeaveRequestsService {
   }
 
   /** An approver asks the person something; the request stays pending (in-app message). */
+  /** An approver asks the person something. Saved on the request; it stays pending and can still be decided. */
   async ask(companyId: string, access: AccessContext, id: string, dto: AskQuestionDto) {
     const r = await this.prisma.leaveRequest.findFirst({ where: { id, companyId }, select: SELECT });
     if (!r || !this.deciderFor(access, r)) throw new NotFoundException('Leave request not found');
-    const me = access.employee ? await this.prisma.employee.findUnique({ where: { id: access.employee.id }, select: { firstName: true, lastName: true } }) : null;
+    await this.prisma.$transaction([
+      this.prisma.leaveComment.create({ data: { leaveRequestId: id, authorId: access.userId, kind: 'QUESTION', body: dto.question } }),
+      this.prisma.leaveRequest.update({ where: { id }, data: { questionOpenById: access.userId } }),
+    ]);
+    const me = await this.prisma.user.findUnique({ where: { id: access.userId }, select: { firstName: true, lastName: true } });
     const who = me ? `${me.firstName} ${me.lastName}` : 'Your approver';
-    await this.notifications.notify({
+    void this.notifications.notify({
       companyId,
       userIds: [r.employee.userId],
       type: 'leave.question',
       title: `${who} has a question about your ${r.leaveType.name.toLowerCase()}`,
-      body: `${dateRange(keyFromDate(r.startDate), keyFromDate(r.endDate))}\n“${dto.question}”\nReply to them directly — your request is still pending.`,
-      link: '/app/leave',
-      actionLabel: 'View my leave',
+      body: `${dateRange(keyFromDate(r.startDate), keyFromDate(r.endDate))}\n“${dto.question}”`,
+      link: `/app/leave?request=${id}`,
+      actionLabel: 'Reply',
       email: false,
     });
-    return { sent: true };
+    return this.getRow(companyId, access, id, true);
+  }
+
+  /** The person answers. Whoever asked last is told, and sees the answer on their approvals card. */
+  async reply(companyId: string, access: AccessContext, id: string, dto: LeaveReplyDto) {
+    const r = await this.prisma.leaveRequest.findFirst({
+      where: { id, companyId },
+      select: { status: true, questionOpenById: true, startDate: true, endDate: true, leaveType: { select: { name: true } }, employee: { select: { userId: true, firstName: true, lastName: true } } },
+    });
+    if (!r || r.employee.userId !== access.userId) throw new NotFoundException('Leave request not found');
+    if (r.status !== LeaveStatus.PENDING) throw new BadRequestException('Only a request waiting for approval can be answered');
+    const asker = r.questionOpenById ?? (await this.prisma.leaveComment.findFirst({ where: { leaveRequestId: id, kind: 'QUESTION' }, orderBy: { createdAt: 'desc' }, select: { authorId: true } }))?.authorId;
+    if (!asker) throw new BadRequestException('Nobody has asked a question on this request');
+    await this.prisma.$transaction([
+      this.prisma.leaveComment.create({ data: { leaveRequestId: id, authorId: access.userId, kind: 'REPLY', body: dto.body } }),
+      this.prisma.leaveRequest.update({ where: { id }, data: { questionOpenById: null } }),
+    ]);
+    void this.notifications.notify({
+      companyId,
+      userIds: [asker],
+      type: 'leave.reply',
+      title: `${r.employee.firstName} ${r.employee.lastName} answered your question about their ${r.leaveType.name.toLowerCase()}`,
+      body: `${dateRange(keyFromDate(r.startDate), keyFromDate(r.endDate))}\n“${dto.body}”`,
+      link: `/app/leave/approvals?request=${id}`,
+      actionLabel: 'Review request',
+      email: false,
+    });
+    return this.getRow(companyId, access, id);
   }
 
   /**

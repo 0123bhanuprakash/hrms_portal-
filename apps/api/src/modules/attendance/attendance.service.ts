@@ -12,7 +12,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { ApprovalRouterService } from '../projects/approval-router.service';
 
 const addDaysDate = (d: Date, n: number) => new Date(d.getTime() + n * 86_400_000);
-import type { CalendarQueryDto, ExportQueryDto, NudgeDto, TeamMonthQueryDto, TeamQueryDto, UpsertRecordDto } from './dto';
+import type { CalendarQueryDto, ExportQueryDto, NudgeDto, TeamMonthQueryDto, TeamQueryDto, UpsertRecordDto, InsightsQueryDto } from './dto';
 
 /** A check-in or check-out this soon after the opposite tap is treated as a mistaken double tap. */
 const ACCIDENTAL_TAP_MS = 60_000;
@@ -77,6 +77,9 @@ export interface DayLeaveInfo {
   countsAsPresent: boolean;
   halfDay: boolean;
 }
+
+/** People per insight on the Team attendance card before "See all" */
+const INSIGHT_PREVIEW = 5;
 
 @Injectable()
 export class AttendanceService {
@@ -678,7 +681,7 @@ export class AttendanceService {
    * yesterday, absent without leave in the last week, people late often and
    * people asking for many corrections this month.
    */
-  async insights(companyId: string, access: AccessContext) {
+  async insights(companyId: string, access: AccessContext, q: InsightsQueryDto = {}) {
     const scope = this.access.requireEmployeeScope(access, 'attendance.view');
     const policy = await this.policies.get(companyId);
     const todayKey = localDateKey(new Date(), policy.timeZone);
@@ -689,7 +692,10 @@ export class AttendanceService {
       where: { AND: [{ companyId, employmentStatus: { not: EmploymentStatus.TERMINATED } }, scope, { NOT: { userId: access.userId } }] },
       select: PERSON,
     });
-    if (!people.length) return { missingCheckout: [], absent: [], lateOften: [], manyCorrections: [], thresholds: { late: policy.lateAlertAt ?? 3, corrections: policy.correctionAlertAt } };
+    if (!people.length) {
+      if (q.list) return { list: q.list, rows: [], meta: { total: 0, page: 1, limit: q.limit ?? 25, totalPages: 1 } };
+      return { missingCheckout: [], absent: [], lateOften: [], manyCorrections: [], counts: { missingCheckout: 0, absent: 0, lateOften: 0, manyCorrections: 0 }, missingCheckoutIds: [], thresholds: { late: policy.lateAlertAt ?? 3, corrections: policy.correctionAlertAt } };
+    }
     const ids = people.map((p) => p.id);
     const byId = new Map(people.map((p) => [p.id, p]));
     const lateAt = policy.lateAlertAt ?? 3;
@@ -711,11 +717,29 @@ export class AttendanceService {
       .map((p) => ({ p, dates: grid.get(p.id)!.filter((d) => d.status === 'ABSENT').map((d) => d.date) }))
       .filter((x) => x.dates.length)
       .map((x) => ({ employee: person(x.p.id), dates: x.dates }));
-    return {
+    const lists = {
       missingCheckout,
       absent,
       lateOften: late.filter((l) => l._count._all >= lateAt).map((l) => ({ employee: person(l.employeeId), count: l._count._all })).sort((a, b) => b.count - a.count),
       manyCorrections: corrections.filter((c) => c._count._all > policy.correctionAlertAt).map((c) => ({ employee: person(c.employeeId), count: c._count._all })).sort((a, b) => b.count - a.count),
+    };
+    // "See all": one list, a page at a time
+    if (q.list) {
+      const list: Array<unknown> = lists[q.list];
+      const limit = q.limit ?? 25;
+      const totalPages = Math.max(1, Math.ceil(list.length / limit));
+      const page = Math.min(q.page ?? 1, totalPages);
+      return { list: q.list, rows: list.slice((page - 1) * limit, page * limit), meta: { total: list.length, page, limit, totalPages } };
+    }
+    return {
+      missingCheckout: missingCheckout.slice(0, INSIGHT_PREVIEW),
+      absent: absent.slice(0, INSIGHT_PREVIEW),
+      lateOften: lists.lateOften.slice(0, INSIGHT_PREVIEW),
+      manyCorrections: lists.manyCorrections.slice(0, INSIGHT_PREVIEW),
+      /** Everyone per list — the lists above hold only the first few */
+      counts: { missingCheckout: missingCheckout.length, absent: absent.length, lateOften: lists.lateOften.length, manyCorrections: lists.manyCorrections.length },
+      /** For "Ask them to fix it" (ids only) */
+      missingCheckoutIds: missingCheckout.map((x) => x.employee.id),
       thresholds: { late: lateAt, corrections: policy.correctionAlertAt },
     };
   }

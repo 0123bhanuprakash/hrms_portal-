@@ -220,7 +220,7 @@ export function OrgChart({ canManage }: { canManage: boolean }) {
         <ul className="min-w-[420px] space-y-2">{tree.map((n) => renderNode(n, 0))}</ul>
       </Card>
 
-      <MoveDialog request={move} employees={employees} onClose={() => setMove(null)} />
+      <MoveDialog request={move} onClose={() => setMove(null)} />
     </div>
   );
 }

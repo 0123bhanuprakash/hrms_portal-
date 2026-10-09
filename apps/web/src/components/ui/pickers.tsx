@@ -110,6 +110,8 @@ export interface PickOption {
 }
 
 export interface SearchSelectProps {
+  /** Inside a popup, float the list over what's below instead of making room (filter rows) */
+  overlay?: boolean;
   id?: string;
   value: string;
   onChange: (value: string) => void;
@@ -130,6 +132,10 @@ export interface SearchSelectProps {
   triggerClassName?: string;
   required?: boolean;
   name?: string;
+  /** Search on the server instead: called with the typed text; `options` are already the matches */
+  onSearch?: (q: string) => void;
+  /** The server search is running */
+  searching?: boolean;
 }
 
 /** A dropdown with search and keyboard support (↑ ↓ Enter Esc). */
@@ -149,20 +155,24 @@ export function SearchSelect({
   triggerClassName,
   required,
   name,
+  onSearch,
+  searching,
+  overlay,
   ...rest
 }: SearchSelectProps) {
   const { open, setOpen, wrap, panel } = usePanel();
   const trigger = useRef<HTMLButtonElement>(null);
   const float = useFloat(open, wrap, trigger);
-  const inFlow = useInFlow(open, wrap);
+  const inFlow = useInFlow(open, wrap) && !overlay;
   const [q, setQ] = useState('');
   const [active, setActive] = useState(0);
   const listId = useId();
   const all = useMemo(() => (emptyLabel !== undefined ? [{ value: '', label: emptyLabel }, ...options] : options), [options, emptyLabel]);
-  const showSearch = searchable ?? all.length > 7;
+  const showSearch = onSearch ? true : searchable ?? all.length > 7;
   const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
   // Name matches first, then matches on the second line (job title, team…)
   const inName = (o: PickOption) => words.every((w) => o.label.toLowerCase().includes(w));
+  // With a server search the options already match; this only drops the chosen one when it doesn't
   const shown = words.length
     ? all
         .filter((o) => o.value && words.every((w) => `${o.label} ${o.sub ?? ''} ${o.keywords ?? ''}`.toLowerCase().includes(w)))
@@ -177,6 +187,7 @@ export function SearchSelect({
     }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => setActive(0), [q]);
+  useEffect(() => onSearch?.(q), [q]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     panel.current?.querySelector(`[data-index="${active}"]`)?.scrollIntoView({ block: 'nearest' });
   }, [active, panel]);
@@ -264,7 +275,7 @@ export function SearchSelect({
             </div>
           )}
           <ul id={listId} role="listbox" className="max-h-64 overflow-y-auto overscroll-contain p-1" style={float ? { maxHeight: Math.min(256, float.maxH - (showSearch ? 40 : 0)) } : undefined}>
-            {shown.length === 0 && <li className="px-3 py-6 text-center text-sm text-muted-foreground">Nothing matches “{q}”</li>}
+            {shown.length === 0 && <li className="px-3 py-6 text-center text-sm text-muted-foreground">{searching ? 'Searching…' : q ? `Nothing matches “${q}”` : 'Nothing to choose'}</li>}
             {shown.map((o, i) => (
               <li
                 key={o.value || '__empty'}
@@ -324,6 +335,8 @@ type NativeSelectProps = Omit<React.SelectHTMLAttributes<HTMLSelectElement>, 'on
   onChange?: (e: { target: { value: string }; currentTarget: { value: string } }) => void;
   /** Classes for the wrapper, e.g. when it has to sit absolutely over something */
   wrapClassName?: string;
+  /** Inside a popup, float the list over what's below instead of making room (filter rows) */
+  overlay?: boolean;
   invalid?: boolean;
   searchable?: boolean;
 };
@@ -364,7 +377,7 @@ const WRAP_CLASS = /^(?:[\w-]+:)*(?:w-|min-w-|max-w-|flex-|shrink|grow|basis-|ml
  * Looks and works like every other dropdown in the app, but takes the same
  * props and <option> children as a native <Select>, so swapping is one word.
  */
-export function Select({ value, onChange, children, className, wrapClassName, disabled, id, required, name, invalid, searchable, ...rest }: NativeSelectProps) {
+export function Select({ value, onChange, children, className, wrapClassName, disabled, id, required, name, invalid, searchable, overlay, ...rest }: NativeSelectProps) {
   const options = optionsOf(children);
   const classes = cn(className).split(/\s+/).filter(Boolean);
   const wrap = classes.filter((c) => WRAP_CLASS.test(c));
@@ -383,6 +396,7 @@ export function Select({ value, onChange, children, className, wrapClassName, di
       name={name}
       invalid={invalid ?? (rest['aria-invalid'] === true || rest['aria-invalid'] === 'true')}
       searchable={searchable}
+      overlay={overlay}
       muteEmpty={false}
       aria-label={rest['aria-label']}
       className={cn('w-full', wrap, wrapClassName)}

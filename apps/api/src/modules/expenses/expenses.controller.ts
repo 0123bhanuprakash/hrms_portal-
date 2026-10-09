@@ -5,7 +5,7 @@ import type { TenantContext } from '../../common/types/request.types';
 import { holds, type AccessContext } from '../access/access.types';
 import { ExpenseCategoriesService } from './categories.service';
 import { ExpenseClaimsService } from './claims.service';
-import { BulkApproveDto, ClaimQueryDto, CommentDto, DecideClaimDto, PayClaimDto, RejectClaimDto, ReportQueryDto, SaveCategoryDto, SaveClaimDto, SaveItemDto } from './dto';
+import { BulkApproveDto, ClaimQueryDto, CommentDto, DecideClaimDto, PayClaimDto, RejectClaimDto, ReportQueryDto, SaveCategoryDto, SaveClaimDto, SaveItemDto, BreakdownQueryDto } from './dto';
 import { Live } from '../realtime/live.decorator';
 
 const receipt = FileInterceptor('receipt', { limits: { fileSize: 10 * 1024 * 1024, files: 1 } });
@@ -47,6 +47,13 @@ export class ExpensesController {
   @Get('report')
   report(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Query() q: ReportQueryDto) {
     return this.claims.report(ctx.companyId!, access, q);
+  }
+
+  /** One breakdown of the report (person, project…), a page at a time ("See all"). */
+  @RequirePermission('expense.view')
+  @Get('report/breakdown')
+  breakdown(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Query() q: BreakdownQueryDto) {
+    return this.claims.breakdown(ctx.companyId!, access, q);
   }
 
   @RequirePermission('expense.view')

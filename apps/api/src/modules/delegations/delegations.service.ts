@@ -45,13 +45,16 @@ export class DelegationsService {
   }
 
   /** Admin view: every current and upcoming delegation in the company. */
-  async all(companyId: string) {
-    const rows = await this.prisma.approvalDelegation.findMany({
-      where: { companyId, revokedAt: null, endsAt: { gt: new Date() } },
-      select: SELECT,
-      orderBy: { startsAt: 'asc' },
-    });
-    return rows.map((r) => this.present(r));
+  /** Current and upcoming hand-overs, soonest first, a page at a time. */
+  async all(companyId: string, q: { page?: number; limit?: number } = {}) {
+    const where = { companyId, revokedAt: null, endsAt: { gt: new Date() } };
+    const limit = q.limit ?? 25;
+    const page = q.page ?? 1;
+    const [total, rows] = await Promise.all([
+      this.prisma.approvalDelegation.count({ where }),
+      this.prisma.approvalDelegation.findMany({ where, select: SELECT, orderBy: [{ startsAt: 'asc' }, { id: 'asc' }], skip: (page - 1) * limit, take: limit }),
+    ]);
+    return { rows: rows.map((r) => this.present(r)), meta: { total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)) } };
   }
 
   async create(companyId: string, actor: AccessContext, dto: CreateDelegationDto) {

@@ -3,7 +3,7 @@ import { Audit, CurrentAccess, RequireFeature, RequirePermission, TenantCtx } fr
 import type { TenantContext } from '../../common/types/request.types';
 import type { AccessContext } from '../access/access.types';
 import { ResourceRequestsService } from './resources.service';
-import { CandidatesQueryDto, ConsentDto, FillDto, HoldDto, NoteDto, RaiseReleaseDto, RaiseRequestDto, ReasonDto, ReleaseDecisionDto, RequestListQueryDto } from './resources.dto';
+import { AvailablePeopleQueryDto, CandidatesQueryDto, ConsentDto, FillDto, HoldDto, NoteDto, RaiseReleaseDto, RaiseRequestDto, ReasonDto, ReleaseDecisionDto, RequestListQueryDto, PoolQueryDto } from './resources.dto';
 
 // Resource requests (Lead → PM → Delivery Director → PMO) and releases.
 // Everyone may call these; the service checks the person's role on the
@@ -31,6 +31,12 @@ export class ResourceRequestsController {
   @Get('requests/count')
   count(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext) {
     return this.resources.waitingCount(ctx.companyId!, access);
+  }
+
+  /** Raise a request → "Preferred person": people free in the window, most free first, with skills and experience. */
+  @Get('available-people')
+  availablePeople(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Query() q: AvailablePeopleQueryDto) {
+    return this.resources.availablePeople(ctx.companyId!, access, q);
   }
 
   @Get('requests/:id')
@@ -119,8 +125,8 @@ export class ResourceRequestsController {
 
   /** PMO pool: who is free now or soon. */
   @Get('pool')
-  pool(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext) {
-    return this.resources.pool(ctx.companyId!, access);
+  pool(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Query() q: PoolQueryDto) {
+    return this.resources.pool(ctx.companyId!, access, q);
   }
 
   /** Someone's assignment history. */

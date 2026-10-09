@@ -13,12 +13,10 @@ import { Card, EmptyState, ErrorState, Skeleton } from '@/components/ui/feedback
 import { Field, Textarea, inputClass } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { PersonAvatar } from '@/components/profile/person-avatar';
-import { Journey, QUEUE_EMOJI, TargetRing } from '@/components/helpdesk/ticket-visuals';
+import { Journey, TargetRing } from '@/components/helpdesk/ticket-visuals';
 import { Burst } from '@/components/motion/motion';
 import {
   PRIORITY,
-  QUEUES,
-  QUEUE_INFO,
   STATUS,
   dueText,
   openAttachment,
@@ -32,6 +30,7 @@ import {
   useResolveTicket,
   useTicket,
   useTicketCategories,
+  useHelpdeskQueues,
   useUpdateTicket,
   type Priority,
   type Queue,
@@ -65,7 +64,7 @@ function TicketView({ t }: { t: TicketDetail }) {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow={<Link href={t.isAgent ? '/app/helpdesk/queue' : '/app/helpdesk'} className="hover:underline">Helpdesk · {QUEUE_INFO[t.queue].label}</Link>}
+        eyebrow={<Link href={t.isAgent ? '/app/helpdesk/queue' : '/app/helpdesk'} className="hover:underline">Helpdesk · {t.queueLabel}</Link>}
         title={`#${t.number} ${t.subject}`}
         description={
           <span className="flex flex-wrap items-center gap-1.5">
@@ -85,14 +84,14 @@ function TicketView({ t }: { t: TicketDetail }) {
       />
 
       <Card className="relative flex items-center gap-4 px-4 py-3">
-        <span className="text-xl" aria-hidden>{QUEUE_EMOJI[t.queue]}</span>
+        <span className="text-xl" aria-hidden>{t.queueEmoji}</span>
         <Journey t={t} className="flex-1" />
         <span className="pointer-events-none absolute right-1/3 top-1/2"><Burst fire={fire} count={18} spread={120} /></span>
       </Card>
 
       {t.isMine && t.status === 'RESOLVED' && t.autoCloseAt && (
         <div className="rounded-md border border-success/30 bg-success-soft px-4 py-3 text-sm">
-          {QUEUE_INFO[t.queue].label} marked this resolved. If it’s still not fixed, reopen it — otherwise it closes on its own {formatRelative(t.autoCloseAt)}.
+          {t.queueLabel} marked this resolved. If it’s still not fixed, reopen it — otherwise it closes on its own {formatRelative(t.autoCloseAt)}.
         </div>
       )}
 
@@ -138,7 +137,7 @@ function Answers({ t }: { t: TicketDetail }) {
 
 function Thread({ t, writer }: { t: TicketDetail; writer: string | null }) {
   const me = useAuthStore((s) => s.user?.id);
-  const team = QUEUE_INFO[t.queue].label;
+  const team = t.queueLabel;
   return (
     <Card className="space-y-3 bg-gradient-to-b from-subtle/50 to-transparent p-4 sm:p-5">
       {t.messages.map((m, i) => {
@@ -295,7 +294,7 @@ function Composer({ t }: { t: TicketDetail }) {
     <Card className={cn('p-4', note && 'border-warning/40')}>
       <form onSubmit={submit} className="space-y-3">
         {notesOnly && (
-          <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Lock className="h-3.5 w-3.5" /> This ticket isn’t assigned to you — you can add an internal note for the team. The {QUEUE_INFO[t.queue].label} head assigns tickets.</p>
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Lock className="h-3.5 w-3.5" /> This ticket isn’t assigned to you — you can add an internal note for the team. The {t.queueLabel} head assigns tickets.</p>
         )}
         {t.isAgent && !notesOnly && (
           <div className="flex gap-1 text-sm">
@@ -314,6 +313,12 @@ function Composer({ t }: { t: TicketDetail }) {
             // Internal notes stay private — no "is writing" for them
             if (note) typing.done();
             else typing.typed();
+          }}
+          // Enter sends, Shift+Enter adds a new line (not while an IME is composing)
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter' || e.shiftKey || e.nativeEvent.isComposing) return;
+            e.preventDefault();
+            if (body.trim() && !post.isPending) e.currentTarget.form?.requestSubmit();
           }}
           required
           maxLength={5000}
@@ -337,7 +342,8 @@ function Composer({ t }: { t: TicketDetail }) {
               <input type="checkbox" className="accent-[hsl(var(--primary))]" checked={wait} onChange={(e) => setWait(e.target.checked)} /> Waiting for their reply
             </label>
           )}
-          <Button type="submit" className="ml-auto" loading={post.isPending} disabled={!body.trim()}><Send /> {note ? 'Add note' : 'Send'}</Button>
+          <span className="ml-auto hidden text-xs text-muted-foreground sm:inline">Enter to send · Shift+Enter for a new line</span>
+          <Button type="submit" className="ml-auto sm:ml-0" loading={post.isPending} disabled={!body.trim()}><Send /> {note ? 'Add note' : 'Send'}</Button>
         </div>
       </form>
     </Card>
@@ -378,7 +384,7 @@ function Side({ t }: { t: TicketDetail }) {
       {t.isAgent && t.status !== 'CLOSED' ? <AgentPanel t={t} /> : (
         <Card className="p-5 text-sm">
           <p className="text-xs text-muted-foreground">Handled by</p>
-          <p className="mt-0.5">{t.assignee ? `${t.assignee.firstName} ${t.assignee.lastName}` : `${QUEUE_INFO[t.queue].label} team`}</p>
+          <p className="mt-0.5">{t.assignee ? `${t.assignee.firstName} ${t.assignee.lastName}` : `${t.queueLabel} team`}</p>
         </Card>
       )}
     </div>
@@ -415,6 +421,8 @@ function AgentPanel({ t }: { t: TicketDetail }) {
   const assign = useAssignTicket(t.id);
   const update = useUpdateTicket(t.id);
   const [moveTo, setMoveTo] = useState<Queue | null>(null);
+  const queues = useHelpdeskQueues();
+  const resolved = t.status === 'RESOLVED';
   const run = async (p: Promise<unknown>, ok: string) => {
     try {
       await p;
@@ -463,7 +471,7 @@ function AgentPanel({ t }: { t: TicketDetail }) {
       ) : (
         <div>
           <p className="text-xs text-muted-foreground">Assignee</p>
-          <p className="mt-0.5">{t.assignee ? (t.assignee.id === me ? 'You' : `${t.assignee.firstName} ${t.assignee.lastName}`) : <span className="flex items-center gap-1.5 text-muted-foreground"><Crown className="h-3.5 w-3.5" /> Waiting for the {QUEUE_INFO[t.queue].label} head to assign</span>}</p>
+          <p className="mt-0.5">{t.assignee ? (t.assignee.id === me ? 'You' : `${t.assignee.firstName} ${t.assignee.lastName}`) : <span className="flex items-center gap-1.5 text-muted-foreground"><Crown className="h-3.5 w-3.5" /> Waiting for the {t.queueLabel} head to assign</span>}</p>
         </div>
       )}
       <Field label="Priority" htmlFor="tk-prio" hint="Changing it resets the targets from when the ticket was raised.">
@@ -471,24 +479,32 @@ function AgentPanel({ t }: { t: TicketDetail }) {
           {(Object.keys(PRIORITY) as Priority[]).map((p) => <option key={p} value={p}>{PRIORITY[p].label}</option>)}
         </Select>
       </Field>
+      {resolved ? (
+        <div>
+          <p className="text-xs text-muted-foreground">Team · Topic</p>
+          <p className="mt-0.5">{t.queueLabel} · {t.category?.name ?? 'No topic'}</p>
+          <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground"><Lock className="h-3.5 w-3.5" /> Locked once resolved</p>
+        </div>
+      ) : (
       <Field label="Topic" htmlFor="tk-topic">
         <Select id="tk-topic" className={inputClass} value={t.category?.id ?? ''} disabled={update.isPending || !t.canWork} onChange={(e) => void run(update.mutateAsync({ categoryId: e.target.value || null }), 'Topic updated')}>
           <option value="">None</option>
           {(cats.data ?? []).filter((c) => c.queue === t.queue).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </Select>
       </Field>
-      <Field label="Wrong team?" htmlFor="tk-move">
+      )}
+      {!resolved && <Field label="Wrong team?" htmlFor="tk-move">
         <Select id="tk-move" className={inputClass} value="" disabled={!t.canWork} onChange={(e) => e.target.value && setMoveTo(e.target.value as Queue)}>
           <option value="">Move to…</option>
-          {QUEUES.filter((q) => q !== t.queue).map((q) => <option key={q} value={q}>{QUEUE_INFO[q].label}</option>)}
+          {queues.open.filter((q) => q.queue !== t.queue).map((q) => <option key={q.queue} value={q.queue}>{q.emoji} {q.label}</option>)}
         </Select>
-      </Field>
+      </Field>}
       {moveTo && (
         <Modal
           open
           onClose={() => setMoveTo(null)}
           busy={update.isPending}
-          title={`Move #${t.number} to ${QUEUE_INFO[moveTo].label}?`}
+          title={`Move #${t.number} to ${queues.info(moveTo).label}?`}
           description="It leaves your queue and loses its assignee and topic. The other team is notified."
           size="sm"
           footer={
@@ -499,7 +515,7 @@ function AgentPanel({ t }: { t: TicketDetail }) {
                 onClick={async () => {
                   try {
                     const r = await update.mutateAsync({ queue: moveTo });
-                    toast.success(`Moved to ${QUEUE_INFO[moveTo].label}`);
+                    toast.success(`Moved to ${queues.info(moveTo).label}`);
                     setMoveTo(null);
                     if ('moved' in r) router.push('/app/helpdesk/queue');
                   } catch (err) {
@@ -558,7 +574,7 @@ function ReopenDialog({ t, onClose }: { t: TicketDetail; onClose: () => void }) 
   return (
     <TextDialog
       title="Reopen ticket"
-      description={`${QUEUE_INFO[t.queue].label} will pick it up again.`}
+      description={`${t.queueLabel} will pick it up again.`}
       label="What’s still wrong?"
       busy={reopen.isPending}
       onClose={onClose}
@@ -592,7 +608,7 @@ function CloseDialog({ t, onClose }: { t: TicketDetail; onClose: () => void }) {
     }
   };
   return (
-    <Modal open onClose={onClose} busy={close.isPending} title={resolved ? 'Close and rate' : 'Withdraw this ticket?'} description={resolved ? `How did ${QUEUE_INFO[t.queue].label} do?` : 'Use this if you no longer need help. It can’t be reopened.'} size="sm"
+    <Modal open onClose={onClose} busy={close.isPending} title={resolved ? 'Close and rate' : 'Withdraw this ticket?'} description={resolved ? `How did ${t.queueLabel} do?` : 'Use this if you no longer need help. It can’t be reopened.'} size="sm"
       footer={<><Button variant="secondary" onClick={onClose} disabled={close.isPending}>Cancel</Button><Button variant={resolved ? 'primary' : 'danger'} loading={close.isPending} onClick={() => void submit()}>{resolved ? 'Close ticket' : 'Withdraw'}</Button></>}>
       {resolved && (
         <div className="space-y-3">

@@ -1,6 +1,6 @@
 'use client';
 
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { LIVE } from '@/lib/live';
 import { orgKeys } from '@/lib/company/org';
@@ -132,6 +132,8 @@ export interface DirectoryPage {
     counts?: Record<TodayStatus | 'everyone' | 'new' | 'mine', number>;
     /** First letters that have someone (A–Z rail) */
     letters?: string[];
+    /** perTeam: every team's real size (null id = no team yet), biggest first */
+    teams?: Array<{ id: string | null; name: string; total: number }>;
   };
 }
 
@@ -212,7 +214,8 @@ export function useSpotlight(enabled = true) {
   return useQuery({ queryKey: profileKeys.spotlight, queryFn: async () => unwrap<Spotlight>(await api.get('/people/spotlight')), enabled, staleTime: 5 * 60_000 });
 }
 
-export function useDirectory(q: { search?: string; departmentId?: string; locationId?: string; status?: TodayStatus; group?: 'new' | 'mine'; sort?: 'name' | 'joined'; letter?: string; page?: number; limit?: number }, enabled = true) {
+export type DirectoryQuery = { search?: string; departmentId?: string; locationId?: string; status?: TodayStatus; group?: 'new' | 'mine'; sort?: 'name' | 'joined'; letter?: string; perTeam?: number; noTeam?: 'true'; page?: number; limit?: number };
+export function useDirectory(q: DirectoryQuery, enabled = true) {
   return useQuery({
     queryKey: profileKeys.directory(q),
     queryFn: async () => {
@@ -222,6 +225,21 @@ export function useDirectory(q: { search?: string; departmentId?: string; locati
     placeholderData: keepPreviousData,
     enabled,
     ...LIVE,
+  });
+}
+
+/** Everyone in one team (Teams view → View all), 60 at a time with the same filters. */
+export function useDirectoryTeam(q: DirectoryQuery, teamId: string | null, enabled = true) {
+  const team = teamId ? { departmentId: teamId } : { noTeam: 'true' as const };
+  return useInfiniteQuery({
+    queryKey: [...profileKeys.directory({ ...q, ...team }), 'all'],
+    initialPageParam: 1,
+    queryFn: async ({ pageParam }) => {
+      const params = Object.fromEntries(Object.entries({ ...q, ...team, perTeam: undefined, page: pageParam, limit: 60 }).filter(([, v]) => v !== undefined && v !== ''));
+      return (await api.get('/people', { params })).data as DirectoryPage;
+    },
+    getNextPageParam: (last) => (last.meta.page < last.meta.totalPages ? last.meta.page + 1 : undefined),
+    enabled,
   });
 }
 

@@ -14,7 +14,9 @@ import { CountUp } from '@/components/motion/motion';
 import { MiniLadder, RoleChip } from '@/components/admin/role-look';
 import { SCOPE_LABELS, useAccess, useAccessCatalog } from '@/lib/access/use-access';
 import { useCompanyUsers, useRoles, type RoleSummary } from '@/lib/company/user-management';
-import { usePeoplePicker } from '@/lib/company/org';
+import { usePeopleByIds, usePeopleSearch } from '@/lib/company/org';
+import { PersonSearch } from '@/components/people/person-search';
+import { useDebounced } from '@/components/ui/list-tools';
 import { useExplainUser, useSensitiveCheck, useWhoCanAccess, type GrantSource, type UserExplanation } from '@/lib/company/advanced';
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatDate } from '@/lib/format';
@@ -77,7 +79,10 @@ function ExplorerContent() {
 
 function ExplainUserPanel() {
   const params = useSearchParams();
-  const users = useCompanyUsers({ limit: 100 });
+  // Users are searched on the server, 20 at a time
+  const [userQ, setUserQ] = useState('');
+  const typedUser = useDebounced(userQ.trim(), 250);
+  const users = useCompanyUsers({ search: typedUser || undefined, limit: 20 });
   const roles = useRoles();
   const [userId, setUserId] = useState<string>(params.get('user') ?? '');
   const [filter, setFilter] = useState('');
@@ -91,14 +96,16 @@ function ExplainUserPanel() {
 
   const q = filter.trim().toLowerCase();
   const d = explain.data;
-  const people = (users.data?.data ?? []).map((u) => ({ ...u, sub: u.roles.map((r) => r.name).join(', ') }));
+  const found = (users.data?.data ?? []).map((u) => ({ ...u, sub: u.roles.map((r) => r.name).join(', ') }));
+  // Keep the chosen person's name on the field even when they aren't in the current matches
+  const people = d && !found.some((u) => u.id === userId) ? [{ id: d.user.id, firstName: d.user.name, lastName: '', avatarUrl: null, sub: d.roles.map((r) => r.name).join(', ') }, ...found] : found;
   const all = d?.modules.flatMap((m) => m.features.flatMap((f) => f.permissions.map((p) => ({ ...p, feature: f.label })))) ?? [];
   const picked = all.find((p) => p.key === why);
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row">
-        <PersonSelect className="flex-1" aria-label="Person" value={userId} onChange={setUserId} people={people} placeholder="Choose a person" />
+        <PersonSelect className="flex-1" aria-label="Person" value={userId} onChange={setUserId} people={people} placeholder="Choose a person" onSearch={setUserQ} searching={users.isFetching} />
         <div className="relative sm:w-64">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input className="pl-8" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter: salary, approve…" aria-label="Filter permissions" />
@@ -309,7 +316,7 @@ const groupOf = (p: { scope: AccessScope; sources: GrantSource[]; reason: string
           : 'place';
 
 function WhoCanAccessPanel() {
-  const chart = usePeoplePicker();
+  const first = usePeopleSearch({ limit: 1 });
   const catalog = useAccessCatalog();
   const roles = useRoles();
   const [employeeId, setEmployeeId] = useState('');
@@ -317,8 +324,9 @@ function WhoCanAccessPanel() {
   const who = useWhoCanAccess(employeeId || null, permission);
 
   useEffect(() => {
-    if (!employeeId && chart.data?.employees.length) setEmployeeId(chart.data.employees[0]!.id);
-  }, [employeeId, chart.data]);
+    if (!employeeId && first.data?.length) setEmployeeId(first.data[0]!.id);
+  }, [employeeId, first.data]);
+  const chosen = usePeopleByIds(employeeId ? [employeeId] : []);
 
   const scoped = useMemo(
     () =>
@@ -328,10 +336,10 @@ function WhoCanAccessPanel() {
     [catalog.data],
   );
 
-  if (chart.data && !chart.data.employees.length) {
+  if (first.data && !first.data.length) {
     return <EmptyState icon={<Users />} title="No employees yet" description="Add employees to see who can access their records." />;
   }
-  const target = chart.data?.employees.find((e) => e.id === employeeId);
+  const target = chosen.data?.find((e) => e.id === employeeId);
   const people = who.data?.people ?? [];
   const grouped = GROUPS.map((g) => ({ ...g, people: people.filter((p) => groupOf(p) === g.id) })).filter((g) => g.people.length);
 
@@ -341,7 +349,7 @@ function WhoCanAccessPanel() {
         <span>Who can</span>
         <SearchSelect className="w-full sm:w-64" aria-label="Doing what" value={permission} onChange={setPermission} options={scoped} searchPlaceholder="Search permissions…" />
         <span>for</span>
-        <PersonSelect className="w-full sm:w-64" aria-label="Whose records" value={employeeId} onChange={setEmployeeId} people={(chart.data?.employees ?? []).map((e) => ({ ...e, sub: e.designation?.name ?? null }))} />
+        <PersonSearch className="w-full sm:w-64" aria-label="Whose records" value={employeeId} onChange={(id) => setEmployeeId(id)} />
         <span>?</span>
       </Card>
 

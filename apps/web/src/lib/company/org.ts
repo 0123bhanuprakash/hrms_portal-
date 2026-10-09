@@ -161,13 +161,40 @@ export interface PickPerson {
   directReports: number;
 }
 
-/** Current people for pickers — one cached list shared by every form. */
-export const usePeoplePicker = () =>
+export interface PeopleSearch {
+  search?: string;
+  /** Only people with someone reporting to them, most reports first */
+  managers?: boolean;
+  exclude?: string;
+  departmentId?: string;
+  limit?: number;
+}
+
+/** People pickers: up to 20 current people matching the typed text (searched on the server). */
+export const usePeopleSearch = (q: PeopleSearch, enabled = true) =>
   useQuery({
-    queryKey: ['org', 'people'],
-    queryFn: async () => ({ employees: unwrap<PickPerson[]>(await api.get('/org/people')) }),
+    queryKey: ['org', 'people', 'search', q],
+    queryFn: async () => unwrap<PickPerson[]>(await api.get('/org/people', { params: Object.fromEntries(Object.entries(q).filter(([, v]) => v !== undefined && v !== '' && v !== false)) })),
+    enabled,
+    staleTime: 60_000,
+    placeholderData: keepPreviousData,
+  });
+
+/** Exactly these people (by employee or user id) — to show who is already chosen. */
+export const usePeopleByIds = (ids: string[], by: 'employee' | 'user' = 'employee') => {
+  const list = [...new Set(ids.filter(Boolean))].sort();
+  return useQuery({
+    queryKey: ['org', 'people', by, list],
+    queryFn: async () => {
+      // The server takes up to 50 ids per call
+      const parts = Array.from({ length: Math.ceil(list.length / 50) }, (_, i) => list.slice(i * 50, i * 50 + 50));
+      const pages = await Promise.all(parts.map(async (ids) => unwrap<PickPerson[]>(await api.get('/org/people', { params: { [by === 'user' ? 'userIds' : 'ids']: ids.join(',') } }))));
+      return pages.flat();
+    },
+    enabled: list.length > 0,
     staleTime: 5 * 60_000,
   });
+};
 
 export const useOrgChart = () => useQuery({ queryKey: orgKeys.chart, queryFn: async () => unwrap<OrgChart>(await api.get('/org/chart')) });
 

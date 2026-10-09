@@ -22,6 +22,8 @@ export interface PreviewRow {
     manager: { existing: string } | { row: number } | null;
     joiningDate: string | null;
     employmentType: EmploymentType;
+    /** Experience before joining, in months (null = not given) */
+    priorExperienceMonths: number | null;
   };
 }
 
@@ -100,6 +102,9 @@ export class EmployeeImportService {
       const designationId = lookup(r.designation, titleBy, 'Job title');
       const locationId = r.location?.trim() ? lookup(r.location, locBy, 'Location') : defaultLocation;
 
+      const priorExperienceMonths = parseExperience(r.experience);
+      if (r.experience?.trim() && priorExperienceMonths === null) warnings.push(`Experience '${r.experience.trim()}' — use years like 3, 4.5 or 2y 6m; left empty`);
+
       let manager: PreviewRow['resolved']['manager'] = null;
       const mgr = norm(r.managerEmail);
       if (mgr) {
@@ -115,7 +120,7 @@ export class EmployeeImportService {
         messages: [...errors, ...warnings],
         name: `${r.firstName?.trim() ?? ''} ${r.lastName?.trim() ?? ''}`.trim(),
         email,
-        resolved: { departmentId, designationId, locationId, manager, joiningDate, employmentType },
+        resolved: { departmentId, designationId, locationId, manager, joiningDate, employmentType, priorExperienceMonths },
       };
     });
 
@@ -212,6 +217,8 @@ export class EmployeeImportService {
             { sendWelcome: sendInvites },
           );
           created.set(p.row, e.id);
+          // Entered by HR in the file: counts as verified
+          if (p.resolved.priorExperienceMonths !== null) await this.prisma.employee.update({ where: { id: e.id }, data: { priorExperienceMonths: p.resolved.priorExperienceMonths, priorExperienceVerifiedAt: new Date() } });
         } catch (err) {
           failed.push({ row: p.row, name: p.name, error: (err as { message?: string }).message ?? 'Failed' });
         }
@@ -222,6 +229,20 @@ export class EmployeeImportService {
     this.logger.log(`Import for company ${companyId}: ${created.size} created, ${skipped.length} skipped, ${failed.length} failed`);
     return { created: created.size, skipped, failed, invitesSent: sendInvites };
   }
+}
+
+/** Experience before joining: "4", "4.5", "4 years", "2y 6m", "18 months" → months (null if blank or not understood; 0–50 years). */
+export function parseExperience(value?: string): number | null {
+  const v = (value ?? '').trim().toLowerCase();
+  if (!v) return null;
+  let months: number | null = null;
+  const plain = v.match(/^(\d+(?:\.\d+)?)\s*(y|yr|yrs|year|years)?$/);
+  const mo = v.match(/^(\d+)\s*(m|mo|mos|month|months)$/);
+  const both = v.match(/^(\d+)\s*(?:y|yr|yrs|year|years)\s*,?\s*(\d+)\s*(?:m|mo|mos|month|months)$/);
+  if (plain) months = Math.round(Number(plain[1]) * 12);
+  else if (mo) months = Number(mo[1]);
+  else if (both) months = Number(both[1]) * 12 + Number(both[2]);
+  return months !== null && months >= 0 && months <= 600 ? months : null;
 }
 
 /** YYYY-MM-DD, DD/MM/YYYY or DD-MM-YYYY → YYYY-MM-DD (null if invalid). */

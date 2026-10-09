@@ -164,12 +164,14 @@ export default function HolidaysPage() {
   );
 }
 
-/** Countdown to the next day off, with a long-weekend tip. */
+/** Countdown to the next day off, how many are left this year and the next few after it (no leave suggestions). */
 function NextHoliday({ h, all }: { h: Holiday; all: Holiday[] }) {
   const left = daysBetween(todayKey(), h.date);
   const wd = weekday(h.date);
-  const tip = wd === 4 ? { day: 'Friday', total: 4 } : wd === 2 ? { day: 'Monday', total: 4 } : wd === 5 || wd === 1 ? { day: null, total: 3 } : null;
-  const after = all[1];
+  const longWeekend = wd === 5 || wd === 1;
+  const year = todayKey().slice(0, 4);
+  const leftThisYear = all.filter((x) => x.date.startsWith(year)).length;
+  const after = all.slice(1, 4);
   return (
     <section className="relative flex items-center gap-4 overflow-hidden rounded-2xl bg-gradient-to-br from-orange-900 via-orange-800 to-orange-600 p-6 text-white shadow-card">
       <div className="min-w-0 flex-1 space-y-2">
@@ -179,13 +181,26 @@ function NextHoliday({ h, all }: { h: Holiday; all: Holiday[] }) {
         <div className="flex items-center gap-3 pt-1">
           {left === 0 ? <span className="text-xl font-bold">Today! <Emoji e="🎉" play="appear" /></span> : <><FlipDigits value={left} tileClass="bg-white text-orange-800" /><span className="text-sm font-semibold text-white/85">day{left === 1 ? '' : 's'} to go</span></>}
         </div>
-        {tip && (
+        {longWeekend && (
           <p className="inline-flex items-start gap-2 rounded-lg bg-white/15 px-3 py-2 text-xs">
             <Lightbulb className="h-3.5 w-3.5 shrink-0" />
-            {tip.day ? <>Take {tip.day} off → <b>{tip.total}-day weekend</b>.</> : <>A <b>3-day weekend</b> — no leave needed.</>}
+            <>A <b>3-day weekend</b> — no leave needed.</>
           </p>
         )}
-        {after && <p className="text-xs text-white/70">Then {after.name} · {fmt(after.date)}</p>}
+        {after.length > 0 && (
+          <div className="space-y-1.5 pt-1">
+            <p className="text-xs font-semibold text-white/80">{leftThisYear ? `${leftThisYear} holiday${leftThisYear === 1 ? '' : 's'} left in ${year}` : 'Coming up'}</p>
+            <ul className="flex flex-wrap gap-1.5">
+              {after.map((x) => (
+                <li key={x.id} className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-xs">
+                  <Emoji e={artOf(x.name)} />
+                  <span className="max-w-[10rem] truncate font-medium">{x.name}</span>
+                  <span className="text-white/70">· {fmt(x.date)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
       <span aria-hidden className="tm-sway text-7xl drop-shadow-xl sm:text-8xl">{artOf(h.name)}</span>
     </section>

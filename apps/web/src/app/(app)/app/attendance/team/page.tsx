@@ -7,8 +7,9 @@ import { Activity, AlertTriangle, BellRing, CalendarDays, ChevronLeft, ChevronRi
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, EmptyState, ErrorState, Pagination, Skeleton, Tabs } from '@/components/ui/feedback';
+import { Card, EmptyState, ErrorState, LoadMore, Pagination, Skeleton, Tabs } from '@/components/ui/feedback';
 import { Input, inputClass } from '@/components/ui/field';
+import { Modal } from '@/components/ui/modal';
 import { PersonAvatar } from '@/components/profile/person-avatar';
 import { CorrectionDialog } from '@/components/attendance/correction-dialog';
 import { DayLine, STATUS_BG, minuteOf, toMinutes } from '@/components/time/visuals';
@@ -21,6 +22,9 @@ import {
   downloadAttendanceCsv,
   hours,
   useInsights,
+  useInsightList,
+  type InsightList,
+  type InsightRow,
   useNudge,
   usePolicy,
   useTeamAttendance,
@@ -276,15 +280,17 @@ function TodayView({ team, tz, onEdit }: { team: TeamQuery; tz: string; onEdit: 
 /** Missed check-outs, absent without leave, late often, many corrections — with a nudge. */
 function NeedsAttention({ onNudge, busy }: { onNudge: (ids: string[], kind: 'check_in' | 'fix') => Promise<void>; busy: boolean }) {
   const insights = useInsights();
+  const [seeAll, setSeeAll] = useState<{ list: InsightList; title: string } | null>(null);
   const d = insights.data;
   if (insights.isLoading) return <Skeleton className="h-40 w-full" />;
   if (!d) return null;
-  const items: Array<{ key: string; tone: string; title: string; people: PersonLite[]; action?: () => void; actionLabel?: string }> = [
-    { key: 'mc', tone: 'bg-violet-500', title: `${d.missingCheckout.length} missed check-out${d.missingCheckout.length === 1 ? '' : 's'} yesterday`, people: d.missingCheckout.map((x) => x.employee), action: () => void onNudge(d.missingCheckout.map((x) => x.employee.id), 'fix'), actionLabel: 'Ask them to fix it' },
-    { key: 'ab', tone: 'bg-destructive', title: `${d.absent.length} absent without leave (last 7 days)`, people: d.absent.map((x) => x.employee) },
-    { key: 'lt', tone: 'bg-warning', title: `${d.lateOften.length} late ${d.thresholds.late}+ times this month`, people: d.lateOften.map((x) => x.employee) },
-    { key: 'cr', tone: 'bg-pink-500', title: `${d.manyCorrections.length} with more than ${d.thresholds.corrections} corrections this month`, people: d.manyCorrections.map((x) => x.employee) },
-  ].filter((x) => x.people.length);
+  const c = d.counts;
+  const items: Array<{ key: InsightList; tone: string; title: string; people: PersonLite[]; count: number; action?: () => void; actionLabel?: string }> = [
+    { key: 'missingCheckout', tone: 'bg-violet-500', title: `${c.missingCheckout} missed check-out${c.missingCheckout === 1 ? '' : 's'} yesterday`, people: d.missingCheckout.map((x) => x.employee), count: c.missingCheckout, action: () => void onNudge(d.missingCheckoutIds, 'fix'), actionLabel: 'Ask them to fix it' },
+    { key: 'absent', tone: 'bg-destructive', title: `${c.absent} absent without leave (last 7 days)`, people: d.absent.map((x) => x.employee), count: c.absent },
+    { key: 'lateOften', tone: 'bg-warning', title: `${c.lateOften} late ${d.thresholds.late}+ times this month`, people: d.lateOften.map((x) => x.employee), count: c.lateOften },
+    { key: 'manyCorrections', tone: 'bg-pink-500', title: `${c.manyCorrections} with more than ${d.thresholds.corrections} corrections this month`, people: d.manyCorrections.map((x) => x.employee), count: c.manyCorrections },
+  ].filter((x) => x.count) as Array<{ key: InsightList; tone: string; title: string; people: PersonLite[]; count: number; action?: () => void; actionLabel?: string }>;
   return (
     <Card className="p-4">
       <p className="flex items-center gap-2 text-sm font-semibold"><AlertTriangle className="h-4 w-4 text-warning" /> Needs your attention</p>
@@ -297,14 +303,51 @@ function NeedsAttention({ onNudge, busy }: { onNudge: (ids: string[], kind: 'che
               <span className={cn('mt-1.5 h-2 w-2 shrink-0 rounded-full', it.tone)} />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium">{it.title}</p>
-                <p className="truncate text-xs text-muted-foreground">{it.people.slice(0, 3).map((p) => `${p.firstName} ${p.lastName}`).join(', ')}{it.people.length > 3 ? ` +${it.people.length - 3}` : ''}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {it.people.slice(0, 3).map((p) => `${p.firstName} ${p.lastName}`).join(', ')}
+                  {it.count > 3 && (
+                    <button type="button" onClick={() => setSeeAll({ list: it.key, title: it.title })} className="ml-1 font-semibold text-primary hover:underline">+{it.count - 3} · see all</button>
+                  )}
+                </p>
                 {it.action && <Button size="sm" variant="link" className="h-auto p-0 text-xs" disabled={busy} onClick={it.action}>{it.actionLabel} →</Button>}
               </div>
             </li>
           ))}
         </ul>
       )}
+      {seeAll && <InsightPeople list={seeAll.list} title={seeAll.title} onClose={() => setSeeAll(null)} />}
     </Card>
+  );
+}
+
+/** Everyone behind one "Needs your attention" line, 25 at a time. */
+function InsightPeople({ list, title, onClose }: { list: InsightList; title: string; onClose: () => void }) {
+  const q = useInsightList(list);
+  const rows = q.data?.pages.flatMap((p) => p.rows) ?? [];
+  const note = (r: InsightRow) => (r.dates ? r.dates.map((x) => dayLabel(x)).join(', ') : r.date ? dayLabel(r.date) : r.count !== undefined ? `${r.count} times` : '');
+  return (
+    <Modal open onClose={onClose} title={title} icon={<Users />} size="sm">
+      {q.isLoadingError ? (
+        <ErrorState message={getApiErrorMessage(q.error, 'Could not load')} onRetry={() => void q.refetch()} />
+      ) : !q.data ? (
+        <div className="space-y-2">{Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-10" />)}</div>
+      ) : (
+        <>
+          <ul className="divide-y divide-border">
+            {rows.map((r) => (
+              <li key={r.employee.id}>
+                <Link href={`/app/attendance?employee=${r.employee.id}`} className="flex items-center gap-3 py-2 text-sm hover:bg-subtle">
+                  <PersonAvatar person={r.employee} size="sm" />
+                  <span className="min-w-0 flex-1 truncate font-medium">{r.employee.firstName} {r.employee.lastName}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">{note(r)}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <LoadMore shown={rows.length} total={q.data.pages[0]?.meta.total ?? 0} loading={q.isFetchingNextPage} onMore={() => void q.fetchNextPage()} />
+        </>
+      )}
+    </Modal>
   );
 }
 

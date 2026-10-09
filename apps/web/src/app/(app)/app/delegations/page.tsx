@@ -7,12 +7,12 @@ import { ArrowRightLeft, Check, Heart, Info, Plane, ShieldCheck, UserCheck, X } 
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardHeader, EmptyState, ErrorState, Skeleton } from '@/components/ui/feedback';
+import { Card, CardHeader, EmptyState, ErrorState, Pagination, Skeleton } from '@/components/ui/feedback';
 import { Field, FormError, Input } from '@/components/ui/field';
-import { DateInput, PersonSelect } from '@/components/ui/pickers';
+import { DateInput } from '@/components/ui/pickers';
 import { PersonAvatar } from '@/components/profile/person-avatar';
 import { useAccess } from '@/lib/access/use-access';
-import { usePeoplePicker } from '@/lib/company/org';
+import { PersonSearch } from '@/components/people/person-search';
 import {
   useAllDelegations,
   useAway,
@@ -268,7 +268,6 @@ function TeamTimeline() {
 
 function HandOverForm({ delegable, prefill }: { delegable: Array<{ key: string; label: string }>; prefill: { from: string; to: string; reason: string } | null }) {
   const today = keyOf(new Date());
-  const chart = usePeoplePicker();
   const myId = useAuthStore((s) => s.user?.id);
   const create = useCreateDelegation();
   const [from, setFrom] = useState(today);
@@ -289,7 +288,6 @@ function HandOverForm({ delegable, prefill }: { delegable: Array<{ key: string; 
   }, [prefill, today]);
   useEffect(() => setKinds(delegable.map((d) => d.key)), [delegable]);
 
-  const people = useMemo(() => (chart.data?.employees ?? []).filter((e) => e.userId && e.userId !== myId).map((x) => ({ ...x, id: x.userId!, sub: x.designation?.name ?? null })), [chart.data, myId]);
   const top = suggestions.data ?? [];
   const chosen = top.find((s) => s.userId === who);
 
@@ -353,7 +351,7 @@ function HandOverForm({ delegable, prefill }: { delegable: Array<{ key: string; 
               ))}
             </div>
           )}
-          <PersonSelect aria-label="Someone else" value={chosen ? '' : who} onChange={setWho} placeholder="Someone else…" people={people} />
+          <PersonSearch by="user" aria-label="Someone else" value={chosen ? '' : who} onChange={(id) => setWho(id)} placeholder="Someone else…" hide={myId ? [myId] : undefined} />
         </Step>
         <Step n={3} title="What they approve">
           <div className="flex flex-wrap gap-1.5">
@@ -447,14 +445,15 @@ function HandoverList({ items, show }: { items: Delegation[]; show: 'delegate' |
 // ─── Company view (admins) ──────────────────────────────────
 
 function CompanyView({ canSetUp }: { canSetUp: boolean }) {
-  const all = useAllDelegations(true);
+  const [page, setPage] = useState(1);
+  const all = useAllDelegations(true, page);
   const gaps = useDelegationGaps(true);
   const today = keyOf(new Date());
   const end = addDays(today, 30);
   const pos = (iso: string) => Math.min(100, Math.max(0, ((Date.parse(iso) - Date.parse(`${today}T00:00:00`)) / (Date.parse(`${end}T00:00:00`) - Date.parse(`${today}T00:00:00`))) * 100));
   const rows = [
-    ...(all.data ?? []).map((d) => ({ key: d.id, label: `${d.delegator.name.split(' ')[0]} → ${d.delegate.name.split(' ')[0]}`, a: d.startsAt, b: d.endsAt, gap: false, status: d.status })),
-    ...(gaps.data ?? []).map((g) => ({ key: `${g.userId}${g.from}`, label: `${g.name.split(' ')[0]} → ?`, a: `${g.from}T00:00:00`, b: `${g.to}T23:59:59`, gap: true, status: 'gap' as const })),
+    ...(all.data?.rows ?? []).map((d) => ({ key: d.id, label: `${d.delegator.name.split(' ')[0]} → ${d.delegate.name.split(' ')[0]}`, a: d.startsAt, b: d.endsAt, gap: false, status: d.status })),
+    ...(gaps.data?.rows ?? []).map((g) => ({ key: `${g.userId}${g.from}`, label: `${g.name.split(' ')[0]} → ?`, a: `${g.from}T00:00:00`, b: `${g.to}T23:59:59`, gap: true, status: 'gap' as const })),
   ];
   return (
     <Card>
@@ -483,14 +482,15 @@ function CompanyView({ canSetUp }: { canSetUp: boolean }) {
           ))}
         </div>
       )}
-      {!!all.data?.length && <HandoverList items={all.data} show="both" />}
+      {(gaps.data?.total ?? 0) > (gaps.data?.rows.length ?? 0) && <p className="px-5 pb-2 text-xs text-muted-foreground">+{gaps.data!.total - gaps.data!.rows.length} more approvers on leave with nobody covering (showing the soonest {gaps.data!.rows.length}).</p>}
+      {!!all.data?.rows.length && <HandoverList items={all.data.rows} show="both" />}
+      {all.data && all.data.meta.totalPages > 1 && <Pagination page={all.data.meta.page} totalPages={all.data.meta.totalPages} total={all.data.meta.total} limit={all.data.meta.limit} onPageChange={setPage} />}
       {canSetUp && <OnBehalf />}
     </Card>
   );
 }
 
 function OnBehalf() {
-  const chart = usePeoplePicker();
   const create = useCreateDelegation();
   const today = keyOf(new Date());
   const [from, setFrom] = useState('');
@@ -499,7 +499,6 @@ function OnBehalf() {
   const [end, setEnd] = useState(addDays(today, 6));
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const people = (chart.data?.employees ?? []).filter((e) => e.userId).map((x) => ({ ...x, id: x.userId!, sub: x.designation?.name ?? null }));
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -520,8 +519,8 @@ function OnBehalf() {
       <p className="text-sm font-semibold">Set up on someone’s behalf</p>
       <FormError>{error}</FormError>
       <div className="grid gap-3 md:grid-cols-2">
-        <Field label="Whose approvals"><PersonSelect aria-label="Whose approvals" value={from} onChange={setFrom} people={people} /></Field>
-        <Field label="Who covers"><PersonSelect aria-label="Who covers" value={to} onChange={setTo} people={people.filter((p) => p.id !== from)} /></Field>
+        <Field label="Whose approvals"><PersonSearch by="user" aria-label="Whose approvals" value={from} onChange={(id) => setFrom(id)} /></Field>
+        <Field label="Who covers"><PersonSearch by="user" aria-label="Who covers" value={to} onChange={(id) => setTo(id)} hide={from ? [from] : undefined} /></Field>
         <Field label="From"><DateInput aria-label="From" value={start} min={today} onChange={(e) => setStart(e.target.value)} /></Field>
         <Field label="Until"><DateInput aria-label="Until" value={end} min={start} onChange={(e) => setEnd(e.target.value)} /></Field>
       </div>

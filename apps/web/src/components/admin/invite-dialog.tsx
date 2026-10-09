@@ -9,7 +9,7 @@ import { Field, FormError, Input, Textarea } from '@/components/ui/field';
 import { Tabs } from '@/components/ui/feedback';
 import { EmployeeProfileFields, emptyProfile, profileBody, type ProfileInput } from '@/components/company/employee-profile-fields';
 import { RoleChip } from '@/components/admin/role-look';
-import { useDepartments, useDesignations, usePeoplePicker } from '@/lib/company/org';
+import { useDepartments, useDesignations, usePeopleByIds } from '@/lib/company/org';
 import { useInviteMany, useInviteUser, useRoles } from '@/lib/company/user-management';
 import { getApiErrorMessage } from '@/lib/errors';
 import { initials } from '@/lib/format';
@@ -149,10 +149,10 @@ function OneForm({
 }: ReturnType<typeof useOne> & { canChooseRoles: boolean; canAddEmployee: boolean }) {
   const departments = useDepartments();
   const designations = useDesignations();
-  const chart = usePeoplePicker();
+  const chosenManager = usePeopleByIds(profile.reportingManagerId ? [profile.reportingManagerId] : []);
   const dept = departments.data?.find((d) => d.id === profile.departmentId)?.name;
   const title = designations.data?.find((d) => d.id === profile.designationId)?.name;
-  const manager = chart.data?.employees.find((e) => e.id === profile.reportingManagerId);
+  const manager = chosenManager.data?.[0];
   const picked = (roles.data ?? []).filter((r) => extra.includes(r.id));
   const others = (roles.data ?? []).filter((r) => r.status === 'ACTIVE' && r.id !== base?.id);
   const name = `${form.firstName} ${form.lastName}`.trim();

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { ChevronLeft, ChevronRight, Mail, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,13 +11,13 @@ import { PersonAvatar } from '@/components/profile/person-avatar';
 import { tintFor } from '@/components/people/photo-card';
 import { ProductArt } from '@/components/assets/product-art';
 import { useKitPreview } from '@/lib/company/assets';
-import { useCreateEmployee, useDepartments, useDesignations, useLocations, usePeoplePicker } from '@/lib/company/org';
+import { useCreateEmployee, useDepartments, useDesignations, useLocations, usePeopleByIds, usePeopleSearch } from '@/lib/company/org';
 import { useNextEmployeeId } from '@/lib/company/lifecycle';
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatDate, initials } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import { addDaysKey, addMonthsKey } from './lifecycle-ui';
-import { DateInput, PersonSelect, Select } from '@/components/ui/pickers';
+import { DateInput, Select } from '@/components/ui/pickers';
 import { ReportsTo } from '@/components/employees/reports-to';
 
 const STEPS = ['Basics', 'Job', 'Manager', 'Review'] as const;
@@ -68,7 +68,6 @@ export function AddEmployeeWizard({ open, onClose }: { open: boolean; onClose: (
   const departments = useDepartments();
   const designations = useDesignations();
   const locations = useLocations();
-  const chart = usePeoplePicker();
   const nextId = useNextEmployeeId(open);
   const [step, setStep] = useState(0);
   const [d, setD] = useState<Draft>(blank());
@@ -94,9 +93,9 @@ export function AddEmployeeWizard({ open, onClose }: { open: boolean; onClose: (
   const title = designations.data?.find((x) => x.id === d.designationId)?.name;
   const dept = departments.data?.find((x) => x.id === d.departmentId);
   const loc = locations.data?.find((x) => x.id === d.locationId);
-  const manager = chart.data?.employees.find((e) => e.id === d.reportingManagerId);
-  const managers = useMemo(() => [...(chart.data?.employees ?? [])].sort((a, b) => b.directReports - a.directReports || a.firstName.localeCompare(b.firstName)), [chart.data]);
-  const suggested = managers.filter((m) => d.departmentId && m.department?.id === d.departmentId && m.directReports > 0).slice(0, 3);
+  const manager = usePeopleByIds(d.reportingManagerId ? [d.reportingManagerId] : []).data?.[0];
+  // Up to 3 managers in the chosen department, most reports first
+  const suggested = usePeopleSearch({ managers: true, departmentId: d.departmentId || undefined, limit: 3 }, Boolean(d.departmentId)).data ?? [];
   const name = `${d.firstName} ${d.lastName}`.trim();
 
   const stepError = (s: number): string | null => {
@@ -246,7 +245,7 @@ export function AddEmployeeWizard({ open, onClose }: { open: boolean; onClose: (
             {step === 2 && (
               <>
                 <Field label="Reports to" htmlFor="w-mgr" hint="A person approves their leave and timesheets and sees them under “my team” — or they report to the PMO.">
-                  <ReportsTo id="w-mgr" managerId={d.reportingManagerId} pmo={d.reportsToPmo} onChange={(v) => { set('reportingManagerId', v.managerId); set('reportsToPmo', v.pmo); }} people={managers.map((m) => ({ ...m, sub: m.designation?.name ?? null }))} />
+                  <ReportsTo id="w-mgr" managerId={d.reportingManagerId} pmo={d.reportsToPmo} onChange={(v) => { set('reportingManagerId', v.managerId); set('reportsToPmo', v.pmo); }} />
                 </Field>
                 {suggested.length > 0 && !d.reportsToPmo && (
                   <div>

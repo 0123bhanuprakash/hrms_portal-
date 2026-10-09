@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { AlertTriangle, FileUp, HardDrive, PackagePlus, RotateCcw, UserPlus, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Field, Input, Textarea, inputClass } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { ProductArt } from '@/components/assets/product-art';
-import { usePeoplePicker } from '@/lib/company/org';
+import { PersonSearch } from '@/components/people/person-search';
 import {
   CONDITIONS,
   CONDITION_LABEL,
@@ -27,7 +27,7 @@ import {
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatDate } from '@/lib/format';
 import { cn } from '@/lib/cn';
-import { DateInput, PersonSelect, Select } from '@/components/ui/pickers';
+import { DateInput, Select } from '@/components/ui/pickers';
 
 const footer = (formId: string, onClose: () => void, busy: boolean, label: string, disabled = false) => (
   <>
@@ -133,7 +133,6 @@ export function AssetFormDialog({ value, onClose, onSaved }: { value: Asset | 'n
 
 export function AssignDialog({ asset, onClose }: { asset: Asset | null; onClose: () => void }) {
   const assign = useAssignAsset();
-  const chart = usePeoplePicker();
   const [employeeId, setEmployeeId] = useState('');
   const [condition, setCondition] = useState<AssetCondition>('GOOD');
   const [notes, setNotes] = useState('');
@@ -149,10 +148,6 @@ export function AssignDialog({ asset, onClose }: { asset: Asset | null; onClose:
     setDueBack('');
     setTicked([]);
   }, [asset]);
-  const people = useMemo(
-    () => [...(chart.data?.employees ?? [])].sort((a, b) => a.firstName.localeCompare(b.firstName)),
-    [chart.data],
-  );
   if (!asset) return null;
 
   const submit = async (e: React.FormEvent) => {
@@ -170,7 +165,7 @@ export function AssignDialog({ asset, onClose }: { asset: Asset | null; onClose:
     <Modal open onClose={onClose} busy={assign.isPending} icon={<UserPlus />} title={`Hand over ${asset.tag}`} description="They’ll get a notification to confirm they received it." size="sm" footer={footer('assign-form', onClose, assign.isPending, 'Hand over', !employeeId || (loan && !dueBack))}>
       <form id="assign-form" onSubmit={submit} className="space-y-3">
         <Field label="Employee" htmlFor="as-emp" required>
-          <PersonSelect id="as-emp" value={employeeId} onChange={setEmployeeId} placeholder={chart.isLoading ? 'Loading…' : 'Choose someone'} people={people.map((p) => ({ ...p, sub: p.employeeId }))} />
+          <PersonSearch id="as-emp" value={employeeId} onChange={(id) => setEmployeeId(id)} placeholder="Choose someone" sub={(p) => p.employeeId} />
         </Field>
         <Field label="Condition at hand-over" htmlFor="as-cond"><ConditionSelect id="as-cond" value={condition} onChange={setCondition} /></Field>
         {asset.type.loanable && (

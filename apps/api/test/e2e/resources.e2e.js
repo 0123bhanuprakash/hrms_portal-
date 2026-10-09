@@ -54,6 +54,41 @@ const start = addDays(today, 7);
     check('Kavya adds her own skills', (await call(S.kavya, 'PUT', `/employees/${P.kavya.id}/skills`, { skills: ['React', 'TypeScript'] })).data?.skills?.length === 2);
     check('Someone else can’t edit her skills → 404/403', [403, 404].includes((await call(S.dev, 'PUT', `/employees/${P.kavya.id}/skills`, { skills: ['X'] })).status));
 
+    // ── Preferred person: only people free in the window, most free first, with skills + experience
+    // Experience before joining: his own entry waits for HR; only the approved value counts
+    const sk = await call(S.oscar, 'PUT', `/employees/${P.oscar.id}/skills`, { skills: ['React', 'Go'], priorExperienceMonths: 60 });
+    check('Oscar adds 5 years before joining — waits for HR', sk.data?.experience?.pendingMonths === 60 && sk.data.experience.priorMonths === null, JSON.stringify(sk.body).slice(0, 300));
+    check('HR is told to verify', (await notes('admin', { type: 'profile.experience' })) >= 1);
+    const queue = await call(S.admin, 'GET', '/experience-reviews');
+    check('HR sees it to verify', queue.data?.rows.some((r) => r.id === P.oscar.id && r.priorExperiencePendingMonths === 60), JSON.stringify(queue.body).slice(0, 200));
+    check('Not verified yet: not counted', (await p.employee.findUnique({ where: { id: P.oscar.id } })).priorExperienceMonths === null);
+    check('He can’t approve his own → 403', (await call(S.oscar, 'POST', `/employees/${P.oscar.id}/experience/approve`)).status === 403);
+    check('A colleague can’t approve it → 403/404', [403, 404].includes((await call(S.dev, 'POST', `/employees/${P.oscar.id}/experience/approve`)).status));
+    const ok = await call(S.admin, 'POST', `/employees/${P.oscar.id}/experience/approve`);
+    check('HR approves: it counts now, marked verified', ok.data?.priorMonths === 60 && ok.data.pendingMonths === null && Boolean(ok.data.verifiedAt), JSON.stringify(ok.body).slice(0, 300));
+    check('Oscar is told', (await notes('oscar', { type: 'profile.experience' })) === 1);
+    // A change he asks for is rejected with a reason; the approved value stays
+    await call(S.oscar, 'PUT', `/employees/${P.oscar.id}/skills`, { skills: ['React', 'Go'], priorExperienceMonths: 120 });
+    check('Reject needs a reason → 400', (await call(S.admin, 'POST', `/employees/${P.oscar.id}/experience/reject`, {})).status === 400);
+    const no = await call(S.admin, 'POST', `/employees/${P.oscar.id}/experience/reject`, { reason: 'Doesn’t match the resume' });
+    check('HR rejects: approved value kept, request cleared', no.data?.priorMonths === 60 && no.data.pendingMonths === null && (await notes('oscar', { type: 'profile.experience' })) === 2, JSON.stringify(no.body).slice(0, 200));
+    const hrSet = await call(S.admin, 'PUT', `/employees/${P.kavya.id}/skills`, { skills: ['React', 'TypeScript'], priorExperienceMonths: 24 });
+    check('What HR enters counts at once (verified)', hrSet.data?.experience?.priorMonths === 24 && hrSet.data.experience.pendingMonths === null && Boolean(hrSet.data.experience.verifiedAt), JSON.stringify(hrSet.body).slice(0, 200));
+    const av = (who, q = '') => call(S[who], 'GET', `/resources/available-people?projectId=${A}&from=${start}${q}`);
+    check('A member can’t list available people → 403', (await av('dev')).status === 403);
+    const avAll = await av('lead', '&wanted=React');
+    const rows = avAll.data?.rows ?? [];
+    const ids = rows.map((r) => r.employee.id);
+    check('Only people with free time (Kavya is 100% on Helix)', rows.length > 0 && !ids.includes(P.kavya.id) && rows.every((r) => r.free > 0), JSON.stringify(rows.map((r) => [r.employee.firstName, r.free])));
+    check('…and nobody already on Atlas', !ids.includes(P.dev.id) && !ids.includes(P.lead.id));
+    check('Most free first', rows[0]?.free === 100 && rows.every((r, i) => i === 0 || rows[i - 1].free >= r.free));
+    const os = rows.find((r) => r.employee.id === P.oscar.id);
+    check('Oscar: 50% free, 5+ years, React matched', os?.free === 50 && os.experienceYears >= 5 && os.experienceComplete && os.matchedSkills.includes('React'), JSON.stringify(os));
+    check('Skill filter: React → only Oscar (Kavya is busy)', (await av('lead', '&skills=react')).data?.rows.map((r) => r.employee.id).join() === P.oscar.id);
+    check('Availability filter: fully free leaves Oscar out', !(await av('lead', '&minFree=100')).data?.rows.some((r) => r.employee.id === P.oscar.id));
+    check('Experience filter: 5+ years → Oscar', (await av('lead', '&minYears=5')).data?.rows.map((r) => r.employee.id).join() === P.oscar.id);
+    check('Facets list the skills among free people', avAll.data?.meta.facets.skills.some((s) => s.id === 'react'));
+
     // ── PMO reporting: "free" reports to the PMO → leave goes to the PMO lead
     const pmoFree = await call(S.admin, 'PATCH', `/employees/${P.free.id}`, { reportsToPmo: true });
     check('Admin sets "reports to the PMO"', pmoFree.status === 200, JSON.stringify(pmoFree.body).slice(0, 200));
@@ -155,6 +190,10 @@ const start = addDays(today, 7);
 
     const poolList = await call(S.pmo, 'GET', '/resources/pool');
     check('PMO pool lists the person who reports to the PMO', poolList.data?.data?.some((x) => x.employee.id === P.free.id && x.reportsToPmo), JSON.stringify(poolList.data?.counts));
+    const poolFree = await call(S.pmo, 'GET', `/resources/pool?show=pmo&search=free`);
+    check('PMO pool: search + "reports to PMO" filter, counts for the whole pool', poolFree.data?.data.length === 1 && poolFree.data.data[0].employee.id === P.free.id && poolFree.data.counts.people === poolList.data.counts.people && poolFree.data.meta.total === 1, JSON.stringify(poolFree.data?.meta));
+    const poolPage = await call(S.pmo, 'GET', '/resources/pool?limit=1&page=1');
+    check('PMO pool: a page at a time', poolPage.data?.data.length === 1 && poolPage.data.meta.total === poolList.data.meta.total);
     check('Only the PMO sees the pool → 403', (await call(S.lead, 'GET', '/resources/pool')).status === 403);
     const leadInbox = await call(S.lead, 'GET', '/resources/requests?view=mine');
     check('Lead’s “my requests” lists what they raised', leadInbox.body?.data?.length >= 5 && leadInbox.body.meta?.counts, JSON.stringify(leadInbox.body).slice(0, 400));

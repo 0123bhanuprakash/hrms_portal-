@@ -14,6 +14,7 @@ import { useMyCard } from '@/lib/company/profile';
 import { getApiErrorMessage } from '@/lib/errors';
 import { cn } from '@/lib/cn';
 import { DateInput } from '@/components/ui/pickers';
+import { AskExtraDialog, type AskExtraInit } from '@/components/leave/extra-leave';
 
 const todayKey = () => {
   const d = new Date();
@@ -68,6 +69,7 @@ export function ApplyLeaveDialog({
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<LeavePreview | null>(null);
   const [checking, setChecking] = useState(false);
+  const [askingMore, setAskingMore] = useState<AskExtraInit | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [flown, setFlown] = useState(0);
   const off = useWhosOff({ month }, open);
@@ -170,6 +172,7 @@ export function ApplyLeaveDialog({
   const balance = types.find((b) => b.leaveType.id === typeId);
 
   return (
+    <>
     <Modal
       open={open}
       onClose={onClose}
@@ -248,9 +251,25 @@ export function ApplyLeaveDialog({
               {checking || !preview ? (
                 <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Checking…</p>
               ) : preview.errors.length ? (
-                <ul className="space-y-1 text-sm text-destructive">
-                  {preview.errors.map((m) => <li key={m} className="flex items-start gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {m}</li>)}
-                </ul>
+                <>
+                  <ul className="space-y-1 text-sm text-destructive">
+                    {preview.errors.map((m) => <li key={m} className="flex items-start gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {m}</li>)}
+                  </ul>
+                  {preview.canAskMore && (
+                    balance?.extraRequest ? (
+                      <p className="mt-2 text-xs text-muted-foreground">You asked for {days(balance.extraRequest.days)} more — waiting for an answer.</p>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="soft"
+                        className="mt-2"
+                        onClick={() => setAskingMore({ leaveTypeId: typeId, leaveTypeName: balance?.leaveType.name ?? 'leave', year: Number(start.slice(0, 4)), days: preview.short ?? 1, startDate: start, endDate: end })}
+                      >
+                        <Send /> Ask HR for more days
+                      </Button>
+                    )
+                  )}
+                </>
               ) : (
                 <div className="flex items-center gap-3">
                   <div className="min-w-0 flex-1">
@@ -310,6 +329,8 @@ export function ApplyLeaveDialog({
         </div>
       </form>
     </Modal>
+    <AskExtraDialog init={askingMore} onClose={() => setAskingMore(null)} />
+    </>
   );
 }
 

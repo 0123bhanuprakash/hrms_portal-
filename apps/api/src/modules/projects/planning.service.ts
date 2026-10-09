@@ -185,7 +185,7 @@ export class ProjectPlanningService implements OnApplicationBootstrap, OnModuleD
 
   // ─── Portfolio ────────────────────────────────────────────
 
-  async list(companyId: string, query: ProjectQueryDto, viewer?: AccessContext) {
+  async list(companyId: string, query: ProjectQueryDto, viewer?: AccessContext, everything = false) {
     const today = await this.projects.todayKey(companyId);
     // Everyone sees which projects exist; details only for the PMO and the people on them
     const full = !viewer || this.pmo(viewer) ? null : await this.myProjectIds(viewer);
@@ -246,23 +246,28 @@ export class ProjectPlanningService implements OnApplicationBootstrap, OnModuleD
     );
     if (full) filtered.sort((a, b) => Number(full.has(b.id)) - Number(full.has(a.id)));
     const page = query.page ?? 1;
-    const limit = query.limit ?? 50;
+    // Internal callers (summary, timeline, reminders) take every project
+    const limit = everything ? Math.max(1, filtered.length) : query.limit ?? 50;
     const rowsOut = filtered.slice((page - 1) * limit, page * limit).map((p) =>
       !full || full.has(p.id) ? { ...p, limited: false as const } : { id: p.id, code: p.code, name: p.name, clientName: p.clientName, type: p.type, color: p.color, limited: true as const },
     );
-    return { data: rowsOut, meta: { total: filtered.length, page, limit, totalPages: Math.ceil(filtered.length / limit), today, seesAll: !full } };
+    // Health chips: active projects you see in full, before the health filter
+    const activeShown = out.filter((p) => p.status === ProjectStatus.ACTIVE && (!full || full.has(p.id)));
+    const health = { on_track: 0, at_risk: 0, off_track: 0 };
+    for (const p of activeShown) if (p.health.level in health) health[p.health.level as keyof typeof health]++;
+    return { data: rowsOut, meta: { total: filtered.length, page, limit, totalPages: Math.ceil(filtered.length / limit), today, seesAll: !full, health } };
   }
 
   /** Every project with all its details (internal use: summary, timeline, reminders). */
   private async fullList(companyId: string, query: ProjectQueryDto) {
     type Row = Awaited<ReturnType<ProjectPlanningService['list']>>['data'][number];
-    return (await this.list(companyId, query)).data.filter((p): p is Extract<Row, { limited: false }> => !p.limited);
+    return (await this.list(companyId, query, undefined, true)).data.filter((p): p is Extract<Row, { limited: false }> => !p.limited);
   }
 
   /** The numbers across the top of the portfolio. */
   async summary(companyId: string) {
     const today = await this.projects.todayKey(companyId);
-    const list = await this.fullList(companyId, { limit: 1000 });
+    const list = await this.fullList(companyId, {});
     const activeOnes = list.filter((p) => p.status === ProjectStatus.ACTIVE);
     const month = today.slice(0, 7);
     const ms = await this.prisma.projectMilestone.findMany({
@@ -507,7 +512,7 @@ export class ProjectPlanningService implements OnApplicationBootstrap, OnModuleD
       let sent = 0;
       for (const { companyId } of companies) {
         const today = await this.projects.todayKey(companyId);
-        const data = await this.fullList(companyId, { status: ProjectStatus.ACTIVE, limit: 1000 });
+        const data = await this.fullList(companyId, { status: ProjectStatus.ACTIVE });
         for (const p of data.filter((x) => x.health.updateOverdue)) {
           const pms = await this.prisma.projectMember.findMany({
             where: { projectId: p.id, role: ProjectRole.MANAGER, startDate: { lte: dateFromKey(today) }, OR: [{ endDate: null }, { endDate: { gte: dateFromKey(today) } }] },
@@ -542,7 +547,7 @@ export class ProjectPlanningService implements OnApplicationBootstrap, OnModuleD
     const months = q.months ?? 6;
     const to = addDays(`${addMonth(from, months)}-01`, -1);
     const start = `${from}-01`;
-    const data = await this.fullList(companyId, { limit: 1000 });
+    const data = await this.fullList(companyId, {});
     const shown = data.filter((p) => p.startDate <= to && (!p.endDate || p.endDate >= start));
     const ids = shown.map((p) => p.id);
     const [milestones, members] = await Promise.all([
@@ -607,20 +612,45 @@ export class ProjectPlanningService implements OnApplicationBootstrap, OnModuleD
     const byPerson = new Map<string, typeof members>();
     for (const m of members) byPerson.set(m.employeeId, [...(byPerson.get(m.employeeId) ?? []), m]);
     const nextMonth = { from: addDays(today, 1), to: addDays(today, 30) };
-    const rows = people.map((p) => {
+    const spansOf = (id: string, pred: (m: (typeof members)[number]) => boolean = () => true): Span[] =>
+      (byPerson.get(id) ?? []).filter(pred).map((m) => ({ allocation: m.allocation, start: keyFromDate(m.startDate), end: m.endDate ? keyFromDate(m.endDate) : null }));
+    // The busiest day of a week decides its number
+    const busiest = (all: Span[], ws: string) => {
+      let best = { day: ws, total: -1 };
+      for (let d = 0; d < 7; d++) {
+        const day = addDays(ws, d);
+        const total = allocationOn(all, day);
+        if (total > best.total) best = { day, total };
+      }
+      return best;
+    };
+    // Light numbers for everyone (counts, filters, rolling off, suggestions) …
+    const everyone = people.map((p) => {
       const list = byPerson.get(p.id) ?? [];
-      const spans = (pred: (m: (typeof list)[number]) => boolean): Span[] => list.filter(pred).map((m) => ({ allocation: m.allocation, start: keyFromDate(m.startDate), end: m.endDate ? keyFromDate(m.endDate) : null }));
-      const all = spans(() => true);
-      const billableSpans = spans((m) => m.project.type === ProjectType.CLIENT && m.billed);
+      const all = spansOf(p.id);
+      const ending = list.filter((m) => m.endDate && keyFromDate(m.endDate) >= today && keyFromDate(m.endDate) <= addDays(today, 21));
+      return {
+        employee: p,
+        thisWeek: busiest(all, first).total,
+        freeNextMonth: 100 - peakAllocation(all, nextMonth.from, nextMonth.to),
+        nowAllocated: allocationOn(all, today),
+        rollingOff: ending.length && allocationOn(all, addDays(keyFromDate(ending[0]!.endDate!), 1)) === 0 ? { project: ending[0]!.project.name, endDate: keyFromDate(ending[0]!.endDate!) } : null,
+      };
+    });
+    const show = q.show ?? 'all';
+    const shown = everyone.filter((r) => (show === 'full' ? r.thisWeek >= 100 : show === 'partly' ? r.thisWeek > 0 && r.thisWeek < 100 : show === 'free' ? r.thisWeek === 0 : show === 'bench' ? r.freeNextMonth === 100 : true));
+    const limit = q.limit ?? 25;
+    const totalPages = Math.max(1, Math.ceil(shown.length / limit));
+    const page = Math.min(q.page ?? 1, totalPages);
+    // … and the week-by-week cells only for the page on screen
+    const rows = shown.slice((page - 1) * limit, page * limit).map(({ thisWeek: _thisWeek, ...r }) => {
+      const p = r.employee;
+      const list = byPerson.get(p.id) ?? [];
+      const all = spansOf(p.id);
+      const billableSpans = spansOf(p.id, (m) => m.project.type === ProjectType.CLIENT && m.billed);
       const cells = Array.from({ length: weeks }, (_, i) => {
         const ws = addDays(first, i * 7);
-        // The busiest day of the week decides the cell
-        let best = { day: ws, total: -1 };
-        for (let d = 0; d < 7; d++) {
-          const day = addDays(ws, d);
-          const total = allocationOn(all, day);
-          if (total > best.total) best = { day, total };
-        }
+        const best = busiest(all, ws);
         const billable = allocationOn(billableSpans, best.day);
         return {
           week: ws,
@@ -630,26 +660,16 @@ export class ProjectPlanningService implements OnApplicationBootstrap, OnModuleD
           projects: list.filter((m) => keyFromDate(m.startDate) <= best.day && (!m.endDate || keyFromDate(m.endDate) >= best.day)).map((m) => ({ memberId: m.id, id: m.project.id, code: m.project.code, name: m.project.name, color: m.project.color, type: m.project.type, allocation: m.allocation, billed: m.billed })),
         };
       });
-      const ending = list.filter((m) => m.endDate && keyFromDate(m.endDate) >= today && keyFromDate(m.endDate) <= addDays(today, 21));
-      return {
-        employee: p,
-        cells,
-        freeNextMonth: 100 - peakAllocation(all, nextMonth.from, nextMonth.to),
-        nowAllocated: allocationOn(all, today),
-        rollingOff: ending.length && allocationOn(all, addDays(keyFromDate(ending[0]!.endDate!), 1)) === 0 ? { project: ending[0]!.project.name, endDate: keyFromDate(ending[0]!.endDate!) } : null,
-      };
+      return { ...r, cells };
     });
-    const thisWeek = rows.map((r) => r.cells[0]?.total ?? 0);
+    const thisWeek = everyone.map((r) => r.thisWeek);
     // Requests waiting for the PMO (they replaced the old open roles)
     const roles = (await this.prisma.resourceRequest.findMany({ where: { companyId, kind: 'REQUEST', status: 'OPEN', step: 'PMO', project: { status: { not: ProjectStatus.COMPLETED } } }, orderBy: { createdAt: 'asc' }, select: { id: true, title: true, allocation: true, fromDate: true, createdAt: true, project: { select: { id: true, name: true, code: true } } } })).map((x) => ({ id: x.id, title: x.title ?? 'Person', allocation: x.allocation ?? 0, fromDate: x.fromDate ?? x.createdAt, project: x.project }));
     // For each open role: people free enough for 4 weeks from its start
     const suggestions = roles.slice(0, 5).map((r) => {
       const from = keyFromDate(r.fromDate) < today ? today : keyFromDate(r.fromDate);
-      const candidates = rows
-        .map((row) => {
-          const spans = (byPerson.get(row.employee.id) ?? []).map((m) => ({ allocation: m.allocation, start: keyFromDate(m.startDate), end: m.endDate ? keyFromDate(m.endDate) : null }));
-          return { employee: row.employee, free: 100 - peakAllocation(spans, from, addDays(from, 27)) };
-        })
+      const candidates = everyone
+        .map((row) => ({ employee: row.employee, free: 100 - peakAllocation(spansOf(row.employee.id), from, addDays(from, 27)) }))
         .filter((c) => c.free >= r.allocation)
         .sort((a, b) => b.free - a.free)
         .slice(0, 3);
@@ -660,14 +680,17 @@ export class ProjectPlanningService implements OnApplicationBootstrap, OnModuleD
       to: last,
       today,
       weeks: Array.from({ length: weeks }, (_, i) => addDays(first, i * 7)),
+      /** One page of people (see `meta`); counts, rolling off and suggestions cover everyone */
       people: rows,
+      meta: { total: shown.length, page, limit, totalPages },
       counts: {
+        all: everyone.length,
         full: thisWeek.filter((t) => t >= 100).length,
         partly: thisWeek.filter((t) => t > 0 && t < 100).length,
-        free: thisWeek.filter((t) => t === 0).length,
-        benchNextMonth: rows.filter((r) => r.freeNextMonth === 100).length,
+        free: thisWeek.filter((t) => t <= 0).length,
+        benchNextMonth: everyone.filter((r) => r.freeNextMonth === 100).length,
       },
-      rollingOff: rows.filter((r) => r.rollingOff).map((r) => ({ employee: r.employee, ...r.rollingOff! })),
+      rollingOff: everyone.filter((r) => r.rollingOff).map((r) => ({ employee: r.employee, ...r.rollingOff! })),
       suggestions,
     };
   }
@@ -675,21 +698,25 @@ export class ProjectPlanningService implements OnApplicationBootstrap, OnModuleD
   /** People with at least `min`% free for the whole window. */
   async available(companyId: string, q: AvailableQueryDto) {
     if (q.to < q.from) throw new BadRequestException('The window ends before it starts');
+    const search = wordsWhere(q.search, (w): Prisma.EmployeeWhereInput[] => [{ firstName: { contains: w, mode: 'insensitive' } }, { lastName: { contains: w, mode: 'insensitive' } }, { designation: { name: { contains: w, mode: 'insensitive' } } }]);
     const people = await this.prisma.employee.findMany({
-      where: { companyId, employmentStatus: { not: EmploymentStatus.TERMINATED }, joiningDate: { lte: dateFromKey(q.from) }, ...(q.designationId && { designationId: q.designationId }), ...(q.departmentId && { departmentId: q.departmentId }) },
+      where: { companyId, employmentStatus: { not: EmploymentStatus.TERMINATED }, joiningDate: { lte: dateFromKey(q.from) }, ...(q.designationId && { designationId: q.designationId }), ...(q.departmentId && { departmentId: q.departmentId }), ...(search ?? {}) },
       select: { ...FACE, designation: { select: { name: true } }, department: { select: { name: true } } },
     });
     const members = await this.prisma.projectMember.findMany({
       where: { employeeId: { in: people.map((p) => p.id) }, project: { status: { not: ProjectStatus.COMPLETED } }, startDate: { lte: dateFromKey(q.to) }, OR: [{ endDate: null }, { endDate: { gte: dateFromKey(q.from) } }] },
       select: { employeeId: true, allocation: true, startDate: true, endDate: true },
     });
-    return people
-      .map((p) => {
-        const spans = members.filter((m) => m.employeeId === p.id).map((m) => ({ allocation: m.allocation, start: keyFromDate(m.startDate), end: m.endDate ? keyFromDate(m.endDate) : null }));
-        return { employee: p, free: 100 - peakAllocation(spans, q.from, q.to) };
-      })
+    const spans = new Map<string, Span[]>();
+    for (const m of members) spans.set(m.employeeId, [...(spans.get(m.employeeId) ?? []), { allocation: m.allocation, start: keyFromDate(m.startDate), end: m.endDate ? keyFromDate(m.endDate) : null }]);
+    const free = people
+      .map((p) => ({ employee: p, free: 100 - peakAllocation(spans.get(p.id) ?? [], q.from, q.to) }))
       .filter((x) => x.free >= q.min)
       .sort((a, b) => b.free - a.free || a.employee.firstName.localeCompare(b.employee.firstName));
+    const limit = q.limit ?? 25;
+    const totalPages = Math.max(1, Math.ceil(free.length / limit));
+    const page = Math.min(q.page ?? 1, totalPages);
+    return { rows: free.slice((page - 1) * limit, page * limit), meta: { total: free.length, page, limit, totalPages } };
   }
 
   // ─── My projects ──────────────────────────────────────────

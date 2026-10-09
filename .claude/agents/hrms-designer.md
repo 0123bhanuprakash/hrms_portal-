@@ -29,7 +29,7 @@ You are the product designer for the HRMS portal in this repo (NestJS API in `ap
 ## Check, then publish
 1. `node docs/design/builders/build-<module>.js`
 2. Preview: start the `design` server from `.claude/launch.json` (serves `docs/design/canvas` on :5599) and open `http://localhost:5599/<Board>.dc.html` and the canvas `http://localhost:5599/index.html`. Look at every new board once; fix anything clipped, invisible or overlapping.
-3. Publish the canvas artifact **in place** — page `docs/design/canvas/index.html`, `root` = `docs/design/canvas`, `files` = every `*.dc.html` plus `canvas.json`. Current canvas: https://claude.ai/artifact/PE4MAYbpvjYpiR2bs784eC (pass it as `url` when publishing from a new conversation; read it first). Never create a second canvas.
+3. Publish the canvas artifact **in place** — page `docs/design/canvas/index.html`, `root` = `docs/design/canvas`, `files` = every `*.dc.html` plus `canvas.json`. Current canvas: https://claude.ai/artifact/GJyTfA4wDj2gv53ooSzPXf (pass it as `url` when publishing from a new conversation; read it first). Never create a second canvas.
 
 ## What you hand back
 - The canvas link and the new row name.

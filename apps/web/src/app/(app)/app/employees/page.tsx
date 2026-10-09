@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
@@ -45,7 +45,8 @@ import { AddEmployeeWizard } from '@/components/employees/add-employee-wizard';
 import { EmployeeBoard } from '@/components/employees/employee-board';
 import { ChecklistDrawer, LifecycleDialog, ProfileMeter, StagePill, type LifecycleAction, type LifecycleTarget } from '@/components/employees/lifecycle-ui';
 import { useAccess, SCOPE_LABELS } from '@/lib/access/use-access';
-import { useDepartments, useEmployees, useLocations, type Employee, type EmployeesQuery, type EmployeeStage, usePeoplePicker } from '@/lib/company/org';
+import { useDepartments, useEmployees, useLocations, type Employee, type EmployeesQuery, type EmployeeStage } from '@/lib/company/org';
+import { PersonSearch } from '@/components/people/person-search';
 import { downloadEmployeesCsv, exitReasonLabel, tenure, useBulkEmployees, useLifecycleSummary, type AttentionItem } from '@/lib/company/lifecycle';
 import { useUiState } from '@/lib/preferences/ui-state';
 import { getApiErrorMessage } from '@/lib/errors';
@@ -131,8 +132,6 @@ function EmployeesContent() {
   const summary = useLifecycleSummary(!ownOnly && !accessLoading && can('employee.view'));
   const departments = useDepartments();
   const locations = useLocations();
-  const chart = usePeoplePicker();
-  const managers = useMemo(() => (chart.data?.employees ?? []).filter((e) => e.directReports > 0).sort((a, b) => a.firstName.localeCompare(b.firstName)), [chart.data]);
 
   if (!accessLoading && !can('employee.view')) {
     return <EmptyState icon={<ShieldCheck />} title="No access" description="You don't have permission to view employees." />;
@@ -254,7 +253,7 @@ function EmployeesContent() {
                 <FilterSelect icon={<Building2 />} label="Department" value={f.departmentId} onChange={(v) => setF({ ...f, departmentId: v })} options={(departments.data ?? []).map((d) => [d.id, d.name])} />
                 <FilterSelect icon={<MapPin />} label="Location" value={f.locationId} onChange={(v) => setF({ ...f, locationId: v })} options={(locations.data ?? []).map((l) => [l.id, l.name])} />
                 <FilterSelect label="Type" value={f.employmentType} onChange={(v) => setF({ ...f, employmentType: v })} options={TYPES.map(([v, l]) => [v, l])} />
-                <FilterSelect icon={<Users />} label="Manager" value={f.managerId} onChange={(v) => setF({ ...f, managerId: v })} options={[['none', 'No manager'], ...managers.map((m) => [m.id, `${m.firstName} ${m.lastName}`] as [string, string])]} />
+                <PersonSearch managers aria-label="Manager" className="w-44" triggerClassName={cn('h-9 text-xs', f.managerId && 'border-primary bg-primary-soft text-primary-soft-foreground')} value={f.managerId} onChange={(v) => setF({ ...f, managerId: v })} emptyLabel="Any manager" muteEmpty={false} extra={[{ value: 'none', label: 'No manager' }]} />
                 <Select value={f.sort} onChange={(e) => setF({ ...f, sort: e.target.value as Filters['sort'] })} className={cn(inputClass, 'h-9 w-auto text-xs')} aria-label="Sort">
                   <option value="recent">Recently added</option>
                   <option value="name">Name A–Z</option>
@@ -396,7 +395,6 @@ function EmployeesContent() {
         ids={[...selected]}
         onClose={() => setBulk(null)}
         onDone={() => setSelected(new Set())}
-        managers={(chart.data?.employees ?? []).map((m) => [m.id, `${m.firstName} ${m.lastName}${m.designation ? ` — ${m.designation.name}` : ''}`] as [string, string])}
         departments={(departments.data ?? []).map((d) => [d.id, d.name] as [string, string])}
         locations={(locations.data ?? []).map((l) => [l.id, l.name] as [string, string])}
       />
@@ -545,13 +543,13 @@ function SavedViews({ views, current, onApply, onSave, onDelete }: { views: Save
   );
 }
 
-function BulkDialog({ action, ids, onClose, onDone, managers, departments, locations }: { action: 'manager' | 'department' | 'location' | 'remind' | null; ids: string[]; onClose: () => void; onDone: () => void; managers: Array<[string, string]>; departments: Array<[string, string]>; locations: Array<[string, string]> }) {
+function BulkDialog({ action, ids, onClose, onDone, departments, locations }: { action: 'manager' | 'department' | 'location' | 'remind' | null; ids: string[]; onClose: () => void; onDone: () => void; departments: Array<[string, string]>; locations: Array<[string, string]> }) {
   const run = useBulkEmployees();
   const [value, setValue] = useState('');
   useEffect(() => setValue(''), [action]);
   if (!action || action === 'remind') return null;
   const meta = {
-    manager: { title: 'Change manager', label: 'New manager', none: '— Nobody (top of the organisation)', options: managers.filter(([id]) => !ids.includes(id)) },
+    manager: { title: 'Change manager', label: 'New manager', none: '— Nobody (top of the organisation)', options: [] as Array<[string, string]> },
     department: { title: 'Move team', label: 'Department', none: '— No department', options: departments },
     location: { title: 'Change office', label: 'Location', none: '— No location', options: locations },
   }[action];
@@ -582,10 +580,14 @@ function BulkDialog({ action, ids, onClose, onDone, managers, departments, locat
       }
     >
       <Field label={meta.label} htmlFor="bulk-value">
-        <Select id="bulk-value" className={inputClass} value={value} onChange={(e) => setValue(e.target.value)}>
-          <option value="">{meta.none}</option>
-          {meta.options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-        </Select>
+        {action === 'manager' ? (
+          <PersonSearch id="bulk-value" value={value} onChange={(id) => setValue(id)} emptyLabel={meta.none} muteEmpty={false} hide={ids} />
+        ) : (
+          <Select id="bulk-value" className={inputClass} value={value} onChange={(e) => setValue(e.target.value)}>
+            <option value="">{meta.none}</option>
+            {meta.options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </Select>
+        )}
       </Field>
     </Modal>
   );

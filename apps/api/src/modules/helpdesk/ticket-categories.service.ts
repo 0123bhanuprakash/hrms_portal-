@@ -1,11 +1,11 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma, TicketPriority, TicketQueue, TicketStatus } from '@prisma/client';
+import { Prisma, TicketPriority, TicketStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { HelpdeskTeamsService } from './teams.service';
-import { QUEUE_LABEL } from './sla';
+import type { BuiltInQueue } from './sla';
 import type { ReorderCategoriesDto, SaveCategoryDto, TopicQuestionDto } from './dto';
 
-type Default = [TicketQueue, string, string, string];
+type Default = [BuiltInQueue, string, string, string];
 const DEFAULTS: Default[] = [
   ['IT', 'Laptop / hardware', '💻', 'Laptop, screen, keyboard, battery'],
   ['IT', 'Software & installs', '🧩', 'New software, licences, updates'],
@@ -61,7 +61,7 @@ export interface TicketAnswer {
 const questionsOf = (r: Pick<Row, 'questions'>): TopicQuestion[] => (Array.isArray(r.questions) ? (r.questions as unknown as TopicQuestion[]) : []);
 
 /**
- * Topics per queue. A topic can start tickets at a priority, send them
+ * Topics per team. A topic can start tickets at a priority, send them
  * straight to one person, ask its own questions and offer a quick answer
  * (shown while the employee types). Defaults are created the first time a
  * company opens the helpdesk, and a queue added later gets its own.
@@ -74,7 +74,7 @@ export class TicketCategoriesService {
   ) {}
 
   /** Employees: active topics. Agents (`withStats`): all of them, with use counts and who gets them. */
-  async list(companyId: string, includeInactive: boolean, queue?: TicketQueue, withStats = false) {
+  async list(companyId: string, includeInactive: boolean, queue?: string, withStats = false) {
     await this.ensureDefaults(companyId);
     const rows = await this.prisma.ticketCategory.findMany({
       where: { companyId, ...(queue && { queue }), ...(!includeInactive && { isActive: true }) },
@@ -107,7 +107,7 @@ export class TicketCategoriesService {
   async save(companyId: string, id: string | null, dto: SaveCategoryDto) {
     if (dto.routeToId) {
       const members = await this.teams.memberIds(companyId, dto.queue);
-      if (!members.includes(dto.routeToId)) throw new BadRequestException(`That person doesn’t work the ${QUEUE_LABEL[dto.queue]} queue`);
+      if (!members.includes(dto.routeToId)) throw new BadRequestException(`That person doesn’t work the ${(await this.teams.catalog(companyId)).label(dto.queue)} team`);
     }
     if (dto.questions) this.checkQuestions(dto.questions);
     const data = {
@@ -133,7 +133,7 @@ export class TicketCategoriesService {
       await this.prisma.ticketCategory.update({ where: { id }, data: { ...data, ...moved } });
       return this.get(companyId, id);
     } catch (e) {
-      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') throw new ConflictException(`"${dto.name}" already exists in this queue`);
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') throw new ConflictException(`"${dto.name}" already exists in this team`);
       throw e;
     }
   }
@@ -227,7 +227,7 @@ export class TicketCategoriesService {
   }
 
   /** Who a new ticket on this topic goes to (still in the queue, not the requester). */
-  async routeFor(companyId: string, topic: { queue: TicketQueue; routeToId: string | null } | null, requesterId: string): Promise<string | null> {
+  async routeFor(companyId: string, topic: { queue: string; routeToId: string | null } | null, requesterId: string): Promise<string | null> {
     if (!topic?.routeToId || topic.routeToId === requesterId) return null;
     const members = await this.teams.memberIds(companyId, topic.queue);
     return members.includes(topic.routeToId) ? topic.routeToId : null;

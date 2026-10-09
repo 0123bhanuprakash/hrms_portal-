@@ -12,6 +12,19 @@
       "port": 4000
     },
     {
+      "name": "api-built",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@hrms/api",
+        "exec",
+        "node",
+        "--enable-source-maps",
+        "dist/apps/api/src/main"
+      ],
+      "port": 4000
+    },
+    {
       "name": "web",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": [

@@ -2,10 +2,8 @@
 
 import React from 'react';
 import { Check } from 'lucide-react';
-import type { Queue, Ticket } from '@/lib/company/helpdesk';
+import type { Ticket } from '@/lib/company/helpdesk';
 import { cn } from '@/lib/cn';
-
-export const QUEUE_EMOJI: Record<Queue, string> = { IT: '💻', HR: '🧑‍💼', FINANCE: '💰', DEVOPS: '🚀' };
 
 /** "~2 h", "~1 day" from minutes */
 export function replyTime(minutes: number | null): string | null {

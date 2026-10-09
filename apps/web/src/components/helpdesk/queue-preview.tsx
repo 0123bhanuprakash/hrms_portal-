@@ -10,7 +10,7 @@ import { Card, Skeleton } from '@/components/ui/feedback';
 import { Textarea } from '@/components/ui/field';
 import { PersonAvatar } from '@/components/profile/person-avatar';
 import { Journey } from '@/components/helpdesk/ticket-visuals';
-import { PRIORITY, QUEUE_INFO, STATUS, usePostMessage, useTicket } from '@/lib/company/helpdesk';
+import { PRIORITY, STATUS, usePostMessage, useTicket } from '@/lib/company/helpdesk';
 import { useAuthStore } from '@/store/useAuthStore';
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatRelative } from '@/lib/format';
@@ -61,7 +61,7 @@ function Preview({ id }: { id: string }) {
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
           <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="font-mono font-semibold">#{t.number}</span> {QUEUE_INFO[t.queue].label}
+            <span className="font-mono font-semibold">#{t.number}</span> {t.queueLabel}
             <Badge tone={PRIORITY[t.priority].tone} className="px-1.5 py-0 text-2xs">{PRIORITY[t.priority].label}</Badge>
             <Badge tone={STATUS[t.status].tone} className="px-1.5 py-0 text-2xs">{STATUS[t.status].label}</Badge>
           </p>

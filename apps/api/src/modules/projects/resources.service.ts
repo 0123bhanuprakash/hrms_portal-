@@ -8,8 +8,9 @@ import { AccessService } from '../access/access.service';
 import { holds, type AccessContext } from '../access/access.types';
 import { addDays, dateFromKey, keyFromDate } from '../attendance/time-zone';
 import { allocationOn, peakAllocation, type Span } from './allocation';
+import { searchWords } from '../../common/word-search';
 import { ProjectsService } from './projects.service';
-import type { CandidatesQueryDto, ConsentDto, FillDto, HoldDto, RaiseReleaseDto, RaiseRequestDto, ReleaseDecisionDto, RequestListQueryDto } from './resources.dto';
+import type { AvailablePeopleQueryDto, CandidatesQueryDto, ConsentDto, FillDto, HoldDto, RaiseReleaseDto, RaiseRequestDto, ReleaseDecisionDto, RequestListQueryDto, PoolQueryDto } from './resources.dto';
 
 // ============================================================
 // Resource requests & releases.
@@ -689,8 +690,106 @@ export class ResourceRequestsService implements OnApplicationBootstrap, OnModule
     return { window: { from, until }, wanted: [...wanted], data: out.slice(0, 40) };
   }
 
+  /**
+   * Raise a request → "Preferred person": only people with free time in the
+   * window (most free first), with their skills (matches marked), experience
+   * (before joining + time here) and current projects. Facets list the
+   * departments, roles (designations) and skills among them — each counted
+   * without its own filter — so the filters only offer what is there.
+   */
+  async availablePeople(companyId: string, access: AccessContext, q: AvailablePeopleQueryDto) {
+    const me = access.employee?.id;
+    const today = await this.projects.todayKey(companyId);
+    const project = await this.prisma.project.findFirst({ where: { id: q.projectId, companyId }, select: { id: true, techStack: true } });
+    if (!project) throw new NotFoundException('Project not found');
+    const c = await this.inCharge(project.id, today);
+    if (!this.pmo(access) && !(me && (c.leads.includes(me) || c.pm?.employeeId === me))) throw new ForbiddenException('Only the project’s team leads and project manager can request people');
+    const from = q.from && q.from > today ? q.from : today;
+    const until = q.until && q.until >= from ? q.until : null;
+    const list = (s?: string) => (s ?? '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+    const wanted = new Set([...list(q.wanted), ...project.techStack.map((s) => s.toLowerCase())]);
+    const mustHave = list(q.skills);
+    const words = (q.search ?? '').toLowerCase().split(/\s+/).filter(Boolean);
+    const people = await this.prisma.employee.findMany({
+      where: {
+        companyId,
+        employmentStatus: { not: EmploymentStatus.TERMINATED },
+        user: { status: UserStatus.ACTIVE },
+        joiningDate: { lte: dateFromKey(until ?? from) },
+        ...(me && { id: { not: me } }),
+        ...(words.length && { AND: words.map((w) => ({ OR: [{ firstName: { contains: w, mode: 'insensitive' as const } }, { lastName: { contains: w, mode: 'insensitive' as const } }, { employeeId: { contains: w, mode: 'insensitive' as const } }, { designation: { name: { contains: w, mode: 'insensitive' as const } } }] })) }),
+      },
+      select: { ...FACE, employeeId: true, skills: true, joiningDate: true, priorExperienceMonths: true, designation: { select: { id: true, name: true } }, department: { select: { id: true, name: true } } },
+    });
+    const members = await this.prisma.projectMember.findMany({
+      where: { employeeId: { in: people.map((p) => p.id) }, project: { status: { not: ProjectStatus.COMPLETED } }, ...this.overlap(from, until) },
+      select: { employeeId: true, projectId: true, allocation: true, startDate: true, endDate: true, project: { select: { name: true, code: true } } },
+    });
+    const byPerson = new Map<string, typeof members>();
+    for (const m of members) byPerson.set(m.employeeId, [...(byPerson.get(m.employeeId) ?? []), m]);
+    const now = dateFromKey(today).getTime();
+    const free = people
+      .map((p) => {
+        const own = byPerson.get(p.id) ?? [];
+        if (own.some((m) => m.projectId === project.id)) return null; // already on this project
+        const spans = own.map((m) => ({ allocation: m.allocation, start: keyFromDate(m.startDate), end: m.endDate ? keyFromDate(m.endDate) : null }));
+        const freePct = Math.max(0, 100 - peakAllocation(spans, from, until));
+        if (freePct <= 0) return null;
+        const hereMonths = Math.max(0, (now - p.joiningDate.getTime()) / (30.4375 * 86400_000));
+        const years = Math.round(((p.priorExperienceMonths ?? 0) + hereMonths) / 1.2) / 10;
+        const lower = p.skills.map((s) => s.toLowerCase());
+        return {
+          employee: { id: p.id, firstName: p.firstName, lastName: p.lastName, avatarUrl: p.avatarUrl, employeeId: p.employeeId, designation: p.designation, department: p.department },
+          free: freePct,
+          experienceYears: years,
+          /** false = only time here is counted (experience before joining not given) */
+          experienceComplete: p.priorExperienceMonths !== null,
+          skills: p.skills,
+          matchedSkills: p.skills.filter((s) => wanted.has(s.toLowerCase())),
+          projects: own.map((m) => ({ name: m.project.name, code: m.project.code, allocation: m.allocation })),
+          lower,
+        };
+      })
+      .filter((x): x is NonNullable<typeof x> => Boolean(x));
+
+    type Row = (typeof free)[number];
+    const pass = {
+      dept: (r: Row) => !q.departmentId || r.employee.department?.id === q.departmentId,
+      role: (r: Row) => !q.designationId || r.employee.designation?.id === q.designationId,
+      skills: (r: Row) => mustHave.every((s) => r.lower.includes(s)),
+      free: (r: Row) => r.free >= (q.minFree ?? 1),
+      exp: (r: Row) => (q.minYears === undefined || r.experienceYears >= q.minYears) && (q.maxYears === undefined || r.experienceYears < q.maxYears),
+    };
+    const all = Object.values(pass);
+    const except = (skip: (r: Row) => boolean) => free.filter((r) => all.every((f) => f === skip || f(r)));
+    const tally = <K extends string>(rows: Row[], key: (r: Row) => Array<{ id: K; name: string }>) => {
+      const m = new Map<K, { id: K; name: string; count: number }>();
+      for (const r of rows) for (const k of key(r)) m.set(k.id, { ...k, count: (m.get(k.id)?.count ?? 0) + 1 });
+      return [...m.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+    };
+    const facets = {
+      departments: tally(except(pass.dept), (r) => (r.employee.department ? [r.employee.department] : [])),
+      roles: tally(except(pass.role), (r) => (r.employee.designation ? [r.employee.designation] : [])),
+      // Skills: the ones among them, most common first (wanted ones on top)
+      skills: tally(except(pass.skills), (r) => r.skills.map((s) => ({ id: s.toLowerCase(), name: s })))
+        .sort((a, b) => Number(wanted.has(b.id)) - Number(wanted.has(a.id)) || b.count - a.count)
+        .slice(0, 40),
+    };
+    const rows = free
+      .filter((r) => all.every((f) => f(r)))
+      .sort((a, b) => b.free - a.free || b.matchedSkills.length - a.matchedSkills.length || b.experienceYears - a.experienceYears || a.employee.firstName.localeCompare(b.employee.firstName));
+    const limit = q.limit ?? 20;
+    const totalPages = Math.max(1, Math.ceil(rows.length / limit));
+    const page = Math.min(q.page ?? 1, totalPages);
+    return {
+      window: { from, until },
+      rows: rows.slice((page - 1) * limit, page * limit).map(({ lower: _l, ...r }) => r),
+      meta: { total: rows.length, page, limit, totalPages, facets },
+    };
+  }
+
   /** PMO pool: who is free now or soon (and who reports to the PMO), with their best-fit request. */
-  async pool(companyId: string, access: AccessContext) {
+  async pool(companyId: string, access: AccessContext, q: PoolQueryDto = {}) {
     if (!this.pmo(access)) throw new ForbiddenException('Only the PMO sees the pool');
     const today = await this.projects.todayKey(companyId);
     const horizon = addDays(today, 27);
@@ -707,9 +806,11 @@ export class ResourceRequestsService implements OnApplicationBootstrap, OnModule
       where: { companyId, kind: ResourceRequestKind.REQUEST, status: ResourceRequestStatus.OPEN, step: ResourceStep.PMO },
       select: { id: true, title: true, skills: true, allocation: true, project: { select: { name: true, techStack: true } } },
     });
+    const memberOf = new Map<string, typeof members>();
+    for (const m of members) memberOf.set(m.employeeId, [...(memberOf.get(m.employeeId) ?? []), m]);
     const rows = people
       .map((p) => {
-        const own = members.filter((m) => m.employeeId === p.id);
+        const own = memberOf.get(p.id) ?? [];
         const spans = own.map((m) => ({ allocation: m.allocation, start: keyFromDate(m.startDate), end: m.endDate ? keyFromDate(m.endDate) : null }));
         const nowBooked = allocationOn(spans, today);
         const free = Math.max(0, 100 - peakAllocation(spans, today, horizon));
@@ -737,10 +838,22 @@ export class ResourceRequestsService implements OnApplicationBootstrap, OnModule
       })
       .filter((x): x is NonNullable<typeof x> => Boolean(x))
       .sort((a, b) => Number(b.reportsToPmo) - Number(a.reportsToPmo) || b.free - a.free || a.employee.firstName.localeCompare(b.employee.firstName));
+    // Search on name, skill or title; the counts stay for the whole pool
+    const words = searchWords(q.search).map((w) => w.toLowerCase());
+    const show = q.show ?? 'all';
+    const shown = rows.filter(
+      (r) =>
+        (show === 'free' ? r.free === 100 : show === 'pmo' ? r.reportsToPmo : true) &&
+        words.every((w) => `${r.employee.firstName} ${r.employee.lastName} ${r.skills.join(' ')} ${r.employee.designation?.name ?? ''}`.toLowerCase().includes(w)),
+    );
+    const limit = q.limit ?? 24;
+    const totalPages = Math.max(1, Math.ceil(shown.length / limit));
+    const page = Math.min(q.page ?? 1, totalPages);
     return {
       today,
       counts: { people: rows.length, fullyFree: rows.filter((r) => r.free === 100).length, reportsToPmo: rows.filter((r) => r.reportsToPmo).length, waitingRequests: waiting.length },
-      data: rows,
+      data: shown.slice((page - 1) * limit, page * limit),
+      meta: { total: shown.length, page, limit, totalPages },
     };
   }
 
@@ -751,7 +864,7 @@ export class ResourceRequestsService implements OnApplicationBootstrap, OnModule
   async history(companyId: string, access: AccessContext, employeeId: string) {
     await this.assertSeesHistory(companyId, access, employeeId);
     const logs = await this.prisma.assignmentLog.findMany({ where: { companyId, employeeId }, orderBy: { createdAt: 'desc' }, take: 200 });
-    const person = await this.prisma.employee.findUnique({ where: { id: employeeId }, select: { skills: true, firstName: true, lastName: true, designation: { select: { name: true } } } });
+    const person = await this.prisma.employee.findUnique({ where: { id: employeeId }, select: { skills: true, priorExperienceMonths: true, priorExperiencePendingMonths: true, priorExperienceSubmittedAt: true, priorExperienceVerifiedAt: true, joiningDate: true, firstName: true, lastName: true, designation: { select: { name: true } } } });
     const [users, projects] = await Promise.all([
       this.usersById(logs.map((l) => l.actorUserId)),
       this.prisma.project.findMany({ where: { id: { in: [...new Set(logs.map((l) => l.projectId).filter((x): x is string => Boolean(x)))] } }, select: { id: true, name: true, code: true, color: true } }),
@@ -764,6 +877,9 @@ export class ResourceRequestsService implements OnApplicationBootstrap, OnModule
     return {
       person: person ? { firstName: person.firstName, lastName: person.lastName, designation: person.designation?.name ?? null } : null,
       skills: person?.skills ?? [],
+      experience: person
+        ? { priorMonths: person.priorExperienceMonths, pendingMonths: person.priorExperiencePendingMonths, submittedAt: person.priorExperienceSubmittedAt, verifiedAt: person.priorExperienceVerifiedAt, joiningDate: keyFromDate(person.joiningDate) }
+        : null,
       data: logs.map((l) => ({ id: l.id, action: l.action, allocation: l.allocation, note: l.note, at: l.createdAt, requestId: l.requestId, project: l.projectId ? (byId.get(l.projectId) ?? null) : null, actor: l.actorUserId ? (users.get(l.actorUserId) ?? null) : null })),
       requestBackFrom: projects.filter((p) => led.includes(p.id) && logs.some((l) => l.projectId === p.id && ['to_pool', 'released', 'reassigned', 'removed'].includes(l.action))).map((p) => p.id),
     };

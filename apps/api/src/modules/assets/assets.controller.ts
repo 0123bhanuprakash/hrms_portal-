@@ -28,8 +28,7 @@ import {
   SaveAssetTypeDto,
   SaveKitRuleDto,
   SetStatusDto,
-  StartCheckDto,
-} from './dto';
+  StartCheckDto, PageQueryDto } from './dto';
 import { Live } from '../realtime/live.decorator';
 
 const document = FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024, files: 1 } });
@@ -192,6 +191,12 @@ export class AssetsController {
   @Post('checks')
   startCheck(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Body() dto: StartCheckDto) {
     return this.checks.start(ctx.companyId!, access, dto);
+  }
+
+  @RequirePermission('asset.view')
+  @Get('checks/:id/reports')
+  checkReports(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Param('id', ParseUUIDPipe) id: string, @Query() q: PageQueryDto) {
+    return this.checks.reports(ctx.companyId!, access, id, q);
   }
 
   @RequirePermission('asset.view')

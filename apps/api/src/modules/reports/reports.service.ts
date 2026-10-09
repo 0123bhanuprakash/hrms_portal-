@@ -4,12 +4,15 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AccessService } from '../access/access.service';
 import { holds, type AccessContext } from '../access/access.types';
 import { addDays, dateFromKey, isValidTimeZone, keyFromDate, localDateKey } from '../attendance/time-zone';
-import type { DayQueryDto, DrillQueryDto, FilterQueryDto, MonthQueryDto, RangeQueryDto } from './dto';
+import { searchWords, wordsWhere } from '../../common/word-search';
+import type { DayQueryDto, DrillQueryDto, FilterQueryDto, MonthQueryDto, RangeQueryDto, UtilisationQueryDto, UtilisationShow, DayGroup, LeaveLeftQueryDto } from './dto';
 
 const VIEW = 'report.view';
 const EXPORT = 'report.export';
 const PMO = 'project.manage';
 const DAY_HOURS = 8;
+/** People per group in the attendance day drawer before "Show all" */
+const DAY_PREVIEW = 10;
 const PRESENTISH: AttendanceStatus[] = [AttendanceStatus.PRESENT, AttendanceStatus.WORK_FROM_HOME, AttendanceStatus.HALF_DAY];
 
 /** CSV cell */
@@ -17,6 +20,30 @@ const cell = (v: unknown) => {
   const s = v === null || v === undefined ? '' : String(v);
   return /[",\n\r]/.test(s) || /^[=+\-@]/.test(s) ? `"${(/^[=+\-@]/.test(s) ? `'${s}` : s).replace(/"/g, '""')}"` : s;
 };
+/** Monday of the week a YYYY-MM-DD falls in. */
+const mondayOf = (k: string) => addDays(k, -((new Date(`${k}T00:00:00Z`).getUTCDay() + 6) % 7));
+
+type UtilisationRow = {
+  employee: { id: string; employeeId: string; firstName: string; lastName: string; avatarUrl: string | null; department: string | null; designation: string | null };
+  allocation: number;
+  projects: Array<{ id: string; code: string; name: string; allocation: number; role: string }>;
+  loggedMinutes: number | null;
+  billableMinutes: number | null;
+  utilisationPct: number | null;
+  billablePct: number | null;
+};
+
+/** Quick filters a person falls under: bench (no live project), low (< 50%), over (> 100%), nolog (on a project, nothing logged). */
+function utilisationKinds(r: UtilisationRow, timesheets: boolean): Array<Exclude<UtilisationShow, 'all'>> {
+  const out: Array<Exclude<UtilisationShow, 'all'>> = [];
+  const pct = timesheets ? r.utilisationPct ?? 0 : r.allocation;
+  if (r.allocation === 0) out.push('bench');
+  else if (pct < 50) out.push('low');
+  if (r.allocation > 100 || pct > 100) out.push('over');
+  if (timesheets && r.allocation > 0 && !r.loggedMinutes) out.push('nolog');
+  return out;
+}
+
 const csv = (rows: unknown[][]) => '﻿' + rows.map((r) => r.map(cell).join(',')).join('\r\n');
 
 /**
@@ -252,16 +279,29 @@ export class ReportsService {
       })();
       where = { AND: [current, slice] };
     }
-    const rows = await this.prisma.employee.findMany({
-      where: { AND: [scope, { companyId }, where] },
-      orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
-      take: 300,
+    const search = wordsWhere(q.search, (w): Prisma.EmployeeWhereInput[] => [
+      { firstName: { contains: w, mode: 'insensitive' } },
+      { lastName: { contains: w, mode: 'insensitive' } },
+      { employeeId: { contains: w, mode: 'insensitive' } },
+      { designation: { name: { contains: w, mode: 'insensitive' } } },
+    ]);
+    const full: Prisma.EmployeeWhereInput = { AND: [scope, { companyId }, where, ...(search ? [search] : [])] };
+    const limit = q.limit ?? 25;
+    const page = q.page ?? 1;
+    const [total, rows] = await Promise.all([
+      this.prisma.employee.count({ where: full }),
+      this.prisma.employee.findMany({
+      where: full,
+      orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }, { id: 'asc' }],
+      skip: (page - 1) * limit,
+      take: limit,
       select: {
         id: true, employeeId: true, firstName: true, lastName: true, avatarUrl: true, joiningDate: true, terminationDate: true, employmentStatus: true,
         department: { select: { name: true } }, designation: { select: { name: true } }, location: { select: { name: true } },
       },
-    });
-    return rows.map((e) => ({
+      }),
+    ]);
+    const list = rows.map((e) => ({
       id: e.id,
       employeeId: e.employeeId,
       firstName: e.firstName,
@@ -275,6 +315,7 @@ export class ReportsService {
       terminationDate: e.terminationDate ? keyFromDate(e.terminationDate) : null,
       tenureMonths: Math.max(0, Math.round((now.getTime() - e.joiningDate.getTime()) / (30.44 * 86_400_000))),
     }));
+    return { rows: list, meta: { total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)) } };
   }
 
   // ─── Attendance & leave ───────────────────────────────────
@@ -366,7 +407,8 @@ export class ReportsService {
     ]);
     const byId = new Map(records.map((r) => [r.employeeId, r]));
     const wd = new Date(`${q.date}T00:00:00Z`).getUTCDay();
-    const groups = { present: [] as unknown[], late: [] as unknown[], wfh: [] as unknown[], leave: [] as unknown[], absent: [] as unknown[], notRecorded: [] as unknown[] };
+    type Person = { id: string; employeeId: string; firstName: string; lastName: string; avatarUrl: string | null; department: string | null; checkIn: Date | null; lateMinutes: number };
+    const groups: Record<DayGroup, Person[]> = { present: [], late: [], wfh: [], leave: [], absent: [], notRecorded: [] };
     for (const p of people) {
       const r = byId.get(p.id);
       const person = { id: p.id, employeeId: p.employeeId, firstName: p.firstName, lastName: p.lastName, avatarUrl: p.avatarUrl, department: p.department?.name ?? null, checkIn: r?.checkIn ?? null, lateMinutes: r?.lateMinutes ?? 0 };
@@ -378,17 +420,104 @@ export class ReportsService {
       else if (PRESENTISH.includes(r.status)) groups.present.push(person);
       else groups.notRecorded.push(person);
     }
-    return { date: q.date, workingDay: wd !== 0 && wd !== 6 && !holiday, holiday: holiday?.name ?? null, headcount: people.length, ...groups };
+    groups.late.sort((a, b) => b.lateMinutes - a.lateMinutes);
+    // One group, a page at a time ("Show all" in the day drawer)
+    if (q.group) {
+      const limit = q.limit ?? 25;
+      const list = groups[q.group];
+      const totalPages = Math.max(1, Math.ceil(list.length / limit));
+      const page = Math.min(q.page ?? 1, totalPages);
+      return { group: q.group, rows: list.slice((page - 1) * limit, page * limit), meta: { total: list.length, page, limit, totalPages } };
+    }
+    const first = (k: DayGroup) => groups[k].slice(0, DAY_PREVIEW);
+    return {
+      date: q.date,
+      workingDay: wd !== 0 && wd !== 6 && !holiday,
+      holiday: holiday?.name ?? null,
+      headcount: people.length,
+      /** Everyone per group; each list below holds only the first few */
+      counts: Object.fromEntries(Object.entries(groups).map(([k, v]) => [k, v.length])) as Record<DayGroup, number>,
+      present: first('present'),
+      late: first('late'),
+      wfh: first('wfh'),
+      leave: first('leave'),
+      absent: first('absent'),
+      notRecorded: first('notRecorded'),
+    };
   }
 
   // ─── Utilisation (PMO) ────────────────────────────────────
 
-  async utilisation(companyId: string, access: AccessContext, q: RangeQueryDto) {
+  /**
+   * One page of people (25 by default) with their weekly grid; the KPIs, counts
+   * and Projects table always cover everyone in reach.
+   */
+  async utilisation(companyId: string, access: AccessContext, q: UtilisationQueryDto) {
+    const all = await this.utilisationAll(companyId, access, q);
+    const { rows, range, ...totals } = all;
+    const words = searchWords(q.search).map((w) => w.toLowerCase());
+    const show = q.show ?? 'all';
+    const found = words.length
+      ? rows.filter((r) => {
+          const text = `${r.employee.firstName} ${r.employee.lastName} ${r.employee.employeeId} ${r.employee.designation ?? ''} ${r.employee.department ?? ''}`.toLowerCase();
+          return words.every((w) => text.includes(w));
+        })
+      : rows;
+    const kind = (r: UtilisationRow) => utilisationKinds(r, all.timesheets);
+    const counts = { all: found.length, bench: 0, low: 0, over: 0, nolog: 0 };
+    for (const r of found) for (const k of kind(r)) counts[k]++;
+    const shown = show === 'all' ? [...found] : found.filter((r) => kind(r).includes(show));
+    const sort = q.sort ?? 'allocation';
+    const byName = (a: UtilisationRow, b: UtilisationRow) => a.employee.firstName.localeCompare(b.employee.firstName) || a.employee.lastName.localeCompare(b.employee.lastName);
+    shown.sort(
+      sort === 'name'
+        ? byName
+        : sort === 'utilisation'
+          ? (a, b) => (a.utilisationPct ?? a.allocation) - (b.utilisationPct ?? b.allocation) || byName(a, b)
+          : (a, b) => a.allocation - b.allocation || byName(a, b),
+    );
+    const limit = q.limit ?? 25;
+    const totalPages = Math.max(1, Math.ceil(shown.length / limit));
+    const page = Math.min(q.page ?? 1, totalPages);
+    const slice = shown.slice((page - 1) * limit, page * limit);
+
+    // Weekly grid: only the last 8 weeks, only for the people on this page
+    const weeks = all.weeks.slice(-8);
+    const weekStarts = weeks.map((w) => w.start);
+    const weekly = new Map<string, Array<{ loggedMinutes: number; billableMinutes: number }>>();
+    if (all.timesheets && slice.length && weeks.length) {
+      const first = weekStarts[0]! < range.from ? range.from : weekStarts[0]!;
+      const byDay = await this.prisma.timesheetEntry.groupBy({
+        by: ['employeeId', 'billable', 'date'],
+        where: { ...range.entryWhere, employeeId: { in: slice.map((r) => r.employee.id) }, date: { gte: dateFromKey(first), lte: dateFromKey(range.to) } },
+        _sum: { minutes: true },
+      });
+      for (const r of byDay) {
+        const i = weekStarts.indexOf(mondayOf(keyFromDate(r.date)));
+        if (i < 0) continue;
+        const list = weekly.get(r.employeeId) ?? weekStarts.map(() => ({ loggedMinutes: 0, billableMinutes: 0 }));
+        list[i]!.loggedMinutes += r._sum.minutes ?? 0;
+        if (r.billable) list[i]!.billableMinutes += r._sum.minutes ?? 0;
+        weekly.set(r.employeeId, list);
+      }
+    }
+    return {
+      ...totals,
+      weeks,
+      counts,
+      /** `weekly` is per week of `weeks` (null without timesheets) */
+      rows: slice.map((r) => ({ ...r, weekly: all.timesheets ? weekly.get(r.employee.id) ?? weekStarts.map(() => ({ loggedMinutes: 0, billableMinutes: 0 })) : null })),
+      meta: { total: shown.length, page, limit, totalPages },
+    };
+  }
+
+  /** Everyone in reach with their totals (no weekly split) — the KPIs, the page and the CSV come from this. */
+  private async utilisationAll(companyId: string, access: AccessContext, q: RangeQueryDto) {
     const { scope, range } = await this.utilisationContext(companyId, access, q);
     const { from, to, asOf, workdays } = range;
     const people = await this.prisma.employee.findMany({
       where: { AND: [scope, this.employedOn(companyId, dateFromKey(asOf))] },
-      select: { id: true, employeeId: true, firstName: true, lastName: true, avatarUrl: true, joiningDate: true, department: { select: { name: true } }, designation: { select: { name: true } } },
+      select: { id: true, employeeId: true, firstName: true, lastName: true, avatarUrl: true, department: { select: { name: true } }, designation: { select: { name: true } } },
       orderBy: { firstName: 'asc' },
     });
     const ids = people.map((p) => p.id);
@@ -402,30 +531,19 @@ export class ReportsService {
       minutes: { gt: 0 },
       status: { in: [TimesheetStatus.SUBMITTED, TimesheetStatus.APPROVED] },
     };
-    const [members, byPerson, byProject, byDay] = await Promise.all([
+    const [members, byPerson, byProject] = await Promise.all([
       this.prisma.projectMember.findMany({
         where: { companyId, employeeId: { in: ids }, startDate: { lte: asOfDate }, OR: [{ endDate: null }, { endDate: { gte: asOfDate } }], project: live },
         select: { employeeId: true, allocation: true, role: true, project: { select: { id: true, code: true, name: true, clientName: true, status: true } } },
       }),
       timesheetsOn ? this.prisma.timesheetEntry.groupBy({ by: ['employeeId', 'billable'], where: entryWhere, _sum: { minutes: true } }) : [],
       timesheetsOn ? this.prisma.timesheetEntry.groupBy({ by: ['projectId', 'billable'], where: entryWhere, _sum: { minutes: true } }) : [],
-      timesheetsOn ? this.prisma.timesheetEntry.groupBy({ by: ['employeeId', 'billable', 'date'], where: entryWhere, _sum: { minutes: true } }) : [],
     ]);
 
     const capacity = workdays.length * DAY_HOURS * 60;
     // Weeks (Monday-first) inside the range, each with its own capacity
-    const weekOf = (k: string) => addDays(k, -((new Date(`${k}T00:00:00Z`).getUTCDay() + 6) % 7));
-    const weekStarts = [...new Set([from, ...workdays].map(weekOf))].sort();
-    const weeks = weekStarts.map((w) => ({ start: w, end: addDays(w, 6), capacityMinutes: workdays.filter((d) => weekOf(d) === w).length * DAY_HOURS * 60 }));
-    const weekly = new Map<string, Array<{ loggedMinutes: number; billableMinutes: number }>>();
-    for (const r of byDay) {
-      const i = weekStarts.indexOf(weekOf(keyFromDate(r.date)));
-      if (i < 0) continue;
-      const list = weekly.get(r.employeeId) ?? weekStarts.map(() => ({ loggedMinutes: 0, billableMinutes: 0 }));
-      list[i]!.loggedMinutes += r._sum.minutes ?? 0;
-      if (r.billable) list[i]!.billableMinutes += r._sum.minutes ?? 0;
-      weekly.set(r.employeeId, list);
-    }
+    const weekStarts = [...new Set([from, ...workdays].map(mondayOf))].sort();
+    const weeks = weekStarts.map((w) => ({ start: w, end: addDays(w, 6), capacityMinutes: workdays.filter((d) => mondayOf(d) === w).length * DAY_HOURS * 60 }));
     const logged = new Map<string, { minutes: number; billable: number }>();
     for (const r of byPerson) {
       const cur = logged.get(r.employeeId) ?? { minutes: 0, billable: 0 };
@@ -433,20 +551,19 @@ export class ReportsService {
       if (r.billable) cur.billable += r._sum.minutes ?? 0;
       logged.set(r.employeeId, cur);
     }
-    const rows = people.map((p) => {
-      const mine = members.filter((m) => m.employeeId === p.id);
-      const allocation = mine.reduce((n, m) => n + m.allocation, 0);
+    const membersOf = new Map<string, typeof members>();
+    for (const m of members) membersOf.set(m.employeeId, [...(membersOf.get(m.employeeId) ?? []), m]);
+    const rows: UtilisationRow[] = people.map((p) => {
+      const mine = membersOf.get(p.id) ?? [];
       const l = logged.get(p.id) ?? { minutes: 0, billable: 0 };
       return {
         employee: { id: p.id, employeeId: p.employeeId, firstName: p.firstName, lastName: p.lastName, avatarUrl: p.avatarUrl, department: p.department?.name ?? null, designation: p.designation?.name ?? null },
-        allocation,
+        allocation: mine.reduce((n, m) => n + m.allocation, 0),
         projects: mine.map((m) => ({ id: m.project.id, code: m.project.code, name: m.project.name, allocation: m.allocation, role: m.role })),
         loggedMinutes: timesheetsOn ? l.minutes : null,
         billableMinutes: timesheetsOn ? l.billable : null,
         utilisationPct: timesheetsOn && capacity ? Math.round((l.minutes / capacity) * 100) : null,
         billablePct: timesheetsOn && capacity ? Math.round((l.billable / capacity) * 100) : null,
-        /** Per week of `weeks` (null without timesheets) */
-        weekly: timesheetsOn ? weekly.get(p.id) ?? weekStarts.map(() => ({ loggedMinutes: 0, billableMinutes: 0 })) : null,
       };
     });
 
@@ -460,12 +577,13 @@ export class ReportsService {
     let internal = 0;
     if (byProject.length) {
       const known = await this.prisma.project.findMany({ where: { id: { in: byProject.map((r) => r.projectId).filter((x): x is string => Boolean(x)) } }, select: { id: true, code: true, name: true, clientName: true, status: true } });
+      const byId = new Map(known.map((k) => [k.id, k]));
       for (const r of byProject) {
         if (!r.projectId) {
           internal += r._sum.minutes ?? 0;
           continue;
         }
-        const p = known.find((k) => k.id === r.projectId);
+        const p = byId.get(r.projectId);
         if (!p) continue;
         const cur = projects.get(p.id) ?? { project: p, members: 0, fte: 0, loggedMinutes: 0, billableMinutes: 0 };
         cur.loggedMinutes += r._sum.minutes ?? 0;
@@ -494,12 +612,13 @@ export class ReportsService {
       internalMinutes: timesheetsOn ? internal : null,
       rows: rows.sort((a, b) => a.allocation - b.allocation || a.employee.firstName.localeCompare(b.employee.firstName)),
       projects: [...projects.values()].map((p) => ({ ...p, fte: Math.round(p.fte * 100) / 100 })).sort((a, b) => b.fte - a.fte),
+      range: { from, to, entryWhere },
     };
   }
 
   async utilisationCsv(companyId: string, access: AccessContext, q: RangeQueryDto) {
     if (!holds(access, PMO) && !holds(access, EXPORT)) throw new ForbiddenException('You do not have permission to perform this action. Required: report.export');
-    const r = await this.utilisation(companyId, access, q);
+    const r = await this.utilisationAll(companyId, access, q);
     return {
       name: `utilisation-${r.from}-to-${r.to}.csv`,
       body: csv([
@@ -598,6 +717,53 @@ export class ReportsService {
       year,
       byType: [...byType.values()].filter((t) => t.entitledDays > 0).map((t) => ({ ...t, entitledDays: round(t.entitledDays), leftDays: round(t.leftDays) })).sort((a, b) => b.entitledDays - a.entitledDays),
       plentyLeft: [...plenty.values()].sort((a, b) => b.days - a.days).slice(0, 20).map((p) => ({ employee: names.get(p.employeeId) ?? null, days: round(p.days), type: p.type })),
+      /** Everyone with 15+ days of one type left (the list above holds the top 20) */
+      plentyCount: plenty.size,
+    };
+  }
+
+  /**
+   * Reports → "15+ days left" drawer (same idea as the day drawer): per leave
+   * type, how many people have 15+ days of it left and the first few (most
+   * left first); typeId pages through one type ("Show all").
+   */
+  async leaveLeft(companyId: string, access: AccessContext, q: LeaveLeftQueryDto) {
+    const scope = this.narrow(this.access.requireEmployeeScope(access, VIEW), q);
+    const year = Number((await this.todayKey(companyId)).slice(0, 4));
+    const rows = await this.prisma.leaveBalance.findMany({
+      where: { companyId, year, ...(q.typeId && { leaveTypeId: q.typeId }), employee: { AND: [scope, { employmentStatus: { not: EmploymentStatus.TERMINATED } }] } },
+      select: {
+        allocated: true, carriedForward: true, adjusted: true, usedDays: true, pendingDays: true,
+        leaveType: { select: { id: true, name: true, color: true } },
+        employee: { select: { id: true, employeeId: true, firstName: true, lastName: true, avatarUrl: true, department: { select: { name: true } } } },
+      },
+    });
+    const round = (n: number) => Math.round(n * 10) / 10;
+    type Row = { id: string; employeeId: string; firstName: string; lastName: string; avatarUrl: string | null; department: string | null; days: number; entitled: number };
+    const types = new Map<string, { type: { id: string; name: string; color: string | null }; rows: Row[] }>();
+    const people = new Set<string>();
+    for (const r of rows) {
+      const entitled = r.allocated + r.carriedForward + r.adjusted;
+      const left = Math.max(0, entitled - r.usedDays - r.pendingDays);
+      if (left < 15) continue;
+      const e = r.employee;
+      people.add(e.id);
+      const t = types.get(r.leaveType.id) ?? { type: r.leaveType, rows: [] };
+      t.rows.push({ id: e.id, employeeId: e.employeeId, firstName: e.firstName, lastName: e.lastName, avatarUrl: e.avatarUrl, department: e.department?.name ?? null, days: round(left), entitled: round(entitled) });
+      types.set(r.leaveType.id, t);
+    }
+    for (const t of types.values()) t.rows.sort((a, b) => b.days - a.days || a.firstName.localeCompare(b.firstName));
+    if (q.typeId) {
+      const list = types.get(q.typeId)?.rows ?? [];
+      const limit = q.limit ?? 25;
+      const totalPages = Math.max(1, Math.ceil(list.length / limit));
+      const page = Math.min(q.page ?? 1, totalPages);
+      return { rows: list.slice((page - 1) * limit, page * limit), meta: { total: list.length, page, limit, totalPages } };
+    }
+    return {
+      year,
+      people: people.size,
+      types: [...types.values()].sort((a, b) => b.rows.length - a.rows.length).map((t) => ({ type: t.type, count: t.rows.length, rows: t.rows.slice(0, DAY_PREVIEW) })),
     };
   }
 
