@@ -75,6 +75,7 @@ import { DropdownMenu } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip } from '@/components/ui/tooltip';
 import { ThemeStyle } from '@/components/theme/theme-style';
+import { useBrandFavicon } from '@/components/branding/brand-favicon';
 import { companyThemeTokens, useCompanyBranding, useCompanyTheme, usePreferences, type CompanyThemeResponse, type UserPreferences } from '@/lib/company/queries';
 import { findPreset } from '@/lib/theme/presets';
 import { rebrandTheme } from '@/lib/theme/generate';
@@ -102,6 +103,8 @@ interface NavItem {
   orDelegated?: boolean;
   /** Also show when the user holds any of these */
   anyOf?: string[];
+  /** Also shown to members of company-made helpdesk teams (no role permission) */
+  helpdeskTeam?: boolean;
   /** Only when the permission reaches the whole company */
   companyWide?: boolean;
   /** Resource requests: leads, PMs, Delivery Directors and the PMO (their role on projects) */
@@ -134,7 +137,7 @@ const NAV_GROUPS: Array<{ label: string; icon: React.ElementType; items: NavItem
     icon: Megaphone,
     items: [
       { name: 'Announcements', href: '/app/announcements', icon: Megaphone, permission: 'announcement.view', feature: 'engage.announcements', badge: 'announcements' },
-      { name: 'Kudos', href: '/app/kudos', icon: Heart, permission: 'kudos.view', feature: 'engage.kudos' },
+      { name: 'Shout-outs', href: '/app/kudos', icon: Heart, permission: 'kudos.view', feature: 'engage.kudos' },
     ],
   },
   {
@@ -173,8 +176,8 @@ const NAV_GROUPS: Array<{ label: string; icon: React.ElementType; items: NavItem
     icon: LifeBuoy,
     items: [
       { name: 'My tickets', href: '/app/helpdesk', icon: LifeBuoy, exact: true, permission: 'ticket.view', feature: 'ops.helpdesk', badge: 'myTickets' },
-      { name: 'Ticket queue', href: '/app/helpdesk/queue', icon: Headset, permission: 'ticket.handle_it', anyOf: ['ticket.handle_hr', 'ticket.handle_finance', 'ticket.handle_devops'], feature: 'ops.helpdesk', badge: 'ticketQueue' },
-      { name: 'Ticket topics', href: '/app/helpdesk/categories', icon: Tags, permission: 'ticket.handle_it', anyOf: ['ticket.handle_hr', 'ticket.handle_finance', 'ticket.handle_devops', 'ticket.manage_teams'], feature: 'ops.helpdesk' },
+      { name: 'Ticket queue', href: '/app/helpdesk/queue', icon: Headset, permission: 'ticket.handle_it', anyOf: ['ticket.handle_hr', 'ticket.handle_finance', 'ticket.handle_devops'], helpdeskTeam: true, feature: 'ops.helpdesk', badge: 'ticketQueue' },
+      { name: 'Ticket topics', href: '/app/helpdesk/categories', icon: Tags, permission: 'ticket.handle_it', anyOf: ['ticket.handle_hr', 'ticket.handle_finance', 'ticket.handle_devops', 'ticket.manage_teams'], helpdeskTeam: true, feature: 'ops.helpdesk' },
     ],
   },
   {
@@ -229,7 +232,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   leave: 'Leave',
   projects: 'Projects',
   announcements: 'Announcements',
-  kudos: 'Kudos',
+  kudos: 'Shout-outs',
   wishes: 'Your wishes',
   expenses: 'Expenses',
   payments: 'Payments & reports',
@@ -336,6 +339,7 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
   const pendingResources = usePendingResourceRequests();
   const [mobileOpen, setMobileOpen] = useState(false);
   const branding = useCompanyBranding(hydrated ? companyId : null);
+  useBrandFavicon(branding.data?.faviconUrl);
   const companyTheme = useCompanyTheme(hydrated ? companyId : null);
   const prefs = usePreferences();
   const menuStyle = useMenuStyle(companyTheme.data, prefs.data, user?.id);
@@ -414,7 +418,7 @@ export default function CompanyPortalLayout({ children }: { children: React.Reac
     items: group.items
       .filter(
         (i) =>
-          (can(i.permission) || (i.orDelegated && (isApprover || (i.href.startsWith('/app/expenses') && (can('expense.finance') || can('expense.hr'))))) || (i.href === '/app/expenses/payments' && can('expense.hr')) || Boolean(i.anyOf?.some((p) => can(p)))) &&
+          (can(i.permission) || (i.orDelegated && (isApprover || (i.href.startsWith('/app/expenses') && (can('expense.finance') || can('expense.hr'))))) || (i.href === '/app/expenses/payments' && can('expense.hr')) || Boolean(i.anyOf?.some((p) => can(p))) || Boolean(i.helpdeskTeam && tickets.data?.works)) &&
           (!i.companyWide || user!.isSuperAdmin || scopeOf(i.permission!) === 'company') &&
           (!i.feature || user!.isSuperAdmin || hasFeature(i.feature)) &&
           (!i.beyondOwn || user!.isSuperAdmin || scopeOf(i.permission!) !== 'own') &&

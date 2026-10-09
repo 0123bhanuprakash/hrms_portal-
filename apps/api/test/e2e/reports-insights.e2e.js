@@ -50,13 +50,18 @@ const D = (k) => new Date(`${k}T00:00:00Z`);
     check('Leavers by department (12 months)', engLeavers?.leavers === 2 && engLeavers.months.length === 12 && engLeavers.ratePct > 0, JSON.stringify(engLeavers));
     check('Anniversaries coming up', R?.anniversaries.some((x) => x.id === P.b.id && x.years === 2 && x.date === anniv), JSON.stringify(R?.anniversaries));
     r = await call(S.hr, 'GET', `/reports/people/list?dimension=department&value=${eng.id}`);
-    check('Who is behind a number: department', r.status === 200 && r.data.length === 5 && r.data.every((x) => x.department === 'Engineering'), JSON.stringify(r.body).slice(0, 200));
+    check('Who is behind a number: department', r.status === 200 && r.data.rows.length === 5 && r.data.meta.total === 5 && r.data.rows.every((x) => x.department === 'Engineering'), JSON.stringify(r.body).slice(0, 200));
+    r = await call(S.hr, 'GET', `/reports/people/list?dimension=department&value=${eng.id}&limit=2&page=3`);
+    check('… a page at a time (2 per page, page 3 of 3)', r.data?.rows.length === 1 && r.data.meta.total === 5 && r.data.meta.totalPages === 3, JSON.stringify(r.data?.meta));
+    r = await call(S.hr, 'GET', `/reports/people/list?dimension=department&value=${eng.id}&search=mgr`);
+    check('… search inside the list', r.data?.rows.length === 1 && r.data.rows[0].id === P.mgr.id && r.data.meta.total === 1, JSON.stringify(r.data?.rows.map((x) => x.firstName)));
+    check('… page size over 100 → 400', (await call(S.hr, 'GET', `/reports/people/list?dimension=department&value=${eng.id}&limit=500`)).status === 400);
     r = await call(S.hr, 'GET', '/reports/people/list?dimension=tenure&value=5%2B');
-    check('… tenure band 5+ years', r.data?.length === 1 && r.data[0].id === P.a.id, JSON.stringify(r.data));
+    check('… tenure band 5+ years', r.data?.rows.length === 1 && r.data.rows[0].id === P.a.id, JSON.stringify(r.data));
     r = await call(S.hr, 'GET', `/reports/people/list?dimension=left&value=${addDays(today, -30).slice(0, 7)}`);
-    check('… who left in a month', r.data?.some((x) => x.id === P.gone.id));
+    check('… who left in a month', r.data?.rows.some((x) => x.id === P.gone.id));
     r = await call(S.mgr, 'GET', `/reports/people/list?dimension=department&value=${ppl.id}`);
-    check('Manager only sees their tree in lists', r.status === 200 && r.data.length === 0);
+    check('Manager only sees their tree in lists', r.status === 200 && r.data.rows.length === 0 && r.data.meta.total === 0);
     check('Bad dimension → 400', (await call(S.hr, 'GET', '/reports/people/list?dimension=salary&value=x')).status === 400);
     check('Employee → 403', (await call(S.emp, 'GET', `/reports/people/list?dimension=department&value=${eng.id}`)).status === 403);
 
@@ -82,6 +87,10 @@ const D = (k) => new Date(`${k}T00:00:00Z`);
     r = await call(S.hr, 'GET', `/reports/attendance/day?date=${day}`);
     const g = r.data;
     check('Who was in on a day', r.status === 200 && g.present.length === 1 && g.late.length === 2 && g.leave.length === 1 && g.wfh.length === 1 && g.notRecorded.some((x) => x.id === P.n.id || x.id === P.emp.id), JSON.stringify(g && { p: g.present.length, l: g.late.length, lv: g.leave.length, w: g.wfh.length, nr: g.notRecorded.length }));
+    check('Day: counts for every group', g?.counts?.late === 2 && g.counts.present === 1 && g.counts.leave === 1 && g.counts.notRecorded === g.notRecorded.length, JSON.stringify(g?.counts));
+    r = await call(S.hr, 'GET', `/reports/attendance/day?date=${day}&group=late&limit=1&page=2`);
+    check('Day: one group a page at a time ("Show all")', r.data?.rows.length === 1 && r.data.meta.total === 2 && r.data.meta.page === 2 && r.data.group === 'late', JSON.stringify(r.data?.meta));
+    check('Day: unknown group → 400', (await call(S.hr, 'GET', `/reports/attendance/day?date=${day}&group=everyone`)).status === 400);
     check('Future day → 400', (await call(S.hr, 'GET', `/reports/attendance/day?date=${addDays(today, 3)}`)).status === 400);
     const el = await p.leaveType.create({ data: { companyId: cid, name: 'Earned leave', code: 'EL', category: 'EARNED' } }).catch(() => p.leaveType.create({ data: { companyId: cid, name: 'Earned leave', code: 'EL', category: 'CASUAL' } }));
     const year = Number(today.slice(0, 4));
@@ -94,7 +103,13 @@ const D = (k) => new Date(`${k}T00:00:00Z`);
     r = await call(S.hr, 'GET', '/reports/attendance');
     const lb = r.data?.leaveBalances;
     check('Leave balances left per type', lb?.byType.find((x) => x.type.id === el.id)?.leftDays === 20 && lb.byType.find((x) => x.type.id === el.id).entitledDays === 32, JSON.stringify(lb));
-    check('Who has 15+ days left', lb?.plentyLeft.length === 1 && lb.plentyLeft[0].employee.id === P.a.id && lb.plentyLeft[0].days === 18);
+    check('Who has 15+ days left', lb?.plentyLeft.length === 1 && lb.plentyLeft[0].employee.id === P.a.id && lb.plentyLeft[0].days === 18 && lb.plentyCount === 1);
+    // The "15+ days left" drawer: per type, a count and the first few; one type a page at a time
+    const ll = await call(S.hr, 'GET', '/reports/attendance/leave-left');
+    const elRow = ll.data?.types.find((t) => t.type.id === el.id);
+    check('Leave-left drawer: grouped by type with counts', ll.data?.people === 1 && elRow?.count === 1 && elRow.rows[0].id === P.a.id && elRow.rows[0].days === 18 && elRow.rows[0].entitled === 20, JSON.stringify(ll.body).slice(0, 300));
+    const llAll = await call(S.hr, 'GET', `/reports/attendance/leave-left?typeId=${el.id}`);
+    check('Leave-left drawer: Show all for one type', llAll.data?.meta.total === 1 && llAll.data.rows[0].id === P.a.id, JSON.stringify(llAll.body).slice(0, 200));
 
     // ── Overview
     r = await call(S.hr, 'GET', `/reports/overview?from=${addDays(today, -30)}&to=${today}`);

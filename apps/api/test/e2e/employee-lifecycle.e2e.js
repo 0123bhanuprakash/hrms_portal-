@@ -86,6 +86,24 @@ const D = (k) => new Date(`${k}T00:00:00Z`);
     r = await call(S.hr, 'GET', '/org/chart');
     check('Org chart (HR): notice shown, Gus flagged as joining', r.data?.employees?.find((x) => x.firstName === 'ben')?.employmentStatus === 'NOTICE_PERIOD' && r.data.employees.find((x) => x.firstName === 'gus')?.joinsOn === addDays(today, 7));
 
+    // People pickers search on the server
+    r = await call(S.cara, 'GET', '/org/people?search=an');
+    check('Pickers: search by name (Ana, Dan)', r.status === 200 && r.data.map((x) => x.firstName).sort().join() === 'ana,dan', JSON.stringify(r.data?.map((x) => x.firstName)));
+    r = await call(S.cara, 'GET', '/org/people?limit=2');
+    check('Pickers: 20 by default, here a limit of 2', r.data?.length === 2);
+    check('Pickers: limit over 50 → 400', (await call(S.cara, 'GET', '/org/people?limit=500')).status === 400);
+    r = await call(S.cara, 'GET', `/org/people?ids=${P.ana.id},${P.mgr.id}`);
+    check('Pickers: chosen people by id', r.data?.length === 2 && r.data.some((x) => x.id === P.ana.id));
+    r = await call(S.cara, 'GET', `/org/people?userIds=${P.ben.user.id}`);
+    check('Pickers: by sign-in id (delegations)', r.data?.length === 1 && r.data[0].id === P.ben.id);
+    r = await call(S.cara, 'GET', '/org/people?managers=true');
+    check('Pickers: managers only, most reports first', r.data?.[0]?.id === P.mgr.id && r.data.every((x) => x.directReports > 0), JSON.stringify(r.data?.map((x) => [x.firstName, x.directReports])));
+    r = await call(S.cara, 'GET', `/org/people?managers=true&departmentId=${eng.id}&exclude=${P.mgr.id}`);
+    check('Pickers: department + exclude', r.status === 200 && r.data.length === 0);
+    r = await call(S.cara, 'GET', '/org/people?search=gus');
+    check('Pickers: people not joined yet stay hidden from employees', r.data?.length === 0);
+    check('Pickers: bad id list → 400', (await call(S.cara, 'GET', '/org/people?ids=nope')).status === 400);
+
     r = await call(S.hr, 'POST', `/employees/${P.ben.id}/withdraw-notice`, { note: 'Changed his mind' });
     check('Withdraw notice → Active, checklist gone', r.status === 200 && r.data.employmentStatus === 'ACTIVE' && (await p.employeeChecklistItem.count({ where: { employeeId: P.ben.id } })) === 0);
 
@@ -129,6 +147,9 @@ const D = (k) => new Date(`${k}T00:00:00Z`);
     r = await call(S.hr, 'GET', '/org/health');
     const hk = (r.data?.items ?? []).map((x) => x.key);
     check('Org health: reports to a leaver, no department head', r.status === 200 && hk.includes('manager-left') && hk.includes('no-head') && r.data.stats.headcount === 5, JSON.stringify(r.body).slice(0, 400));
+    check('Org health: each item counts everyone, names at most 12', r.data?.items.every((x) => typeof x.count === 'number' && (x.people ?? []).length <= 12 && (x.people ?? []).length <= x.count));
+    const sp = r.data?.stats.spans;
+    check('Org health: team sizes counted on the server', sp && sp['1–2'] + sp['3–5'] + sp['6–8'] + sp['9+'] === r.data.stats.managers, JSON.stringify(sp));
 
     // ── Joining checklist, board, glance, export, next id ──
     r = await call(S.hr, 'GET', `/employees/${P.gus.id}/checklist?kind=joining`);

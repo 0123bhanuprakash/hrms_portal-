@@ -11,7 +11,6 @@ import {
   SubscribeMessage,
   WebSocketGateway,
 } from '@nestjs/websockets';
-import type { TicketQueue } from '@prisma/client';
 import type { DefaultEventsMap, Server, Socket } from 'socket.io';
 import type { JwtPayload } from '@hrms/types';
 import { PrismaService } from '../prisma/prisma.service';
@@ -31,7 +30,7 @@ interface LiveSocketData {
   companyId: string | null;
   firstName: string;
   lastName: string;
-  queues: TicketQueue[];
+  queues: string[];
   /** Kinds of record this person reviews, so may see (and show) who else is viewing */
   sees: PresenceKind[];
   /** Viewing rooms this tab is in (re-announced when it closes) */
@@ -118,7 +117,12 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     if (!user || user.status !== 'ACTIVE' || (user.company && user.company.status !== 'ACTIVE')) return null;
     const access = await this.accessService.resolve(user);
 
-    const queues = access.companyId && !access.isSuperAdmin ? QUEUES.filter((q) => holds(access, QUEUE_PERMISSION[q])) : [];
+    const queues: string[] = access.companyId && !access.isSuperAdmin ? QUEUES.filter((q) => holds(access, QUEUE_PERMISSION[q])) : [];
+    // Company-made helpdesk teams they were picked for
+    if (access.companyId && !access.isSuperAdmin) {
+      const own = await this.prisma.helpdeskTeam.findMany({ where: { companyId: access.companyId, custom: true, memberIds: { has: user.id } }, select: { queue: true } });
+      queues.push(...own.map((t) => t.queue));
+    }
     const rooms = [room.user(user.id)];
     const sees: PresenceKind[] = [];
     if (access.companyId) {

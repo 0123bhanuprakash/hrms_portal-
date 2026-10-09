@@ -144,7 +144,10 @@ async function cleanup() {
     check('Agent raises to Urgent → targets recomputed', pr.data?.priority === 'URGENT' && Math.round((new Date(pr.data.resolutionDueAt) - new Date(pr.data.createdAt)) / 3600_000) === 8);
     const res = await call(S.it2, 'POST', `/helpdesk/tickets/${t1.id}/resolve`, { resolution: 'Updated the VPN client to 5.0.' });
     check('Resolve', res.data?.status === 'RESOLVED' && res.data.resolvedAt);
-    check('Employee can’t reply to a resolved ticket → 400', (await upload(S.emp, `/helpdesk/tickets/${t1.id}/messages`, { body: 'Still broken' })).status === 400);
+    check('Resolved: topic locked → 400', (await call(S.it2, 'PATCH', `/helpdesk/tickets/${t1.id}`, { categoryId: null })).status === 400);
+    check('Resolved: team move locked → 400', (await call(S.it2, 'PATCH', `/helpdesk/tickets/${t1.id}`, { queue: 'HR' })).status === 400);
+    check('Resolved: priority still editable', (await call(S.it2, 'PATCH', `/helpdesk/tickets/${t1.id}`, { priority: 'HIGH' })).status === 200);
+    check('Employee can’t reply to a resolved ticket → 400',(await upload(S.emp, `/helpdesk/tickets/${t1.id}/messages`, { body: 'Still broken' })).status === 400);
     const ro = await call(S.emp, 'POST', `/helpdesk/tickets/${t1.id}/reopen`, { reason: 'Still drops after the update.' });
     check('Employee reopens → In progress (assigned)', ro.data?.status === 'IN_PROGRESS' && ro.data.reopenCount === 1);
     await call(S.it2, 'POST', `/helpdesk/tickets/${t1.id}/resolve`, { resolution: 'Replaced the Wi-Fi adapter driver.' });
@@ -189,7 +192,8 @@ async function cleanup() {
         return c;
       },
     };
-    const rem = new HelpdeskRemindersService(p, notifs, { get: () => 'false' }, { live: () => undefined }, { leads: async () => ({ headId: null, backupId: null, onDuty: [] }) });
+    const { HelpdeskTeamsService } = require(path.resolve('dist/apps/api/src/modules/helpdesk/teams.service.js'));
+    const rem = new HelpdeskRemindersService(p, notifs, { get: () => 'false' }, { live: () => undefined }, new HelpdeskTeamsService(p, { changed: () => undefined, accessChanged: () => undefined }, notifs));
     const r1 = await rem.run();
     check('SLA warning to Finance (response + resolution)', r1.warned === 2 && (await p.notification.count({ where: { userId: P.fin.user.id, type: 'ticket.sla' } })) === 2, JSON.stringify(r1));
     check('Resolved > 7 days auto-closed', r1.closed >= 1 && (await p.ticket.findUnique({ where: { id: t3.id } })).status === 'CLOSED');

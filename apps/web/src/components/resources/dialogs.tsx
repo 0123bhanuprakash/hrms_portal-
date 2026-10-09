@@ -1,14 +1,15 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { Info, Pause, Send, UserMinus, UserPlus, X } from 'lucide-react';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { Field, Input, Textarea, FormError } from '@/components/ui/field';
-import { DateInput, PersonSelect } from '@/components/ui/pickers';
-import { usePeoplePicker } from '@/lib/company/org';
-import { useRaiseRelease, useRaiseRequest, useSkillSuggestions, type RaiseInput } from '@/lib/company/resources';
+import { DateInput } from '@/components/ui/pickers';
+import { PersonSearch } from '@/components/people/person-search';
+import { useRaiseRelease, useRaiseRequest, useSkillSuggestions, type AvailablePerson, type RaiseInput } from '@/lib/company/resources';
+import { PreferredPicker } from './preferred-picker';
 import { getApiErrorMessage } from '@/lib/errors';
 import { TagInput } from './parts';
 
@@ -33,7 +34,6 @@ export interface RequestProject {
 /** "Request a person": role, skills, %, dates, why, and optionally who. */
 export function RequestPersonDialog({ project, prefill, onClose, onDone }: { project: RequestProject; prefill?: Partial<RaiseInput>; onClose: () => void; onDone?: (id: string) => void }) {
   const raise = useRaiseRequest();
-  const people = usePeoplePicker();
   const suggestions = useSkillSuggestions();
   const [f, setF] = useState<RaiseInput>({
     projectId: project.id,
@@ -46,9 +46,9 @@ export function RequestPersonDialog({ project, prefill, onClose, onDone }: { pro
     preferredEmployeeId: prefill?.preferredEmployeeId ?? null,
     previousRequestId: prefill?.previousRequestId ?? null,
   });
+  const [picked, setPicked] = useState<AvailablePerson | null>(null);
   const [error, setError] = useState<string | null>(null);
   const set = <K extends keyof RaiseInput>(k: K, v: RaiseInput[K]) => setF((p) => ({ ...p, [k]: v }));
-  const options = useMemo(() => (people.data?.employees ?? []).map((e) => ({ id: e.id, firstName: e.firstName, lastName: e.lastName, avatarUrl: e.avatarUrl, sub: e.designation?.name ?? null })), [people.data]);
   const send = async () => {
     setError(null);
     if (f.title.trim().length < 2) return setError('Say what role you need');
@@ -106,8 +106,21 @@ export function RequestPersonDialog({ project, prefill, onClose, onDone }: { pro
         <Field label="Why do you need this person?" htmlFor="rr-reason" required hint="Your PM, Delivery Director and the PMO read this.">
           <Textarea id="rr-reason" value={f.reason} maxLength={1000} rows={3} onChange={(e) => set('reason', e.target.value)} placeholder="e.g. Checkout revamp UAT is on 15 Nov — we need one more front-end developer." />
         </Field>
-        <Field label="Preferred person (optional)" htmlFor="rr-pref" hint="They aren’t told they were asked for — only if they’re assigned.">
-          <PersonSelect id="rr-pref" people={options} value={f.preferredEmployeeId ?? ''} onChange={(v) => set('preferredEmployeeId', v || null)} emptyLabel="No preference" />
+        <Field label="Preferred person (optional)" htmlFor="rr-pref" hint="Only people with free time in your dates, most free first. They aren’t told they were asked for — only if they’re assigned.">
+          <div className="space-y-2">
+            {/* Asked for by name (e.g. "Request them back"): keep it, or pick someone free instead */}
+            {f.preferredEmployeeId && !picked && (
+              <PersonSearch id="rr-pref" value={f.preferredEmployeeId} onChange={(v) => set('preferredEmployeeId', v || null)} emptyLabel="No preference" />
+            )}
+            <PreferredPicker
+              projectId={project.id}
+              from={f.fromDate}
+              until={f.untilDate ?? null}
+              wanted={f.skills}
+              value={picked}
+              onChange={(p) => { setPicked(p); set('preferredEmployeeId', p?.employee.id ?? null); }}
+            />
+          </div>
         </Field>
         <p className="flex items-start gap-2 rounded-lg bg-info-soft px-3 py-2 text-xs text-info">
           <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />

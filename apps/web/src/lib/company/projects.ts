@@ -1,6 +1,6 @@
 'use client';
 
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAccess } from '@/lib/access/use-access';
 import { useMyCard } from '@/lib/company/profile';
@@ -317,7 +317,9 @@ export interface Planner {
   today: string;
   weeks: string[];
   people: Array<{ employee: ProjectPerson & { department: { name: string } | null }; cells: PlannerCell[]; freeNextMonth: number; nowAllocated: number; rollingOff: { project: string; endDate: string } | null }>;
-  counts: { full: number; partly: number; free: number; benchNextMonth: number };
+  /** Paging of `people`; counts, rolling off and suggestions cover everyone */
+  meta: { total: number; page: number; limit: number; totalPages: number };
+  counts: { all: number; full: number; partly: number; free: number; benchNextMonth: number };
   rollingOff: Array<{ employee: ProjectPerson; project: string; endDate: string }>;
   suggestions: Array<{ role: OpenRole & { project: { id: string; name: string; code: string } }; candidates: Array<{ employee: ProjectPerson; free: number }> }>;
 }
@@ -354,14 +356,20 @@ export interface PortfolioQuery {
   sort?: 'attention' | 'name' | 'end' | 'start';
   search?: string;
   page?: number;
+  limit?: number;
 }
 
 const clean = (q: object) => Object.fromEntries(Object.entries(q).filter(([, v]) => v !== undefined && v !== ''));
 
+/** Projects a page at a time (24 by default; the board asks for up to 100). */
 export function usePortfolio(q: PortfolioQuery, enabled = true) {
   return useQuery({
     queryKey: projectKeys.list(q),
-    queryFn: async () => (await api.get('/projects', { params: { limit: 100, ...clean(q) } })).data as { data: Array<PortfolioProject | LimitedProject>; meta: { total: number; page: number; limit: number; totalPages: number; today: string; seesAll: boolean } },
+    queryFn: async () =>
+      (await api.get('/projects', { params: { limit: 24, ...clean(q) } })).data as {
+        data: Array<PortfolioProject | LimitedProject>;
+        meta: { total: number; page: number; limit: number; totalPages: number; today: string; seesAll: boolean; health: Record<'on_track' | 'at_risk' | 'off_track', number> };
+      },
     placeholderData: keepPreviousData,
     enabled,
   });
@@ -371,12 +379,19 @@ export const useProjectPlan = (id: string | undefined) =>
   useQuery({ queryKey: projectKeys.detail(id ?? ''), queryFn: async () => unwrap<ProjectPlan | LimitedProject>(await api.get(`/projects/${id}`)), enabled: Boolean(id), retry: false });
 export const useTimeline = (q: { from?: string; months?: number }, enabled = true) =>
   useQuery({ queryKey: ['projects', 'timeline', q], queryFn: async () => unwrap<Timeline>(await api.get('/projects/timeline', { params: clean(q) })), enabled, placeholderData: keepPreviousData });
-export const usePlanner = (q: { from?: string; weeks?: number; departmentId?: string; search?: string }, enabled = true) =>
+export type PlannerShow = 'all' | 'full' | 'partly' | 'free' | 'bench';
+export const usePlanner = (q: { from?: string; weeks?: number; departmentId?: string; search?: string; show?: PlannerShow; page?: number }, enabled = true) =>
   useQuery({ queryKey: ['projects', 'planner', q], queryFn: async () => unwrap<Planner>(await api.get('/projects/planner', { params: clean(q) })), enabled, placeholderData: keepPreviousData });
-export const useAvailable = (q: { from: string; to: string; min: number; departmentId?: string } | null) =>
-  useQuery({
+/** People free enough in a window, most free first — 8 at a time ("Load more"). */
+export const useAvailable = (q: { from: string; to: string; min: number; departmentId?: string; search?: string } | null) =>
+  useInfiniteQuery({
     queryKey: ['projects', 'available', q],
-    queryFn: async () => unwrap<Array<{ employee: ProjectPerson & { department: { name: string } | null }; free: number }>>(await api.get('/projects/available', { params: clean(q ?? {}) })),
+    queryFn: async ({ pageParam }) =>
+      unwrap<{ rows: Array<{ employee: ProjectPerson & { department: { name: string } | null }; free: number }>; meta: { total: number; page: number; limit: number; totalPages: number } }>(
+        await api.get('/projects/available', { params: clean({ ...q, page: pageParam, limit: 8 }) }),
+      ),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.meta.page < last.meta.totalPages ? last.meta.page + 1 : undefined),
     enabled: Boolean(q),
   });
 export const useMyOverview = (enabled = true) => useQuery({ queryKey: ['projects', 'my-overview'], queryFn: async () => unwrap<MyOverview>(await api.get('/projects/my-overview')), enabled });

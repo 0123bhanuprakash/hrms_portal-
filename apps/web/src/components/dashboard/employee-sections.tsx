@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { BadgeCheck, CalendarX2, LifeBuoy, LogIn, LogOut, Megaphone, PackageCheck, PartyPopper, Receipt, Timer, UserRound } from 'lucide-react';
+import { BadgeCheck, BriefcaseBusiness, CalendarX2, LifeBuoy, LogIn, LogOut, Megaphone, PackageCheck, PartyPopper, Receipt, Timer, UserRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardError, CardHeader, InlineRetry, Skeleton } from '@/components/ui/feedback';
@@ -14,8 +14,9 @@ import { DayTimeline, SessionList, isWorking, liveWorked, useCheckActions } from
 import { useLeaveBalances } from '@/lib/company/leave';
 import { useTimesheets } from '@/lib/company/timesheets';
 import { useClaims } from '@/lib/company/expenses';
-import { QUEUE_INFO, useTickets } from '@/lib/company/helpdesk';
+import { useTickets } from '@/lib/company/helpdesk';
 import { useMyAssets } from '@/lib/company/assets';
+import { useExperienceReviews } from '@/lib/company/resources';
 import { HOME_ANNOUNCEMENTS, useAnnouncements } from '@/lib/company/engagement';
 import type { MyCard } from '@/lib/company/profile';
 import { formatDate } from '@/lib/format';
@@ -180,8 +181,10 @@ export function BalancesCard() {
 
 /** Everything waiting on the person, collected from each module they use. */
 export function useNeedsAction(me: MyCard | undefined) {
-  const { can, hasFeature } = useAccess();
+  const { can, hasFeature, scopeOf } = useAccess();
   const month = thisMonth();
+  // HR: experience before joining that people entered and nobody has verified
+  const experience = useExperienceReviews(hasFeature('people.directory') && can('employee.edit') && scopeOf('employee.edit') !== 'own');
   const sheets = useTimesheets({ view: 'mine', status: 'REJECTED', limit: 3 }, hasFeature('work.timesheets') && can('timesheet.submit'));
   const claims = useClaims({ view: 'mine', status: 'REJECTED', limit: 3 }, can('expense.submit'));
   const tickets = useTickets({ view: 'mine', status: 'WAITING', limit: 3 }, can('ticket.view'));
@@ -194,10 +197,11 @@ export function useNeedsAction(me: MyCard | undefined) {
   const rows: React.ReactNode[] = [];
   for (const s of sheets.data?.data ?? []) rows.push(<ActionRow key={`ts-${s.id}`} tone="danger" icon={<Timer />} title="Time sent back" detail={`Week of ${formatDate(s.weekStart)}${s.decisionNote ? ` · “${s.decisionNote}”` : ''}`} href={`/app/timesheets?week=${s.weekStart}`} cta="Fix" />);
   for (const c of claims.data?.data ?? []) rows.push(<ActionRow key={`ex-${c.id}`} tone="danger" icon={<Receipt />} title="Expense claim sent back" detail={c.title} href={`/app/expenses/${c.id}`} cta="Fix" />);
-  for (const t of tickets.data?.data ?? []) rows.push(<ActionRow key={`tk-${t.id}`} tone="warning" icon={<LifeBuoy />} title={`${QUEUE_INFO[t.queue].label} needs more information`} detail={`#${t.number} · ${t.subject}`} href={`/app/helpdesk/${t.id}`} cta="Reply" />);
+  for (const t of tickets.data?.data ?? []) rows.push(<ActionRow key={`tk-${t.id}`} tone="warning" icon={<LifeBuoy />} title={`${t.queueLabel} needs more information`} detail={`#${t.number} · ${t.subject}`} href={`/app/helpdesk/${t.id}`} cta="Reply" />);
   for (const a of (assets.data?.current ?? []).filter((x) => !x.acknowledgedAt)) rows.push(<ActionRow key={`as-${a.id}`} tone="info" icon={<PackageCheck />} title={`Confirm you received ${a.asset.tag}`} detail={a.asset.name} href="/app/assets/mine" cta="Confirm" />);
   for (const d of (cal.data?.days ?? []).filter((x) => x.status === 'MISSING_CHECKOUT' && !x.correction).slice(-2)) rows.push(<ActionRow key={`mc-${d.date}`} tone="warning" icon={<CalendarX2 />} title="Missed check-out" detail={formatDate(d.date)} href="/app/attendance" cta="Fix" />);
   for (const a of (acks.data?.data ?? []).filter((x) => x.requiresAck && !x.acknowledgedAt)) rows.push(<ActionRow key={`an-${a.id}`} tone="neutral" icon={<Megaphone />} title="Confirm you’ve read an announcement" detail={a.title} href={`/app/announcements/${a.id}`} cta="Read" />);
+  for (const x of experience.data?.rows ?? []) rows.push(<ActionRow key={`xp-${x.id}`} tone="info" icon={<BriefcaseBusiness />} title="Verify previous experience" detail={`${x.firstName} ${x.lastName} · ${x.priorExperiencePendingMonths < 12 ? `${x.priorExperiencePendingMonths} mo` : `${Math.round(x.priorExperiencePendingMonths / 1.2) / 10} yrs`} before joining`} href={`/app/employees/${x.id}?tab=projects`} cta="Verify" />);
   if (me?.completion && me.completion.percent < 100) {
     const next = me.completion.items.find((i) => !i.done);
     rows.push(
@@ -215,7 +219,7 @@ export function useNeedsAction(me: MyCard | undefined) {
 
   const loading = sheets.isLoading || claims.isLoading || tickets.isLoading || acks.isLoading;
   // Some checks failed: say so rather than "all caught up"
-  const broken = [sheets, claims, tickets, assets, latest, acks, cal].filter((q) => q.isLoadingError);
+  const broken = [sheets, claims, tickets, assets, latest, acks, cal, experience].filter((q) => q.isLoadingError);
   const failed = broken.length ? { error: broken[0]!.error, refetch: () => Promise.all(broken.map((q) => q.refetch())) } : null;
   return { rows, loading, failed };
 }

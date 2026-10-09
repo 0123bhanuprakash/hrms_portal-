@@ -12,20 +12,18 @@ import { Input, inputClass } from '@/components/ui/field';
 import { PersonAvatar } from '@/components/profile/person-avatar';
 import { QueuePreview, PREVIEW_REPLY_ID } from '@/components/helpdesk/queue-preview';
 import { QueueBoard } from '@/components/helpdesk/queue-board';
-import { QUEUE_EMOJI, targetUse } from '@/components/helpdesk/ticket-visuals';
+import { targetUse } from '@/components/helpdesk/ticket-visuals';
 import { useAccess } from '@/lib/access/use-access';
 import { useUiState } from '@/lib/preferences/ui-state';
 import {
   PRIORITY,
-  QUEUES,
-  QUEUE_INFO,
   STATUS,
   suggestAssignee,
   useAssignTicket,
   useBulkTickets,
   useHelpdeskSummary,
   useHelpdeskTeams,
-  useMyQueues,
+  useHelpdeskQueues,
   useTickets,
   type HelpdeskTeam,
   type Priority,
@@ -63,7 +61,8 @@ const isViews = (v: unknown): v is SavedView[] => Array.isArray(v) && v.every((x
 export default function TicketQueuePage() {
   const router = useRouter();
   const { hasFeature, isLoading: accessLoading } = useAccess();
-  const queues = useMyQueues();
+  const hq = useHelpdeskQueues();
+  const queues = hq.mine;
   const allowed = hasFeature('ops.helpdesk') && queues.length > 0;
   const [view, setView] = useState<View>('open');
   const [queue, setQueue] = useState<Queue | ''>('');
@@ -126,7 +125,7 @@ export default function TicketQueuePage() {
     return () => document.removeEventListener('keydown', onKey);
   }, [onKey]);
 
-  if (!accessLoading && !allowed) return <EmptyState icon={<ShieldCheck />} title="No access" description="You don’t work a helpdesk queue." />;
+  if (!accessLoading && !hq.loading && !allowed) return <EmptyState icon={<ShieldCheck />} title="No access" description="You don’t work a helpdesk team." />;
 
   const shown = (summary.data?.queues ?? []).filter((s) => !queue || s.queue === queue);
   const total = (k: keyof QueueSummary) => shown.reduce((n, s) => n + (Number(s[k]) || 0), 0);
@@ -144,7 +143,7 @@ export default function TicketQueuePage() {
     <div className="space-y-5">
       <PageHeader
         eyebrow="Helpdesk"
-        title={queues.length === 1 ? `${QUEUE_INFO[queues[0]!].label} tickets` : 'Ticket queue'}
+        title={queues.length === 1 ? `${hq.info(queues[0]!).label} tickets` : 'Ticket queue'}
         description="Tickets from employees, most urgent first. New ones appear live. Click a row to peek; keyboard shortcuts are listed on the right."
         action={
           <div className="flex rounded-lg border border-border p-0.5" role="radiogroup" aria-label="Layout">
@@ -187,7 +186,7 @@ export default function TicketQueuePage() {
         {queues.length > 1 && (
           <Select className={`${inputClass} w-auto`} value={queue} onChange={(e) => { setQueue(e.target.value as Queue | ''); setPage(1); }} aria-label="Team">
             <option value="">All my teams</option>
-            {queues.map((q) => <option key={q} value={q}>{QUEUE_INFO[q].label}</option>)}
+            {queues.map((q) => <option key={q} value={q}>{hq.info(q).emoji} {hq.info(q).label}{hq.info(q).archived ? ' (archived)' : ''}</option>)}
           </Select>
         )}
         <Select className={`${inputClass} w-auto`} value={priority} onChange={(e) => { setPriority(e.target.value as Priority | ''); setPage(1); }} aria-label="Priority">
@@ -316,7 +315,7 @@ function QueueRow({ t, team, focused, peeking, checked, onCheck, onPeek, onOpen 
         <p className="flex flex-wrap items-center gap-1.5 text-2xs text-muted-foreground">
           <span className="font-mono font-semibold">#{t.number}</span>
           <Badge tone={PRIORITY[t.priority].tone} className="px-1.5 py-0 text-2xs">{PRIORITY[t.priority].label}</Badge>
-          <span>{QUEUE_EMOJI[t.queue]} {QUEUE_INFO[t.queue].label}{t.category ? ` · ${t.category.icon ?? ''} ${t.category.name}` : ''}</span>
+          <span>{t.queueEmoji} {t.queueLabel}{t.category ? ` · ${t.category.icon ?? ''} ${t.category.name}` : ''}</span>
         </p>
         <p className="truncate text-sm font-medium">{t.subject}</p>
         <p className="flex items-center gap-1.5 truncate text-2xs text-muted-foreground"><PersonAvatar person={t.employee} size="xs" /> {t.employee.firstName} {t.employee.lastName}</p>
@@ -364,6 +363,7 @@ function Owner({ t, team }: { t: Ticket; team?: HelpdeskTeam }) {
 
 function BulkBar({ ids, rows, teamOf, queues, onDone }: { ids: string[]; rows: Ticket[]; teamOf: Map<Queue, HelpdeskTeam>; queues: Queue[]; onDone: () => void }) {
   const bulk = useBulkTickets();
+  const hq = useHelpdeskQueues();
   const picked = rows.filter((r) => ids.includes(r.id));
   const oneTeam = new Set(picked.map((r) => r.queue)).size === 1 ? picked[0]?.queue : undefined;
   const people = oneTeam ? (teamOf.get(oneTeam)?.members ?? []).filter((m) => m.inQueue && m.active) : [];
@@ -395,7 +395,7 @@ function BulkBar({ ids, rows, teamOf, queues, onDone }: { ids: string[]; rows: T
       </Select>
       <Select aria-label="Move selected to another team" className={cn(inputClass, 'h-8 w-auto py-0 text-xs')} value="" disabled={bulk.isPending} onChange={(e) => e.target.value && void run({ ids, action: 'move', queue: e.target.value as Queue }, 'Moved')}>
         <option value="">Move to team…</option>
-        {QUEUES.map((q) => <option key={q} value={q}>{QUEUE_INFO[q].label}{queues.includes(q) ? '' : ' (leaves your queue)'}</option>)}
+        {hq.open.map((q) => <option key={q.queue} value={q.queue}>{q.emoji} {q.label}{queues.includes(q.queue) ? '' : ' (leaves your queue)'}</option>)}
       </Select>
       <Button size="sm" variant="ghost" className="ml-auto h-8" onClick={onDone}><X /> Clear</Button>
     </div>

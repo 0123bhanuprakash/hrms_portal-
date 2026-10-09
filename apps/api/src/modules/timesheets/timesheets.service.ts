@@ -6,8 +6,8 @@ import { covering, holds, type AccessContext } from '../access/access.types';
 import { NotificationsService, dateRange } from '../notifications/notifications.service';
 import { ApprovalRouterService } from '../projects/approval-router.service';
 import { addDays, dateFromKey, isValidTimeZone, keyFromDate, localDateKey, localMinutes } from '../attendance/time-zone';
-import type { ApproveBlocksDto, BlockDto, CalendarQueryDto, ComplianceQueryDto, CopyDayDto, PickBlocksDto, RecallDto, SendBackDto, SubmitDto, TimesheetQueryDto } from './dto';
-import { wordsWhere } from '../../common/word-search';
+import type { ApproveBlocksDto, BlockDto, CalendarQueryDto, ComplianceQueryDto, CopyDayDto, PickBlocksDto, RecallDto, SendBackDto, SubmitDto, TimesheetQueryDto, TeamQueryDto } from './dto';
+import { searchWords, wordsWhere } from '../../common/word-search';
 import { pmoLeadUserIds, reportsToPmo } from '../projects/pmo-pool';
 
 const APPROVE = 'timesheet.approve';
@@ -371,12 +371,14 @@ export class TimesheetsService {
   // ─── Approving ─────────────────────────────────────────────
 
   /** People whose time I approve (or could), one row per person with day cells for the week. */
-  async team(companyId: string, access: AccessContext, weekStart: string) {
+  async team(companyId: string, access: AccessContext, q: TeamQueryDto) {
+    const { weekStart } = q;
     this.assertMonday(weekStart);
     const weekEnd = addDays(weekStart, 6);
     const { today, workingDays } = await this.companyClock(companyId);
     const ids = await this.myPeople(companyId, access, weekStart, weekEnd);
-    if (!ids.length) return { weekStart, weekEnd, today, people: [], summary: { waitingDays: 0, waitingPeople: 0, notLogged: 0, sentBack: 0, totalMinutes: 0, billableMinutes: 0 } };
+    const limit = q.limit ?? 25;
+    if (!ids.length) return { weekStart, weekEnd, today, people: [], counts: { all: 0, waiting: 0, missing: 0 }, meta: { total: 0, page: 1, limit, totalPages: 1 }, summary: { waitingDays: 0, waitingPeople: 0, notLogged: 0, sentBack: 0, totalMinutes: 0, billableMinutes: 0 } };
     const [people, blocks, leaves, holidays] = await Promise.all([
       this.prisma.employee.findMany({ where: { id: { in: ids }, companyId }, select: { ...PERSON, joiningDate: true }, orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }] }),
       this.prisma.timesheetEntry.findMany({
@@ -391,8 +393,10 @@ export class TimesheetsService {
     const mine = (b: { approverIds: string[]; decidedById: string | null; status: TimesheetStatus; employee: { userId: string } }) =>
       b.decidedById === access.userId || Boolean(this.decideAs(access, { ...b, status: TimesheetStatus.SUBMITTED }));
     const summary = { waitingDays: 0, waitingPeople: 0, notLogged: 0, sentBack: 0, totalMinutes: 0, billableMinutes: 0 };
+    const blocksOf = new Map<string, typeof blocks>();
+    for (const b of blocks) blocksOf.set(b.employeeId, [...(blocksOf.get(b.employeeId) ?? []), b]);
     const rows = people.map(({ userId: _u, joiningDate, ...p }) => {
-      const own = blocks.filter((b) => b.employeeId === p.id);
+      const own = blocksOf.get(p.id) ?? [];
       let waiting = 0;
       let missing = 0;
       const cells = days.map((d, i) => {
@@ -429,7 +433,22 @@ export class TimesheetsService {
       return { employee: p, cells, totalMinutes: total, expectedMinutes: expected, waitingDays: waiting, missingDays: missing };
     });
     rows.sort((a, b) => b.waitingDays - a.waitingDays || b.missingDays - a.missingDays);
-    return { weekStart, weekEnd, today, people: rows, summary };
+    // The summary covers everyone; the grid comes a page at a time
+    const words = searchWords(q.search).map((w) => w.toLowerCase());
+    const found = words.length ? rows.filter((r) => words.every((w) => `${r.employee.firstName} ${r.employee.lastName} ${r.employee.employeeId}`.toLowerCase().includes(w))) : rows;
+    const show = q.show ?? 'all';
+    const shown = show === 'waiting' ? found.filter((r) => r.waitingDays) : show === 'missing' ? found.filter((r) => r.missingDays) : found;
+    const totalPages = Math.max(1, Math.ceil(shown.length / limit));
+    const page = Math.min(q.page ?? 1, totalPages);
+    return {
+      weekStart,
+      weekEnd,
+      today,
+      people: shown.slice((page - 1) * limit, page * limit),
+      counts: { all: found.length, waiting: found.filter((r) => r.waitingDays).length, missing: found.filter((r) => r.missingDays).length },
+      meta: { total: shown.length, page, limit, totalPages },
+      summary,
+    };
   }
 
   async approve(companyId: string, access: AccessContext, dto: ApproveBlocksDto) {

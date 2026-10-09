@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Network, UserRound } from 'lucide-react';
-import { PersonSelect } from '@/components/ui/pickers';
+import { PersonSearch } from '@/components/people/person-search';
 import { cn } from '@/lib/cn';
 
 /**
@@ -15,14 +15,15 @@ export function ReportsTo({
   managerId,
   pmo,
   onChange,
-  people,
+  exclude,
   disabled,
 }: {
   id: string;
   managerId: string;
   pmo: boolean;
   onChange: (v: { managerId: string; pmo: boolean }) => void;
-  people: Array<{ id: string; firstName: string; lastName: string; avatarUrl: string | null; sub?: string | null }>;
+  /** The person being edited (can't report to themselves) */
+  exclude?: string;
   disabled?: boolean;
 }) {
   return (
@@ -47,7 +48,7 @@ export function ReportsTo({
           They join the <b>PMO pool</b>: the PMO assigns their projects, and the <b>PMO lead</b> approves their leave, attendance corrections and timesheets.
         </p>
       ) : (
-        <PersonSelect id={id} value={managerId} onChange={(v) => onChange({ managerId: v, pmo: false })} disabled={disabled} emptyLabel="— Nobody (top of the organisation)" people={people} />
+        <PersonSearch id={id} value={managerId} onChange={(v) => onChange({ managerId: v, pmo: false })} disabled={disabled} emptyLabel="— Nobody (top of the organisation)" exclude={exclude} />
       )}
     </div>
   );

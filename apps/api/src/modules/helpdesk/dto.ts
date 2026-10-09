@@ -1,6 +1,7 @@
 import { Transform, Type } from 'class-transformer';
 import { ArrayMaxSize, ArrayMinSize, ArrayUnique, IsArray, IsBoolean, IsEnum, IsIn, IsInt, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min, MinLength, ValidateIf, ValidateNested } from 'class-validator';
-import { TicketPriority, TicketQueue, TicketStatus } from '@prisma/client';
+import { TicketPriority, TicketStatus } from '@prisma/client';
+import { QUEUE_KEY } from './sla';
 
 const trim = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value);
 const blankToNull = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() || null : value);
@@ -24,7 +25,7 @@ export class TopicQuestionDto {
 }
 
 export class SaveCategoryDto {
-  @IsEnum(TicketQueue) queue!: TicketQueue;
+  @Matches(QUEUE_KEY, { message: 'Pick a helpdesk team' }) queue!: string;
   @Transform(trim) @IsString() @MinLength(2) @MaxLength(60) name!: string;
   @IsOptional() @IsBoolean() isActive?: boolean;
   @IsOptional() @IsInt() @Min(0) @Max(1000) sortOrder?: number;
@@ -39,7 +40,7 @@ export class SaveCategoryDto {
 }
 
 export class ReorderCategoriesDto {
-  @IsEnum(TicketQueue) queue!: TicketQueue;
+  @Matches(QUEUE_KEY, { message: 'Pick a helpdesk team' }) queue!: string;
   @IsArray() @ArrayMinSize(1) @ArrayMaxSize(100) @ArrayUnique() @IsUUID('all', { each: true }) ids!: string[];
 }
 
@@ -49,7 +50,7 @@ export class AnswersQueryDto {
 
 /** Sent as multipart (optional `file`) */
 export class CreateTicketDto {
-  @IsEnum(TicketQueue) queue!: TicketQueue;
+  @Matches(QUEUE_KEY, { message: 'Pick a helpdesk team' }) queue!: string;
   @IsOptional() @Transform(blankToNull) @IsUUID() categoryId?: string | null;
   @Transform(trim) @IsString() @MinLength(5) @MaxLength(150) subject!: string;
   @Transform(trim) @IsString() @MinLength(10) @MaxLength(5000) description!: string;
@@ -62,7 +63,7 @@ export class CreateTicketDto {
 export class TicketQueryDto {
   /** mine = tickets I raised; queue = tickets in queues I work */
   @IsIn(['mine', 'queue']) view!: 'mine' | 'queue';
-  @IsOptional() @IsEnum(TicketQueue) queue?: TicketQueue;
+  @IsOptional() @Matches(QUEUE_KEY, { message: 'Pick a helpdesk team' }) queue?: string;
   /** A status, or "active" (open / in progress / waiting) */
   @IsOptional() @IsIn([...Object.values(TicketStatus), 'active']) status?: TicketStatus | 'active';
   /** "me", "unassigned" or a user id */
@@ -92,7 +93,7 @@ export class UpdateTicketDto {
   @IsOptional() @IsEnum(TicketPriority) priority?: TicketPriority;
   @IsOptional() @Transform(blankToNull) @IsUUID() categoryId?: string | null;
   /** Move to another team's queue (clears the assignee) */
-  @IsOptional() @IsEnum(TicketQueue) queue?: TicketQueue;
+  @IsOptional() @Matches(QUEUE_KEY, { message: 'Pick a helpdesk team' }) queue?: string;
 }
 
 export class ResolveDto {
@@ -112,10 +113,27 @@ export class SummaryQueryDto {
   @IsOptional() @Type(() => Number) @IsInt() @Min(7) @Max(365) days?: number;
 }
 
+export class CreateTeamDto {
+  @Transform(trim) @IsString() @MinLength(2) @MaxLength(40) label!: string;
+  /** One emoji */
+  @IsOptional() @Transform(blankToNull) @IsString() @MaxLength(16) emoji?: string | null;
+  /** What it helps with, shown on "Raise a ticket" */
+  @IsOptional() @Transform(blankToNull) @IsString() @MaxLength(120) description?: string | null;
+  @IsOptional() @IsArray() @ArrayMaxSize(200) @IsUUID('all', { each: true }) memberIds?: string[];
+}
+
+/** Every field optional: only what is sent changes. Name, emoji, description, members and archived are for company-made teams. */
 export class SaveTeamDto {
-  /** null = no head (anyone in the queue takes tickets) */
+  /** null = no head (anyone in the team takes tickets) */
   @IsOptional() @IsUUID() headId?: string | null;
   @IsOptional() @IsUUID() backupId?: string | null;
+  @IsOptional() @Transform(trim) @IsString() @MinLength(2) @MaxLength(40) label?: string;
+  @IsOptional() @Transform(blankToNull) @IsString() @MaxLength(16) emoji?: string | null;
+  @IsOptional() @Transform(blankToNull) @IsString() @MaxLength(120) description?: string | null;
+  @IsOptional() @IsArray() @ArrayMaxSize(200) @IsUUID('all', { each: true }) memberIds?: string[];
+  @IsOptional() @IsBoolean() archived?: boolean;
+  /** Archive even with open tickets (they can still be finished) */
+  @IsOptional() @IsBoolean() force?: boolean;
 }
 
 /** Queue → tick several tickets → one action. Each ticket goes through the same checks as on its own. */
@@ -125,5 +143,5 @@ export class BulkTicketsDto {
   /** assign: a person in the queue, or null to unassign */
   @ValidateIf((d: BulkTicketsDto) => d.action === 'assign') @IsOptional() @IsUUID() assigneeId?: string | null;
   @ValidateIf((d: BulkTicketsDto) => d.action === 'priority') @IsEnum(TicketPriority) priority?: TicketPriority;
-  @ValidateIf((d: BulkTicketsDto) => d.action === 'move') @IsEnum(TicketQueue) queue?: TicketQueue;
+  @ValidateIf((d: BulkTicketsDto) => d.action === 'move') @Matches(QUEUE_KEY, { message: 'Pick a helpdesk team' }) queue?: string;
 }

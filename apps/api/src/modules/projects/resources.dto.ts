@@ -70,11 +70,41 @@ export class ReleaseDecisionDto {
   @IsOptional() @Transform(blankToNull) @IsString() @MaxLength(1000) note?: string | null;
 }
 
+/** PMO pool: search, quick filter and pages (24 cards = 8 rows of 3). */
+export class PoolQueryDto {
+  @IsOptional() @Transform(trim) @IsString() @MaxLength(100) search?: string;
+  @IsOptional() @IsIn(['all', 'free', 'pmo']) show?: 'all' | 'free' | 'pmo';
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit?: number;
+}
+
 export class RequestListQueryDto {
   @IsOptional() @IsIn(['waiting', 'hold', 'mine', 'done', 'all']) view?: 'waiting' | 'hold' | 'mine' | 'done' | 'all';
   @IsOptional() @IsUUID() projectId?: string;
   @IsOptional() @IsIn(['REQUEST', 'RELEASE']) kind?: 'REQUEST' | 'RELEASE';
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit?: number;
+}
+
+/**
+ * Raise a request → "Preferred person": who is free in the window. skills =
+ * comma list the person must all have; wanted = the request's skills (only
+ * for "matches" highlighting). Experience in years (before joining + here).
+ */
+export class AvailablePeopleQueryDto {
+  @IsUUID() projectId!: string;
+  @IsOptional() @Matches(DATE) from?: string;
+  @IsOptional() @Matches(DATE) until?: string;
+  @IsOptional() @Transform(trim) @IsString() @MaxLength(80) search?: string;
+  @IsOptional() @IsUUID() departmentId?: string;
+  @IsOptional() @IsUUID() designationId?: string;
+  @IsOptional() @Transform(trim) @IsString() @MaxLength(400) skills?: string;
+  @IsOptional() @Transform(trim) @IsString() @MaxLength(400) wanted?: string;
+  /** At least this % free in the window (default: any free time) */
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) minFree?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(60) minYears?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(60) maxYears?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(50) limit?: number;
 }
 
 export class CandidatesQueryDto {

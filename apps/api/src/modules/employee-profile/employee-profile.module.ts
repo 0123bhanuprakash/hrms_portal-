@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.module';
-import { EmployeeDocumentsController, EmployeeProfileController } from './employee-profile.controller';
+import { EmployeeDocumentsController, EmployeeProfileController, ExperienceReviewsController } from './employee-profile.controller';
+import { ExperienceService } from './experience.service';
 import { PeopleController } from './people.controller';
 import { PiiCryptoService } from './pii-crypto.service';
 import { PrivateFilesService } from './private-files.service';
@@ -11,8 +12,8 @@ import { PeopleService } from './people.service';
 /** Self-service profile, private data (encrypted), documents, directory and spotlight. */
 @Module({
   imports: [PrismaModule],
-  controllers: [EmployeeProfileController, EmployeeDocumentsController, PeopleController],
-  providers: [PiiCryptoService, PrivateFilesService, ProfileService, DocumentsService, PeopleService],
+  controllers: [EmployeeProfileController, EmployeeDocumentsController, PeopleController, ExperienceReviewsController],
+  providers: [PiiCryptoService, PrivateFilesService, ProfileService, DocumentsService, PeopleService, ExperienceService],
   exports: [PiiCryptoService, PrivateFilesService],
 })
 export class EmployeeProfileModule {}

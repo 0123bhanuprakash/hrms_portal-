@@ -140,6 +140,7 @@ export const resKeys = {
   pool: ['resources', 'pool'] as const,
   history: (employeeId: string) => ['resources', 'history', employeeId] as const,
   skills: ['resources', 'skills'] as const,
+  available: (q: object) => ['resources', 'available', q] as const,
 };
 
 const unwrap = <T,>(r: { data: { data: T } }) => r.data.data;
@@ -184,12 +185,98 @@ export function useCandidates(id: string | null, search: string, enabled = true)
   });
 }
 
-export function usePmoPool(enabled = true) {
-  return useQuery({ queryKey: resKeys.pool, queryFn: async () => unwrap<{ today: string; counts: { people: number; fullyFree: number; reportsToPmo: number; waitingRequests: number }; data: PoolPerson[] }>(await api.get('/resources/pool')), enabled });
+export type PoolShow = 'all' | 'free' | 'pmo';
+/** The pool a page at a time; `counts` always cover the whole pool. */
+export function usePmoPool(q: { search?: string; show?: PoolShow; page?: number }, enabled = true) {
+  return useQuery({
+    queryKey: [...resKeys.pool, q],
+    queryFn: async () =>
+      unwrap<{ today: string; counts: { people: number; fullyFree: number; reportsToPmo: number; waitingRequests: number }; data: PoolPerson[]; meta: { total: number; page: number; limit: number; totalPages: number } }>(
+        await api.get('/resources/pool', { params: Object.fromEntries(Object.entries(q).filter(([, v]) => v !== undefined && v !== '')) }),
+      ),
+    enabled,
+    placeholderData: keepPreviousData,
+  });
 }
 
 export function useAssignmentHistory(employeeId: string | null, enabled = true) {
-  return useQuery({ queryKey: resKeys.history(employeeId ?? ''), queryFn: async () => unwrap<{ person: { firstName: string; lastName: string; designation: string | null } | null; skills: string[]; data: HistoryEntry[]; requestBackFrom: string[] }>(await api.get(`/resources/history/${employeeId}`)), enabled: Boolean(employeeId) && enabled, retry: false });
+  return useQuery({ queryKey: resKeys.history(employeeId ?? ''), queryFn: async () => unwrap<{ person: { firstName: string; lastName: string; designation: string | null } | null; skills: string[]; experience: ExperienceState | null; data: HistoryEntry[]; requestBackFrom: string[] }>(await api.get(`/resources/history/${employeeId}`)), enabled: Boolean(employeeId) && enabled, retry: false });
+}
+
+/** Experience before joining: the approved value (counts everywhere) and what waits for HR. */
+export interface ExperienceState {
+  priorMonths: number | null;
+  /** Entered by the person, not verified yet */
+  pendingMonths: number | null;
+  submittedAt: string | null;
+  verifiedAt: string | null;
+  joiningDate: string;
+}
+const useExperienceMutation = <V,>(fn: (v: V) => Promise<unknown>) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['resources', 'history'] });
+      void qc.invalidateQueries({ queryKey: ['experience-reviews'] });
+      void qc.invalidateQueries({ queryKey: ['resources', 'available'] });
+    },
+  });
+};
+export const useApproveExperience = () => useExperienceMutation((employeeId: string) => api.post(`/employees/${employeeId}/experience/approve`));
+export const useRejectExperience = () => useExperienceMutation(({ employeeId, reason }: { employeeId: string; reason: string }) => api.post(`/employees/${employeeId}/experience/reject`, { reason }));
+/** HR: experience people entered that waits for verification (Home → Needs your action). */
+export function useExperienceReviews(enabled = true) {
+  return useQuery({
+    queryKey: ['experience-reviews'],
+    queryFn: async () => unwrap<{ total: number; rows: Array<{ id: string; firstName: string; lastName: string; avatarUrl: string | null; priorExperienceMonths: number | null; priorExperiencePendingMonths: number; priorExperienceSubmittedAt: string }> }>(await api.get('/experience-reviews')),
+    enabled,
+    staleTime: 60_000,
+  });
+}
+
+/** Someone free for a request (Raise a request → Preferred person). */
+export interface AvailablePerson {
+  employee: ResFace & { employeeId: string; designation: { id: string; name: string } | null; department: { id: string; name: string } | null };
+  /** % of their week free in the window */
+  free: number;
+  /** Before joining + time here, in years (one decimal) */
+  experienceYears: number;
+  /** false = experience before joining not given (only time here counted) */
+  experienceComplete: boolean;
+  skills: string[];
+  /** Skills that match the request / the project's tech stack */
+  matchedSkills: string[];
+  projects: Array<{ name: string; code: string; allocation: number }>;
+}
+export interface AvailableQuery {
+  projectId: string;
+  from?: string;
+  until?: string | null;
+  search?: string;
+  departmentId?: string;
+  designationId?: string;
+  /** Must have all of these (comma list) */
+  skills?: string;
+  /** The request's skills, to mark matches */
+  wanted?: string;
+  minFree?: number;
+  minYears?: number;
+  maxYears?: number;
+  page?: number;
+  limit?: number;
+}
+type Facet = { id: string; name: string; count: number };
+export function useAvailablePeople(q: AvailableQuery, enabled = true) {
+  return useQuery({
+    queryKey: resKeys.available(q),
+    queryFn: async () =>
+      unwrap<{ window: { from: string; until: string | null }; rows: AvailablePerson[]; meta: { total: number; page: number; limit: number; totalPages: number; facets: { departments: Facet[]; roles: Facet[]; skills: Facet[] } } }>(
+        await api.get('/resources/available-people', { params: Object.fromEntries(Object.entries(q).filter(([, v]) => v !== undefined && v !== null && v !== '')) }),
+      ),
+    enabled,
+    placeholderData: keepPreviousData,
+  });
 }
 
 export function useSkillSuggestions(enabled = true) {
@@ -240,11 +327,15 @@ export const useSetTechStack = () => useResMutation(({ projectId, techStack }: {
 export function useSetSkills() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ employeeId, skills }: { employeeId: string; skills: string[] }) => api.put(`/employees/${employeeId}/skills`, { skills }).then(unwrap<{ skills: string[] }>),
+    mutationFn: ({ employeeId, ...body }: { employeeId: string; skills: string[]; priorExperienceMonths?: number | null }) => api.put(`/employees/${employeeId}/skills`, body).then(unwrap<{ skills: string[]; experience?: unknown }>),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['employee'] });
       void qc.invalidateQueries({ queryKey: ['people'] });
       void qc.invalidateQueries({ queryKey: resKeys.skills });
+      // The profile's skills card and the request matches read them from here
+      void qc.invalidateQueries({ queryKey: ['resources', 'history'] });
+      void qc.invalidateQueries({ queryKey: ['resources', 'available'] });
+      void qc.invalidateQueries({ queryKey: ['experience-reviews'] });
     },
   });
 }

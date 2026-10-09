@@ -9,15 +9,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, EmptyState, ErrorState, Pagination, Skeleton, Tabs } from '@/components/ui/feedback';
 import { PersonAvatar } from '@/components/profile/person-avatar';
-import { Journey, QUEUE_EMOJI, TargetRing, replyTime } from '@/components/helpdesk/ticket-visuals';
+import { Journey, TargetRing, replyTime } from '@/components/helpdesk/ticket-visuals';
 import { useAccess } from '@/lib/access/use-access';
 import { useMyCard } from '@/lib/company/profile';
 import {
   PRIORITY,
-  QUEUES,
-  QUEUE_INFO,
   dueText,
   useHelpdeskDirectory,
+  useHelpdeskQueues,
   useQuickAnswers,
   useTicketCategories,
   useTickets,
@@ -91,7 +90,7 @@ export default function MyTicketsPage() {
               <h2 className="flex items-center gap-1.5 text-sm font-semibold"><CheckCircle2 className="h-4 w-4 text-success" /> Solved — fixed?</h2>
               {solved.data!.data.map((t) => (
                 <Link key={t.id} href={`/app/helpdesk/${t.id}`} className="flex items-start gap-2 rounded-md p-1.5 text-sm hover:bg-subtle">
-                  <span aria-hidden>{QUEUE_EMOJI[t.queue]}</span>
+                  <span aria-hidden>{t.queueEmoji}</span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium">#{t.number} {t.subject}</span>
                     <span className="text-xs text-muted-foreground">{t.assignee ? `${t.assignee.firstName} solved it` : 'Solved'} {t.resolvedAt && formatRelative(t.resolvedAt)}</span>
@@ -113,13 +112,14 @@ export default function MyTicketsPage() {
   );
 }
 
-/** "Hi Amit, how can we help?" — popular topics, quick answers while typing, and the four teams in one row. */
+/** "Hi Amit, how can we help?" — popular topics, quick answers while typing, and the teams to ask. */
 function AskHero() {
   const firstName = useAuthStore((s) => s.user?.firstName);
   const directory = useHelpdeskDirectory();
   const topics = useTicketCategories(false);
+  const queues = useHelpdeskQueues();
   // Popular topics: the first two of each team (their order is set by the team), never "Other"
-  const popular = QUEUES.flatMap((qq) => (topics.data ?? []).filter((c) => c.queue === qq && c.name !== 'Other').slice(0, 2));
+  const popular = queues.open.map((x) => x.queue).flatMap((qq) => (topics.data ?? []).filter((c) => c.queue === qq && c.name !== 'Other').slice(0, 2));
   const [text, setText] = useState('');
   const [q, setQ] = useState('');
   useEffect(() => {
@@ -173,7 +173,7 @@ function AskHero() {
             <div className="space-y-2 animate-fade-up" aria-live="polite">
               {hits.topics.map((t) => (
                 <div key={t.id} className="rounded-xl border border-border bg-background p-3 text-sm">
-                  <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><BookOpen className="h-3.5 w-3.5" /> Quick answer · {QUEUE_INFO[t.queue].label} · {t.icon} {t.name}</p>
+                  <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><BookOpen className="h-3.5 w-3.5" /> Quick answer · {queues.info(t.queue).label} · {t.icon} {t.name}</p>
                   <p className="mt-1 whitespace-pre-wrap">{t.quickAnswer}</p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {thanked === t.id ? (
@@ -202,10 +202,10 @@ function AskHero() {
         <div className="grid grid-cols-2 gap-2 pt-1 md:grid-cols-4">
           {(directory.data ?? []).map((d) => (
             <Link key={d.queue} href={raiseHref(d.queue)} className="emo-host m-lift group flex items-center gap-3 rounded-xl border border-border bg-background/70 p-3 hover:border-primary/40">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-xl"><Emoji e={QUEUE_EMOJI[d.queue]} /></span>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-xl"><Emoji e={queues.info(d.queue).emoji} /></span>
               <span className="min-w-0">
                 <span className="block text-sm font-semibold">{d.label}</span>
-                <span className="block truncate text-2xs text-muted-foreground">{replyTime(d.typicalReplyMinutes) ? `Usually replies in ${replyTime(d.typicalReplyMinutes)}` : QUEUE_INFO[d.queue].text}</span>
+                <span className="block truncate text-2xs text-muted-foreground">{replyTime(d.typicalReplyMinutes) ? `Usually replies in ${replyTime(d.typicalReplyMinutes)}` : queues.info(d.queue).text}</span>
                 {d.head && <span className="flex items-center gap-1 text-2xs text-muted-foreground"><span className="h-1.5 w-1.5 rounded-full bg-success" /> {d.head.firstName} leads</span>}
               </span>
               <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
@@ -230,7 +230,7 @@ function TicketCard({ t }: { t: Ticket }) {
           <div className="min-w-0 flex-1">
             <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
               <span className="font-mono font-semibold">#{t.number}</span>
-              <span>{QUEUE_EMOJI[t.queue]} {QUEUE_INFO[t.queue].label}</span>
+              <span>{t.queueEmoji} {t.queueLabel}</span>
               {t.category && <span>· {t.category.icon} {t.category.name}</span>}
               {(t.priority === 'HIGH' || t.priority === 'URGENT') && <Badge tone={PRIORITY[t.priority].tone} className="px-1.5 py-0 text-2xs">{PRIORITY[t.priority].label}</Badge>}
             </p>

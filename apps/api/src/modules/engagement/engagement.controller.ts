@@ -7,7 +7,7 @@ import { AnnouncementsService } from './announcements.service';
 import { KudosService } from './kudos.service';
 import { CelebrationsService } from './celebrations.service';
 import { Live, NoLive } from '../realtime/live.decorator';
-import { SeenDto, AnnouncementAudienceDto, AnnouncementQueryDto, AnnouncementReactDto, GiveKudosDto, KudosHintDto, KudosInsightsQueryDto, KudosQueryDto, ReactDto, RsvpDto, SaveAnnouncementDto, SaveKudosValueDto, SendWishDto } from './dto';
+import { SeenDto, AnnouncementAudienceDto, AnnouncementQueryDto, AnnouncementReactDto, GiveKudosDto, KudosHintDto, KudosInsightsQueryDto, KudosQueryDto, ReactDto, RsvpDto, SaveAnnouncementDto, SaveKudosValueDto, SendWishDto, ReportQueryDto } from './dto';
 
 @RequireFeature('engage.announcements')
 @Live('announcements', 'company')
@@ -82,8 +82,8 @@ export class AnnouncementsController {
 
   @RequirePermission('announcement.view')
   @Get(':id/report')
-  report(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Param('id', ParseUUIDPipe) id: string) {
-    return this.announcements.report(ctx.companyId!, access, id);
+  report(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Param('id', ParseUUIDPipe) id: string, @Query() q: ReportQueryDto) {
+    return this.announcements.report(ctx.companyId!, access, id, q);
   }
 
   @RequirePermission('announcement.view')

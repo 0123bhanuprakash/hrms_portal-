@@ -6,10 +6,10 @@ import { Mail, Pencil, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Field, Input, inputClass, FormError } from '@/components/ui/field';
 import { Drawer } from '@/components/ui/modal';
-import { useCreateEmployee, useDepartments, useDesignations, useLocations, useUpdateEmployee, type Employee, usePeoplePicker } from '@/lib/company/org';
+import { useCreateEmployee, useDepartments, useDesignations, useLocations, useUpdateEmployee, type Employee } from '@/lib/company/org';
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatDate } from '@/lib/format';
-import { DateInput, PersonSelect, Select } from '@/components/ui/pickers';
+import { DateInput, Select } from '@/components/ui/pickers';
 import { ReportsTo } from '@/components/employees/reports-to';
 
 const label = (s: string) => s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, ' ');
@@ -47,7 +47,6 @@ export function EmployeeDrawer({
   const departments = useDepartments();
   const designations = useDesignations();
   const locations = useLocations();
-  const chart = usePeoplePicker();
   const [form, setForm] = useState<Form | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,7 +72,6 @@ export function EmployeeDrawer({
   const isAdd = state.mode === 'add';
   const busy = create.isPending || update.isPending;
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm({ ...form, [k]: v });
-  const managers = (chart.data?.employees ?? []).filter((x) => isAdd || x.id !== (state as { employee: Employee }).employee.id);
 
   const submit = async (ev: React.FormEvent) => {
     ev.preventDefault();
@@ -151,7 +149,7 @@ export function EmployeeDrawer({
           </Field>
         </div>
         <Field label="Reports to" htmlFor="e-mgr" hint="A person (decides who sees them under “direct / all reports” access) — or the PMO.">
-          <ReportsTo id="e-mgr" managerId={form.reportingManagerId} pmo={form.reportsToPmo} disabled={lock} onChange={(v) => setForm((f) => (f ? { ...f, reportingManagerId: v.managerId, reportsToPmo: v.pmo } : f))} people={managers.map((m) => ({ ...m, sub: m.designation?.name ?? null }))} />
+          <ReportsTo id="e-mgr" managerId={form.reportingManagerId} pmo={form.reportsToPmo} disabled={lock} onChange={(v) => setForm((f) => (f ? { ...f, reportingManagerId: v.managerId, reportsToPmo: v.pmo } : f))} exclude={isAdd ? undefined : (state as { employee: Employee }).employee.id} />
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Location" htmlFor="e-loc">

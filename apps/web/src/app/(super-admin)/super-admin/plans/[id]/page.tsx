@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { AlertTriangle, Archive, ArchiveRestore, ArrowLeft, Copy, History, Layers, Lock, Search, Users, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, ErrorState, Skeleton } from '@/components/ui/feedback';
+import { Card, ErrorState, Pagination, Skeleton } from '@/components/ui/feedback';
 import { Field, Input, Textarea, inputClass } from '@/components/ui/field';
 import { DropdownMenu } from '@/components/ui/dropdown-menu';
 import { Modal } from '@/components/ui/modal';
@@ -400,7 +400,8 @@ function FeatureRow({
 }
 
 function CompaniesTab({ planId, planKey, limit }: { planId: string; planKey: string; limit: number | null }) {
-  const list = useCompanies({ plan: planKey, limit: 100, sortBy: 'name', sortOrder: 'asc' });
+  const [page, setPage] = useState(1);
+  const list = useCompanies({ plan: planKey, page, limit: 25, sortBy: 'name', sortOrder: 'asc' });
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const rows = list.data?.data ?? [];
   const all = rows.length > 0 && rows.every((r) => selected.has(r.id));
@@ -411,7 +412,7 @@ function CompaniesTab({ planId, planKey, limit }: { planId: string; planKey: str
       <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" className="h-4 w-4 accent-[hsl(var(--primary))]" checked={all} onChange={() => setSelected(all ? new Set() : new Set(rows.map((r) => r.id)))} aria-label="Select all" />
-          {selected.size ? `${selected.size} selected` : `${rows.length} compan${rows.length === 1 ? 'y' : 'ies'}`}
+          {selected.size ? `${selected.size} selected` : `${list.data?.meta.total ?? rows.length} compan${(list.data?.meta.total ?? rows.length) === 1 ? 'y' : 'ies'}`}
         </label>
         <span className="flex-1" />
         {selected.size > 0 && <MovePlanMenu companyIds={[...selected]} currentPlanId={planId} label="Move to plan" onDone={() => setSelected(new Set())} />}
@@ -444,6 +445,7 @@ function CompaniesTab({ planId, planKey, limit }: { planId: string; planKey: str
           );
         })}
       </ul>
+      {list.data && <Pagination page={list.data.meta.page} totalPages={list.data.meta.totalPages} total={list.data.meta.total} limit={list.data.meta.limit} onPageChange={(p) => { setPage(p); setSelected(new Set()); }} />}
     </Card>
   );
 }

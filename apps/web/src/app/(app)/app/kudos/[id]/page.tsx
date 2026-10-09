@@ -24,16 +24,16 @@ export default function KudosDetailPage() {
 
   const back = (
     <Button variant="ghost" size="sm" asChild>
-      <Link href="/app/kudos"><ArrowLeft /> Kudos</Link>
+      <Link href="/app/kudos"><ArrowLeft /> Shout-outs</Link>
     </Button>
   );
-  if (!accessLoading && !(hasFeature('engage.kudos') && can('kudos.view'))) return <EmptyState icon={<ShieldCheck />} title="Kudos aren’t available" />;
+  if (!accessLoading && !(hasFeature('engage.kudos') && can('kudos.view'))) return <EmptyState icon={<ShieldCheck />} title="Shout-outs aren’t available" />;
   if (q.isLoading || accessLoading || leaving) return <Skeleton className="h-64 w-full" />;
   if (q.isError) {
     const status = (q.error as { response?: { status?: number } })?.response?.status;
     return status === 404
-      ? <EmptyState icon={<SearchX />} title="Kudos not found" description="It may have been removed." action={back} />
-      : <ErrorState message={getApiErrorMessage(q.error, 'Could not load this kudos')} onRetry={() => q.refetch()} />;
+      ? <EmptyState icon={<SearchX />} title="Shout-out not found" description="It may have been removed." action={back} />
+      : <ErrorState message={getApiErrorMessage(q.error, 'Could not load this shout-out')} onRetry={() => q.refetch()} />;
   }
   const k = q.data!;
   const others = (more.data?.data ?? []).filter((x) => x.id !== k.id).slice(0, 3);
@@ -47,7 +47,7 @@ export default function KudosDetailPage() {
         }} />
       {first && others.length > 0 && (
         <Card>
-          <CardHeader icon={<Heart />} title={`More kudos for ${first.firstName}`} />
+          <CardHeader icon={<Heart />} title={`More shout-outs for ${first.firstName}`} />
           <ul className="space-y-2 px-3 pb-3">
             {others.map((x) => (
               <li key={x.id}>

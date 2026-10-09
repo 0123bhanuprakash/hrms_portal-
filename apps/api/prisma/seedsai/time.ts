@@ -60,8 +60,8 @@ export async function seedTime(ctx: Ctx) {
     { code: 'EL', name: 'Earned Leave', category: 'EARNED', color: '#10B981', accrual: 'MONTHLY', annualQuota: 18, carryForward: true, maxCarryForward: 30, minNoticeDays: 7, blockDuringProbation: true, sandwichRule: true, sortOrder: 30, description: 'Planned vacations. Builds up monthly; up to 30 unused days carry forward.' },
     { code: 'WFH', name: 'Work From Home', category: 'WORK_FROM_HOME', color: '#8B5CF6', accrual: 'NONE', annualQuota: 0, countsAsPresent: true, sortOrder: 40, description: 'Working remotely — counts as a working day.' },
     { code: 'LOP', name: 'Unpaid Leave', category: 'UNPAID', color: '#64748B', accrual: 'NONE', annualQuota: 0, isPaid: false, sortOrder: 50, description: 'Leave without pay (loss of pay).' },
-    { code: 'ML', name: 'Maternity Leave', category: 'MATERNITY', color: '#EC4899', accrual: 'UPFRONT', annualQuota: 182, allowHalfDay: false, includeNonWorkingDays: true, gender: 'FEMALE', sortOrder: 60, description: '26 weeks under the Maternity Benefit Act.' },
-    { code: 'PL', name: 'Paternity Leave', category: 'PATERNITY', color: '#F59E0B', accrual: 'UPFRONT', annualQuota: 5, allowHalfDay: false, gender: 'MALE', sortOrder: 70, description: 'Time off around the birth or adoption of a child.' },
+    { code: 'ML', name: 'Maternity Leave', category: 'MATERNITY', color: '#EC4899', accrual: 'UPFRONT', annualQuota: 182, allowHalfDay: false, includeNonWorkingDays: true, availability: 'GRANT_ONLY', genders: ['FEMALE'], grantNeedsDocument: true, sortOrder: 60, description: '26 weeks under the Maternity Benefit Act. Ask HR with a supporting document; HR grants it.' },
+    { code: 'PL', name: 'Paternity Leave', category: 'PATERNITY', color: '#F59E0B', accrual: 'UPFRONT', annualQuota: 5, allowHalfDay: false, availability: 'RULES', genders: ['MALE'], sortOrder: 70, description: 'Time off around the birth or adoption of a child.' },
     { code: 'BL', name: 'Bereavement Leave', category: 'OTHER', color: '#475569', accrual: 'UPFRONT', annualQuota: 3, allowHalfDay: false, sortOrder: 80, description: 'Loss of a close family member.' },
     { code: 'CO', name: 'Comp Off', category: 'COMPENSATORY', color: '#14B8A6', accrual: 'NONE', annualQuota: 0, sortOrder: 90, description: 'A day off for working on a weekend or holiday (release nights, go-lives).' },
   ];
@@ -293,6 +293,22 @@ export async function seedTime(ctx: Ctx) {
     row.documentKey = key;
     row.documentSize = body.length;
   }
+  // Maternity is given by HR grant: one grant per maternity leave, sharing its certificate
+  for (const row of reqRows as Array<Record<string, unknown>>) {
+    if (row.leaveTypeId !== typeId.ML) continue;
+    const from = row.startDate as Date;
+    const to = new Date(Date.UTC(from.getUTCFullYear() + 1, from.getUTCMonth(), from.getUTCDate() - 1));
+    const grant = await prisma.leaveGrant.create({
+      data: {
+        companyId, employeeId: row.employeeId as string, leaveTypeId: typeId.ML, days: 182, validFrom: from, validTo: to,
+        reason: 'Maternity leave — certificate of expected confinement received', grantedById: p(ctx, 'hrm').userId,
+        documentKey: row.documentKey as string | null, documentName: row.documentName as string | null, documentMime: row.documentMime as string | null, documentSize: row.documentSize as number | null,
+        createdAt: new Date((row.createdAt as Date).getTime() - 2 * 86_400_000),
+        events: { create: { kind: 'CREATED', days: 182, validTo: to, note: 'Certificate received', byId: p(ctx, 'hrm').userId, createdAt: new Date((row.createdAt as Date).getTime() - 2 * 86_400_000) } },
+      },
+    });
+    row.leaveGrantId = grant.id;
+  }
   await chunked(reqRows, 1000, (part) => prisma.leaveRequest.createMany({ data: part as never }));
   await chunked(apprRows, 1000, (part) => prisma.leaveApproval.createMany({ data: part as never }));
   ctx.count.leaveRequests = reqRows.length;
@@ -313,13 +329,17 @@ export async function seedTime(ctx: Ctx) {
       if (r.lastDay && r.lastDay < yStart) continue;
       const frac = r.join > yStart ? Math.max(0, daysBetween(r.join, yEnd) + 1) / 365 : 1;
       for (const t of TYPES) {
-        if (t.gender && t.gender !== (r.g === 'M' ? 'MALE' : 'FEMALE')) continue;
+        const only = (t as { genders?: string[] }).genders;
+        if (only?.length && !only.includes(r.g === 'M' ? 'MALE' : 'FEMALE')) continue;
+        // Grant-only (maternity): a balance row only where the person actually has a grant
+        const grantOnly = (t as { availability?: string }).availability === 'GRANT_ONLY';
+        if (grantOnly && !leaves.some((l) => l.r === r && l.code === t.code)) continue;
         if (t.accrual === 'NONE' && t.code !== 'WFH') { /* still record usage */ }
         const mine = leaves.filter((l) => l.r === r && l.code === t.code && l.from.startsWith(String(year)));
         const used = mine.filter((l) => l.status === 'APPROVED').reduce((n, l) => n + l.days, 0);
         const pending = mine.filter((l) => l.status === 'PENDING').reduce((n, l) => n + l.days, 0);
         if (t.accrual === 'NONE' && !used && !pending) continue;
-        const allocated = t.accrual === 'NONE' ? 0 : r.type === 'IN' && t.code === 'EL' ? 0 : Math.round(t.annualQuota * frac * 2) / 2;
+        const allocated = t.accrual === 'NONE' || grantOnly ? 0 : r.type === 'IN' && t.code === 'EL' ? 0 : Math.round(t.annualQuota * frac * 2) / 2;
         const carried = t.code === 'EL' && year === 2026 && r.join < '2025-01-01' && r.type !== 'IN' ? Math.min(30, rint(r.key + 'cf', 2, 16)) : 0;
         const adj = adjustments.filter((a) => a.key === r.key && a.type === t.code && a.year === year);
         balances.push({ id: uuid(), companyId, employeeId: r.id, leaveTypeId: typeId[t.code], year, allocated, carriedForward: carried, adjusted: adj.reduce((n, a) => n + a.days, 0), usedDays: used, pendingDays: pending, _adj: adj });

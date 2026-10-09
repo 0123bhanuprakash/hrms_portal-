@@ -177,6 +177,23 @@ export function Pagination({
   );
 }
 
+/** "Showing 25 of 140 · Load more" under a list that grows a page at a time (drawers, pop-ups, feeds). */
+export function LoadMore({ shown, total, loading, onMore }: { shown: number; total: number; loading?: boolean; onMore: () => void }) {
+  if (!total) return null;
+  return (
+    <div className="flex items-center justify-between gap-3 pt-2 text-xs text-muted-foreground">
+      <span>
+        Showing <span className="font-medium tabular-nums text-foreground">{shown}</span> of <span className="font-medium tabular-nums text-foreground">{total}</span>
+      </span>
+      {shown < total && (
+        <Button variant="secondary" size="sm" loading={loading} onClick={onMore}>
+          Load more
+        </Button>
+      )}
+    </div>
+  );
+}
+
 /** Underline tabs with a sliding indicator. */
 export function Tabs<T extends string>({
   tabs,

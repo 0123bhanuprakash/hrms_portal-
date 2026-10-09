@@ -65,6 +65,11 @@ export class SendBackDto extends PickBlocksDto {
 
 export class TeamQueryDto {
   @Matches(DATE) weekStart!: string;
+  @IsOptional() @IsString() @MaxLength(80) search?: string;
+  /** waiting = has days waiting on me · missing = working days with nothing logged */
+  @IsOptional() @IsIn(['all', 'waiting', 'missing']) show?: 'all' | 'waiting' | 'missing';
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit?: number;
 }
 
 export class TimesheetQueryDto {

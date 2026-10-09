@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Emoji } from '@/components/motion/emoji';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -8,8 +8,9 @@ import { toast } from 'sonner';
 import { ArrowLeft, BellRing, Building2, CalendarDays, CalendarPlus, CheckCircle2, Download, Eye, Mail, MapPin, Pencil, Pin, PinOff, SearchX, Trash2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardHeader, EmptyState, ErrorState, Skeleton, Tabs } from '@/components/ui/feedback';
+import { Card, CardHeader, EmptyState, ErrorState, Pagination, Skeleton, Tabs } from '@/components/ui/feedback';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { SearchField, useDebounced } from '@/components/ui/list-tools';
 import { PersonAvatar } from '@/components/profile/person-avatar';
 import { CATEGORIES, CategoryPill, ReactionBar, RichText, RsvpBar, audienceLabel, countdown, downloadIcs, eventWhen, readTime } from '@/components/engagement/announcement-ui';
 import { AnnouncementCover } from '@/components/engagement/cover';
@@ -18,6 +19,8 @@ import {
   useAcknowledge,
   useAnnouncement,
   useAnnouncementReport,
+  fetchWholeReach,
+  type ReachTab,
   useDeleteAnnouncement,
   useNudge,
   usePinAnnouncement,
@@ -197,28 +200,32 @@ export default function AnnouncementPage() {
 
 /** Poster (and HR): delivered → opened → confirmed, by department, who is still waiting, nudge. */
 function Reach({ a }: { a: Announcement }) {
-  const report = useAnnouncementReport(a.id);
   const nudge = useNudge();
-  const [tab, setTab] = useState<'waiting' | 'done' | 'rsvp'>('waiting');
+  const [tab, setTab] = useState<ReachTab>('waiting');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const typed = useDebounced(search.trim());
+  // A new tab or search starts again on page 1
+  useEffect(() => setPage(1), [tab, typed]);
+  // Totals and departments cover everyone; the list is one tab, 25 at a time
+  const report = useAnnouncementReport(a.id, { tab, search: typed || undefined, page });
   const r = report.data;
-  const people = useMemo(() => r?.people ?? [], [r]);
-  const done = (p: AnnouncementReport['people'][number]) => (a.requiresAck ? Boolean(p.acknowledgedAt) : Boolean(p.readAt));
-  const waiting = people.filter((p) => !done(p));
-  const depts = useMemo(() => {
-    const m = new Map<string, { name: string; total: number; read: number; done: number }>();
-    for (const p of people) {
-      const k = p.employee?.department?.name ?? 'No department';
-      const row = m.get(k) ?? { name: k, total: 0, read: 0, done: 0 };
-      row.total++;
-      if (p.readAt) row.read++;
-      if (p.acknowledgedAt) row.done++;
-      m.set(k, row);
-    }
-    return [...m.values()].sort((x, y) => y.total - x.total);
-  }, [people]);
-  const shown = tab === 'rsvp' ? people.filter((p) => p.rsvp) : tab === 'done' ? people.filter(done) : waiting;
+  const depts = r?.byDepartment ?? [];
+  const shown = r?.people ?? [];
+  const waitingCount = r?.counts.waiting ?? 0;
+  const [exporting, setExporting] = useState(false);
 
-  const exportCsv = () => {
+  const exportCsv = async () => {
+    setExporting(true);
+    let people: AnnouncementReport['people'];
+    try {
+      people = await fetchWholeReach(a.id);
+    } catch (e) {
+      toast.error(getApiErrorMessage(e, 'Could not export'));
+      return;
+    } finally {
+      setExporting(false);
+    }
     const rows = [['Name', 'Email', 'Department', 'Read', 'Confirmed', ...(a.eventAt ? ['RSVP'] : [])], ...people.map((p) => [`${p.firstName} ${p.lastName}`, p.email, p.employee?.department?.name ?? '', p.readAt ?? '', p.acknowledgedAt ?? '', ...(a.eventAt ? [p.rsvp ?? ''] : [])])];
     const csv = rows.map((row) => row.map((c) => (/[",\n]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c)).join(',')).join('\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
@@ -276,21 +283,22 @@ function Reach({ a }: { a: Announcement }) {
         <CardHeader
           icon={<Users />}
           title={a.requiresAck ? 'Confirmations' : 'Read by'}
-          action={<Button size="sm" variant="ghost" onClick={exportCsv}><Download /> Export</Button>}
+          action={<Button size="sm" variant="ghost" loading={exporting} onClick={() => void exportCsv()}><Download /> Export</Button>}
         />
         <div className="px-5">
           <Tabs
             tabs={[
-              { id: 'waiting' as const, label: a.requiresAck ? 'Not confirmed' : 'Not read', count: waiting.length },
-              { id: 'done' as const, label: a.requiresAck ? 'Confirmed' : 'Read', count: people.length - waiting.length },
-              ...(a.eventAt ? [{ id: 'rsvp' as const, label: 'Replies', count: people.filter((p) => p.rsvp).length }] : []),
+              { id: 'waiting' as const, label: a.requiresAck ? 'Not confirmed' : 'Not read', count: r.counts.waiting },
+              { id: 'done' as const, label: a.requiresAck ? 'Confirmed' : 'Read', count: r.counts.done },
+              ...(a.eventAt ? [{ id: 'rsvp' as const, label: 'Replies', count: r.counts.rsvp }] : []),
             ]}
             value={tab}
             onChange={setTab}
           />
+          {r.total > 10 && <SearchField value={search} onChange={setSearch} placeholder="Name, email or department" label="Search people" className="my-2" />}
         </div>
         {!shown.length ? (
-          <p className="px-5 py-6 text-sm text-muted-foreground">{tab === 'waiting' ? <>Everyone is done. <Emoji e="🎉" play="appear" /></> : 'Nobody yet.'}</p>
+          <p className="px-5 py-6 text-sm text-muted-foreground">{typed ? 'Nobody matches that search.' : tab === 'waiting' ? <>Everyone is done. <Emoji e="🎉" play="appear" /></> : 'Nobody yet.'}</p>
         ) : (
           <ul className="max-h-80 divide-y divide-border overflow-y-auto">
             {shown.map((p) => (
@@ -307,7 +315,8 @@ function Reach({ a }: { a: Announcement }) {
             ))}
           </ul>
         )}
-        {waiting.length > 0 && (
+        {r.meta.totalPages > 1 && <Pagination page={r.meta.page} totalPages={r.meta.totalPages} total={r.meta.total} limit={r.meta.limit} onPageChange={setPage} />}
+        {waitingCount > 0 && (
           <div className="space-y-1 border-t border-border px-5 py-3">
             <Button
               size="sm"
@@ -319,7 +328,7 @@ function Reach({ a }: { a: Announcement }) {
                 })
               }
             >
-              <BellRing /> Nudge {waiting.length} {waiting.length === 1 ? 'person' : 'people'}
+              <BellRing /> Nudge {waitingCount} {waitingCount === 1 ? 'person' : 'people'}
             </Button>
             <p className="text-xs text-muted-foreground">
               At most once every 12 hours{r.lastNudgedAt ? ` · last nudge ${formatRelative(r.lastNudgedAt)}` : ''}{a.ackDueAt ? ` · automatic reminder 2 days before ${formatDate(a.ackDueAt)}` : ''}.

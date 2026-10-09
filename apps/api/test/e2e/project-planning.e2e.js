@@ -106,9 +106,18 @@ const D = (k) => new Date(`${k}T00:00:00Z`);
     const row = (who) => r.data?.people.find((x) => x.employee.id === P[who].id);
     check('Planner: weekly cells with billable split', r.status === 200 && r.data.weeks.length === 4 && row('ana').cells[0].total === 100 && row('ana').cells[0].billable === 50 && row('ben').cells[0].investment === 50 && row('cara').cells[0].total === 0, JSON.stringify(row('ana')?.cells[0]));
     check('Planner: counts and open-role suggestions', r.data.counts.full === 2 && r.data.counts.free === 2 && r.data.suggestions[0]?.role.title === 'QA engineer' && r.data.suggestions[0].candidates.some((c) => c.employee.id === P.cara.id), JSON.stringify(r.data.counts));
+    check('Planner: everyone counted, a page of rows', r.data.counts.all === r.data.meta.total && r.data.meta.page === 1 && r.data.people.length === Math.min(25, r.data.meta.total), JSON.stringify(r.data.meta));
+    const pf = await call(S.pmo, 'GET', '/projects/planner?weeks=4&show=full');
+    check('Planner: only fully booked', pf.data?.people.length === 2 && pf.data.people.every((x) => x.cells[0].total >= 100) && pf.data.counts.full === 2, JSON.stringify(pf.data?.meta));
+    const pp = await call(S.pmo, 'GET', '/projects/planner?weeks=4&limit=1&page=2');
+    check('Planner: page 2 of one-per-page', pp.data?.people.length === 1 && pp.data.meta.page === 2 && pp.data.rollingOff !== undefined && pp.data.suggestions.length === r.data.suggestions.length);
     r = await call(S.pmo, 'GET', `/projects/available?from=${today}&to=${addDays(today, 28)}&min=50`);
-    const free = (r.data ?? []).map((x) => x.employee.firstName).sort().join();
-    check('Find someone free (≥50%)', free === 'ben,cara,pmo', free);
+    const free = (r.data?.rows ?? []).map((x) => x.employee.firstName).sort().join();
+    check('Find someone free (≥50%)', free === 'ben,cara,pmo' && r.data.meta.total === 3, free);
+    r = await call(S.pmo, 'GET', `/projects/available?from=${today}&to=${addDays(today, 28)}&min=50&search=cara`);
+    check('Find someone free: search', r.data?.rows.length === 1 && r.data.rows[0].employee.firstName === 'cara');
+    r = await call(S.pmo, 'GET', `/projects/available?from=${today}&to=${addDays(today, 28)}&min=50&limit=2&page=2`);
+    check('Find someone free: pages', r.data?.rows.length === 1 && r.data.meta.totalPages === 2);
 
     // ── Who sees what ──
     r = await call(S.cara, 'GET', '/projects');

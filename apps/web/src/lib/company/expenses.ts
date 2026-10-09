@@ -1,6 +1,6 @@
 'use client';
 
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAccess } from '@/lib/access/use-access';
 import { isLive } from '@/lib/live/socket';
@@ -124,8 +124,11 @@ export interface ExpenseReport {
   exceptions: { overLimit: { items: number; paise: number }; reduced: { items: number; paise: number }; rejectedItems: { items: number; paise: number } };
   timing: { avgDaysToApprove: number | null; avgDaysToPay: number | null };
   pipeline: { waitingPaise: number; toBePaidPaise: number };
+  /** Rows per breakdown in all — each list above holds the top 10 plus an "others" row (key "__others") */
+  breakdownCounts: Record<Breakdown, number>;
 }
-interface ReportRow {
+export type Breakdown = 'category' | 'employee' | 'project' | 'department';
+export interface ReportRow {
   key: string;
   label: string;
   claimedPaise: number;
@@ -197,6 +200,17 @@ export function usePendingExpenses() {
     enabled: hasFeature('ops.expenses') && mayApprove,
     // Live updates refresh it while connected; poll only when the connection is down
     refetchInterval: () => (isLive() ? false : 2 * 60_000),
+  });
+}
+
+/** Every row of one breakdown ("See all"), 25 at a time. */
+export function useExpenseBreakdown(q: { from: string; to: string; by: Breakdown } | null) {
+  return useInfiniteQuery({
+    queryKey: [...expenseKeys.report(q ?? {}), 'breakdown'],
+    queryFn: async ({ pageParam }) => unwrap<{ rows: ReportRow[]; meta: { total: number; page: number; limit: number; totalPages: number } }>(await api.get('/expenses/report/breakdown', { params: { ...q, page: pageParam, limit: 25 } })),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.meta.page < last.meta.totalPages ? last.meta.page + 1 : undefined),
+    enabled: Boolean(q),
   });
 }
 

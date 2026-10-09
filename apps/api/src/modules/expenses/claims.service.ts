@@ -10,7 +10,7 @@ import { PrivateFilesService } from '../employee-profile/private-files.service';
 import { detectFileType, DOCUMENT_TYPES } from '../employee-profile/file-types';
 import { addDays, dateFromKey, isValidTimeZone, keyFromDate, localDateKey } from '../attendance/time-zone';
 import { ExpenseCategoriesService, toPaise } from './categories.service';
-import type { ClaimQueryDto, CommentDto, DecideClaimDto, PayClaimDto, RejectClaimDto, ReportQueryDto, SaveClaimDto, SaveItemDto } from './dto';
+import type { ClaimQueryDto, CommentDto, DecideClaimDto, PayClaimDto, RejectClaimDto, ReportQueryDto, SaveClaimDto, SaveItemDto, BreakdownQueryDto } from './dto';
 
 const RECEIPT_MAX_BYTES = 10 * 1024 * 1024;
 /** Items older than this can't be claimed */
@@ -67,6 +67,17 @@ type ApprovalRow = ClaimRow['approvals'][number];
  *   APPROVED → Finance marks PAID.
  * Rejection at any step sends the claim back; the employee fixes and resubmits.
  */
+/** Rows shown per report breakdown before "See all" */
+const REPORT_TOP = 10;
+type ReportItem = Awaited<ReturnType<ExpenseClaimsService['reportItems']>>[number];
+/** How each breakdown groups and names its rows */
+const BY = {
+  category: { key: (i: ReportItem) => i.category.id, label: (i: ReportItem) => i.category.name },
+  employee: { key: (i: ReportItem) => i.claim.employee.id, label: (i: ReportItem) => `${i.claim.employee.firstName} ${i.claim.employee.lastName}` },
+  project: { key: (i: ReportItem) => i.claim.projectId ?? 'none', label: (_i: ReportItem) => 'Project' },
+  department: { key: (i: ReportItem) => i.claim.employee.department?.name ?? 'none', label: (i: ReportItem) => i.claim.employee.department?.name ?? 'No department' },
+};
+
 @Injectable()
 export class ExpenseClaimsService {
   private readonly logger = new Logger(ExpenseClaimsService.name);
@@ -524,19 +535,14 @@ export class ExpenseClaimsService {
   async report(companyId: string, access: AccessContext, q: ReportQueryDto) {
     if (!holds(access, FINANCE) && !holds(access, HR)) throw new ForbiddenException('You do not have permission to perform this action. Required: expense.finance');
     const items = await this.reportItems(companyId, q);
-    const sum = <K extends string>(key: (i: (typeof items)[number]) => K, label: (i: (typeof items)[number]) => string) => {
-      const m = new Map<K, { key: K; label: string; claimedPaise: number; approvedPaise: number; items: number }>();
-      for (const i of items) {
-        const k = key(i);
-        const e = m.get(k) ?? { key: k, label: label(i), claimedPaise: 0, approvedPaise: 0, items: 0 };
-        e.claimedPaise += i.amountPaise;
-        e.approvedPaise += i.approvedPaise ?? i.amountPaise;
-        e.items++;
-        m.set(k, e);
-      }
-      return [...m.values()].sort((a, b) => b.approvedPaise - a.approvedPaise);
+    const { sum, projectRows } = await this.breakdowns(companyId, items);
+    // Each breakdown: the top 10, the rest folded into one "others" row (see breakdown() for all)
+    const top = (rows: ReturnType<typeof sum>) => {
+      const head = rows.slice(0, REPORT_TOP);
+      const rest = rows.slice(REPORT_TOP);
+      if (rest.length) head.push({ key: '__others', label: `${rest.length} others`, claimedPaise: rest.reduce((n, r) => n + r.claimedPaise, 0), approvedPaise: rest.reduce((n, r) => n + r.approvedPaise, 0), items: rest.reduce((n, r) => n + r.items, 0) });
+      return head;
     };
-    const projectRows = await this.prisma.project.findMany({ where: { companyId }, select: { id: true, name: true, type: true } });
     const projects = new Map(projectRows.map((p) => [p.id, p.name]));
     const clientProjects = new Set(projectRows.filter((p) => p.type === 'CLIENT').map((p) => p.id));
     const paidOut = (i: (typeof items)[number]) => i.approvedPaise ?? i.amountPaise;
@@ -548,9 +554,12 @@ export class ExpenseClaimsService {
       const v = xs.filter((x): x is number => x !== null);
       return v.length ? Math.round((v.reduce((n, x) => n + x, 0) / v.length) * 10) / 10 : null;
     };
-    const [pending, payable] = await Promise.all([
+    // Summed in the database: approved amount where set, else the claimed amount
+    const approvedClaim = { claim: { companyId, status: ExpenseClaimStatus.APPROVED } };
+    const [pending, payableSet, payableAsClaimed] = await Promise.all([
       this.prisma.expenseItem.aggregate({ where: { claim: { companyId, status: ExpenseClaimStatus.PENDING } }, _sum: { amountPaise: true }, _count: true }),
-      this.prisma.expenseClaim.findMany({ where: { companyId, status: ExpenseClaimStatus.APPROVED }, select: { items: { select: { amountPaise: true, approvedPaise: true } } } }),
+      this.prisma.expenseItem.aggregate({ where: { ...approvedClaim, approvedPaise: { not: null } }, _sum: { approvedPaise: true } }),
+      this.prisma.expenseItem.aggregate({ where: { ...approvedClaim, approvedPaise: null }, _sum: { amountPaise: true } }),
     ]);
     const months = new Map<string, { month: string; approvedPaise: number; rebillablePaise: number }>();
     for (const i of items) {
@@ -567,7 +576,7 @@ export class ExpenseClaimsService {
       from: q.from,
       to: q.to,
       byMonth: [...months.values()].sort((a, b) => a.month.localeCompare(b.month)),
-      byDepartment: sum((i) => i.claim.employee.department?.name ?? 'none', (i) => i.claim.employee.department?.name ?? 'No department'),
+      byDepartment: top(sum(BY.department.key, BY.department.label)),
       rebillablePaise: items.filter((i) => i.claim.projectId && clientProjects.has(i.claim.projectId)).reduce((n, i) => n + paidOut(i), 0),
       exceptions: {
         overLimit: { items: over.length, paise: over.reduce((n, i) => n + paidOut(i), 0) },
@@ -580,7 +589,7 @@ export class ExpenseClaimsService {
       },
       pipeline: {
         waitingPaise: pending._sum.amountPaise ?? 0,
-        toBePaidPaise: payable.flatMap((c) => c.items).reduce((n, i) => n + (i.approvedPaise ?? i.amountPaise), 0),
+        toBePaidPaise: (payableSet._sum.approvedPaise ?? 0) + (payableAsClaimed._sum.amountPaise ?? 0),
       },
       totals: {
         claimedPaise: items.reduce((s, i) => s + i.amountPaise, 0),
@@ -588,10 +597,44 @@ export class ExpenseClaimsService {
         paidPaise: items.filter((i) => i.claim.status === ExpenseClaimStatus.PAID).reduce((s, i) => s + (i.approvedPaise ?? i.amountPaise), 0),
         items: items.length,
       },
-      byCategory: sum((i) => i.category.id, (i) => i.category.name),
-      byEmployee: sum((i) => i.claim.employee.id, (i) => `${i.claim.employee.firstName} ${i.claim.employee.lastName}`),
-      byProject: sum((i) => i.claim.projectId ?? 'none', (i) => (i.claim.projectId ? (projects.get(i.claim.projectId) ?? 'Project') : 'No project')),
+      byCategory: top(sum(BY.category.key, BY.category.label)),
+      byEmployee: top(sum(BY.employee.key, BY.employee.label)),
+      byProject: top(sum(BY.project.key, (i) => (i.claim.projectId ? (projects.get(i.claim.projectId) ?? 'Project') : 'No project'))),
+      /** How many rows each breakdown has in all */
+      breakdownCounts: { category: sum(BY.category.key, BY.category.label).length, employee: sum(BY.employee.key, BY.employee.label).length, project: sum(BY.project.key, BY.project.label).length, department: sum(BY.department.key, BY.department.label).length },
     };
+  }
+
+  /** Every row of one breakdown, biggest first, a page at a time. */
+  async breakdown(companyId: string, access: AccessContext, q: BreakdownQueryDto) {
+    if (!holds(access, FINANCE) && !holds(access, HR)) throw new ForbiddenException('You do not have permission to perform this action. Required: expense.finance');
+    const items = await this.reportItems(companyId, q);
+    const { sum, projectRows } = await this.breakdowns(companyId, items);
+    const projects = new Map(projectRows.map((p) => [p.id, p.name]));
+    const by = BY[q.by];
+    const rows = sum(by.key, q.by === 'project' ? (i) => (i.claim.projectId ? (projects.get(i.claim.projectId) ?? 'Project') : 'No project') : by.label);
+    const limit = q.limit ?? 25;
+    const totalPages = Math.max(1, Math.ceil(rows.length / limit));
+    const page = Math.min(q.page ?? 1, totalPages);
+    return { by: q.by, rows: rows.slice((page - 1) * limit, page * limit), meta: { total: rows.length, page, limit, totalPages } };
+  }
+
+  /** Groups report items by any key (biggest approved amount first). */
+  private async breakdowns(companyId: string, items: ReportItem[]) {
+    const sum = <K extends string>(key: (i: ReportItem) => K, label: (i: ReportItem) => string) => {
+      const m = new Map<K, { key: K; label: string; claimedPaise: number; approvedPaise: number; items: number }>();
+      for (const i of items) {
+        const k = key(i);
+        const e = m.get(k) ?? { key: k, label: label(i), claimedPaise: 0, approvedPaise: 0, items: 0 };
+        e.claimedPaise += i.amountPaise;
+        e.approvedPaise += i.approvedPaise ?? i.amountPaise;
+        e.items++;
+        m.set(k, e);
+      }
+      return [...m.values()].sort((a, b) => b.approvedPaise - a.approvedPaise) as Array<{ key: string; label: string; claimedPaise: number; approvedPaise: number; items: number }>;
+    };
+    const projectRows = await this.prisma.project.findMany({ where: { companyId }, select: { id: true, name: true, type: true } });
+    return { sum, projectRows };
   }
 
   async exportCsv(companyId: string, access: AccessContext, q: ReportQueryDto): Promise<string> {

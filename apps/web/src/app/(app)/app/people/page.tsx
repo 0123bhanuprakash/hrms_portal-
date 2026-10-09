@@ -10,7 +10,8 @@ import { Photo, PhotoCard, StatusPill, TODAY, todayText } from '@/components/peo
 import { QuickLook } from '@/components/people/quick-look';
 import { useAccess } from '@/lib/access/use-access';
 import { useDepartments, useLocations } from '@/lib/company/org';
-import { useDirectory, useMyCard, usePeopleHighlights, type DirectoryPerson, type TodayStatus } from '@/lib/company/profile';
+import { Button } from '@/components/ui/button';
+import { useDirectory, useDirectoryTeam, useMyCard, usePeopleHighlights, type DirectoryPerson, type DirectoryQuery, type TodayStatus } from '@/lib/company/profile';
 import { useCelebrationsToday } from '@/lib/company/celebrations';
 import { WishDialog } from '@/components/engagement/wish-dialog';
 import { useUiState } from '@/lib/preferences/ui-state';
@@ -76,7 +77,9 @@ export default function PeopleDirectoryPage() {
       letter: letter || undefined,
       sort,
       page: teams ? 1 : page,
-      limit: teams ? 200 : view === 'list' ? 50 : 24,
+      limit: view === 'list' ? 50 : 24,
+      // Teams: the first 20 of every team, with each team's real size
+      perTeam: teams ? 20 : undefined,
     },
     allowed,
   );
@@ -208,7 +211,14 @@ export default function PeopleDirectoryPage() {
                 {list.data.data.map((p) => <li key={p.id}><PhotoCard person={p} onOpen={() => setOpen(p.id)} /></li>)}
               </ul>
             )}
-            {view === 'teams' && <TeamsView people={list.data.data} onOpen={setOpen} total={list.data.meta.total} />}
+            {view === 'teams' && (
+              <TeamsView
+                people={list.data.data}
+                teams={list.data.meta.teams ?? []}
+                onOpen={setOpen}
+                filters={{ search: debounced || undefined, locationId: locationId || undefined, status: active.status, group: active.group, letter: letter || undefined, sort }}
+              />
+            )}
             {view === 'list' && <ListView people={list.data.data} onOpen={setOpen} />}
             {!teams && <Pagination page={page} totalPages={list.data.meta.totalPages} total={list.data.meta.total} limit={list.data.meta.limit} onPageChange={setPage} />}
           </div>
@@ -227,40 +237,53 @@ export default function PeopleDirectoryPage() {
   );
 }
 
-function TeamsView({ people, onOpen, total }: { people: DirectoryPerson[]; onOpen: (id: string) => void; total: number }) {
-  const groups = useMemo(() => {
-    const m = new Map<string, { name: string; people: DirectoryPerson[] }>();
-    for (const p of people) {
-      const key = p.department?.id ?? 'none';
-      const g = m.get(key) ?? { name: p.department?.name ?? 'No team yet', people: [] };
-      g.people.push(p);
-      m.set(key, g);
-    }
-    return [...m.entries()].sort((a, b) => b[1].people.length - a[1].people.length);
+const PER_TEAM = 20;
+
+function TeamsView({ people, teams, onOpen, filters }: { people: DirectoryPerson[]; teams: Array<{ id: string | null; name: string; total: number }>; onOpen: (id: string) => void; filters: DirectoryQuery }) {
+  const byTeam = useMemo(() => {
+    const m = new Map<string | null, DirectoryPerson[]>();
+    for (const p of people) m.set(p.department?.id ?? null, [...(m.get(p.department?.id ?? null) ?? []), p]);
+    return m;
   }, [people]);
   return (
-    <div className="space-y-3">
-      <div className="m-stagger grid gap-4 lg:grid-cols-2">
-        {groups.map(([key, g]) => (
-          <Card key={key} className="flex flex-col gap-3 p-5">
-            <h3 className="flex items-center gap-2 text-sm font-semibold">{g.name}<span className="rounded-full bg-muted px-2 text-[11px] font-bold">{g.people.length}</span></h3>
-            <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 xl:grid-cols-5">
-              {g.people.map((p) => (
-                <button key={p.id} type="button" onClick={() => onOpen(p.id)} className="group text-center" title={p.today ? todayText(p.today) : undefined}>
-                  <span className="relative mx-auto block w-max">
-                    <Photo person={p} className="h-16 w-16 transition-transform group-hover:scale-105" rounded="rounded-2xl" textClass="text-base" />
-                    {p.today && <i className={cn('absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-surface', TODAY[p.today.status].dot)} />}
-                  </span>
-                  <span className="mt-1.5 block truncate text-xs font-semibold">{p.firstName}</span>
-                  <span className="block truncate text-[11px] text-muted-foreground">{p.designation?.name ?? ''}</span>
-                </button>
-              ))}
-            </div>
-          </Card>
+    <div className="m-stagger grid items-start gap-4 lg:grid-cols-2">
+      {teams.map((t) => <TeamCard key={t.id ?? 'none'} team={t} first={byTeam.get(t.id) ?? []} onOpen={onOpen} filters={filters} />)}
+    </div>
+  );
+}
+
+/** One team: its first 20 people; "View all" loads the rest of the team here (60 at a time). */
+function TeamCard({ team, first, onOpen, filters }: { team: { id: string | null; name: string; total: number }; first: DirectoryPerson[]; onOpen: (id: string) => void; filters: DirectoryQuery }) {
+  const [all, setAll] = useState(false);
+  const rest = useDirectoryTeam(filters, team.id, all);
+  const shown = all && rest.data ? rest.data.pages.flatMap((p) => p.data) : first;
+  const more = team.total - shown.length;
+  return (
+    <Card className={cn('flex flex-col gap-3 p-5', all && 'lg:col-span-2')}>
+      <h3 className="flex items-center gap-2 text-sm font-semibold">
+        {team.name}<span className="rounded-full bg-muted px-2 text-[11px] font-bold">{team.total}</span>
+        {all && <Button size="sm" variant="ghost" className="ml-auto h-7 px-2 text-xs" onClick={() => setAll(false)}>Show fewer</Button>}
+      </h3>
+      <div className={cn('grid grid-cols-3 gap-3 sm:grid-cols-4 xl:grid-cols-5', all && 'lg:grid-cols-8 xl:grid-cols-10')}>
+        {shown.map((p) => (
+          <button key={p.id} type="button" onClick={() => onOpen(p.id)} className="group text-center" title={p.today ? todayText(p.today) : undefined}>
+            <span className="relative mx-auto block w-max">
+              <Photo person={p} className="h-16 w-16 transition-transform group-hover:scale-105" rounded="rounded-2xl" textClass="text-base" />
+              {p.today && <i className={cn('absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-surface', TODAY[p.today.status].dot)} />}
+            </span>
+            <span className="mt-1.5 block truncate text-xs font-semibold">{p.firstName}</span>
+            <span className="block truncate text-[11px] text-muted-foreground">{p.designation?.name ?? ''}</span>
+          </button>
         ))}
       </div>
-      {total > people.length && <p className="text-xs text-muted-foreground">Showing {people.length} of {total} — pick a team or search to narrow it down.</p>}
-    </div>
+      {!all && more > 0 && (
+        <Button variant="secondary" size="sm" className="self-center" onClick={() => setAll(true)}>View all {team.total} <span className="text-muted-foreground">· {more} more</span></Button>
+      )}
+      {all && rest.isLoading && <p className="text-center text-xs text-muted-foreground">Loading the whole team…</p>}
+      {all && rest.hasNextPage && (
+        <Button variant="secondary" size="sm" className="self-center" loading={rest.isFetchingNextPage} onClick={() => void rest.fetchNextPage()}>Load more · {more} left</Button>
+      )}
+    </Card>
   );
 }
 

@@ -6,12 +6,13 @@ import { toast } from 'sonner';
 import { CalendarClock, Download, Gauge, Heart, LogOut, Network, UserPlus, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, ErrorState, Skeleton } from '@/components/ui/feedback';
+import { Card, ErrorState, LoadMore, Skeleton } from '@/components/ui/feedback';
 import { Drawer } from '@/components/ui/modal';
 import { PersonAvatar } from '@/components/profile/person-avatar';
 import { Donut, type Slice } from '@/components/dashboard/charts';
 import { Kpi, TrendChart } from '@/components/reports/charts';
-import { downloadCsv, label, monthLabel, saveCsv, usePeopleList, usePeopleReport, type PeopleReport, type ReportFilters } from '@/lib/company/reports';
+import { downloadCsv, fetchWholeDrill, label, monthLabel, saveCsv, usePeopleList, usePeopleReport, type PeopleReport, type ReportFilters } from '@/lib/company/reports';
+import { SearchField, useDebounced } from '@/components/ui/list-tools';
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatDate } from '@/lib/format';
 import { cn } from '@/lib/cn';
@@ -24,37 +25,56 @@ export interface Drill {
 
 /** The people behind one number — opened from any clickable count. */
 export function PeopleDrawer({ drill, filters, onClose }: { drill: Drill | null; filters: ReportFilters; onClose: () => void }) {
-  const list = usePeopleList(drill ? { dimension: drill.dimension, value: drill.value, ...filters } : null);
-  const rows = list.data ?? [];
+  const [search, setSearch] = useState('');
+  const [exporting, setExporting] = useState(false);
+  const typed = useDebounced(search.trim());
+  // A new number starts with an empty search
+  const key = drill ? `${drill.dimension}:${drill.value}` : '';
+  const [lastKey, setLastKey] = useState(key);
+  if (key !== lastKey) {
+    setLastKey(key);
+    setSearch('');
+  }
+  const query = drill ? { dimension: drill.dimension, value: drill.value, ...filters, search: typed || undefined } : null;
+  const list = usePeopleList(query);
+  const rows = list.data?.pages.flatMap((p) => p.rows) ?? [];
+  const total = list.data?.pages[0]?.meta.total ?? 0;
   const tenure = (m: number) => (m < 12 ? `${m} mo` : `${Math.round((m / 12) * 10) / 10} yrs`);
+  const exportAll = async () => {
+    if (!query) return;
+    setExporting(true);
+    try {
+      const all = await fetchWholeDrill(query);
+      saveCsv(
+        [['Employee ID', 'First name', 'Last name', 'Department', 'Designation', 'Location', 'Status', 'Joined', 'Left'], ...all.map((r) => [r.employeeId, r.firstName, r.lastName, r.department, r.designation, r.location, label(r.status), r.joiningDate, r.terminationDate])],
+        `${(drill?.title ?? 'people').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.csv`,
+      );
+    } catch (e) {
+      toast.error(getApiErrorMessage(e, 'Could not export'));
+    } finally {
+      setExporting(false);
+    }
+  };
   return (
     <Drawer
       open={Boolean(drill)}
       onClose={onClose}
       icon={<Users />}
-      title={drill ? `${drill.title}${list.data ? ` · ${rows.length} ${rows.length === 1 ? 'person' : 'people'}` : ''}` : ''}
+      title={drill ? `${drill.title}${list.data ? ` · ${total} ${total === 1 ? 'person' : 'people'}` : ''}` : ''}
       description="Only people you can see in reports, with the filters above."
       footer={
-        <Button
-          variant="secondary"
-          size="sm"
-          disabled={!rows.length}
-          onClick={() =>
-            saveCsv(
-              [['Employee ID', 'First name', 'Last name', 'Department', 'Designation', 'Location', 'Status', 'Joined', 'Left'], ...rows.map((r) => [r.employeeId, r.firstName, r.lastName, r.department, r.designation, r.location, label(r.status), r.joiningDate, r.terminationDate])],
-              `${(drill?.title ?? 'people').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.csv`,
-            )
-          }
-        >
-          <Download /> Export these {rows.length || ''}
+        <Button variant="secondary" size="sm" disabled={!total} loading={exporting} onClick={() => void exportAll()}>
+          <Download /> Export these {total || ''}
         </Button>
       }
     >
+      <SearchField value={search} onChange={setSearch} placeholder="Name, ID or title" label="Search these people" className="mb-3" />
       {list.isLoading ? (
         <div className="space-y-2">{Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-12" />)}</div>
-      ) : list.isError ? (
+      ) : list.isLoadingError ? (
         <ErrorState message={getApiErrorMessage(list.error, 'Could not load')} onRetry={() => void list.refetch()} />
       ) : rows.length ? (
+        <>
         <ul className="m-stagger divide-y divide-border">
           {rows.map((r) => (
             <li key={r.id}>
@@ -69,8 +89,10 @@ export function PeopleDrawer({ drill, filters, onClose }: { drill: Drill | null;
             </li>
           ))}
         </ul>
+        <LoadMore shown={rows.length} total={total} loading={list.isFetchingNextPage} onMore={() => void list.fetchNextPage()} />
+        </>
       ) : (
-        <p className="py-8 text-center text-sm text-muted-foreground">Nobody here.</p>
+        <p className="py-8 text-center text-sm text-muted-foreground">{typed ? 'Nobody matches that search.' : 'Nobody here.'}</p>
       )}
     </Drawer>
   );
@@ -195,7 +217,7 @@ function ComingUp({ r }: { r: PeopleReport }) {
   const items = [
     ...r.probation.map((e) => ({ key: `p-${e.id}`, person: e, date: e.confirmationDate, text: e.confirmationDate ? `Probation ends ${formatDate(e.confirmationDate)}` : `On probation since ${formatDate(e.joiningDate)}`, tone: 'warning' as const, action: { href: `/app/employees/${e.id}`, label: 'Review' } })),
     ...r.notice.map((e) => ({ key: `n-${e.id}`, person: e, date: e.terminationDate, text: e.terminationDate ? `Last day ${formatDate(e.terminationDate)}` : 'Serving notice', tone: 'danger' as const, action: { href: `/app/employees/${e.id}`, label: 'Open' } })),
-    ...r.anniversaries.map((e) => ({ key: `a-${e.id}`, person: e, date: e.date, text: `${e.years} year${e.years === 1 ? '' : 's'} on ${formatDate(e.date)}`, tone: 'primary' as const, action: { href: `/app/kudos?to=${e.id}`, label: 'Send kudos' } })),
+    ...r.anniversaries.map((e) => ({ key: `a-${e.id}`, person: e, date: e.date, text: `${e.years} year${e.years === 1 ? '' : 's'} on ${formatDate(e.date)}`, tone: 'primary' as const, action: { href: `/app/kudos?to=${e.id}`, label: 'Send a shout-out' } })),
   ].sort((a, b) => (a.date ?? '9999').localeCompare(b.date ?? '9999'));
   return (
     <Card className="flex flex-col gap-2 p-5">
@@ -210,7 +232,7 @@ function ComingUp({ r }: { r: PeopleReport }) {
                 <Badge tone={i.tone}>{i.text}</Badge>
               </span>
               <Link href={i.action.href} className="shrink-0 rounded-md border border-border px-2.5 py-1 text-xs font-semibold hover:bg-subtle">
-                {i.action.label === 'Send kudos' && <Heart className="mr-1 inline h-3 w-3" />}
+                {i.action.label === 'Send a shout-out' && <Heart className="mr-1 inline h-3 w-3" />}
                 {i.action.label}
               </Link>
             </li>

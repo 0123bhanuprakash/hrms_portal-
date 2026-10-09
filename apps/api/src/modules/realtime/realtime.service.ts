@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import type { TicketQueue } from '@prisma/client';
 import type { Server } from 'socket.io';
 
 // ============================================================
@@ -40,7 +39,7 @@ export const room = {
   user: (userId: string) => `u:${userId}`,
   company: (companyId: string) => `c:${companyId}`,
   area: (companyId: string, area: LiveArea) => `a:${companyId}:${area}`,
-  queue: (companyId: string, queue: TicketQueue) => `q:${companyId}:${queue}`,
+  queue: (companyId: string, queue: string) => `q:${companyId}:${queue}`,
   ticket: (ticketId: string) => `t:${ticketId}`,
   superAdmins: 'sa',
 };

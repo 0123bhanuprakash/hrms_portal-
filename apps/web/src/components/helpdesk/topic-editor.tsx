@@ -10,8 +10,8 @@ import { Modal } from '@/components/ui/modal';
 import { PersonAvatar } from '@/components/profile/person-avatar';
 import {
   PRIORITY,
-  QUEUE_INFO,
   SLA_HOURS,
+  useHelpdeskQueues,
   useHelpdeskTeams,
   useSaveTicketCategory,
   type Priority,
@@ -54,6 +54,7 @@ export function TopicEditor({ value, queues, onClose }: { value: TicketCategory 
   const save = useSaveTicketCategory();
   const [f, setF] = useState<Form | null>(null);
   const teams = useHelpdeskTeams(Boolean(value));
+  const hq = useHelpdeskQueues();
 
   useEffect(() => {
     if (!value) return setF(null);
@@ -128,7 +129,7 @@ export function TopicEditor({ value, queues, onClose }: { value: TicketCategory 
       onClose={onClose}
       busy={save.isPending}
       icon={<Tags />}
-      title={isNew ? `Add ${QUEUE_INFO[f.queue].label} topic` : `Edit topic — ${value.name}`}
+      title={isNew ? `Add ${hq.info(f.queue).label} topic` : `Edit topic — ${value.name}`}
       description="Left: settings. Right: what the employee sees when they pick it."
       className="sm:max-w-5xl"
       footer={<><Button variant="secondary" onClick={onClose} disabled={save.isPending}>Cancel</Button><Button type="submit" form="topic-form" loading={save.isPending}>Save topic</Button></>}
@@ -142,7 +143,7 @@ export function TopicEditor({ value, queues, onClose }: { value: TicketCategory 
               <Field label="Name" htmlFor="tp-name" required><Input id="tp-name" value={f.name} onChange={(e) => set('name', e.target.value)} required minLength={2} maxLength={60} placeholder="e.g. Network & VPN" /></Field>
               <Field label="Team" htmlFor="tp-team">
                 <Select id="tp-team" className={inputClass} value={f.queue} disabled={queues.length < 2} onChange={(e) => setF({ ...f, queue: e.target.value as Queue, routeToId: '' })}>
-                  {queues.map((q) => <option key={q} value={q}>{QUEUE_INFO[q].label}</option>)}
+                  {queues.map((q) => <option key={q} value={q}>{hq.info(q).emoji} {hq.info(q).label}</option>)}
                 </Select>
               </Field>
             </div>
@@ -165,7 +166,7 @@ export function TopicEditor({ value, queues, onClose }: { value: TicketCategory 
             <h3 className="text-sm font-semibold">Routing</h3>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="New tickets go to" htmlFor="tp-route" hint={f.routeToId ? 'Assigned to them at once.' : head ? `${head.firstName} (head) assigns them.` : 'Anyone in the team takes them.'}>
-                <PersonSelect id="tp-route" value={f.routeToId} onChange={(v) => set('routeToId', v)} emptyLabel={head ? `${QUEUE_INFO[f.queue].label} head (${head.firstName}) — assigns` : `The ${QUEUE_INFO[f.queue].label} team`} people={people} />
+                <PersonSelect id="tp-route" value={f.routeToId} onChange={(v) => set('routeToId', v)} emptyLabel={head ? `${hq.info(f.queue).label} head (${head.firstName}) — assigns` : `The ${hq.info(f.queue).label} team`} people={people} />
               </Field>
               <Field label="Starting priority" htmlFor="tp-prio" hint="The employee can still change it.">
                 <Select id="tp-prio" className={inputClass} value={f.defaultPriority} onChange={(e) => set('defaultPriority', e.target.value as Priority | '')}>
@@ -238,7 +239,7 @@ export function TopicEditor({ value, queues, onClose }: { value: TicketCategory 
             <div className="flex items-center gap-2 border-t border-border pt-3 text-xs">
               {route ? <PersonAvatar person={route} size="sm" /> : head ? <PersonAvatar person={head} size="sm" /> : null}
               <span>
-                Goes to <b>{route ? route.firstName : head ? `the ${QUEUE_INFO[f.queue].label} head` : `the ${QUEUE_INFO[f.queue].label} team`}</b> · first reply within {hours(SLA_HOURS[prio].response)}
+                Goes to <b>{route ? route.firstName : head ? `the ${hq.info(f.queue).label} head` : `the ${hq.info(f.queue).label} team`}</b> · first reply within {hours(SLA_HOURS[prio].response)}
               </span>
               {f.defaultPriority && <Badge tone={PRIORITY[f.defaultPriority].tone} className="ml-auto px-1.5 py-0 text-2xs">{PRIORITY[f.defaultPriority].label}</Badge>}
             </div>

@@ -18,7 +18,7 @@ import {
   useDepartments,
   useDesignations,
   useLocations,
-  useOrgChart,
+  usePeopleByIds,
   useOrgLevels,
   useReorderLevels,
   useSaveDepartment,
@@ -33,7 +33,8 @@ import {
 } from '@/lib/company/org';
 import { getApiErrorMessage } from '@/lib/errors';
 import { cn } from '@/lib/cn';
-import { PersonSelect, Select } from '@/components/ui/pickers';
+import { Select } from '@/components/ui/pickers';
+import { PersonSearch } from '@/components/people/person-search';
 
 const fail = (fallback: string) => (e: unknown) => toast.error(getApiErrorMessage(e, fallback));
 
@@ -49,12 +50,13 @@ function IconButton({ label, onClick, children, danger }: { label: string; onCli
 
 export function DepartmentsPanel({ canManage }: { canManage: boolean }) {
   const depts = useDepartments();
-  const chart = useOrgChart();
   const remove = useDeleteDepartment();
   const [editing, setEditing] = useState<Partial<Department> | null>(null);
   const [deleting, setDeleting] = useState<Department | null>(null);
 
-  const people = new Map((chart.data?.employees ?? []).map((e) => [e.id, `${e.firstName} ${e.lastName}`]));
+  // Only the heads' names, not the whole company
+  const heads = usePeopleByIds((depts.data ?? []).map((d) => d.headEmployeeId ?? ''));
+  const people = new Map((heads.data ?? []).map((e) => [e.id, `${e.firstName} ${e.lastName}`]));
   const tree = useMemo(() => {
     const list = depts.data ?? [];
     const kids = new Map<string | null, Department[]>();
@@ -108,7 +110,7 @@ export function DepartmentsPanel({ canManage }: { canManage: boolean }) {
       ) : (
         <ul className="divide-y divide-border border-t border-border">{render(null, 0)}</ul>
       )}
-      <DepartmentDialog value={editing} departments={depts.data ?? []} people={chart.data?.employees ?? []} onClose={() => setEditing(null)} />
+      <DepartmentDialog value={editing} departments={depts.data ?? []} onClose={() => setEditing(null)} />
       <ConfirmDialog
         isOpen={Boolean(deleting)}
         onClose={() => setDeleting(null)}
@@ -135,12 +137,10 @@ export function DepartmentsPanel({ canManage }: { canManage: boolean }) {
 function DepartmentDialog({
   value,
   departments,
-  people,
   onClose,
 }: {
   value: Partial<Department> | null;
   departments: Department[];
-  people: Array<{ id: string; firstName: string; lastName: string }>;
   onClose: () => void;
 }) {
   const save = useSaveDepartment();
@@ -200,7 +200,7 @@ function DepartmentDialog({
           </Select>
         </Field>
         <Field label="Department head" htmlFor="d-head">
-          <PersonSelect id="d-head" value={form.headEmployeeId} onChange={(v) => setForm({ ...form, headEmployeeId: v })} emptyLabel="— Not set" people={people} />
+          <PersonSearch id="d-head" value={form.headEmployeeId} onChange={(v) => setForm({ ...form, headEmployeeId: v })} emptyLabel="— Not set" />
         </Field>
       </form>
     </Modal>

@@ -143,3 +143,12 @@ export class KudosInsightsQueryDto {
 export class KudosHintDto {
   @IsArray() @ArrayMinSize(1) @ArrayMaxSize(50) @ArrayUnique() @IsUUID('all', { each: true }) employeeIds!: string[];
 }
+
+/** Reach of one post: the totals cover everyone, `people` is one tab a page at a time. */
+export class ReportQueryDto {
+  /** waiting = not read (not confirmed when it needs a confirmation) · done · rsvp = replied */
+  @IsOptional() @IsIn(['waiting', 'done', 'rsvp']) tab?: 'waiting' | 'done' | 'rsvp';
+  @IsOptional() @IsString() @MaxLength(80) search?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit?: number;
+}

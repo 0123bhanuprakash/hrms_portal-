@@ -5,7 +5,7 @@ import type { TenantContext } from '../../common/types/request.types';
 import type { AccessContext } from '../access/access.types';
 import { companyOf } from '../user-management/company-context';
 import { DelegationsService } from './delegations.service';
-import { CreateDelegationDto, RangeQueryDto } from './dto';
+import { CreateDelegationDto, PageQueryDto, RangeQueryDto } from './dto';
 import { CoverService } from './cover.service';
 import { LiveAccess } from '../realtime/live.decorator';
 
@@ -67,8 +67,8 @@ export class DelegationsController {
   @Get('all')
   @RequirePermission('user.view')
   @ApiOperation({ summary: 'All current and upcoming delegations in the company' })
-  all(@TenantCtx() ctx: TenantContext) {
-    return this.delegations.all(companyOf(ctx));
+  all(@TenantCtx() ctx: TenantContext, @Query() q: PageQueryDto) {
+    return this.delegations.all(companyOf(ctx), q);
   }
 
   @Post()

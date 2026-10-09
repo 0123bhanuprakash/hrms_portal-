@@ -8,13 +8,14 @@ import { Button } from '@/components/ui/button';
 import { Card, EmptyState, ErrorState, Pagination, Skeleton } from '@/components/ui/feedback';
 import { inputClass } from '@/components/ui/field';
 import { AuditEntryDrawer } from '@/components/super-admin/audit-entry-drawer';
-import { useAuditActions, useAuditLogs, useCompanies } from '@/lib/admin/queries';
+import { useAuditActions, useAuditLogs, useCompanies, useCompany } from '@/lib/admin/queries';
 import type { AuditLogEntry, AuditLogsQuery, Paginated } from '@/lib/admin/types';
 import { api } from '@/lib/api';
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatDateTime, formatRelative, humanizeAction } from '@/lib/format';
 import { cn } from '@/lib/cn';
-import { Select } from '@/components/ui/pickers';
+import { SearchSelect, Select } from '@/components/ui/pickers';
+import { useDebounced } from '@/components/ui/list-tools';
 
 const PAGE_SIZE = 25;
 const RANGES = [
@@ -70,7 +71,15 @@ function AuditLogsView() {
 
   const { data, isLoading, isError, error, refetch, isFetching } = useAuditLogs(query);
   const actions = useAuditActions();
-  const companies = useCompanies({ limit: 100, sortBy: 'name', sortOrder: 'asc' });
+  // Companies are searched on the server (20 at a time); the chosen one is fetched by id
+  const [companyQ, setCompanyQ] = useState('');
+  const typedCompany = useDebounced(companyQ.trim(), 250);
+  const companies = useCompanies({ limit: 20, sortBy: 'name', sortOrder: 'asc', search: typedCompany || undefined });
+  const chosenCompany = useCompany(query.companyId ?? '');
+  const companyOptions = [
+    ...(chosenCompany.data && !companies.data?.data.some((c) => c.id === chosenCompany.data!.company.id) ? [{ value: chosenCompany.data.company.id, label: chosenCompany.data.company.name }] : []),
+    ...(companies.data?.data ?? []).map((c) => ({ value: c.id, label: c.name, sub: c.slug })),
+  ];
   const [selected, setSelected] = useState<AuditLogEntry | null>(null);
   const [email, setEmail] = useState(query.userEmail ?? '');
   const [exporting, setExporting] = useState(false);
@@ -134,17 +143,18 @@ function AuditLogsView() {
       {/* Filters */}
       <Card className="p-3">
         <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_auto]">
-          <Select
+          <SearchSelect
             aria-label="Filter by company"
             value={query.companyId ?? ''}
-            onChange={(e) => update({ companyId: e.target.value || undefined })}
-            className={cn(inputClass, 'h-9')}
-          >
-            <option value="">All companies</option>
-            {companies.data?.data.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </Select>
+            onChange={(v) => update({ companyId: v || undefined })}
+            options={companyOptions}
+            emptyLabel="All companies"
+            muteEmpty={false}
+            searchPlaceholder="Search companies…"
+            onSearch={setCompanyQ}
+            searching={companies.isFetching}
+            triggerClassName="h-9"
+          />
           <Select
             aria-label="Filter by action"
             value={query.action ?? ''}

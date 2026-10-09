@@ -1,18 +1,21 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { BellRing, CalendarClock, Pencil, Plus, ShieldCheck, Tags } from 'lucide-react';
+import { BellRing, CalendarClock, Gift, Pencil, Plus, ShieldCheck, Tags } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, EmptyState, ErrorState, Skeleton } from '@/components/ui/feedback';
+import { Card, EmptyState, ErrorState, Skeleton, Tabs } from '@/components/ui/feedback';
 import { ColorInput, Field, Input, Textarea, inputClass, FormError } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { PersonAvatar } from '@/components/profile/person-avatar';
 import { Ring } from '@/components/time/visuals';
 import { useAccess } from '@/lib/access/use-access';
-import { ACCRUAL_LABEL, LEAVE_CATEGORIES, useLeaveTypes, useLeaveUsage, useRemindLapse, useSaveLeaveType, useYearEnd, type LeaveType, type LeaveTypeInput } from '@/lib/company/leave';
+import { ACCRUAL_LABEL, LEAVE_CATEGORIES, useGrantRequests, useLeaveTypes, useLeaveUsage, useRemindLapse, useSaveLeaveType, useYearEnd, type LeaveTypeAdmin, type LeaveTypeInput } from '@/lib/company/leave';
+import { NO_RULES, WhoCanUse, rulesSummary } from '@/components/leave/who-can-use';
+import { GrantsPanel } from '@/components/leave/grants';
 import { getApiErrorMessage } from '@/lib/errors';
 import { cn } from '@/lib/cn';
 import { Select } from '@/components/ui/pickers';
@@ -24,12 +27,14 @@ const expiryLabel = (mmdd: string) => `${Number(mmdd.slice(3))} ${MONTHS[Number(
 /** The policy in one plain-English sentence. */
 function policySentence(t: LeaveTypeInput): string {
   const parts: string[] = [];
-  if (t.accrual === 'NONE') parts.push('No limit on days');
+  if (t.availability === 'GRANT_ONLY') parts.push(`Given by HR grant — usually ${t.annualQuota} days${t.grantNeedsDocument ? ', with a document' : ''}`);
+  else if (t.accrual === 'NONE') parts.push('No limit on days');
   else parts.push(`${t.annualQuota} days a year${t.accrual === 'MONTHLY' ? `, added ${Math.round((t.annualQuota / 12) * 100) / 100} each month` : ', given up front'}`);
   if (t.maxConsecutiveDays) parts.push(`up to ${t.maxConsecutiveDays} at a time`);
   if (t.minNoticeDays) parts.push(`${t.minNoticeDays} day${t.minNoticeDays === 1 ? '' : 's'}’ notice`);
   parts.push(t.approvalLevels === 0 ? 'approved automatically' : `${t.approvalLevels} approval${t.approvalLevels === 1 ? '' : 's'}`);
   if (t.carryForward) parts.push(`up to ${t.maxCarryForward} carry into next year${t.carryExpiry ? ` (used by ${expiryLabel(t.carryExpiry)})` : ''}`);
+  if (t.availability === 'RULES') parts.push(`only for ${rulesSummary(t) ?? 'people matching the rules'}`);
   if (t.blockDuringProbation) parts.push('not during probation');
   if (t.documentAfterDays !== null) parts.push(`a document over ${t.documentAfterDays} day${t.documentAfterDays === 1 ? '' : 's'}`);
   if (t.sandwichRule) parts.push('weekends in between count');
@@ -38,16 +43,30 @@ function policySentence(t: LeaveTypeInput): string {
 }
 
 export default function LeaveTypesPage() {
+  return (
+    <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+      <LeaveTypes />
+    </Suspense>
+  );
+}
+
+function LeaveTypes() {
   const { can, hasFeature, isLoading: accessLoading } = useAccess();
   const allowed = hasFeature('time.leave') && can('leave.manage_types');
+  // Grants are HR's (company-wide balance adjusting); the API checks the scope
+  const mayGrant = allowed && can('leave.adjust_balance');
   const types = useLeaveTypes(true, allowed);
   const year = new Date().getFullYear();
   const usage = useLeaveUsage(year, allowed);
-  const [editing, setEditing] = useState<LeaveType | 'new' | null>(null);
+  const params = useSearchParams();
+  const [tab, setTab] = useState<'types' | 'grants'>(params.get('tab') === 'grants' ? 'grants' : 'types');
+  const waiting = useGrantRequests({ view: 'review' }, mayGrant);
+  const [editing, setEditing] = useState<LeaveTypeAdmin | 'new' | null>(null);
   const [yearEndId, setYearEndId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!yearEndId && types.data) setYearEndId(types.data.find((t) => t.carryForward && t.isActive)?.id ?? types.data.find((t) => t.accrual !== 'NONE')?.id ?? null);
+    const balanced = (t: LeaveTypeAdmin) => t.accrual !== 'NONE' && t.availability !== 'GRANT_ONLY';
+    if (!yearEndId && types.data) setYearEndId(types.data.find((t) => t.carryForward && t.isActive && balanced(t))?.id ?? types.data.find(balanced)?.id ?? null);
   }, [types.data, yearEndId]);
 
   if (!accessLoading && !allowed) return <EmptyState icon={<ShieldCheck />} title="No access" description="You can’t manage leave types." />;
@@ -55,14 +74,38 @@ export default function LeaveTypesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Time" title="Leave types" description="What people can take, how much, and who approves it." action={<Button onClick={() => setEditing('new')}><Plus /> Add type</Button>} />
-      {types.isError ? (
+      <PageHeader eyebrow="Time" title="Leave types" description="What people can take, how much, who can use it, and who approves it." action={tab === 'types' ? <Button onClick={() => setEditing('new')}><Plus /> Add type</Button> : undefined} />
+      {mayGrant && (
+        <Tabs
+          value={tab}
+          onChange={setTab}
+          tabs={[
+            { id: 'types', label: 'Types', icon: <Tags /> },
+            { id: 'grants', label: 'Grants', icon: <Gift />, count: waiting.data?.length || undefined },
+          ]}
+        />
+      )}
+      {tab === 'grants' && mayGrant ? (
+        types.data ? <GrantsPanel types={types.data} /> : <Skeleton className="h-48 w-full" />
+      ) : types.isError ? (
         <ErrorState message={getApiErrorMessage(types.error)} onRetry={() => types.refetch()} />
       ) : !types.data ? (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-36 w-full" />)}</div>
       ) : (
-        <div className="m-stagger grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {types.data.map((t) => {
+        <div className="space-y-6">
+          {[
+            { key: 'active', label: 'Active', hint: 'People can apply for these', list: types.data.filter((t) => t.isActive) },
+            { key: 'inactive', label: 'Inactive', hint: 'Switched off — nobody can apply; history is kept', list: types.data.filter((t) => !t.isActive) },
+          ]
+            .filter((g) => g.list.length)
+            .map((g) => (
+              <section key={g.key} aria-label={`${g.label} leave types`}>
+                <h2 className="mb-2 flex items-baseline gap-2 text-sm font-semibold">
+                  {g.label} <span className="tabular-nums text-muted-foreground">{g.list.length}</span>
+                  <span className="text-xs font-normal text-muted-foreground">· {g.hint}</span>
+                </h2>
+                <div className="m-stagger grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {g.list.map((t) => {
             const u = used.get(t.id);
             return (
               <div key={t.id} className={cn('flex flex-col gap-3 rounded-xl border border-t-[3px] border-border bg-surface p-4 shadow-card', !t.isActive && 'opacity-55')} style={{ borderTopColor: t.color }}>
@@ -70,7 +113,7 @@ export default function LeaveTypesPage() {
                   <span className="rounded-lg px-2 py-1 font-mono text-xs font-black" style={{ background: `color-mix(in srgb, ${t.color} 15%, transparent)`, color: t.color }}>{t.code}</span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold">{t.name}</p>
-                    <p className="text-xs text-muted-foreground">{t.accrual === 'NONE' ? 'No limit' : `${t.annualQuota} / year · ${ACCRUAL_LABEL[t.accrual].toLowerCase()}`}</p>
+                    <p className="text-xs text-muted-foreground">{t.availability === 'GRANT_ONLY' ? `Given by HR · usually ${t.annualQuota} days` : t.accrual === 'NONE' ? 'No limit' : `${t.annualQuota} / year · ${ACCRUAL_LABEL[t.accrual].toLowerCase()}`}</p>
                   </div>
                   <Button size="icon-sm" variant="ghost" aria-label={`Edit ${t.name}`} onClick={() => setEditing(t)}><Pencil /></Button>
                 </div>
@@ -79,7 +122,8 @@ export default function LeaveTypesPage() {
                   {t.carryForward && <Badge tone="outline">Carry {t.maxCarryForward}{t.carryExpiry ? ` · until ${expiryLabel(t.carryExpiry)}` : ''}</Badge>}
                   {!t.isPaid && <Badge>Unpaid</Badge>}
                   {t.countsAsPresent && <Badge tone="info">Counts as working</Badge>}
-                  {t.gender && <Badge tone="outline">{pretty(t.gender)} only</Badge>}
+                  {t.availability === 'GRANT_ONLY' && <Badge tone="info">Only when granted{t.grantNeedsDocument ? ' · doc' : ''}</Badge>}
+                  {t.availability !== 'EVERYONE' && rulesSummary(t) && <Badge tone="outline">{t.availability === 'GRANT_ONLY' ? 'Can ask: ' : ''}{rulesSummary(t)}</Badge>}
                   {t.blockDuringProbation && <Badge tone="warning">Not in probation</Badge>}
                   {t.documentAfterDays !== null && <Badge tone="primary">Doc over {t.documentAfterDays}d</Badge>}
                   {t.sandwichRule && <Badge tone="primary">Sandwich rule</Badge>}
@@ -96,19 +140,24 @@ export default function LeaveTypesPage() {
               </div>
             );
           })}
+                </div>
+              </section>
+            ))}
         </div>
       )}
 
-      {types.data && <YearEnd types={types.data} value={yearEndId} onChange={setYearEndId} year={year} />}
+      {tab === 'types' && types.data && <YearEnd types={types.data} value={yearEndId} onChange={setYearEndId} year={year} />}
       <TypeDialog value={editing} onClose={() => setEditing(null)} />
     </div>
   );
 }
 
 /** What everyone carries over / loses on 31 Dec for one type, and a reminder for people losing days. */
-function YearEnd({ types, value, onChange, year }: { types: LeaveType[]; value: string | null; onChange: (id: string) => void; year: number }) {
+function YearEnd({ types, value, onChange, year }: { types: LeaveTypeAdmin[]; value: string | null; onChange: (id: string) => void; year: number }) {
   const q = useYearEnd(value, year);
   const remind = useRemindLapse();
+  const [all, setAll] = useState(false);
+  useEffect(() => setAll(false), [value]);
   const d = q.data;
   const total = (d?.carry ?? 0) + (d?.lapse ?? 0);
   return (
@@ -117,7 +166,7 @@ function YearEnd({ types, value, onChange, year }: { types: LeaveType[]; value: 
         <CalendarClock className="h-4 w-4 text-muted-foreground" />
         <h2 className="flex-1 text-sm font-semibold">Year-end preview · 31 Dec {year}</h2>
         <Select className={cn(inputClass, 'w-56')} value={value ?? ''} onChange={(e) => onChange(e.target.value)} aria-label="Leave type">
-          {types.filter((t) => t.accrual !== 'NONE').map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+          {types.filter((t) => t.accrual !== 'NONE' && t.availability !== 'GRANT_ONLY').map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
         </Select>
       </div>
       {q.isLoading || !d ? (
@@ -139,13 +188,17 @@ function YearEnd({ types, value, onChange, year }: { types: LeaveType[]; value: 
             </p>
             {d.losing.length > 0 && (
               <>
-                <ul className="mt-3 flex flex-wrap gap-2">
-                  {d.losing.slice(0, 8).map((x) => (
+                <ul className={cn('mt-3 flex flex-wrap gap-2', all && 'max-h-64 overflow-y-auto pr-1')}>
+                  {(all ? d.losing : d.losing.slice(0, 8)).map((x) => (
                     <li key={x.employee.id} className="flex items-center gap-1.5 rounded-full bg-subtle py-0.5 pl-0.5 pr-2.5 text-xs">
                       <PersonAvatar person={x.employee} size="xs" /> {x.employee.firstName} <b className="text-destructive">−{x.lapse}</b>
                     </li>
                   ))}
-                  {d.losing.length > 8 && <li className="self-center text-xs text-muted-foreground">+{d.losing.length - 8} more</li>}
+                  {d.losing.length > 8 && (
+                    <li className="self-center">
+                      <Button variant="link" size="sm" className="text-xs" aria-expanded={all} onClick={() => setAll((v) => !v)}>{all ? 'Show fewer' : `+${d.losing.length - 8} more`}</Button>
+                    </li>
+                  )}
                 </ul>
                 <Button
                   size="sm"
@@ -189,17 +242,20 @@ const EMPTY: LeaveTypeInput = {
   maxConsecutiveDays: null,
   includeNonWorkingDays: false,
   countsAsPresent: false,
-  gender: null,
+  availability: 'EVERYONE',
+  grantNeedsDocument: false,
+  ...NO_RULES,
   blockDuringProbation: false,
   documentAfterDays: null,
   sandwichRule: false,
   negativeBalance: 0,
+  recoverNegative: true,
   carryExpiry: null,
   isActive: true,
   sortOrder: 100,
 };
 
-function TypeDialog({ value, onClose }: { value: LeaveType | 'new' | null; onClose: () => void }) {
+function TypeDialog({ value, onClose }: { value: LeaveTypeAdmin | 'new' | null; onClose: () => void }) {
   const save = useSaveLeaveType();
   const [f, setF] = useState<LeaveTypeInput>(EMPTY);
   const [error, setError] = useState<string | null>(null);
@@ -209,7 +265,7 @@ function TypeDialog({ value, onClose }: { value: LeaveType | 'new' | null; onClo
     if (value === 'new') setF(EMPTY);
     else {
       const { id: _id, ...rest } = value;
-      setF(rest);
+      setF({ ...NO_RULES, ...rest });
     }
   }, [value]);
   if (!value) return null;
@@ -230,8 +286,9 @@ function TypeDialog({ value, onClose }: { value: LeaveType | 'new' | null; onClo
         ...(value !== 'new' && { id: value.id }),
         annualQuota: Number(f.annualQuota),
         maxCarryForward: Number(f.maxCarryForward),
-        negativeBalance: f.accrual === 'NONE' ? 0 : Number(f.negativeBalance),
-        carryExpiry: f.carryForward ? f.carryExpiry || null : null,
+        negativeBalance: f.accrual === 'NONE' || f.availability === 'GRANT_ONLY' ? 0 : Number(f.negativeBalance),
+        carryForward: f.availability === 'GRANT_ONLY' ? false : f.carryForward,
+        carryExpiry: f.carryForward && f.availability !== 'GRANT_ONLY' ? f.carryExpiry || null : null,
       });
       toast.success(value === 'new' ? 'Leave type added' : 'Leave type saved');
       onClose();
@@ -273,14 +330,14 @@ function TypeDialog({ value, onClose }: { value: LeaveType | 'new' | null; onClo
               {LEAVE_CATEGORIES.map((c) => <option key={c} value={c}>{pretty(c)}</option>)}
             </Select>
           </Field>
-          <Field label="Balance" htmlFor="lt-accrual">
-            <Select id="lt-accrual" className={inputClass} value={f.accrual} onChange={(e) => set('accrual', e.target.value as LeaveTypeInput['accrual'])}>
+          <Field label="Balance" htmlFor="lt-accrual" hint={f.availability === 'GRANT_ONLY' ? 'Set by each grant' : undefined}>
+            <Select id="lt-accrual" className={inputClass} value={f.accrual} disabled={f.availability === 'GRANT_ONLY'} onChange={(e) => set('accrual', e.target.value as LeaveTypeInput['accrual'])}>
               <option value="UPFRONT">Yearly quota (up front)</option>
               <option value="MONTHLY">Yearly quota (monthly)</option>
               <option value="NONE">Unlimited</option>
             </Select>
           </Field>
-          <Field label="Days per year" htmlFor="lt-quota">
+          <Field label={f.availability === 'GRANT_ONLY' ? 'Usual days per grant' : 'Days per year'} htmlFor="lt-quota">
             <Input id="lt-quota" type="number" step="0.5" min={0} max={366} value={f.annualQuota} onChange={(e) => set('annualQuota', Number(e.target.value))} disabled={f.accrual === 'NONE'} />
           </Field>
           <Field label="Approval levels" htmlFor="lt-levels" hint="0 = approved automatically">
@@ -294,13 +351,6 @@ function TypeDialog({ value, onClose }: { value: LeaveType | 'new' | null; onClo
           <Field label="Notice (days)" htmlFor="lt-notice"><Input id="lt-notice" type="number" min={0} max={365} value={f.minNoticeDays} onChange={(e) => set('minNoticeDays', Number(e.target.value))} /></Field>
           <Field label="Max days at a time" htmlFor="lt-max" hint="Blank = no limit">
             <Input id="lt-max" type="number" min={1} max={366} value={f.maxConsecutiveDays ?? ''} onChange={(e) => set('maxConsecutiveDays', e.target.value ? Number(e.target.value) : null)} />
-          </Field>
-          <Field label="Only for" htmlFor="lt-gender">
-            <Select id="lt-gender" className={inputClass} value={f.gender ?? ''} onChange={(e) => set('gender', (e.target.value || null) as LeaveTypeInput['gender'])}>
-              <option value="">Everyone</option>
-              <option value="FEMALE">Women</option>
-              <option value="MALE">Men</option>
-            </Select>
           </Field>
           {f.carryForward && (
             <>
@@ -321,9 +371,17 @@ function TypeDialog({ value, onClose }: { value: LeaveType | 'new' | null; onClo
             </>
           )}
         </div>
+        <WhoCanUse
+          availability={f.availability}
+          rules={f}
+          onAvailability={(a) => setF((p) => ({ ...p, availability: a, ...(a === 'GRANT_ONLY' && { accrual: 'UPFRONT', carryForward: false, negativeBalance: 0, carryExpiry: null }) }))}
+          onRules={(r) => setF((p) => ({ ...p, ...r }))}
+          grantNeedsDocument={f.grantNeedsDocument}
+          onGrantNeedsDocument={(v) => set('grantNeedsDocument', v)}
+        />
         <Field label="Description" htmlFor="lt-desc"><Textarea id="lt-desc" value={f.description ?? ''} onChange={(e) => set('description', e.target.value || null)} maxLength={300} rows={2} /></Field>
         <div className="grid gap-3 sm:grid-cols-2">
-          {check('carryForward', 'Carry forward unused days', 'Into next year, up to the limit above')}
+          {f.availability !== 'GRANT_ONLY' && check('carryForward', 'Carry forward unused days', 'Into next year, up to the limit above')}
           {check('isPaid', 'Paid leave', 'Untick for loss-of-pay leave')}
           {check('allowHalfDay', 'Allow half days', 'First or second half of a single day')}
           {check('includeNonWorkingDays', 'Count weekly offs & holidays', 'e.g. maternity leave')}
@@ -352,6 +410,12 @@ function TypeDialog({ value, onClose }: { value: LeaveType | 'new' | null; onClo
                 <span className="block text-xs text-muted-foreground">The balance may go below zero</span>
                 {f.negativeBalance > 0 && (
                   <span className="mt-1.5 flex items-center gap-2 text-xs">Up to <Input type="number" aria-label="Days in advance" className="h-7 w-16 px-2 text-xs" min={0.5} max={30} step={0.5} value={f.negativeBalance} onChange={(e) => set('negativeBalance', Number(e.target.value))} /> days</span>
+                )}
+                {f.negativeBalance > 0 && (
+                  <span className="mt-1.5 flex items-center gap-2 text-xs">
+                    <input type="checkbox" className="accent-[hsl(var(--primary))]" checked={f.recoverNegative} onChange={(e) => set('recoverNegative', e.target.checked)} />
+                    Below 0 at year end: take it from next year (untick to forgive)
+                  </span>
                 )}
               </span>
             </label>

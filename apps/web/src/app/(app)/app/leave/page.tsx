@@ -4,18 +4,21 @@ import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { AlertTriangle, CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, FileText, Lightbulb, Paperclip, Plane, ShieldCheck, Trash2 } from 'lucide-react';
+import { AlertTriangle, CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, Lightbulb, Plane, ShieldCheck, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, EmptyState, ErrorState, Pagination, Skeleton, Tabs } from '@/components/ui/feedback';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { ApplyLeaveDialog, useLeaveDrafts, type LeaveDraft } from '@/components/leave/apply-dialog';
-import { LeaveRequestCard } from '@/components/leave/request-card';
+import { useFocusedRequest } from '@/components/leave/request-card';
+import { LeaveHistoryRow } from '@/components/leave/leave-history';
 import { FlipDigits, Ring, daysBetween } from '@/components/time/visuals';
 import { useAccess } from '@/lib/access/use-access';
 import { useMyCard } from '@/lib/company/profile';
 import { useHolidays, type Holiday } from '@/lib/company/attendance';
-import { days as dayCount, leaveRange, openLeaveDocument, useAttachDocument, useCancelLeave, useLeaveBalances, useLeaveRequests, useLeaveTypes, type LeaveRequest, type LeaveStatus } from '@/lib/company/leave';
+import { AskableCards, windowLabel } from '@/components/leave/grants';
+import { AskExtraDialog, LedgerDialog, type AskExtraInit } from '@/components/leave/extra-leave';
+import { days as dayCount, leaveRange, useAttachDocument, useCancelLeave, useLeaveBalances, useLeaveRequests, useLeaveTypes, type LeaveBalance, type LeaveRequest, type LeaveStatus } from '@/lib/company/leave';
 import { getApiErrorMessage } from '@/lib/errors';
 import { cn } from '@/lib/cn';
 import { NoProfile } from '@/components/profile/no-profile';
@@ -51,6 +54,7 @@ function MyLeave() {
   const list = useLeaveRequests({ view: 'mine', status: status === 'ALL' ? undefined : status, page }, allowed && hasProfile);
   // Same request as “My year” below (one call for both)
   const upcoming = useLeaveRequests({ view: 'mine', limit: 100 }, allowed && hasProfile);
+  const focused = useFocusedRequest(list.data?.data.map((r) => r.id));
   const cancel = useCancelLeave();
   const attach = useAttachDocument();
 
@@ -93,7 +97,7 @@ function MyLeave() {
 
       <div className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
         {upcoming.isLoading ? <Skeleton className="h-48 w-full rounded-2xl" /> : <NextTrip r={next ?? null} onPlan={() => setApply({})} />}
-        <PlanBreak onPlan={(range) => setApply({ range })} />
+        <PlanBreak />
       </div>
 
       <Drafts onOpen={(d) => setApply({ draft: d })} />
@@ -110,9 +114,11 @@ function MyLeave() {
         {hasProfile && <BalanceRings year={year} />}
       </section>
 
-      <div className="grid gap-4 xl:grid-cols-[1fr_380px]">
-        <MyYear year={year} />
-        <section className="space-y-3">
+      <MyYear year={year} />
+
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <h2 className="text-sm font-semibold">Leave history{list.data ? <span className="font-normal text-muted-foreground"> · {list.data.meta.total}</span> : null}</h2>
           <Tabs
             tabs={[
               { id: 'ALL' as const, label: 'All' },
@@ -124,37 +130,33 @@ function MyLeave() {
             value={status}
             onChange={(s) => { setStatus(s); setPage(1); }}
           />
-          {list.isLoading ? (
-            <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-28 w-full" />)}</div>
-          ) : list.isError ? (
-            <ErrorState message={getApiErrorMessage(list.error, 'Could not load your requests')} onRetry={() => list.refetch()} />
-          ) : !list.data?.data.length ? (
-            <EmptyState icon={<Plane />} title="No leave requests" description={status === 'ALL' ? 'When you apply for leave it will show up here.' : undefined} />
-          ) : (
-            <div className="space-y-3">
+        </div>
+        {list.isLoading ? (
+          <Skeleton className="h-64 w-full" />
+        ) : list.isError ? (
+          <ErrorState message={getApiErrorMessage(list.error, 'Could not load your requests')} onRetry={() => list.refetch()} />
+        ) : !list.data?.data.length ? (
+          <EmptyState icon={<Plane />} title="No leave requests" description={status === 'ALL' ? 'When you apply for leave it will show up here.' : undefined} />
+        ) : (
+          <Card className="overflow-hidden">
+            <div className="hidden border-b border-border bg-subtle/50 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground lg:grid lg:grid-cols-[minmax(9rem,1fr)_minmax(11rem,1.2fr)_minmax(0,1.1fr)_6.5rem_minmax(8rem,auto)] lg:gap-4">
+              <span className="pl-6">Leave</span>
+              <span>Dates</span>
+              <span>Approval</span>
+              <span>Status</span>
+              <span />
+            </div>
+            <ul className="divide-y divide-border">
               {list.data.data.map((r) => (
-                <LeaveRequestCard
-                  key={r.id}
-                  request={r}
-                  actions={
-                    <div className="flex flex-col items-end gap-1.5">
-                      {r.document && <Button size="sm" variant="ghost" onClick={() => void openLeaveDocument(r.id)}><FileText /> {r.document.name}</Button>}
-                      {(r.status === 'PENDING' || r.status === 'APPROVED') && !r.document && (
-                        <label className={cn('inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium', r.needsDocument ? 'bg-warning-soft text-warning' : 'text-muted-foreground hover:bg-subtle')}>
-                          <Paperclip className="h-3.5 w-3.5" /> {r.needsDocument ? 'Attach the document' : 'Attach'}
-                          <input type="file" className="sr-only" accept=".pdf,.jpg,.jpeg,.png,.webp,.docx" onChange={(e) => e.target.files?.[0] && void upload(r, e.target.files[0])} />
-                        </label>
-                      )}
-                      {r.canCancel && <Button size="sm" variant="ghost" onClick={() => setCancelling(r)}>Cancel request</Button>}
-                    </div>
-                  }
-                />
+                <LeaveHistoryRow key={r.id} r={r} focused={r.id === focused} onCancel={setCancelling} onUpload={(req, file) => void upload(req, file)} />
               ))}
+            </ul>
+            <div className="border-t border-border px-4 py-2">
               <Pagination page={page} totalPages={list.data.meta.totalPages} total={list.data.meta.total} limit={list.data.meta.limit} onPageChange={setPage} />
             </div>
-          )}
-        </section>
-      </div>
+          </Card>
+        )}
+      </section>
 
       <ApplyLeaveDialog open={Boolean(apply)} onClose={() => setApply(null)} initialTypeCode={apply?.type} initialRange={apply?.range} draft={apply?.draft} />
       <ConfirmDialog
@@ -189,7 +191,7 @@ function NextTrip({ r, onPlan }: { r: LeaveRequest | null; onPlan: () => void })
         <svg aria-hidden className="tm-fly absolute right-16 top-6" width="64" height="36" viewBox="0 0 70 40"><path d="M2 22 L40 18 L58 4 L64 6 L52 20 L68 22 L64 26 L52 24 L58 36 L52 38 L40 26 L2 24 Z" fill="white" opacity=".85" /></svg>
         <p className="text-xs font-semibold uppercase tracking-wider text-amber-200">Next time off</p>
         <p className="mt-1 text-2xl font-bold">Nothing planned yet</p>
-        <p className="text-sm text-white/80">A break does you good — see the long weekends on the right.</p>
+        <p className="text-sm text-white/80">A break does you good — see the holidays coming up.</p>
         <Button size="sm" className="mt-3 w-max bg-white text-teal-900 hover:bg-white/90" onClick={onPlan}><CalendarPlus /> Plan some time off</Button>
       </section>
     );
@@ -225,41 +227,38 @@ function NextTrip({ r, onPlan }: { r: LeaveRequest | null; onPlan: () => void })
   );
 }
 
-/** Long weekends from the holiday list: bridge days (Tue/Thu holidays) and natural 3-day weekends. */
-function PlanBreak({ onPlan }: { onPlan: (range: { start: string; end: string }) => void }) {
+/** The next holidays that apply to me; a Monday or Friday holiday is marked as a long weekend. No leave suggestions. */
+function PlanBreak() {
   const y = new Date().getFullYear();
   const a = useHolidays(y);
   const b = useHolidays(y + 1);
   const ideas = useMemo(() => {
     const list: Holiday[] = [...(a.data ?? []), ...(b.data ?? [])].filter((h) => h.date > todayKey() && (h.isOptional ? h.chosen : h.appliesToMe !== false));
-    const out: Array<{ h: Holiday; text: string; take: { start: string; end: string } | null; total: number }> = [];
-    for (const h of list) {
-      const wd = new Date(`${h.date}T00:00:00Z`).getUTCDay();
-      if (wd === 4) out.push({ h, text: 'Take Friday off', take: { start: addDays(h.date, 1), end: addDays(h.date, 1) }, total: 4 });
-      else if (wd === 2) out.push({ h, text: 'Take Monday off', take: { start: addDays(h.date, -1), end: addDays(h.date, -1) }, total: 4 });
-      else if (wd === 1 || wd === 5) out.push({ h, text: 'No leave needed', take: null, total: 3 });
-      else if (wd === 3) out.push({ h, text: 'Take Thu + Fri off', take: { start: addDays(h.date, 1), end: addDays(h.date, 2) }, total: 5 });
-    }
-    return out.slice(0, 3);
+    return list
+      .sort((x, y) => x.date.localeCompare(y.date))
+      .slice(0, 3)
+      .map((h) => {
+        const wd = new Date(`${h.date}T00:00:00Z`).getUTCDay();
+        return { h, longWeekend: wd === 1 || wd === 5 };
+      });
   }, [a.data, b.data]);
   return (
     <Card className="p-5">
       <div className="flex items-center justify-between">
         <h2 className="flex items-center gap-2 text-sm font-semibold"><Lightbulb className="h-4 w-4 text-warning" /> Plan a break</h2>
-        <span className="text-xs text-muted-foreground">long weekends coming up</span>
+        <span className="text-xs text-muted-foreground">holidays coming up</span>
       </div>
       {!ideas.length ? (
-        <p className="mt-3 text-sm text-muted-foreground">No long weekends on the holiday calendar right now.</p>
+        <p className="mt-3 text-sm text-muted-foreground">No more holidays on the calendar right now.</p>
       ) : (
         <ul className="m-stagger mt-3 space-y-2">
           {ideas.map((x) => (
             <li key={x.h.id} className="flex items-center gap-3 rounded-xl bg-subtle/70 px-3 py-2">
               <span className="text-xl">🗓️</span>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold">{x.text} → {x.total}-day weekend</p>
-                <p className="truncate text-xs text-muted-foreground">{x.h.name} · {fmt(x.h.date)}</p>
+                <p className="truncate text-sm font-semibold">{x.h.name}</p>
+                <p className="truncate text-xs text-muted-foreground">{fmt(x.h.date)}{x.longWeekend && ' · 3-day weekend'}</p>
               </div>
-              {x.take && <Button size="sm" variant="secondary" onClick={() => onPlan(x.take!)}>Plan</Button>}
             </li>
           ))}
         </ul>
@@ -292,6 +291,8 @@ function Drafts({ onOpen }: { onOpen: (d: LeaveDraft) => void }) {
 /** One ring per leave type: what is left, with credits coming and days that will lapse. */
 function BalanceRings({ year }: { year: number }) {
   const q = useLeaveBalances(undefined, year);
+  const [statement, setStatement] = useState<LeaveBalance | null>(null);
+  const [asking, setAsking] = useState<AskExtraInit | null>(null);
   if (q.isLoading || (!q.data && !q.isError)) return <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 w-full" />)}</div>;
   if (q.isError) return <ErrorState message={getApiErrorMessage(q.error, 'Could not load balances')} onRetry={() => q.refetch()} />;
   return (
@@ -319,11 +320,27 @@ function BalanceRings({ year }: { year: number }) {
               <p className="text-xs text-muted-foreground">{unlimited ? `No limit · used ${b.used}` : `${b.used} used${b.pending ? ` · ${b.pending} pending` : ''}`}</p>
               {b.leaveType.accrual === 'MONTHLY' && !unlimited && b.accrued < b.allocated && <p className="text-xs text-muted-foreground">{b.allocated - b.accrued} more to be credited this year</p>}
               {lapse > 0 && year === new Date().getFullYear() && <p className="flex items-center gap-1 text-xs font-semibold text-warning"><AlertTriangle className="h-3 w-3" /> {lapse} will lapse on 31 Dec</p>}
+              {(b.lent ?? 0) > 0 && <p className="text-xs font-medium text-info">{dayCount(b.lent!)} lent by HR · used days come from {year + 1}</p>}
+              {(b.yearEnd?.owe ?? 0) > 0 && <p className="text-xs font-semibold text-destructive">−{b.yearEnd!.owe} will be taken from {year + 1}</p>}
+              {(b.owedLeft ?? 0) > 0 && <p className="text-xs text-warning">{dayCount(b.owedLeft!)} still owed from earlier</p>}
+              {b.extraRequest && <p className="text-xs text-muted-foreground">Asked for {dayCount(b.extraRequest.days)} more · waiting</p>}
+              <div className="mt-1 flex flex-wrap gap-x-3">
+                <button type="button" className="text-xs font-medium text-primary hover:underline" onClick={() => setStatement(b)}>Statement</button>
+                {!unlimited && !b.grants && !b.extraRequest && (b.available ?? 0) + (b.below ?? 0) <= 0 && year === new Date().getFullYear() && (
+                  <button type="button" className="text-xs font-medium text-primary hover:underline" onClick={() => setAsking({ leaveTypeId: b.leaveType.id, leaveTypeName: b.leaveType.name, year, days: 1 })}>Ask for more</button>
+                )}
+              </div>
+              {b.grants?.map((g) => (
+                <p key={g.id} className="text-xs text-muted-foreground">{g.left > 0 ? `Granted · use by ${windowLabel(g.validTo, g.validTo).split(' – ')[0]}` : `Grant ended ${windowLabel(g.validTo, g.validTo).split(' – ')[0]}`}</p>
+              ))}
               {(b.carryExpired ?? 0) > 0 && <p className="text-xs text-muted-foreground">{b.carryExpired} carried day{b.carryExpired === 1 ? '' : 's'} expired</p>}
             </div>
           </Card>
         );
       })}
+      {year === new Date().getFullYear() && <AskableCards items={q.data?.askable ?? []} />}
+      <LedgerDialog balance={statement} year={year} onClose={() => setStatement(null)} />
+      <AskExtraDialog init={asking} onClose={() => setAsking(null)} />
     </div>
   );
 }

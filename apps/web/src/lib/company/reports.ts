@@ -1,6 +1,6 @@
 'use client';
 
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
 // ============================================================
@@ -71,6 +71,8 @@ export interface AttendanceReport {
     year: number;
     byType: Array<{ type: { id: string; name: string; code: string }; entitledDays: number; leftDays: number }>;
     plentyLeft: Array<{ employee: Mini | null; days: number; type: string }>;
+    /** Everyone with 15+ days of one type left (plentyLeft holds the top 20) */
+    plentyCount?: number;
   };
 }
 
@@ -101,6 +103,22 @@ export interface UtilisationReport {
     weekly: Array<{ loggedMinutes: number; billableMinutes: number }> | null;
   }>;
   projects: Array<{ project: { id: string; code: string; name: string; clientName: string | null; status: string }; members: number; fte: number; loggedMinutes: number; billableMinutes: number }>;
+  /** People per quick filter (after the search) */
+  counts: Record<UtilisationShow, number>;
+  /** Paging of `rows` — every other number covers everyone */
+  meta: { total: number; page: number; limit: number; totalPages: number };
+}
+
+export type UtilisationShow = 'all' | 'bench' | 'low' | 'over' | 'nolog';
+export type UtilisationSort = 'allocation' | 'utilisation' | 'name';
+export interface UtilisationQuery extends ReportFilters {
+  from?: string;
+  to?: string;
+  search?: string;
+  show?: UtilisationShow;
+  sort?: UtilisationSort;
+  page?: number;
+  limit?: number;
 }
 
 export interface Kpi {
@@ -151,6 +169,15 @@ export interface AttendanceDay {
   leave: DayPerson[];
   absent: DayPerson[];
   notRecorded: DayPerson[];
+  /** Everyone per group — each list above holds only the first 10 */
+  counts: Record<DayGroup, number>;
+}
+export type DayGroup = 'present' | 'late' | 'wfh' | 'leave' | 'absent' | 'notRecorded';
+
+/** A page of people from the server, with the total. */
+export interface PeoplePage<T> {
+  rows: T[];
+  meta: { total: number; page: number; limit: number; totalPages: number };
 }
 
 export type ScheduleReport = 'overview' | 'people' | 'attendance' | 'utilisation';
@@ -202,7 +229,7 @@ export function useAttendanceReport(q: string | ({ month?: string; from?: string
   return useQuery({ queryKey: reportKeys.attendance(params), queryFn: async () => unwrap<AttendanceReport>(await api.get('/reports/attendance', { params: clean(params) })), enabled, placeholderData: keepPreviousData, staleTime: 60_000 });
 }
 
-export function useUtilisationReport(q: { from?: string; to?: string } & ReportFilters, enabled = true) {
+export function useUtilisationReport(q: UtilisationQuery, enabled = true) {
   return useQuery({
     queryKey: reportKeys.utilisation(q),
     queryFn: async () => unwrap<UtilisationReport>(await api.get('/reports/utilisation', { params: clean(q) })),
@@ -212,12 +239,77 @@ export function useUtilisationReport(q: { from?: string; to?: string } & ReportF
   });
 }
 
-export function usePeopleList(q: ({ dimension: string; value: string } & ReportFilters) | null) {
-  return useQuery({ queryKey: reportKeys.list(q ?? {}), queryFn: async () => unwrap<DrillPerson[]>(await api.get('/reports/people/list', { params: clean(q ?? {}) })), enabled: Boolean(q) });
+type DrillQuery = { dimension: string; value: string; search?: string } & ReportFilters;
+const drillPage = async (q: DrillQuery, page: number, limit = 25) => unwrap<PeoplePage<DrillPerson>>(await api.get('/reports/people/list', { params: clean({ ...q, page, limit }) }));
+
+/** The people behind a number, 25 at a time ("Load more"). */
+export function usePeopleList(q: DrillQuery | null) {
+  return useInfiniteQuery({
+    queryKey: reportKeys.list(q ?? {}),
+    queryFn: ({ pageParam }) => drillPage(q!, pageParam),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.meta.page < last.meta.totalPages ? last.meta.page + 1 : undefined),
+    enabled: Boolean(q),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/** Every page of a drill — for "Export these". */
+export async function fetchWholeDrill(q: DrillQuery): Promise<DrillPerson[]> {
+  const out: DrillPerson[] = [];
+  for (let page = 1; ; page++) {
+    const r = await drillPage(q, page, 100);
+    out.push(...r.rows);
+    if (page >= r.meta.totalPages) return out;
+  }
 }
 
 export function useAttendanceDay(q: ({ date: string } & ReportFilters) | null) {
   return useQuery({ queryKey: reportKeys.day(q ?? {}), queryFn: async () => unwrap<AttendanceDay>(await api.get('/reports/attendance/day', { params: clean(q ?? {}) })), enabled: Boolean(q) });
+}
+
+/** Someone with 15+ days of a leave type left (Reports → Leave left drawer). */
+export interface LeaveLeftPerson {
+  id: string;
+  employeeId: string;
+  firstName: string;
+  lastName: string;
+  avatarUrl: string | null;
+  department: string | null;
+  /** Days of this type left / entitled this year */
+  days: number;
+  entitled: number;
+}
+export interface LeaveLeft {
+  year: number;
+  /** People with 15+ days of at least one type */
+  people: number;
+  /** Per type: how many, and the first few (most left first) */
+  types: Array<{ type: { id: string; name: string; color: string | null }; count: number; rows: LeaveLeftPerson[] }>;
+}
+export function useLeaveLeft(filters: ReportFilters, enabled: boolean) {
+  return useQuery({ queryKey: ['reports', 'leave-left', filters], queryFn: async () => unwrap<LeaveLeft>(await api.get('/reports/attendance/leave-left', { params: clean(filters) })), enabled });
+}
+/** One leave type ("Show all"), 25 at a time. */
+export function useLeaveLeftType(q: (ReportFilters & { typeId: string }) | null) {
+  return useInfiniteQuery({
+    queryKey: ['reports', 'leave-left', q ?? {}, 'type'] as const,
+    queryFn: async ({ pageParam }) => unwrap<PeoplePage<LeaveLeftPerson>>(await api.get('/reports/attendance/leave-left', { params: clean({ ...q, page: pageParam, limit: 25 }) })),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.meta.page < last.meta.totalPages ? last.meta.page + 1 : undefined),
+    enabled: Boolean(q),
+  });
+}
+
+/** One group of a day ("Show all"), 25 at a time. */
+export function useAttendanceDayGroup(q: ({ date: string; group: DayGroup } & ReportFilters) | null) {
+  return useInfiniteQuery({
+    queryKey: [...reportKeys.day(q ?? {}), 'group'] as const,
+    queryFn: async ({ pageParam }) => unwrap<PeoplePage<DayPerson>>(await api.get('/reports/attendance/day', { params: clean({ ...q, page: pageParam, limit: 25 }) })),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.meta.page < last.meta.totalPages ? last.meta.page + 1 : undefined),
+    enabled: Boolean(q),
+  });
 }
 
 export const useReportSchedules = (enabled = true) => useQuery({ queryKey: reportKeys.schedules, queryFn: async () => unwrap<ReportSchedule[]>(await api.get('/reports/schedules')), enabled });

@@ -1,4 +1,4 @@
-// helpdesk teams (DevOps queue, team heads who assign): run with test/e2e/run.js (throwaway API on :4001).
+// helpdesk teams (DevOps queue, team heads who assign, company-made teams): run with test/e2e/run.js (throwaway API on :4001).
 const path = require('path');
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
@@ -34,6 +34,7 @@ async function cleanup() {
   await p.ticketMessage.deleteMany({ where: { companyId: c.id } });
   await p.ticket.deleteMany({ where: { companyId: c.id } });
   await p.helpdeskTeam.deleteMany({ where: { companyId: c.id } });
+  await p.ticketCategory.deleteMany({ where: { companyId: c.id } });
   await p.leaveRequest.deleteMany({ where: { companyId: c.id } });
   await p.leaveType.deleteMany({ where: { companyId: c.id } });
   await p.employeeHierarchy.deleteMany({ where: { companyId: c.id } });
@@ -70,6 +71,9 @@ async function cleanup() {
     await mk('mem', ['employee', 'it_admin']);
     await mk('mem2', ['employee', 'it_admin']);
     await mk('dev', ['employee', 'devops']);
+    await mk('hr', ['employee', 'hr']);
+    await mk('fac1', ['employee']);
+    await mk('fac2', ['employee']);
     const H = {};
     for (const n of Object.keys(P)) H[n] = await login(`${n}@${SLUG}.test`);
     const notes = (who, type) => p.notification.count({ where: { userId: P[who].user.id, type } });
@@ -158,7 +162,8 @@ async function cleanup() {
     const { NotificationsService } = dist('notifications/notifications.service.js');
     const { RealtimeService } = dist('realtime/realtime.service.js');
     const rt = new RealtimeService();
-    const rem = new HelpdeskRemindersService(p, new NotificationsService(p, { queueNotification: async () => undefined }, { get: () => undefined }, rt), { get: () => 'false' }, { live: () => undefined }, new HelpdeskTeamsService(p, rt));
+    const ns = new NotificationsService(p, { queueNotification: async () => undefined }, { get: () => undefined }, rt);
+    const rem = new HelpdeskRemindersService(p, ns, { get: () => 'false' }, { live: () => undefined }, new HelpdeskTeamsService(p, rt, ns));
     await rem.run();
     await rem.run();
     check('Head reminded once about the unowned High ticket', (await notes('head', 'ticket.unassigned')) === 1 && (await notes('mem', 'ticket.unassigned')) === 0);
@@ -170,6 +175,45 @@ async function cleanup() {
     check('DevOps engineer is told', (await notes('dev', 'ticket.created')) === 1);
     check('IT people don’t see DevOps tickets', (await call(H.head, 'GET', `/helpdesk/tickets/${d.data?.id}`)).status === 404);
     check('DevOps agent lists the DevOps queue', (await call(H.dev, 'GET', '/helpdesk/tickets?view=queue&status=active')).data?.some((t) => t.id === d.data?.id));
+
+    // ── Company-made teams (picked members, managed by Company Admin / HR) ──
+    check('An employee can’t add a team', (await call(H.emp, 'POST', '/helpdesk/teams', { label: 'Facilities' })).status === 403);
+    check('Names can’t clash with a built-in team', (await call(H.hr, 'POST', '/helpdesk/teams', { label: 'it' })).status === 409);
+    check('Members must be people of this company', (await call(H.hr, 'POST', '/helpdesk/teams', { label: 'Facilities', memberIds: [company.id] })).status === 400);
+    const made = await call(H.hr, 'POST', '/helpdesk/teams', { label: 'Facilities', emoji: '🏢', description: 'Desks, AC, parking, pantry', memberIds: [P.fac1.user.id, P.fac2.user.id] });
+    const FAC = made.data?.queue;
+    const facTeam = made.data?.teams?.find((t) => t.queue === FAC);
+    check('HR adds a Facilities team', made.status === 201 && /^T[0-9A-F]{8}$/.test(FAC ?? '') && facTeam?.custom && facTeam.members.length === 2, JSON.stringify(made.body).slice(0, 300));
+    check('Built-in teams can’t be renamed', (await call(H.admin, 'PUT', '/helpdesk/teams/HR', { label: 'People' })).status === 400);
+    const empQueues = (await call(H.emp, 'GET', '/helpdesk/queues')).data;
+    check('Everyone sees the new team; employees don’t work it', empQueues?.length === 5 && empQueues.find((q) => q.queue === FAC)?.label === 'Facilities' && empQueues.every((q) => !q.works));
+    check('Members work it', (await call(H.fac1, 'GET', '/helpdesk/queues')).data?.find((q) => q.queue === FAC)?.works === true);
+    check('A member gets the Ticket queue menu', (await call(H.fac2, 'GET', '/helpdesk/counts')).data?.works === true && (await call(H.emp, 'GET', '/helpdesk/counts')).data?.works === false);
+    check('Head must be a member', (await call(H.hr, 'PUT', `/helpdesk/teams/${FAC}`, { headId: P.emp.user.id })).status === 400);
+    check('HR sets a member as head', (await call(H.hr, 'PUT', `/helpdesk/teams/${FAC}`, { headId: P.fac1.user.id })).data?.teams.find((t) => t.queue === FAC)?.headId === P.fac1.user.id);
+    const ac = await call(H.hr, 'POST', '/helpdesk/categories', { queue: FAC, name: 'Air conditioning', icon: '❄️' });
+    check('HR adds a topic to the team', ac.status === 201 && ac.data?.queue === FAC, ac.status);
+    check('A non-member can’t add topics to it', (await call(H.head, 'POST', '/helpdesk/categories', { queue: FAC, name: 'Parking' })).status === 403);
+    const before = await notes('fac1', 'ticket.created');
+    const ft = await call(H.emp, 'POST', '/helpdesk/tickets', { queue: FAC, categoryId: ac.data?.id, subject: 'AC not cooling on 3rd floor', description: 'Since this morning near the windows' });
+    check('Employee raises a Facilities ticket', ft.status === 201 && ft.data?.queue === FAC && ft.data.queueLabel === 'Facilities' && ft.data.queueEmoji === '🏢', JSON.stringify(ft.body).slice(0, 300));
+    await wait(400);
+    check('The team head is told', (await notes('fac1', 'ticket.created')) === before + 1 && (await notes('fac2', 'ticket.created')) === 0);
+    check('Members list the team’s tickets', (await call(H.fac2, 'GET', `/helpdesk/tickets?view=queue&queue=${FAC}`)).data?.some((t) => t.id === ft.data?.id));
+    check('Other agents don’t see them', (await call(H.head, 'GET', `/helpdesk/tickets/${ft.data?.id}`)).status === 404);
+    check('Only members can be assigned', (await call(H.fac1, 'POST', `/helpdesk/tickets/${ft.data?.id}/assign`, { assigneeId: P.mem.user.id })).status === 400);
+    check('Head assigns a member', (await call(H.fac1, 'POST', `/helpdesk/tickets/${ft.data?.id}/assign`, { assigneeId: P.fac2.user.id })).data?.assignee?.id === P.fac2.user.id);
+    const wrong = await newTicket('The AC in room 4 is leaking');
+    await call(H.admin, 'PUT', '/helpdesk/teams/IT', { headId: null });
+    const moved = await call(H.mem, 'PATCH', `/helpdesk/tickets/${wrong.id}`, { queue: FAC });
+    check('IT moves a ticket to Facilities', moved.status === 200 && moved.data?.moved === true && (await p.ticket.findUnique({ where: { id: wrong.id } })).queue === FAC, moved.status);
+    check('Archiving with open tickets asks first', (await call(H.hr, 'PUT', `/helpdesk/teams/${FAC}`, { archived: true })).status === 409);
+    check('…and archives when told to', (await call(H.hr, 'PUT', `/helpdesk/teams/${FAC}`, { archived: true, force: true })).data?.teams.find((t) => t.queue === FAC)?.archived === true);
+    check('An archived team takes no new tickets', (await call(H.emp, 'POST', '/helpdesk/tickets', { queue: FAC, subject: 'Parking pass please', description: 'Lost my parking pass' })).status === 400);
+    check('…but its open tickets can still be finished', (await call(H.fac2, 'POST', `/helpdesk/tickets/${ft.data?.id}/resolve`, { resolution: 'Gas refilled' })).data?.status === 'RESOLVED');
+    check('Archived teams stay listed (for old tickets)', (await call(H.emp, 'GET', '/helpdesk/queues')).data?.find((q) => q.queue === FAC)?.archived === true);
+    await call(H.hr, 'PUT', `/helpdesk/teams/${FAC}`, { archived: false, memberIds: [P.fac1.user.id] });
+    check('Taking someone off the team removes their access', (await call(H.fac2, 'GET', `/helpdesk/tickets/${ft.data?.id}`)).status === 404);
 
     // ── Removing the head brings back “anyone takes” ──
     await call(H.admin, 'PUT', '/helpdesk/teams/IT', { headId: null });

@@ -23,8 +23,8 @@ type SectionId = 'look' | 'region' | 'notifications' | 'home' | 'accessibility' 
 const SECTIONS: Array<{ id: SectionId; label: string; icon: React.ReactNode; words: string }> = [
   { id: 'look', label: 'Look', icon: <Palette />, words: 'light dark colour theme menu background moments density text size season festive decorations' },
   { id: 'region', label: 'Region', icon: <Globe />, words: 'time zone date format week start clock city' },
-  { id: 'notifications', label: 'Notifications', icon: <Bell />, words: 'email notifications quiet hours summary leave expenses helpdesk kudos assets announcements' },
-  { id: 'home', label: 'Home & views', icon: <LayoutDashboard />, words: 'home cards who’s off celebrations kudos announcements saved views' },
+  { id: 'notifications', label: 'Notifications', icon: <Bell />, words: 'email notifications quiet hours summary leave expenses helpdesk shout-outs kudos assets announcements' },
+  { id: 'home', label: 'Home & views', icon: <LayoutDashboard />, words: 'home cards who’s off celebrations shout-outs kudos announcements saved views' },
   { id: 'accessibility', label: 'Accessibility', icon: <Eye />, words: 'motion contrast focus outline underline links' },
   { id: 'shortcuts', label: 'Shortcuts', icon: <Keyboard />, words: 'keyboard shortcuts keys' },
 ];
@@ -35,7 +35,7 @@ const TOPICS: Array<{ key: string; label: string; hint: string }> = [
   { key: 'expenses', label: 'Expenses', hint: 'Claims to approve, approved, paid' },
   { key: 'helpdesk', label: 'Helpdesk', hint: 'Replies on my tickets, assigned to me' },
   { key: 'announcements', label: 'Announcements', hint: 'New posts, things to confirm' },
-  { key: 'kudos', label: 'Kudos & celebrations', hint: 'Kudos to me and my team' },
+  { key: 'kudos', label: 'Shout-outs & celebrations', hint: 'Shout-outs to me and my team' },
   { key: 'assets', label: 'Assets', hint: 'Hand-overs to confirm, due back' },
 ];
 

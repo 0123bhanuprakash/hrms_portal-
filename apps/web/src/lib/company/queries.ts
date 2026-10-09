@@ -139,7 +139,7 @@ export function useCompanyBranding(companyId: string | null | undefined) {
 export function useUpdateCompanyBranding(companyId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: Partial<{ displayName: string; tagline: string; signInMessage: string; signInBackground: 'pack' | 'photo' | 'plain'; logoUrl: string | null; logoDarkUrl: string | null; signInPhotoUrl: string | null }>) =>
+    mutationFn: (body: Partial<{ displayName: string; tagline: string; signInMessage: string; signInBackground: 'pack' | 'photo' | 'plain'; logoUrl: string | null; logoDarkUrl: string | null; faviconUrl: string | null; signInPhotoUrl: string | null }>) =>
       unwrap<CompanyBrandingResponse>(api.patch(`/companies/${companyId}/branding`, body)),
     onSuccess: (data) => qc.setQueryData(companyKeys.branding(companyId), data),
   });

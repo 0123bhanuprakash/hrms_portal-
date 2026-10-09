@@ -78,11 +78,11 @@ export function HomeKudos() {
   if (!hasFeature('engage.kudos') || !can('kudos.view')) return null;
   return (
     <Card>
-      <CardHeader icon={<Heart />} title="Kudos" action={<Link href="/app/kudos" className="text-xs font-medium text-primary hover:underline">{can('kudos.give') ? 'Give kudos' : 'See all'}</Link>} />
+      <CardHeader icon={<Heart />} title="Shout-outs" action={<Link href="/app/kudos" className="text-xs font-medium text-primary hover:underline">{can('kudos.give') ? 'Give a shout-out' : 'See all'}</Link>} />
       {q.isLoading ? (
         <div className="px-5 pb-5"><Skeleton className="h-20 w-full" /></div>
       ) : !q.data?.data.length ? (
-        <p className="px-5 pb-5 text-sm text-muted-foreground">No kudos yet — thank someone for something great.</p>
+        <p className="px-5 pb-5 text-sm text-muted-foreground">No shout-outs yet — thank someone for something great.</p>
       ) : (
         <div className="space-y-2 px-3 pb-3">
           {q.data.data.map((k) => <KudosCard key={k.id} k={k} compact />)}

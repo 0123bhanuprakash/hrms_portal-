@@ -10,7 +10,6 @@ import { HealthCard, OrgVisual } from '@/components/org/org-visual';
 import { MoveDialog, type MoveRequest } from '@/components/org/move-dialog';
 import { DepartmentsPanel, LevelsPanel, LocationsPanel } from '@/components/org/structure';
 import { useAccess } from '@/lib/access/use-access';
-import { useOrgChart } from '@/lib/company/org';
 import { useOrgHealth } from '@/lib/company/lifecycle';
 import { useUiState } from '@/lib/preferences/ui-state';
 import { getApiErrorMessage } from '@/lib/errors';
@@ -67,8 +66,9 @@ function OrganisationContent() {
           ...(canManage ? [{ id: 'insights' as const, label: issues ? `Insights · ${issues}` : 'Insights', icon: <Activity /> }] : []),
         ]}
       />
+      {/* The chart waits for permissions: until then an Insights link would briefly fall back to it */}
       <div key={tab} className="animate-fade-up">
-        {tab === 'chart' && (chartView === 'chart' ? <OrgVisual canManage={canManage} onOpenDepartments={() => setTab('departments')} /> : <OrgChart canManage={canManage} />)}
+        {tab === 'chart' && (isLoading ? <Skeleton className="h-96" /> : chartView === 'chart' ? <OrgVisual canManage={canManage} onOpenDepartments={() => setTab('departments')} /> : <OrgChart canManage={canManage} />)}
         {tab === 'departments' && <DepartmentsPanel canManage={canManage} />}
         {tab === 'levels' && <LevelsPanel canManage={canManage} />}
         {tab === 'locations' && <LocationsPanel canManage={canManage} />}
@@ -80,19 +80,15 @@ function OrganisationContent() {
 
 function Insights({ onDepartments }: { onDepartments: () => void }) {
   const health = useOrgHealth();
-  const chart = useOrgChart();
   const [move, setMove] = useState<MoveRequest | null>(null);
   if (health.isError) return <ErrorState message={getApiErrorMessage(health.error, 'Could not load insights')} onRetry={() => health.refetch()} />;
   if (health.isLoading || !health.data) return <Skeleton className="h-80" />;
   const s = health.data.stats;
-  const employees = chart.data?.employees ?? [];
-  // How many direct reports each manager has
-  const spans = employees.filter((e) => e.directReports > 0).map((e) => e.directReports);
-  const buckets = [['1–2', 1, 2], ['3–5', 3, 5], ['6–8', 6, 8], ['9+', 9, Infinity]] as const;
-  const bucketCounts = buckets.map(([l, lo, hi]) => ({ l, n: spans.filter((x) => x >= lo && x <= hi).length }));
+  // How many direct reports each manager has (counted on the server)
+  const bucketCounts = (['1–2', '3–5', '6–8', '9+'] as const).map((l) => ({ l, n: s.spans[l] }));
   const maxB = Math.max(1, ...bucketCounts.map((b) => b.n));
   const open = (id: string) => {
-    const e = employees.find((x) => x.id === id);
+    const e = health.data?.items.flatMap((i) => i.people ?? []).find((x) => x.id === id);
     if (e) setMove({ employee: e });
   };
 
@@ -129,7 +125,7 @@ function Insights({ onDepartments }: { onDepartments: () => void }) {
           </div>
         </Card>
       </div>
-      <MoveDialog request={move} employees={employees} onClose={() => setMove(null)} />
+      <MoveDialog request={move} onClose={() => setMove(null)} />
     </div>
   );
 }

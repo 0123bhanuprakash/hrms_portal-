@@ -139,3 +139,13 @@ export class CheckOutDto {
   @MaxLength(500)
   note?: string;
 }
+
+export const INSIGHT_LISTS = ['missingCheckout', 'absent', 'lateOften', 'manyCorrections'] as const;
+export type InsightList = (typeof INSIGHT_LISTS)[number];
+
+/** Without `list`: counts + the first 5 of each. With `list`: that list a page at a time. */
+export class InsightsQueryDto {
+  @IsOptional() @IsIn(INSIGHT_LISTS) list?: InsightList;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit?: number;
+}

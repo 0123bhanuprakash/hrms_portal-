@@ -64,7 +64,7 @@ export function AdminKpis({ employeeCount, departmentCount, portalUsers }: { emp
   const team = useTeamAttendance({ date: localKey(), limit: 1 }, companyAttendance);
   const approvals = useApprovals();
   const tickets = useHelpdeskCounts();
-  const handlesTickets = ['ticket.handle_it', 'ticket.handle_hr', 'ticket.handle_finance', 'ticket.handle_devops'].some(can);
+  const handlesTickets = ['ticket.handle_it', 'ticket.handle_hr', 'ticket.handle_finance', 'ticket.handle_devops'].some(can) || Boolean(tickets.data?.works);
   const c = team.data?.counts;
   const present = c ? c.present + c.halfDay + c.working + c.missingCheckout : undefined;
   return (

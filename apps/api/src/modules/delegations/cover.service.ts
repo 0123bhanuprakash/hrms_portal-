@@ -16,6 +16,9 @@ const REMIND_DAYS_BEFORE = 2;
  * good covers, the team timeline, the "while you were away" recap, and a
  * reminder 2 days before leave when nobody covers yet.
  */
+/** Gaps listed on the company hand-over chart (the rest are counted) */
+const GAPS_SHOWN = 25;
+
 @Injectable()
 export class CoverService implements OnApplicationBootstrap, OnModuleDestroy {
   private readonly logger = new Logger(CoverService.name);
@@ -42,6 +45,16 @@ export class CoverService implements OnApplicationBootstrap, OnModuleDestroy {
   }
 
   /** People who approve something for others (they have a team or a project to lead). */
+  /** Which of these people approve for others (direct reports, or lead / manage a project) — two queries for any number. */
+  private async withTeams(companyId: string, employeeIds: string[]): Promise<Set<string>> {
+    if (!employeeIds.length) return new Set();
+    const [reports, leads] = await Promise.all([
+      this.prisma.employee.groupBy({ by: ['reportingManagerId'], where: { companyId, reportingManagerId: { in: employeeIds }, employmentStatus: { not: 'TERMINATED' } } }),
+      this.prisma.projectMember.groupBy({ by: ['employeeId'], where: { employeeId: { in: employeeIds }, role: { in: ['TEAM_LEAD', 'MANAGER'] }, OR: [{ endDate: null }, { endDate: { gte: new Date() } }] } }),
+    ]);
+    return new Set([...reports.map((r) => r.reportingManagerId!), ...leads.map((l) => l.employeeId)]);
+  }
+
   private async hasTeam(companyId: string, employeeId: string) {
     const [reports, leads] = await Promise.all([
       this.prisma.employee.count({ where: { companyId, reportingManagerId: employeeId, employmentStatus: { not: 'TERMINATED' } } }),
@@ -164,8 +177,7 @@ export class CoverService implements OnApplicationBootstrap, OnModuleDestroy {
         select: { delegatorId: true, startsAt: true, endsAt: true, delegate: { select: { firstName: true, lastName: true } } },
       }),
     ]);
-    const leadsTeam = new Set<string>();
-    for (const t of team) if (await this.hasTeam(companyId, t.id)) leadsTeam.add(t.id);
+    const leadsTeam = await this.withTeams(companyId, team.map((t) => t.id));
     const rows = team
       .sort((a, b) => (a.id === me.id ? -1 : b.id === me.id ? 1 : 0))
       .map((t) => {
@@ -187,17 +199,24 @@ export class CoverService implements OnApplicationBootstrap, OnModuleDestroy {
       select: { employeeId: true, startDate: true, endDate: true, employee: { select: { userId: true, firstName: true, lastName: true } } },
       orderBy: { startDate: 'asc' },
     });
+    // Three queries in all (not two per leave): who approves for others, and their covers
+    const leads = await this.withTeams(companyId, [...new Set(leave.map((l) => l.employeeId))]);
+    const mine = leave.filter((l) => leads.has(l.employeeId) && l.employee.userId);
+    const covers = mine.length
+      ? await this.prisma.approvalDelegation.findMany({
+          where: { companyId, delegatorId: { in: [...new Set(mine.map((l) => l.employee.userId!))] }, revokedAt: null, endsAt: { gte: new Date(`${today}T00:00:00Z`) } },
+          select: { delegatorId: true, startsAt: true, endsAt: true },
+        })
+      : [];
     const out = [];
-    for (const l of leave) {
-      if (!(await this.hasTeam(companyId, l.employeeId))) continue;
+    for (const l of mine) {
       const from = keyFromDate(l.startDate);
       const to = keyFromDate(l.endDate);
-      const covered = await this.prisma.approvalDelegation.count({
-        where: { companyId, delegatorId: l.employee.userId!, revokedAt: null, startsAt: { lte: new Date(`${from}T12:00:00Z`) }, endsAt: { gte: new Date(`${to}T12:00:00Z`) } },
-      });
+      const covered = covers.some((c) => c.delegatorId === l.employee.userId && c.startsAt <= new Date(`${from}T12:00:00Z`) && c.endsAt >= new Date(`${to}T12:00:00Z`));
       if (!covered) out.push({ userId: l.employee.userId!, name: `${l.employee.firstName} ${l.employee.lastName}`, from, to });
     }
-    return out;
+    // The soonest 25; `total` says how many there are
+    return { rows: out.slice(0, GAPS_SHOWN), total: out.length };
   }
 
   /** "While you were away": what my covers decided for me in hand-overs that ended in the last 10 days. */

@@ -89,6 +89,7 @@ export class PeopleService {
       employmentStatus: { not: EmploymentStatus.TERMINATED },
       joiningDate: { lte: ctx.today },
       ...(query.departmentId && { departmentId: query.departmentId }),
+      ...(query.noTeam && { departmentId: null }),
       ...(query.locationId && { locationId: query.locationId }),
       // Every word must match a field: "aadhya bose", "bose aadhya", "aadhya engineering"
       ...wordsWhere(query.search, (w): Prisma.EmployeeWhereInput[] => [
@@ -101,7 +102,7 @@ export class PeopleService {
       ]),
     };
     // Everyone matching the search / team / location, light — chips and filters work on this
-    const base = await this.prisma.employee.findMany({ where, select: { id: true, firstName: true, lastName: true, joiningDate: true, dateOfBirth: true } });
+    const base = await this.prisma.employee.findMany({ where, select: { id: true, firstName: true, lastName: true, joiningDate: true, dateOfBirth: true, departmentId: true } });
     const ids = base.map((b) => b.id);
     const [statuses, team] = await Promise.all([statusesOn(this.prisma, companyId, ids, ctx), access ? this.myTeam(companyId, access) : Promise.resolve(new Set<string>())]);
     const newSince = addDays(ctx.todayKey, -NEW_JOINER_DAYS);
@@ -133,7 +134,21 @@ export class PeopleService {
     const letters = [...new Set(list.map((b) => b.firstName.charAt(0).toUpperCase()))].sort();
     if (query.letter) list = list.filter((b) => b.firstName.charAt(0).toUpperCase() === query.letter!.toUpperCase());
     const total = list.length;
-    const pageIds = list.slice((page - 1) * limit, page * limit).map((b) => b.id);
+    // Teams view: every team's real size, and only its first N people (biggest teams first)
+    let teams: Array<{ id: string | null; name: string; total: number }> | undefined;
+    let pageIds: string[];
+    if (query.perTeam) {
+      const byTeam = new Map<string | null, typeof list>();
+      for (const b of list) byTeam.set(b.departmentId, [...(byTeam.get(b.departmentId) ?? []), b]);
+      const deptIds = [...byTeam.keys()].filter((x): x is string => Boolean(x));
+      const names = new Map((deptIds.length ? await this.prisma.department.findMany({ where: { id: { in: deptIds } }, select: { id: true, name: true } }) : []).map((d) => [d.id, d.name]));
+      teams = [...byTeam.entries()]
+        .map(([id, people]) => ({ id, name: id ? (names.get(id) ?? 'Team') : 'No team yet', total: people.length }))
+        .sort((a, b) => Number(a.id === null) - Number(b.id === null) || b.total - a.total || a.name.localeCompare(b.name));
+      pageIds = teams.flatMap((t) => byTeam.get(t.id)!.slice(0, query.perTeam).map((b) => b.id));
+    } else {
+      pageIds = list.slice((page - 1) * limit, page * limit).map((b) => b.id);
+    }
     const rows = pageIds.length
       ? await this.prisma.employee.findMany({ where: { id: { in: pageIds } }, select: { ...BASIC, joiningDate: true, dateOfBirth: true, reportingManager: { select: { id: true, firstName: true, lastName: true } } } })
       : [];
@@ -158,7 +173,7 @@ export class PeopleService {
         };
       });
     // Chip counts and letters ride in meta, so the response stays the usual { data, meta } list
-    return { data, meta: { total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)), counts, letters } };
+    return { data, meta: { total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)), counts, letters, ...(teams && { teams }) } };
   }
 
   /** The strip above the directory: new this month, birthdays, who's in today. */

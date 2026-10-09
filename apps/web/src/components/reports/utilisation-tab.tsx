@@ -1,15 +1,17 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { Briefcase, Download, Gauge, Receipt, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, ErrorState, Skeleton } from '@/components/ui/feedback';
+import { Card, ErrorState, Pagination, Skeleton } from '@/components/ui/feedback';
+import { FilterChips, SearchField, useDebounced } from '@/components/ui/list-tools';
+import { Select } from '@/components/ui/pickers';
 import { PersonAvatar } from '@/components/profile/person-avatar';
 import { Kpi } from '@/components/reports/charts';
-import { downloadCsv, useUtilisationReport, type UtilisationReport } from '@/lib/company/reports';
+import { downloadCsv, useUtilisationReport, type UtilisationReport, type UtilisationShow, type UtilisationSort } from '@/lib/company/reports';
 import { fmtHours } from '@/lib/company/timesheets';
 import { getApiErrorMessage } from '@/lib/errors';
 import { cn } from '@/lib/cn';
@@ -21,7 +23,14 @@ const cellTone = (v: number) => (v > 105 ? 'bg-destructive/80 text-white' : v >=
 const status = (v: number, mode: Mode, allocation: number) =>
   v > 105 ? { label: 'Over', tone: 'danger' as const } : v >= 85 ? { label: 'Healthy', tone: 'success' as const } : v >= 60 ? { label: 'Light', tone: 'warning' as const } : v > 0 ? { label: 'Low', tone: 'warning' as const } : mode === 'allocated' || allocation === 0 ? { label: 'Bench', tone: 'neutral' as const } : { label: 'Nothing logged', tone: 'neutral' as const };
 
-function WeeklyGrid({ r }: { r: UtilisationReport }) {
+interface ListState {
+  search: string;
+  show: UtilisationShow;
+  sort: UtilisationSort;
+  page: number;
+}
+
+function WeeklyGrid({ r, list, setList }: { r: UtilisationReport; list: ListState; setList: (next: ListState) => void }) {
   const [mode, setMode] = useState<Mode>(r.timesheets ? 'logged' : 'allocated');
   const pct = (row: UtilisationReport['rows'][number], i: number) => {
     if (mode === 'allocated' || !row.weekly) return row.allocation;
@@ -42,6 +51,26 @@ function WeeklyGrid({ r }: { r: UtilisationReport }) {
             </button>
           ))}
         </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 border-b border-border px-5 py-2.5">
+        <SearchField value={list.search} onChange={(search) => setList({ ...list, search, page: 1 })} placeholder="Name, ID, title or team" label="Search people" className="w-full sm:w-56" />
+        <FilterChips
+          label="Show"
+          value={list.show}
+          onChange={(show) => setList({ ...list, show, page: 1 })}
+          options={[
+            { key: 'all', label: 'Everyone', count: r.counts.all },
+            { key: 'bench', label: 'On bench', count: r.counts.bench },
+            { key: 'low', label: 'Under 50%', count: r.counts.low },
+            { key: 'over', label: 'Over 100%', count: r.counts.over },
+            { key: 'nolog', label: 'Not logging', count: r.counts.nolog, hidden: !r.timesheets },
+          ]}
+        />
+        <Select value={list.sort} onChange={(e) => setList({ ...list, sort: e.target.value as UtilisationSort, page: 1 })} aria-label="Sort people" className="h-8 w-44 text-xs sm:ml-auto">
+          <option value="allocation">Lowest allocation first</option>
+          <option value="utilisation">Lowest utilisation first</option>
+          <option value="name">Name A–Z</option>
+        </Select>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[720px] text-sm">
@@ -78,7 +107,9 @@ function WeeklyGrid({ r }: { r: UtilisationReport }) {
             })}
           </tbody>
         </table>
+        {!r.rows.length && <p className="px-5 py-6 text-center text-sm text-muted-foreground">Nobody matches. Try another search or filter.</p>}
       </div>
+      <Pagination page={r.meta.page} totalPages={r.meta.totalPages} total={r.meta.total} limit={r.meta.limit} onPageChange={(page) => setList({ ...list, page })} />
       <p className="border-t border-border px-5 py-2 text-[11px] text-muted-foreground">Capacity = working days × {r.hoursPerDay} h. Over 105% is marked; holidays are left out.</p>
     </Card>
   );
@@ -86,7 +117,11 @@ function WeeklyGrid({ r }: { r: UtilisationReport }) {
 
 export function UtilisationTab({ params, canExport }: { params: ReportParams; canExport: boolean }) {
   const filters = { departmentId: params.departmentId, locationId: params.locationId };
-  const q = useUtilisationReport({ from: params.from, to: params.to, ...filters });
+  const [list, setList] = useState<ListState>({ search: '', show: 'all', sort: 'allocation', page: 1 });
+  const search = useDebounced(list.search.trim());
+  // A new range or team starts again on page 1
+  useEffect(() => setList((l) => ({ ...l, page: 1 })), [params.from, params.to, params.departmentId, params.locationId]);
+  const q = useUtilisationReport({ from: params.from, to: params.to, ...filters, search: search || undefined, show: list.show, sort: list.sort, page: list.page });
   const [busy, setBusy] = useState(false);
   if (q.isError) return <ErrorState message={getApiErrorMessage(q.error, 'Could not load the report')} onRetry={() => void q.refetch()} />;
   const r = q.data;
@@ -100,7 +135,7 @@ export function UtilisationTab({ params, canExport }: { params: ReportParams; ca
         <Kpi icon={<Receipt />} label="Billable" value={r.billablePct === null ? '—' : `${r.billablePct}%`} sub={r.internalMinutes ? `${fmtHours(r.internalMinutes)} internal work` : 'Of capacity'} />
       </div>
 
-      <WeeklyGrid r={r} />
+      <WeeklyGrid r={r} list={list} setList={setList} />
 
       <Card className="overflow-hidden">
         <div className="flex items-center border-b border-border px-5 py-3">

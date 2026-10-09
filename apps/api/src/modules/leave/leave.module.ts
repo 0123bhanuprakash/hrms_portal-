@@ -7,11 +7,13 @@ import { LeaveController } from './leave.controller';
 import { LeaveTypesService } from './leave-types.service';
 import { LeaveBalancesService } from './leave-balances.service';
 import { LeaveRequestsService } from './leave-requests.service';
+import { LeaveGrantsService } from './leave-grants.service';
+import { ExtraLeaveService } from './extra-leave.service';
 
 /** Phase 4 — leave types, balances, requests with multi-level approval, who's off. */
 @Module({
   imports: [PrismaModule, AttendanceModule, ProjectsModule, EmployeeProfileModule],
   controllers: [LeaveController],
-  providers: [LeaveTypesService, LeaveBalancesService, LeaveRequestsService],
+  providers: [LeaveTypesService, LeaveBalancesService, LeaveRequestsService, LeaveGrantsService, ExtraLeaveService],
 })
 export class LeaveModule {}

@@ -1,17 +1,18 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { CalendarRange, Inbox, PackageOpen, Search, ShieldCheck, Sparkles, UserPlus, Users } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, EmptyState, ErrorState, Skeleton } from '@/components/ui/feedback';
+import { Card, EmptyState, ErrorState, Pagination, Skeleton } from '@/components/ui/feedback';
+import { useDebounced } from '@/components/ui/list-tools';
 import { getApiErrorMessage } from '@/lib/errors';
 import { Kpi } from '@/components/dashboard/widgets';
 import { PersonAvatar } from '@/components/profile/person-avatar';
 import { useAccess } from '@/lib/access/use-access';
-import { usePmoPool, type PoolPerson } from '@/lib/company/resources';
+import { usePmoPool, type PoolPerson, type PoolShow } from '@/lib/company/resources';
 import { formatDate } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import { LoadBar } from '@/components/resources/parts';
@@ -21,14 +22,15 @@ import { AssignDialog } from '@/components/projects/assign-dialog';
 export default function PmoPoolPage() {
   const { can, hasFeature } = useAccess();
   const pmo = can('project.manage');
-  const q = usePmoPool(pmo && hasFeature('work.projects'));
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<'all' | 'free' | 'pmo'>('all');
+  const [filter, setFilter] = useState<PoolShow>('all');
+  const [page, setPage] = useState(1);
+  const typed = useDebounced(search.trim());
+  // A new search or filter starts again on page 1
+  useEffect(() => setPage(1), [typed, filter]);
+  const q = usePmoPool({ search: typed || undefined, show: filter, page }, pmo && hasFeature('work.projects'));
   const [assign, setAssign] = useState<PoolPerson | null>(null);
-  const rows = useMemo(() => {
-    const words = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    return (q.data?.data ?? []).filter((r) => (filter === 'free' ? r.free === 100 : filter === 'pmo' ? r.reportsToPmo : true) && words.every((w) => `${r.employee.firstName} ${r.employee.lastName} ${r.skills.join(' ')} ${r.employee.designation?.name ?? ''}`.toLowerCase().includes(w)));
-  }, [q.data, search, filter]);
+  const rows = q.data?.data ?? [];
 
   if (!pmo) return <Card><EmptyState icon={<ShieldCheck />} title="The PMO pool is for the PMO" description="It shows who’s free to assign. Ask your PMO if you need someone." /></Card>;
   const c = q.data?.counts;
@@ -63,11 +65,14 @@ export default function PmoPoolPage() {
         ) : q.isLoadingError ? (
           <ErrorState message={getApiErrorMessage(q.error, 'Could not load the pool')} onRetry={() => void q.refetch()} />
         ) : !rows.length ? (
-          <EmptyState icon={<Users />} title="Nobody here" description="Everyone is fully booked for the next 4 weeks." />
+          <EmptyState icon={<Users />} title="Nobody here" description={typed ? 'Nobody matches that search.' : 'Everyone is fully booked for the next 4 weeks.'} />
         ) : (
-          <div className="m-stagger grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
-            {rows.map((r) => <PoolCard key={r.employee.id} r={r} onAssign={() => setAssign(r)} />)}
-          </div>
+          <>
+            <div className="m-stagger grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
+              {rows.map((r) => <PoolCard key={r.employee.id} r={r} onAssign={() => setAssign(r)} />)}
+            </div>
+            {q.data && <Pagination page={q.data.meta.page} totalPages={q.data.meta.totalPages} total={q.data.meta.total} limit={q.data.meta.limit} onPageChange={setPage} />}
+          </>
         )}
       </Card>
       {assign && <AssignDialog person={{ id: assign.employee.id, firstName: assign.employee.firstName, lastName: assign.employee.lastName }} allocation={assign.free || 100} onClose={() => setAssign(null)} />}

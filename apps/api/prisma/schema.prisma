@@ -82,6 +82,52 @@ enum LeaveApprovalStatus {
   SKIPPED
 }
 
+enum LeaveAdjustmentKind {
+  /// Days added for good (gift)
+  EXTRA
+  /// Allows going below 0 (lendLimit); what is used below 0 is taken from next year
+  LEND
+  /// Fixing a mistake (+ or −)
+  CORRECTION
+  /// Days removed (encashment, leave taken outside the system)
+  DEDUCTION
+  /// Written at the start of a year: days owed from last year taken back
+  TAKEN_BACK
+  /// HR cancelled what is owed
+  WAIVED
+}
+
+enum ExtraLeaveStatus {
+  PENDING
+  LENT
+  GIVEN
+  DECLINED
+  CANCELLED
+}
+
+enum LeaveAvailability {
+  EVERYONE
+  RULES
+  GRANT_ONLY
+}
+
+enum LeaveMemberMode {
+  INCLUDE
+  EXCLUDE
+}
+
+enum LeaveGrantStatus {
+  ACTIVE
+  REVOKED
+}
+
+enum LeaveGrantRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
 enum LeaveTypeCategory {
   CASUAL
   SICK
@@ -246,13 +292,6 @@ enum TicketStatus {
 }
 
 /// Helpdesk queues (fixed: only these three teams take tickets)
-enum TicketQueue {
-  IT
-  HR
-  FINANCE
-  DEVOPS
-}
-
 enum TicketMessageKind {
   /// Visible to the employee
   REPLY
@@ -699,77 +738,89 @@ model Designation {
 
 /// Employee profile — linked 1:1 to a User account
 model Employee {
-  id                 String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId          String           @map("company_id") @db.Uuid
+  id                           String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId                    String           @map("company_id") @db.Uuid
   /// Human-readable ID e.g. "CL001" — unique within company
-  employeeId         String           @map("employee_id")
-  userId             String           @unique @map("user_id") @db.Uuid
-  firstName          String           @map("first_name")
-  lastName           String           @map("last_name")
-  email              String
-  phone              String?
-  gender             Gender?
-  dateOfBirth        DateTime?        @map("date_of_birth") @db.Date
-  avatarUrl          String?          @map("avatar_url")
-  employmentType     EmploymentType   @default(FULL_TIME) @map("employment_type")
-  employmentStatus   EmploymentStatus @default(ACTIVE) @map("employment_status")
-  departmentId       String?          @map("department_id") @db.Uuid
-  designationId      String?          @map("designation_id") @db.Uuid
-  locationId         String?          @map("location_id") @db.Uuid
-  reportingManagerId String?          @map("reporting_manager_id") @db.Uuid
+  employeeId                   String           @map("employee_id")
+  userId                       String           @unique @map("user_id") @db.Uuid
+  firstName                    String           @map("first_name")
+  lastName                     String           @map("last_name")
+  email                        String
+  phone                        String?
+  gender                       Gender?
+  dateOfBirth                  DateTime?        @map("date_of_birth") @db.Date
+  avatarUrl                    String?          @map("avatar_url")
+  employmentType               EmploymentType   @default(FULL_TIME) @map("employment_type")
+  employmentStatus             EmploymentStatus @default(ACTIVE) @map("employment_status")
+  departmentId                 String?          @map("department_id") @db.Uuid
+  designationId                String?          @map("designation_id") @db.Uuid
+  locationId                   String?          @map("location_id") @db.Uuid
+  reportingManagerId           String?          @map("reporting_manager_id") @db.Uuid
   /// Reports to the PMO (the central pool) instead of a person — leave / timesheets go to the PMO lead
-  reportsToPmo       Boolean          @default(false) @map("reports_to_pmo")
+  reportsToPmo                 Boolean          @default(false) @map("reports_to_pmo")
   /// Skills the person lists on their profile (matched against resource requests)
-  skills             String[]         @default([])
+  skills                       String[]         @default([])
+  /// Work experience before joining, in months (total experience = this + time here; null = not given)
+  priorExperienceMonths        Int?             @map("prior_experience_months")
+  /// The person entered experience before joining that HR hasn't verified yet (months); the approved value stays in priorExperienceMonths
+  priorExperiencePendingMonths Int?             @map("prior_experience_pending_months")
+  priorExperienceSubmittedAt   DateTime?        @map("prior_experience_submitted_at")
+  /// Who verified the approved value and when (HR entering it themselves counts as verified)
+  priorExperienceVerifiedAt    DateTime?        @map("prior_experience_verified_at")
+  priorExperienceVerifiedById  String?          @map("prior_experience_verified_by_id") @db.Uuid
   /// null = the company's general shift
-  shiftId            String?          @map("shift_id") @db.Uuid
-  joiningDate        DateTime         @map("joining_date") @db.Date
-  confirmationDate   DateTime?        @map("confirmation_date") @db.Date
-  terminationDate    DateTime?        @map("termination_date") @db.Date
+  shiftId                      String?          @map("shift_id") @db.Uuid
+  joiningDate                  DateTime         @map("joining_date") @db.Date
+  confirmationDate             DateTime?        @map("confirmation_date") @db.Date
+  terminationDate              DateTime?        @map("termination_date") @db.Date
   /// Opt-in: show day + month of birth to colleagues (Spotlight)
-  showBirthday       Boolean          @default(false) @map("show_birthday")
+  showBirthday                 Boolean          @default(false) @map("show_birthday")
   /// Why they are leaving / left: resigned | let_go | contract_end | retired | other
-  exitReason         String?          @map("exit_reason")
-  createdAt          DateTime         @default(now()) @map("created_at")
-  updatedAt          DateTime         @updatedAt @map("updated_at")
+  exitReason                   String?          @map("exit_reason")
+  createdAt                    DateTime         @default(now()) @map("created_at")
+  updatedAt                    DateTime         @updatedAt @map("updated_at")
 
-  company           Company                    @relation(fields: [companyId], references: [id])
-  user              User                       @relation(fields: [userId], references: [id])
-  department        Department?                @relation(fields: [departmentId], references: [id])
-  designation       Designation?               @relation(fields: [designationId], references: [id])
-  location          OfficeLocation?            @relation(fields: [locationId], references: [id])
-  shift             WorkShift?                 @relation(fields: [shiftId], references: [id], onDelete: SetNull)
-  holidayChoices    HolidayChoice[]
-  reportingManager  Employee?                  @relation("ManagerSubordinates", fields: [reportingManagerId], references: [id])
-  subordinates      Employee[]                 @relation("ManagerSubordinates")
-  bankDetails       EmployeeBankDetails?
-  statutoryInfo     EmployeeStatutory?
-  personal          EmployeePersonal?
-  documents         EmployeeDocument[]
-  salaryComponents  EmployeeSalary[]
-  leaveBalances     LeaveBalance[]
-  leaveRequests     LeaveRequest[]
-  attendanceRecords AttendanceRecord[]
-  timesheetEntries  TimesheetEntry[]           @relation("TimesheetEntryEmployee")
-  regularisations   AttendanceRegularisation[]
-  kudosReceived     KudosRecipient[]
-  wishesReceived    CelebrationWish[]          @relation("CelebrationWishTo")
-  expenseClaims     ExpenseClaim[]
-  assetAssignments  AssetAssignment[]
-  assetRequests     AssetRequest[]
-  tickets           Ticket[]
-  timesheets        Timesheet[]
-  projectMembers    ProjectMember[]            @relation("ProjectMemberEmployee")
-  ledMembers        ProjectMember[]            @relation("ProjectMemberLead")
-  ownedMilestones   ProjectMilestone[]         @relation("MilestoneOwner")
-  directedProjects  Project[]                  @relation("ProjectDeliveryDirector")
-  payslips          Payslip[]
-  events            EmployeeEvent[]
-  checklistItems    EmployeeChecklistItem[]
+  company            Company                    @relation(fields: [companyId], references: [id])
+  user               User                       @relation(fields: [userId], references: [id])
+  department         Department?                @relation(fields: [departmentId], references: [id])
+  designation        Designation?               @relation(fields: [designationId], references: [id])
+  location           OfficeLocation?            @relation(fields: [locationId], references: [id])
+  shift              WorkShift?                 @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  holidayChoices     HolidayChoice[]
+  reportingManager   Employee?                  @relation("ManagerSubordinates", fields: [reportingManagerId], references: [id])
+  subordinates       Employee[]                 @relation("ManagerSubordinates")
+  bankDetails        EmployeeBankDetails?
+  statutoryInfo      EmployeeStatutory?
+  personal           EmployeePersonal?
+  documents          EmployeeDocument[]
+  salaryComponents   EmployeeSalary[]
+  leaveBalances      LeaveBalance[]
+  leaveRequests      LeaveRequest[]
+  leaveTypeMembers   LeaveTypeMember[]
+  leaveGrants        LeaveGrant[]
+  leaveGrantRequests LeaveGrantRequest[]
+  extraLeaveRequests ExtraLeaveRequest[]
+  attendanceRecords  AttendanceRecord[]
+  timesheetEntries   TimesheetEntry[]           @relation("TimesheetEntryEmployee")
+  regularisations    AttendanceRegularisation[]
+  kudosReceived      KudosRecipient[]
+  wishesReceived     CelebrationWish[]          @relation("CelebrationWishTo")
+  expenseClaims      ExpenseClaim[]
+  assetAssignments   AssetAssignment[]
+  assetRequests      AssetRequest[]
+  tickets            Ticket[]
+  timesheets         Timesheet[]
+  projectMembers     ProjectMember[]            @relation("ProjectMemberEmployee")
+  ledMembers         ProjectMember[]            @relation("ProjectMemberLead")
+  ownedMilestones    ProjectMilestone[]         @relation("MilestoneOwner")
+  directedProjects   Project[]                  @relation("ProjectDeliveryDirector")
+  payslips           Payslip[]
+  events             EmployeeEvent[]
+  checklistItems     EmployeeChecklistItem[]
   /// Closure table: everyone above me (incl. myself at depth 0)
-  ancestors         EmployeeHierarchy[]        @relation("HierarchyDescendant")
+  ancestors          EmployeeHierarchy[]        @relation("HierarchyDescendant")
   /// Closure table: everyone below me (incl. myself at depth 0)
-  descendants       EmployeeHierarchy[]        @relation("HierarchyAncestor")
+  descendants        EmployeeHierarchy[]        @relation("HierarchyAncestor")
 
   @@unique([companyId, employeeId])
   @@unique([companyId, email])
@@ -1031,8 +1082,24 @@ model LeaveType {
   includeNonWorkingDays Boolean           @default(false) @map("include_non_working_days")
   /// Attendance shows these days as worked (Work from home)
   countsAsPresent       Boolean           @default(false) @map("counts_as_present")
-  /// Only for employees of this gender (e.g. maternity / paternity)
-  gender                Gender?
+  /// Who can use it: everyone, people matching the rules below, or only people HR grants it to
+  availability          LeaveAvailability @default(EVERYONE)
+  /// Rules (RULES: who has it; GRANT_ONLY: who may ask for a grant). Empty = any. Rules combine with AND, values with OR.
+  genders               Gender[]          @default([])
+  departmentIds         String[]          @default([]) @map("department_ids") @db.Uuid
+  locationIds           String[]          @default([]) @map("location_ids") @db.Uuid
+  designationIds        String[]          @default([]) @map("designation_ids") @db.Uuid
+  employmentTypes       EmploymentType[]  @default([]) @map("employment_types")
+  /// Months since joining before the type is available
+  minServiceMonths      Int?              @map("min_service_months")
+  /// People who report to these managers
+  managerIds            String[]          @default([]) @map("manager_ids") @db.Uuid
+  /// ...at any level below them (not just direct reports)
+  managerDeep           Boolean           @default(false) @map("manager_deep")
+  /// Current members of these projects
+  projectIds            String[]          @default([]) @map("project_ids") @db.Uuid
+  /// GRANT_ONLY: a grant (and a request for one) must carry a supporting document
+  grantNeedsDocument    Boolean           @default(false) @map("grant_needs_document")
   /// Not usable while the person is on probation
   blockDuringProbation  Boolean           @default(false) @map("block_during_probation")
   /// Ask for a supporting document when a request is longer than this many days (null = never)
@@ -1041,6 +1108,8 @@ model LeaveType {
   sandwichRule          Boolean           @default(false) @map("sandwich_rule")
   /// Days that may be taken in advance (balance can go this far below 0)
   negativeBalance       Float             @default(0) @map("negative_balance")
+  /// Below 0 at year end: take it from next year (true) or forgive it. Lent days are always taken back.
+  recoverNegative       Boolean           @default(true) @map("recover_negative")
   /// "MM-DD": carried-forward days not used by then lapse (null = never)
   carryExpiry           String?           @map("carry_expiry")
   isActive              Boolean           @default(true) @map("is_active")
@@ -1048,9 +1117,13 @@ model LeaveType {
   createdAt             DateTime          @default(now()) @map("created_at")
   updatedAt             DateTime          @updatedAt @map("updated_at")
 
-  company       Company        @relation(fields: [companyId], references: [id])
+  company       Company             @relation(fields: [companyId], references: [id])
   leaveBalances LeaveBalance[]
   leaveRequests LeaveRequest[]
+  members       LeaveTypeMember[]
+  grants        LeaveGrant[]
+  grantRequests LeaveGrantRequest[]
+  extraRequests ExtraLeaveRequest[]
 
   @@unique([companyId, code])
   @@index([companyId])
@@ -1059,19 +1132,28 @@ model LeaveType {
 
 /// Employee leave balance per leave type per year
 model LeaveBalance {
-  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId      String   @map("company_id") @db.Uuid
-  employeeId     String   @map("employee_id") @db.Uuid
-  leaveTypeId    String   @map("leave_type_id") @db.Uuid
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId      String    @map("company_id") @db.Uuid
+  employeeId     String    @map("employee_id") @db.Uuid
+  leaveTypeId    String    @map("leave_type_id") @db.Uuid
   year           Int
   /// Full-year entitlement (prorated from joining); monthly types accrue towards it
-  allocated      Float    @default(0)
-  carriedForward Float    @default(0) @map("carried_forward")
+  allocated      Float     @default(0)
+  carriedForward Float     @default(0) @map("carried_forward")
   /// Sum of manual adjustments (see leave_balance_adjustments)
-  adjusted       Float    @default(0)
-  usedDays       Float    @default(0) @map("used_days")
-  pendingDays    Float    @default(0) @map("pending_days")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  adjusted       Float     @default(0)
+  usedDays       Float     @default(0) @map("used_days")
+  pendingDays    Float     @default(0) @map("pending_days")
+  /// How far below 0 HR lets this person go this year (sum of LEND adjustments)
+  lendLimit      Float     @default(0) @map("lend_limit")
+  /// Owed from earlier years that couldn't be taken back yet (rolls into the next year)
+  owedLeft       Float     @default(0) @map("owed_left")
+  /// Written when the year is closed (the ledger shows them later)
+  carriedOut     Float?    @map("carried_out")
+  lapsed         Float?
+  owedOut        Float?    @map("owed_out")
+  closedAt       DateTime? @map("closed_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
   employee    Employee                 @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   leaveType   LeaveType                @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
@@ -1084,12 +1166,20 @@ model LeaveBalance {
 
 /// Manual balance changes by HR (audit trail)
 model LeaveBalanceAdjustment {
-  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  balanceId    String   @map("balance_id") @db.Uuid
+  id           String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  balanceId    String              @map("balance_id") @db.Uuid
+  kind         LeaveAdjustmentKind @default(CORRECTION)
+  /// Change to the balance (0 for LEND)
   days         Float
+  /// LEND: how far below 0 this lets the person go
+  lendLimit    Float?              @map("lend_limit")
+  /// TAKEN_BACK / WAIVED: the owed days this entry settles
+  owedDays     Float?              @map("owed_days")
+  /// The "ask for more days" request this answered
+  requestId    String?             @map("request_id") @db.Uuid
   reason       String
-  adjustedById String?  @map("adjusted_by_id") @db.Uuid
-  createdAt    DateTime @default(now()) @map("created_at")
+  adjustedById String?             @map("adjusted_by_id") @db.Uuid
+  createdAt    DateTime            @default(now()) @map("created_at")
 
   balance    LeaveBalance @relation(fields: [balanceId], references: [id], onDelete: Cascade)
   adjustedBy User?        @relation("LeaveAdjustedBy", fields: [adjustedById], references: [id], onDelete: SetNull)
@@ -1098,37 +1188,176 @@ model LeaveBalanceAdjustment {
   @@map("leave_balance_adjustments")
 }
 
+/// Named people added to (INCLUDE) or kept out of (EXCLUDE) a leave type's rules
+model LeaveTypeMember {
+  leaveTypeId String          @map("leave_type_id") @db.Uuid
+  employeeId  String          @map("employee_id") @db.Uuid
+  mode        LeaveMemberMode
+
+  leaveType LeaveType @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
+  employee  Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@id([leaveTypeId, employeeId])
+  @@index([employeeId])
+  @@map("leave_type_members")
+}
+
+/// HR gives one person days of a GRANT_ONLY type for a period (not tied to a calendar year)
+model LeaveGrant {
+  id           String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId    String           @map("company_id") @db.Uuid
+  employeeId   String           @map("employee_id") @db.Uuid
+  leaveTypeId  String           @map("leave_type_id") @db.Uuid
+  days         Float
+  validFrom    DateTime         @map("valid_from") @db.Date
+  /// Days not used by then lapse (HR can extend)
+  validTo      DateTime         @map("valid_to") @db.Date
+  reason       String
+  status       LeaveGrantStatus @default(ACTIVE)
+  documentKey  String?          @map("document_key")
+  documentName String?          @map("document_name")
+  documentMime String?          @map("document_mime")
+  documentSize Int?             @map("document_size")
+  grantedById  String?          @map("granted_by_id") @db.Uuid
+  /// The employee's request this grant answered
+  requestId    String?          @unique @map("request_id") @db.Uuid
+  /// Ending-soon reminder sent for this validTo
+  remindedFor  DateTime?        @map("reminded_for") @db.Date
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+
+  employee  Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveType LeaveType          @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
+  request   LeaveGrantRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  events    LeaveGrantEvent[]
+  leaves    LeaveRequest[]
+
+  @@index([companyId, employeeId])
+  @@index([companyId, leaveTypeId])
+  @@map("leave_grants")
+}
+
+/// History of a grant: created, extended, shortened, revoked
+model LeaveGrantEvent {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  grantId   String    @map("grant_id") @db.Uuid
+  /// CREATED | CHANGED | REVOKED
+  kind      String
+  days      Float?
+  validTo   DateTime? @map("valid_to") @db.Date
+  note      String?
+  byId      String?   @map("by_id") @db.Uuid
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  grant LeaveGrant @relation(fields: [grantId], references: [id], onDelete: Cascade)
+
+  @@index([grantId])
+  @@map("leave_grant_events")
+}
+
+/// An employee asks HR for a GRANT_ONLY type (e.g. maternity), usually with a document
+model LeaveGrantRequest {
+  id           String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId    String                  @map("company_id") @db.Uuid
+  employeeId   String                  @map("employee_id") @db.Uuid
+  leaveTypeId  String                  @map("leave_type_id") @db.Uuid
+  /// Expected dates
+  fromDate     DateTime                @map("from_date") @db.Date
+  toDate       DateTime                @map("to_date") @db.Date
+  note         String
+  status       LeaveGrantRequestStatus @default(PENDING)
+  documentKey  String?                 @map("document_key")
+  documentName String?                 @map("document_name")
+  documentMime String?                 @map("document_mime")
+  documentSize Int?                    @map("document_size")
+  decidedById  String?                 @map("decided_by_id") @db.Uuid
+  decidedAt    DateTime?               @map("decided_at")
+  decisionNote String?                 @map("decision_note")
+  createdAt    DateTime                @default(now()) @map("created_at")
+  updatedAt    DateTime                @updatedAt @map("updated_at")
+
+  employee  Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveType LeaveType   @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
+  grant     LeaveGrant?
+
+  @@index([companyId, status])
+  @@index([companyId, employeeId])
+  @@map("leave_grant_requests")
+}
+
+/// "Ask HR for more days" — the balance ran out; HR lends (go below 0) or gives extra
+model ExtraLeaveRequest {
+  id           String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId    String           @map("company_id") @db.Uuid
+  employeeId   String           @map("employee_id") @db.Uuid
+  leaveTypeId  String           @map("leave_type_id") @db.Uuid
+  year         Int
+  /// How many more days they need
+  days         Float
+  /// The leave they were trying to book (optional)
+  startDate    DateTime?        @map("start_date") @db.Date
+  endDate      DateTime?        @map("end_date") @db.Date
+  reason       String
+  status       ExtraLeaveStatus @default(PENDING)
+  /// Days lent / given (may differ from what was asked)
+  decidedDays  Float?           @map("decided_days")
+  decidedById  String?          @map("decided_by_id") @db.Uuid
+  decidedAt    DateTime?        @map("decided_at")
+  decisionNote String?          @map("decision_note")
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+
+  employee  Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveType LeaveType @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, status])
+  @@index([companyId, employeeId])
+  @@map("extra_leave_requests")
+}
+
 /// Leave request submitted by an employee
 model LeaveRequest {
-  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId      String          @map("company_id") @db.Uuid
-  employeeId     String          @map("employee_id") @db.Uuid
-  leaveTypeId    String          @map("leave_type_id") @db.Uuid
-  startDate      DateTime        @map("start_date") @db.Date
-  endDate        DateTime        @map("end_date") @db.Date
+  id                   String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId            String          @map("company_id") @db.Uuid
+  employeeId           String          @map("employee_id") @db.Uuid
+  leaveTypeId          String          @map("leave_type_id") @db.Uuid
+  startDate            DateTime        @map("start_date") @db.Date
+  endDate              DateTime        @map("end_date") @db.Date
   /// Single-day requests only
-  halfDay        HalfDaySession? @map("half_day")
-  totalDays      Float           @map("total_days")
-  reason         String
-  status         LeaveStatus     @default(PENDING)
+  halfDay              HalfDaySession? @map("half_day")
+  totalDays            Float           @map("total_days")
+  reason               String
+  status               LeaveStatus     @default(PENDING)
   /// Level waiting for a decision (1-based)
-  currentLevel   Int             @default(1) @map("current_level")
-  requiredLevels Int             @default(1) @map("required_levels")
-  decidedAt      DateTime?       @map("decided_at")
-  cancelledAt    DateTime?       @map("cancelled_at")
-  cancelledById  String?         @map("cancelled_by_id") @db.Uuid
-  cancelReason   String?         @map("cancel_reason")
+  currentLevel         Int             @default(1) @map("current_level")
+  requiredLevels       Int             @default(1) @map("required_levels")
+  decidedAt            DateTime?       @map("decided_at")
+  cancelledAt          DateTime?       @map("cancelled_at")
+  cancelledById        String?         @map("cancelled_by_id") @db.Uuid
+  cancelReason         String?         @map("cancel_reason")
   /// Supporting document (e.g. doctor's note)
-  documentKey    String?         @map("document_key")
-  documentName   String?         @map("document_name")
-  documentMime   String?         @map("document_mime")
-  documentSize   Int?            @map("document_size")
-  createdAt      DateTime        @default(now()) @map("created_at")
-  updatedAt      DateTime        @updatedAt @map("updated_at")
+  documentKey          String?         @map("document_key")
+  documentName         String?         @map("document_name")
+  documentMime         String?         @map("document_mime")
+  documentSize         Int?            @map("document_size")
+  /// An approver asked a question that the employee hasn't answered yet (the asker's user id)
+  questionOpenById     String?         @map("question_open_by_id") @db.Uuid
+  /// Approved leave that has started: the person asked to cancel it (cleared once decided)
+  cancelRequestedAt    DateTime?       @map("cancel_requested_at")
+  cancelRequestReason  String?         @map("cancel_request_reason")
+  /// Came back early: the last day actually taken (null = cancel all of it)
+  cancelRequestLastDay DateTime?       @map("cancel_request_last_day") @db.Date
+  createdAt            DateTime        @default(now()) @map("created_at")
+  updatedAt            DateTime        @updatedAt @map("updated_at")
+
+  /// The grant this leave uses (GRANT_ONLY types)
+  leaveGrantId String? @map("leave_grant_id") @db.Uuid
 
   employee  Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   leaveType LeaveType       @relation(fields: [leaveTypeId], references: [id])
+  grant     LeaveGrant?     @relation(fields: [leaveGrantId], references: [id], onDelete: SetNull)
   approvals LeaveApproval[]
+  comments  LeaveComment[]
 
   @@index([companyId, status])
   @@index([companyId, employeeId])
@@ -2033,6 +2262,22 @@ model ExpenseItem {
   @@map("expense_items")
 }
 
+/// Questions and replies on a leave request — asking doesn't block approving
+model LeaveComment {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  leaveRequestId String   @map("leave_request_id") @db.Uuid
+  authorId       String   @map("author_id") @db.Uuid
+  /// QUESTION (from an approver) | REPLY (from the employee)
+  kind           String
+  body           String
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  leaveRequest LeaveRequest @relation(fields: [leaveRequestId], references: [id], onDelete: Cascade)
+
+  @@index([leaveRequestId])
+  @@map("leave_comments")
+}
+
 /// Questions and replies on a claim — asking doesn't send the claim back
 model ExpenseComment {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -2323,7 +2568,8 @@ model StarterKitRule {
 model TicketCategory {
   id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   companyId       String          @map("company_id") @db.Uuid
-  queue           TicketQueue
+  /// Team key: IT, HR, FINANCE, DEVOPS or a company-made team (HelpdeskTeam.queue)
+  queue           String
   name            String
   isActive        Boolean         @default(true) @map("is_active")
   sortOrder       Int             @default(0) @map("sort_order")
@@ -2355,14 +2601,23 @@ model TicketCategory {
 /// The backup assigns too, and takes the head's alerts while the head is on leave.
 /// No row (or no head) = everyone in the queue can take tickets.
 model HelpdeskTeam {
-  id        String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId String      @map("company_id") @db.Uuid
-  queue     TicketQueue
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId   String    @map("company_id") @db.Uuid
+  /// IT, HR, FINANCE, DEVOPS (built in, worked through role permissions) or a generated key for a company-made team
+  queue       String
+  /// Company-made teams only: name, emoji, one-line "what it helps with" and the people who work it
+  custom      Boolean   @default(false)
+  label       String?
+  emoji       String?
+  description String?
+  memberIds   String[]  @default([]) @map("member_ids") @db.Uuid
+  /// Archived teams take no new tickets; their open tickets can still be finished
+  archivedAt  DateTime? @map("archived_at")
   /// User ids (checked against the queue permission when saved)
-  headId    String?     @map("head_id") @db.Uuid
-  backupId  String?     @map("backup_id") @db.Uuid
-  createdAt DateTime    @default(now()) @map("created_at")
-  updatedAt DateTime    @updatedAt @map("updated_at")
+  headId      String?   @map("head_id") @db.Uuid
+  backupId    String?   @map("backup_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
 
   @@unique([companyId, queue])
   @@map("helpdesk_teams")
@@ -2374,7 +2629,8 @@ model Ticket {
   companyId          String         @map("company_id") @db.Uuid
   /// Per-company running number (#1, #2, …)
   number             Int
-  queue              TicketQueue
+  /// Team key (see HelpdeskTeam)
+  queue              String
   categoryId         String?        @map("category_id") @db.Uuid
   /// "Report a problem" from My assets
   assetId            String?        @map("asset_id") @db.Uuid

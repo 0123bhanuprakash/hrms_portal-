@@ -98,6 +98,11 @@ export interface AnnouncementReport {
   total: number;
   read: number;
   acknowledged: number;
+  counts: Record<'waiting' | 'done' | 'rsvp', number>;
+  byDepartment: Array<{ name: string; total: number; read: number; done: number }>;
+  /** Paging of `people` (one tab) */
+  meta: { total: number; page: number; limit: number; totalPages: number };
+  /** One tab, one page */
   people: Array<{
     id: string;
     firstName: string;
@@ -252,8 +257,28 @@ export function useAnnouncement(id: string | undefined) {
   });
 }
 
-export function useAnnouncementReport(id: string | undefined, enabled = true) {
-  return useQuery({ queryKey: engageKeys.report(id ?? ''), queryFn: async () => unwrap<AnnouncementReport>(await api.get(`/announcements/${id}/report`)), enabled: Boolean(id) && enabled });
+export type ReachTab = 'waiting' | 'done' | 'rsvp';
+/** Reach of a post: totals for everyone, one tab of people a page at a time. */
+export function useAnnouncementReport(id: string | undefined, q: { tab?: ReachTab; search?: string; page?: number } = {}, enabled = true) {
+  return useQuery({
+    queryKey: [...engageKeys.report(id ?? ''), q],
+    queryFn: async () => unwrap<AnnouncementReport>(await api.get(`/announcements/${id}/report`, { params: Object.fromEntries(Object.entries(q).filter(([, v]) => v !== undefined && v !== '')) })),
+    enabled: Boolean(id) && enabled,
+    placeholderData: keepPreviousData,
+  });
+}
+
+/** Everyone in the reach report (all three tabs) — for the CSV. */
+export async function fetchWholeReach(id: string): Promise<AnnouncementReport['people']> {
+  const out: AnnouncementReport['people'] = [];
+  for (const tab of ['waiting', 'done'] as const) {
+    for (let page = 1; ; page++) {
+      const r = unwrap<AnnouncementReport>(await api.get(`/announcements/${id}/report`, { params: { tab, page, limit: 100 } }));
+      out.push(...r.people);
+      if (page >= r.meta.totalPages) break;
+    }
+  }
+  return out.sort((a, b) => a.firstName.localeCompare(b.firstName));
 }
 
 /** How many people a post would reach (live, while writing). */

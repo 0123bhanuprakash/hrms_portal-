@@ -10,6 +10,7 @@ import { resolveTheme } from '@/lib/theme/presets';
 import { workspaceName, workspaceTokens, type Workspace } from '@/lib/auth/portal';
 import { initials } from '@/lib/format';
 import { Backdrop } from '@/components/motion/page-backdrop';
+import { useBrandFavicon } from '@/components/branding/brand-favicon';
 import { SeasonDecor } from '@/components/season/season';
 import { rebrandTheme } from '@/lib/theme/generate';
 import { BrandMedia } from '@/components/brand/brand-media';
@@ -100,6 +101,7 @@ export function CompanyAuthShell({
   children: React.ReactNode;
 }) {
   const mode = useArtMode();
+  useBrandFavicon(workspace?.branding?.faviconUrl);
   const season = workspace?.season ?? null;
   const base = workspaceTokens(workspace);
   // A seasonal theme on today dresses up the sign-in page too

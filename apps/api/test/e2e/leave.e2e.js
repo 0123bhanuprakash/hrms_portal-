@@ -121,6 +121,31 @@ async function cleanup() {
     check('Peer cannot approve → 403', (await call(PE, 'POST', `/leave/requests/${req.data.id}/approve`, {})).status === 403);
     check('Level 2 (top) cannot jump the queue → 403', (await call(T, 'POST', `/leave/requests/${req.data.id}/approve`, {})).status === 403);
     check('Boss sees it waiting', (await call(BO, 'GET', '/leave/requests?view=review')).data?.some((r) => r.id === req.data.id && r.canDecide));
+    const rv = (q) => call(BO, 'GET', `/leave/requests?view=review&${q}`);
+    check('Approvals search by name finds it', (await rv('search=emp')).data?.some((r) => r.id === req.data.id));
+    check('…and by employee id', (await rv('search=EMP')).data?.some((r) => r.id === req.data.id));
+    check('No match → empty list', (await rv('search=nobody-like-this')).body.meta?.total === 0);
+    check('Leave type filter', (await rv(`leaveTypeId=${T_.SL.id}`)).body.meta?.total === 0 && (await rv(`leaveTypeId=${T_.CL.id}`)).data?.some((r) => r.id === req.data.id));
+    const facets = (await rv(`leaveTypeId=${T_.SL.id}`)).body.meta?.facets;
+    check('Facets list the types in the queue (ignoring the type filter)', facets?.leaveTypes.some((t) => t.id === T_.CL.id && t.count >= 1), JSON.stringify(facets));
+    check('Date filter: outside the request → none', (await rv(`from=${addDays(m1, 10)}&to=${addDays(m1, 12)}`)).body.meta?.total === 0);
+    check('Sort newest works', (await rv('sort=newest')).status === 200);
+    const allRes = await call(H, 'GET', '/leave/requests?view=all&search=emp');
+    check('HR "all": search keeps only matching people, with facets', allRes.data?.length > 0 && allRes.data.every((r) => r.employee.firstName === 'emp') && Array.isArray(allRes.body.meta?.facets?.leaveTypes), JSON.stringify(allRes.body).slice(0, 300));
+    // ── Questions and replies (asking doesn't block approving)
+    const notes = async (who, type) => { for (let i = 0; i < 20; i++) { const n = await p.notification.count({ where: { userId: P[who].user.id, type } }); if (n) return n; await new Promise((r) => setTimeout(r, 150)); } return 0; };
+    check('Employee can’t reply before any question → 400', (await call(E, 'POST', `/leave/requests/${req.data.id}/reply`, { body: 'Hello' })).status === 400);
+    check('A peer can’t ask → 404', (await call(PE, 'POST', `/leave/requests/${req.data.id}/question`, { question: 'Why these days?' })).status === 404);
+    const asked = await call(BO, 'POST', `/leave/requests/${req.data.id}/question`, { question: 'Can you hand over the release first?' });
+    check('Boss asks — saved, still pending, shows as open', asked.status === 200 && asked.data?.status === 'PENDING' && asked.data.questionOpen && asked.data.comments.length === 1 && asked.data.comments[0].kind === 'QUESTION' && asked.data.comments[0].mine, JSON.stringify(asked.body).slice(0, 300));
+    check('Employee is told, with a link to the request', (await notes('emp', 'leave.question')) === 1 && (await p.notification.findFirst({ where: { userId: P.emp.user.id, type: 'leave.question' } })).link === `/app/leave?request=${req.data.id}`);
+    const mineNow = (await call(E, 'GET', '/leave/requests?view=mine')).data?.find((r) => r.id === req.data.id);
+    check('Employee sees the question and can reply', mineNow?.canReply && mineNow.questionOpen && mineNow.comments[0].author?.firstName === 'boss', JSON.stringify(mineNow?.comments));
+    check('Someone else can’t reply → 404', (await call(PE, 'POST', `/leave/requests/${req.data.id}/reply`, { body: 'Yes' })).status === 404);
+    const replied = await call(E, 'POST', `/leave/requests/${req.data.id}/reply`, { body: 'Yes, handover is on Friday.' });
+    check('Employee replies — question closed', replied.status === 200 && replied.data?.questionOpen === false && replied.data.comments.length === 2 && replied.data.comments[1].kind === 'REPLY' && replied.data.comments[1].mine, JSON.stringify(replied.body).slice(0, 300));
+    check('Boss is told about the answer', (await notes('boss', 'leave.reply')) === 1);
+    check('Boss sees the answer on the approvals card', (await call(BO, 'GET', '/leave/requests?view=review')).data?.find((r) => r.id === req.data.id)?.comments.length === 2);
     check('Boss pending count = 1', (await call(BO, 'GET', '/leave/requests/pending-count')).data?.count === 1);
     const a1 = await call(BO, 'POST', `/leave/requests/${req.data.id}/approve`, { note: 'ok from me' });
     check('Boss approves level 1 → moves to level 2', a1.status === 200 && a1.data.status === 'PENDING' && a1.data.currentLevel === 2, JSON.stringify(a1.body));
@@ -160,6 +185,40 @@ async function cleanup() {
     check('Peer cannot cancel someone else → 404', (await call(PE, 'POST', `/leave/requests/${req.data.id}/cancel`, {})).status === 404);
     const cn = await call(E, 'POST', `/leave/requests/${req.data.id}/cancel`, { reason: 'Plans changed' });
     check('Employee cancels approved future leave; days back', cn.data?.status === 'CANCELLED' && (await call(E, 'GET', `/leave/balances?year=${year}`)).data.balances.find((x) => x.leaveType.code === 'CL').available === 11.5, JSON.stringify(cn.body));
+
+    // ── Started leave: the person asks to cancel (or end early), whoever approved it decides
+    const clBal = async () => (await call(E, 'GET', `/leave/balances?year=${year}`)).data.balances.find((x) => x.leaveType.code === 'CL');
+    const m5 = addDays(m1, 28);
+    const lv = await call(E, 'POST', '/leave/requests', { leaveTypeId: T_.CL.id, startDate: m5, endDate: addDays(m5, 2), reason: 'Trip' });
+    await call(BO, 'POST', `/leave/requests/${lv.data.id}/approve`, {});
+    await call(T, 'POST', `/leave/requests/${lv.data.id}/approve`, {});
+    // Pretend it started yesterday (dates moved in the DB; the 3 days stay booked)
+    await p.leaveRequest.update({ where: { id: lv.data.id }, data: { startDate: new Date(addDays(today, -1)), endDate: new Date(addDays(today, 3)) } });
+    const usedBefore = (await clBal()).used;
+    const started = (await call(E, 'GET', '/leave/requests?view=mine')).data?.find((r) => r.id === lv.data.id);
+    check('Started approved leave: no direct cancel, can request one', started?.canCancel === false && started.canRequestCancel === true, JSON.stringify(started && { c: started.canCancel, r: started.canRequestCancel }));
+    check('Direct cancel of started leave → 400', (await call(E, 'POST', `/leave/requests/${lv.data.id}/cancel`, { reason: 'x' })).status === 400);
+    check('Early: last day must be before the end → 400', (await call(E, 'POST', `/leave/requests/${lv.data.id}/cancel-request`, { mode: 'early', lastDay: addDays(today, 3), reason: 'Back early' })).status === 400);
+    const cr = await call(E, 'POST', `/leave/requests/${lv.data.id}/cancel-request`, { mode: 'early', lastDay: today, reason: 'Back early' });
+    check('Employee asks to end it early', cr.status === 200 && cr.data?.cancelRequest?.lastDay === today && cr.data.canRequestCancel === false && cr.data.status === 'APPROVED', JSON.stringify(cr.body).slice(0, 300));
+    check('Asking twice → 409', (await call(E, 'POST', `/leave/requests/${lv.data.id}/cancel-request`, { mode: 'all', reason: 'again' })).status === 409);
+    check('Approvers are told', (await notes('boss', 'leave.cancel_request')) >= 1 && (await notes('top', 'leave.cancel_request')) >= 1);
+    check('It waits in the approver’s queue', (await call(BO, 'GET', '/leave/requests?view=review')).data?.find((r) => r.id === lv.data.id)?.canDecideCancel === true);
+    check('A peer can’t decide it → 403', (await call(PE, 'POST', `/leave/requests/${lv.data.id}/cancel-request/approve`, {})).status === 403);
+    const ok = await call(BO, 'POST', `/leave/requests/${lv.data.id}/cancel-request/approve`, {});
+    const back = 3 - ok.data?.totalDays;
+    check('Boss agrees: leave ends today, unused days back', ok.status === 200 && ok.data.status === 'APPROVED' && ok.data.endDate === today && ok.data.cancelRequest === null && (await clBal()).used === usedBefore - back, JSON.stringify(ok.body).slice(0, 300));
+    check('Employee is told', (await notes('emp', 'leave.cancelled')) >= 1);
+    // Whole cancellation: declined once, then HR agrees
+    await call(E, 'POST', `/leave/requests/${lv.data.id}/cancel-request`, { mode: 'all', reason: 'Did not travel at all' });
+    const no = await call(T, 'POST', `/leave/requests/${lv.data.id}/cancel-request/reject`, { note: 'You were away' });
+    check('Declined: stays approved, request cleared', no.data?.status === 'APPROVED' && no.data.cancelRequest === null && (await notes('emp', 'leave.cancel_declined')) >= 1, JSON.stringify(no.body).slice(0, 200));
+    await call(E, 'POST', `/leave/requests/${lv.data.id}/cancel-request`, { mode: 'all', reason: 'Did not travel at all' });
+    check('Employee can take the request back', (await call(E, 'POST', `/leave/requests/${lv.data.id}/cancel-request/withdraw`, {})).data?.cancelRequest === null);
+    await call(E, 'POST', `/leave/requests/${lv.data.id}/cancel-request`, { mode: 'all', reason: 'Did not travel at all' });
+    const usedMid = (await clBal()).used;
+    const hrOk = await call(H, 'POST', `/leave/requests/${lv.data.id}/cancel-request/approve`, {});
+    check('HR agrees to cancel all of it; every day back', hrOk.data?.status === 'CANCELLED' && (await clBal()).used === usedMid - hrOk.data.totalDays, JSON.stringify(hrOk.body).slice(0, 200));
 
     // ── Self-approval + top of the chain
     const bl = await call(BO, 'POST', '/leave/requests', { leaveTypeId: T_.SL.id, startDate: m4, endDate: m4, reason: 'Unwell' });

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { FolderKanban, FolderOpen, Landmark, LayoutList, PackageCheck, Plane, UserRound } from 'lucide-react';
 import { Skeleton, Tabs } from '@/components/ui/feedback';
 import { PersonalSection } from '@/components/profile/personal-section';
@@ -47,12 +48,14 @@ export function ProfileTabs({ employeeId, isSelf, overview }: { employeeId: stri
     return list;
   }, [overview, privateData.isSuccess, docs.isSuccess, leave.isSuccess, projects.isSuccess, assets.isSuccess]);
 
-  const [tab, setTab] = useState<Tab>(overview ? 'overview' : 'personal');
-  useEffect(() => {
-    if (tabs.length && !tabs.some((t) => t.id === tab)) setTab(tabs[0]!.id);
-  }, [tabs, tab]);
-
+  // ?tab=projects (e.g. from a notification) opens that tab once it has loaded
+  const requested = useSearchParams().get('tab') as Tab | null;
+  const [tab, setTab] = useState<Tab>(requested ?? (overview ? 'overview' : 'personal'));
   const loading = privateData.isLoading || docs.isLoading || leave.isLoading || projects.isLoading || assets.isLoading;
+  useEffect(() => {
+    if (tabs.length && !tabs.some((t) => t.id === tab) && !(loading && tab === requested)) setTab(tabs[0]!.id);
+  }, [tabs, tab, loading, requested]);
+
   if (!tabs.length) return loading ? <Skeleton className="h-64 w-full" /> : null;
 
   return (
@@ -66,7 +69,7 @@ export function ProfileTabs({ employeeId, isSelf, overview }: { employeeId: stri
       {tab === 'projects' && projects.data && (
         <div className="space-y-4">
           <ProjectsPanel capacity={projects.data} />
-          <ProfileResourcing employeeId={employeeId} canEditSkills={isSelf || can('employee.edit')} />
+          <ProfileResourcing employeeId={employeeId} isSelf={isSelf} canEditSkills={isSelf || can('employee.edit')} />
         </div>
       )}
       {tab === 'assets' && assets.data && <HeldAssets data={assets.data} linkToAsset={can('asset.manage') || scopeOf('asset.view') === 'company'} />}

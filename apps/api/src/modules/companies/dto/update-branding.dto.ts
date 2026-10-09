@@ -11,9 +11,11 @@ export class UpdateBrandingDto {
   @IsUrl()
   logoUrl?: string | null;
 
+  /** Square icon for browser tabs (null removes it) */
   @IsOptional()
+  @ValidateIf((_, v) => v !== null)
   @IsUrl()
-  faviconUrl?: string;
+  faviconUrl?: string | null;
 
   /** Short line under the name in the side menu ('' clears it) */
   @IsOptional()

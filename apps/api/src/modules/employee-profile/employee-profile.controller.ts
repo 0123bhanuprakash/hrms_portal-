@@ -21,7 +21,8 @@ import type { TenantContext } from '../../common/types/request.types';
 import type { AccessContext } from '../access/access.types';
 import { ProfileService } from './profile.service';
 import { DocumentsService, DOCUMENT_MAX_BYTES } from './documents.service';
-import { UpdateBankDto, UpdatePersonalDto, UpdateSkillsDto, UpdateStatutoryDto, UploadDocumentDto } from './dto';
+import { RejectExperienceDto, UpdateBankDto, UpdatePersonalDto, UpdateSkillsDto, UpdateStatutoryDto, UploadDocumentDto } from './dto';
+import { ExperienceService } from './experience.service';
 import { Live } from '../realtime/live.decorator';
 
 // Profile sub-resources of an employee. The permission decorator is the
@@ -32,7 +33,10 @@ import { Live } from '../realtime/live.decorator';
 @Live('people', 'company')
 @Controller('employees/:id')
 export class EmployeeProfileController {
-  constructor(private readonly profile: ProfileService) {}
+  constructor(
+    private readonly profile: ProfileService,
+    private readonly experience: ExperienceService,
+  ) {}
 
   @RequirePermission('employee.view_private')
   @Get('private')
@@ -52,8 +56,27 @@ export class EmployeeProfileController {
   /** Skills: the person themselves, or whoever may edit them (checked in the service). */
   @Audit('employee:skills:update', 'employee')
   @Put('skills')
-  skills(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateSkillsDto) {
-    return this.profile.updateSkills(ctx.companyId!, id, dto.skills, access);
+  async skills(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateSkillsDto) {
+    const saved = await this.profile.updateSkills(ctx.companyId!, id, dto.skills, access);
+    // Experience before joining: the person's own goes to HR to verify; HR's is approved at once
+    const experience = dto.priorExperienceMonths !== undefined ? await this.experience.set(ctx.companyId!, access, id, dto.priorExperienceMonths) : undefined;
+    return { ...saved, ...(experience && { experience }) };
+  }
+
+  @Audit('employee:experience:approve', 'employee')
+  @RequirePermission('employee.edit')
+  @Post('experience/approve')
+  @HttpCode(HttpStatus.OK)
+  approveExperience(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Param('id', ParseUUIDPipe) id: string) {
+    return this.experience.approve(ctx.companyId!, access, id);
+  }
+
+  @Audit('employee:experience:reject', 'employee')
+  @RequirePermission('employee.edit')
+  @Post('experience/reject')
+  @HttpCode(HttpStatus.OK)
+  rejectExperience(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Param('id', ParseUUIDPipe) id: string, @Body() dto: RejectExperienceDto) {
+    return this.experience.reject(ctx.companyId!, access, id, dto.reason);
   }
 
   @RequirePermission('employee.edit_private')
@@ -151,5 +174,18 @@ export class EmployeeDocumentsController {
     @Param('documentId', ParseUUIDPipe) documentId: string,
   ) {
     return this.documents.remove(ctx.companyId!, id, documentId, access);
+  }
+}
+
+/** Experience before joining that people entered and HR hasn't verified (Home → Needs your action). */
+@RequireFeature('people.directory')
+@Controller('experience-reviews')
+export class ExperienceReviewsController {
+  constructor(private readonly experience: ExperienceService) {}
+
+  @RequirePermission('employee.edit')
+  @Get()
+  pending(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext) {
+    return this.experience.pending(ctx.companyId!, access);
   }
 }

@@ -90,11 +90,14 @@ export interface OrgHealth {
     tone: 'warning' | 'info' | 'neutral' | 'danger';
     title: string;
     detail: string;
-    people?: Array<{ id: string; name: string; avatarUrl: string | null }>;
+    /** The first 12 people (see `count`) */
+    people?: Array<{ id: string; firstName: string; lastName: string; name: string; avatarUrl: string | null }>;
     departments?: Array<{ id: string; name: string }>;
+    /** Everyone affected */
+    count: number;
     fix: 'reporting' | 'departments' | 'employees';
   }>;
-  stats: { headcount: number; managers: number; avgSpan: number; widestSpan: number; levels: number; departments: number };
+  stats: { headcount: number; managers: number; avgSpan: number; widestSpan: number; levels: number; departments: number; spans: Record<'1–2' | '3–5' | '6–8' | '9+', number> };
 }
 
 export interface BulkResult {

@@ -76,7 +76,7 @@ export function PhotoCard({ person, onOpen }: { person: DirectoryPerson; onOpen:
       </div>
       <div className="flex gap-1.5 px-3.5 pb-3.5">
         <a href={`mailto:${person.email}`} className="flex h-8 flex-1 items-center justify-center gap-1 rounded-lg border border-border text-xs font-semibold hover:bg-subtle"><Mail className="h-3.5 w-3.5" />Email</a>
-        <Link href={`/app/kudos?to=${person.id}`} className="flex h-8 flex-1 items-center justify-center gap-1 rounded-lg border border-border text-xs font-semibold hover:bg-subtle"><Heart className="h-3.5 w-3.5" />Kudos</Link>
+        <Link href={`/app/kudos?to=${person.id}`} className="flex h-8 flex-1 items-center justify-center gap-1 rounded-lg border border-border text-xs font-semibold hover:bg-subtle"><Heart className="h-3.5 w-3.5" />Shout-out</Link>
         <button type="button" onClick={onOpen} className="flex h-8 flex-1 items-center justify-center gap-1 rounded-lg border border-border text-xs font-semibold hover:bg-subtle"><Network className="h-3.5 w-3.5" />Team</button>
       </div>
     </article>

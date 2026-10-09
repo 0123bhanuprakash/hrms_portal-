@@ -14,6 +14,25 @@ import { attendanceKeys } from '@/lib/company/attendance';
 export type LeaveAccrual = 'UPFRONT' | 'MONTHLY' | 'NONE';
 export type LeaveStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED' | 'WITHDRAWN';
 export type HalfDay = 'FIRST_HALF' | 'SECOND_HALF';
+export type LeaveAvailability = 'EVERYONE' | 'RULES' | 'GRANT_ONLY';
+export type Gender = 'MALE' | 'FEMALE' | 'OTHER' | 'PREFER_NOT_TO_SAY';
+export type EmploymentType = 'FULL_TIME' | 'PART_TIME' | 'CONTRACT' | 'INTERN';
+
+/** Who can use a type (RULES) or ask for a grant (GRANT_ONLY). Empty = anyone; rules combine with AND. */
+export interface LeaveRules {
+  genders: Gender[];
+  departmentIds: string[];
+  locationIds: string[];
+  designationIds: string[];
+  employmentTypes: EmploymentType[];
+  minServiceMonths: number | null;
+  managerIds: string[];
+  /** Everyone below the managers, not only direct reports */
+  managerDeep: boolean;
+  projectIds: string[];
+  /** Named people added to / kept out of the rules */
+  members: Array<{ employeeId: string; mode: 'INCLUDE' | 'EXCLUDE' }>;
+}
 
 export interface LeaveType {
   id: string;
@@ -33,7 +52,9 @@ export interface LeaveType {
   maxConsecutiveDays: number | null;
   includeNonWorkingDays: boolean;
   countsAsPresent: boolean;
-  gender: 'MALE' | 'FEMALE' | 'OTHER' | 'PREFER_NOT_TO_SAY' | null;
+  availability: LeaveAvailability;
+  /** Grant-only: a grant (and a request for one) needs a document */
+  grantNeedsDocument: boolean;
   /** Not usable while on probation */
   blockDuringProbation: boolean;
   /** Ask for a document when longer than this many days (null = never) */
@@ -44,8 +65,31 @@ export interface LeaveType {
   negativeBalance: number;
   /** "MM-DD" — carried days not used by then lapse */
   carryExpiry: string | null;
+  /** Below 0 at year end: take it from next year (true) or forgive it */
+  recoverNegative: boolean;
   isActive: boolean;
   sortOrder: number;
+}
+
+/** Leave admins also get the rules (everyone else sees only genders). */
+export type LeaveTypeAdmin = LeaveType & LeaveRules;
+
+export interface GrantOnBalance {
+  id: string;
+  days: number;
+  /** Pending + approved */
+  taken: number;
+  used: number;
+  /** 0 once the grant has ended */
+  left: number;
+  validFrom: string;
+  validTo: string;
+}
+
+/** A grant-only type the person may ask HR for, with their request if one is waiting. */
+export interface AskableLeave {
+  leaveType: { id: string; name: string; code: string; color: string; description: string | null; annualQuota: number; grantNeedsDocument: boolean };
+  request: { id: string; fromDate: string; toDate: string; createdAt: string } | null;
 }
 
 export interface LeaveBalance {
@@ -61,8 +105,118 @@ export interface LeaveBalance {
   available: number | null;
   /** Carried days that already expired this year */
   carryExpired?: number;
-  /** If nothing more is taken: left on 31 Dec, carried over, lost */
-  yearEnd?: { left: number; carry: number; lapse: number } | null;
+  /** If nothing more is taken: left on 31 Dec, carried over, lost, owed to next year */
+  yearEnd?: { left: number; carry: number; lapse: number; owe?: number } | null;
+  /** Grant-only types: the grants behind this balance */
+  grants?: GrantOnBalance[];
+  /** HR lent this many days (may go this far below 0, on top of the type's own allowance) */
+  lent?: number;
+  /** How far below 0 the person may go in all */
+  below?: number;
+  /** Owed from earlier years, still to be taken back */
+  owedLeft?: number;
+  /** Their "ask for more days" request waiting for an answer */
+  extraRequest?: { id: string; days: number; createdAt: string } | null;
+}
+
+export type ExtraStatus = 'PENDING' | 'LENT' | 'GIVEN' | 'DECLINED' | 'CANCELLED';
+export interface ExtraLeaveRequest {
+  id: string;
+  year: number;
+  days: number;
+  startDate: string | null;
+  endDate: string | null;
+  reason: string;
+  status: ExtraStatus;
+  decidedDays: number | null;
+  decidedAt: string | null;
+  decisionNote: string | null;
+  decidedBy: string | null;
+  createdAt: string;
+  mine: boolean;
+  employee: { id: string; employeeId: string; firstName: string; lastName: string; avatarUrl: string | null };
+  leaveType: { id: string; name: string; code: string; color: string; annualQuota: number };
+}
+
+export interface OwedRow {
+  balanceId: string;
+  employee: { id: string; employeeId: string; firstName: string; lastName: string; avatarUrl: string | null; employmentStatus: string };
+  leaving: boolean;
+  leaveType: { id: string; name: string; code: string; color: string };
+  available: number;
+  lent: number;
+  owedLeft: number;
+  owesAtYearEnd: number;
+}
+
+export interface LedgerEntry {
+  date: string;
+  kind: 'OPENING' | 'CREDIT' | 'CARRIED_IN' | 'CARRY_EXPIRED' | 'GRANT' | 'EXTRA' | 'LEND' | 'CORRECTION' | 'DEDUCTION' | 'TAKEN_BACK' | 'WAIVED' | 'LEAVE' | 'YEAR_END';
+  label: string;
+  days: number | null;
+  balance: number | null;
+  note?: string | null;
+  by?: string | null;
+  pending?: boolean;
+}
+export interface Ledger {
+  year: number;
+  leaveType: { id: string; name: string; code: string; color: string; accrual: LeaveAccrual };
+  lent: number;
+  owedLeft: number;
+  closed: boolean;
+  entries: LedgerEntry[];
+}
+
+interface DocInfo {
+  name: string;
+  size: number | null;
+  mime: string | null;
+}
+type PersonLite = { id: string; employeeId: string; firstName: string; lastName: string; avatarUrl: string | null };
+
+export interface LeaveGrant {
+  id: string;
+  days: number;
+  validFrom: string;
+  validTo: string;
+  reason: string;
+  status: 'ACTIVE' | 'REVOKED';
+  requestId: string | null;
+  createdAt: string;
+  employee: PersonLite;
+  leaveType: { id: string; name: string; code: string; color: string };
+  taken: number;
+  used: number;
+  left: number;
+  ended: boolean;
+  grantedBy: { firstName: string; lastName: string } | null;
+  document: DocInfo | null;
+  history: Array<{ id: string; kind: 'CREATED' | 'CHANGED' | 'REVOKED'; days: number | null; validTo: string | null; note: string | null; createdAt: string; by: { firstName: string; lastName: string } | null }>;
+}
+
+export type GrantRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+export interface LeaveGrantRequest {
+  id: string;
+  fromDate: string;
+  toDate: string;
+  note: string;
+  status: GrantRequestStatus;
+  decidedAt: string | null;
+  decisionNote: string | null;
+  createdAt: string;
+  employee: PersonLite;
+  leaveType: { id: string; name: string; code: string; color: string; annualQuota: number; grantNeedsDocument: boolean };
+  decidedBy: { firstName: string; lastName: string } | null;
+  grantId: string | null;
+  document: DocInfo | null;
+}
+
+export interface EligibilityPreview {
+  total: number;
+  count: number;
+  people: Array<{ id: string; firstName: string; lastName: string; avatarUrl: string | null; employeeId: string }>;
+  projects: Array<{ id: string; name: string; code: string | null }>;
 }
 
 export interface TeamClash {
@@ -112,6 +266,27 @@ export interface LeaveRequest {
   canDecide: boolean;
   decideAs: 'approver' | 'delegate' | 'override' | null;
   canCancel: boolean;
+  /** Questions from approvers and the person's replies, oldest first */
+  comments: LeaveComment[];
+  /** An approver asked and the person hasn't answered yet */
+  questionOpen: boolean;
+  /** The person can answer (their own pending request with a question on it) */
+  canReply: boolean;
+  /** Asked to cancel this approved leave (lastDay = came back early; null = all of it) */
+  cancelRequest: { requestedAt: string; reason: string | null; lastDay: string | null } | null;
+  /** Approved and already started: cancelling needs a request */
+  canRequestCancel: boolean;
+  /** I decide the cancellation request */
+  canDecideCancel: boolean;
+}
+export interface LeaveComment {
+  id: string;
+  kind: 'QUESTION' | 'REPLY';
+  body: string;
+  createdAt: string;
+  author: Named | null;
+  /** Written by me */
+  mine: boolean;
 }
 
 export interface LeavePreview {
@@ -122,6 +297,9 @@ export interface LeavePreview {
   errors: string[];
   warnings: string[];
   needsDocument?: boolean;
+  /** Days missing from the balance; > 0 = the person can ask for more */
+  short?: number;
+  canAskMore?: boolean;
   leaveType: { id: string; name: string; accrual: LeaveAccrual; approvalLevels: number };
   /** Who will approve: per level, why and who */
   route?: { mode: 'project' | 'reporting_line'; levels: Array<{ label: string; approvers: Named[] }> };
@@ -172,6 +350,11 @@ export const leaveKeys = {
   history: (balanceId: string) => ['leave', 'history', balanceId] as const,
   usage: (year: number) => ['leave', 'usage', year] as const,
   yearEnd: (id: string, year: number) => ['leave', 'year-end', id, year] as const,
+  grants: (q: object) => ['leave', 'grants', q] as const,
+  grantRequests: (q: object) => ['leave', 'grant-requests', q] as const,
+  extra: (q: object) => ['leave', 'extra', q] as const,
+  owed: (year: number) => ['leave', 'owed', year] as const,
+  ledger: (q: object) => ['leave', 'ledger', q] as const,
 };
 
 const unwrap = <T,>(r: { data: { data: T } }) => r.data.data;
@@ -179,22 +362,42 @@ const unwrap = <T,>(r: { data: { data: T } }) => r.data.data;
 // ─── Queries ────────────────────────────────────────────────
 
 export function useLeaveTypes(all = false, enabled = true) {
-  return useQuery({ queryKey: leaveKeys.types(all), queryFn: async () => unwrap<LeaveType[]>(await api.get('/leave/types', { params: all ? { all: true } : {} })), enabled, staleTime: 60_000 });
+  return useQuery({ queryKey: leaveKeys.types(all), queryFn: async () => unwrap<LeaveTypeAdmin[]>(await api.get('/leave/types', { params: all ? { all: true } : {} })), enabled, staleTime: 60_000 });
 }
 
 export function useLeaveBalances(employeeId?: string, year = new Date().getFullYear(), enabled = true) {
   return useQuery({
     queryKey: leaveKeys.balances(employeeId, year),
-    queryFn: async () => unwrap<{ employeeId: string; year: number; balances: LeaveBalance[] }>(await api.get('/leave/balances', { params: { year, ...(employeeId && { employeeId }) } })),
+    queryFn: async () => unwrap<{ employeeId: string; year: number; balances: LeaveBalance[]; askable?: AskableLeave[] }>(await api.get('/leave/balances', { params: { year, ...(employeeId && { employeeId }) } })),
     enabled,
     retry: false,
   });
 }
 
-export function useLeaveRequests(q: { view: 'mine' | 'review' | 'all'; status?: LeaveStatus; employeeId?: string; page?: number; limit?: number }, enabled = true) {
+/** Filter chips for the approvals list: what is in it, counted without the chip's own filter. */
+export interface LeaveFacets {
+  leaveTypes: Array<{ id: string; name: string; color: string | null; count: number }>;
+  departments: Array<{ id: string; name: string; count: number }>;
+}
+export interface LeaveListQuery {
+  view: 'mine' | 'review' | 'all';
+  status?: LeaveStatus;
+  employeeId?: string;
+  /** Name or employee id */
+  search?: string;
+  leaveTypeId?: string;
+  departmentId?: string;
+  /** Overlapping these dates (YYYY-MM-DD) */
+  from?: string;
+  to?: string;
+  sort?: 'soonest' | 'newest' | 'latest';
+  page?: number;
+  limit?: number;
+}
+export function useLeaveRequests(q: LeaveListQuery, enabled = true) {
   return useQuery({
     queryKey: leaveKeys.requests(q),
-    queryFn: async () => (await api.get('/leave/requests', { params: q })).data as Paged<LeaveRequest>,
+    queryFn: async () => (await api.get('/leave/requests', { params: Object.fromEntries(Object.entries(q).filter(([, v]) => v !== undefined && v !== '')) })).data as Omit<Paged<LeaveRequest>, 'meta'> & { meta: Paged<LeaveRequest>['meta'] & { facets?: LeaveFacets } },
     placeholderData: keepPreviousData,
     enabled,
   });
@@ -241,6 +444,25 @@ export function useYearEnd(id: string | null, year: number) {
   return useQuery({ queryKey: leaveKeys.yearEnd(id ?? '', year), queryFn: async () => unwrap<YearEndPreview>(await api.get(`/leave/types/${id}/year-end`, { params: { year } })), enabled: Boolean(id) });
 }
 
+/** How many people draft rules cover (the leave type form). */
+export function useEligibilityPreview(body: (LeaveRules & { availability: LeaveAvailability }) | null) {
+  return useQuery({
+    queryKey: ['leave', 'eligible-preview', body],
+    queryFn: async () => unwrap<EligibilityPreview>(await api.post('/leave/types/eligible-preview', body)),
+    enabled: Boolean(body),
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+  });
+}
+
+export function useLeaveGrants(q: { employeeId?: string; leaveTypeId?: string; status?: 'ACTIVE' | 'REVOKED' }, enabled = true) {
+  return useQuery({ queryKey: leaveKeys.grants(q), queryFn: async () => unwrap<LeaveGrant[]>(await api.get('/leave/grants', { params: q })), enabled, placeholderData: keepPreviousData });
+}
+
+export function useGrantRequests(q: { view: 'mine' | 'review'; status?: GrantRequestStatus }, enabled = true) {
+  return useQuery({ queryKey: leaveKeys.grantRequests(q), queryFn: async () => unwrap<LeaveGrantRequest[]>(await api.get('/leave/grant-requests', { params: q })), enabled, placeholderData: keepPreviousData });
+}
+
 export function useBalanceHistory(balanceId: string | null) {
   return useQuery({
     queryKey: leaveKeys.history(balanceId ?? ''),
@@ -278,11 +500,45 @@ export const useDecideLeave = () =>
 export const useCancelLeave = () =>
   useLeaveMutation(async ({ id, reason }: { id: string; reason?: string }) => unwrap<LeaveRequest>(await api.post(`/leave/requests/${id}/cancel`, { reason: reason || null })));
 
+export type AdjustKind = 'EXTRA' | 'LEND' | 'CORRECTION' | 'DEDUCTION';
 export const useAdjustBalance = () =>
-  useLeaveMutation(async (body: { employeeId: string; leaveTypeId: string; year: number; days: number; reason: string }) => unwrap(await api.post('/leave/balances/adjust', body)));
+  useLeaveMutation(async (body: { employeeId: string; leaveTypeId: string; year: number; kind: AdjustKind; days: number; reason: string }) => unwrap(await api.post('/leave/balances/adjust', body)));
+
+// ─── Asking for more days, lending / giving, owed, ledger ───
+
+export function useExtraRequests(q: { view: 'mine' | 'decide'; status?: ExtraStatus }, enabled = true) {
+  return useQuery({ queryKey: leaveKeys.extra(q), queryFn: async () => unwrap<ExtraLeaveRequest[]>(await api.get('/leave/extra-requests', { params: q })), enabled, placeholderData: keepPreviousData });
+}
+export function useOwed(year: number, enabled = true) {
+  return useQuery({ queryKey: leaveKeys.owed(year), queryFn: async () => unwrap<{ year: number; rows: OwedRow[] }>(await api.get('/leave/owed', { params: { year } })), enabled, retry: false });
+}
+export function useLedger(q: { employeeId?: string; leaveTypeId: string; year: number } | null) {
+  return useQuery({ queryKey: leaveKeys.ledger(q ?? {}), queryFn: async () => unwrap<Ledger>(await api.get('/leave/ledger', { params: q })), enabled: Boolean(q) });
+}
+export const useAskExtra = () =>
+  useLeaveMutation(async (body: { leaveTypeId: string; year: number; days: number; startDate?: string; endDate?: string; reason: string }) => unwrap<ExtraLeaveRequest>(await api.post('/leave/extra-requests', body)));
+export const useDecideExtra = () =>
+  useLeaveMutation(async ({ id, ...body }: { id: string; action: 'lend' | 'give' | 'decline'; days?: number; note?: string }) => unwrap<ExtraLeaveRequest>(await api.post(`/leave/extra-requests/${id}/decide`, body)));
+export const useCancelExtra = () => useLeaveMutation(async (id: string) => unwrap<ExtraLeaveRequest>(await api.post(`/leave/extra-requests/${id}/cancel`)));
+export const useLendGive = () =>
+  useLeaveMutation(async (body: { employeeId: string; leaveTypeId: string; year: number; action: 'lend' | 'give'; days: number; reason: string }) => unwrap(await api.post('/leave/extra/lend-give', body)));
+export const useWaive = () => useLeaveMutation(async ({ balanceId, note }: { balanceId: string; note: string }) => unwrap<{ waived: number }>(await api.post(`/leave/balances/${balanceId}/waive`, { note })));
 
 export const useAskQuestion = () =>
-  useMutation({ mutationFn: async ({ id, question }: { id: string; question: string }) => unwrap<{ sent: boolean }>(await api.post(`/leave/requests/${id}/question`, { question })) });
+  useLeaveMutation(async ({ id, question }: { id: string; question: string }) => unwrap<LeaveRequest>(await api.post(`/leave/requests/${id}/question`, { question })));
+
+/** Approved leave that has started: ask to cancel all of it, or to end it early (last day taken). */
+export const useRequestCancel = () =>
+  useLeaveMutation(async ({ id, ...body }: { id: string; mode: 'all' | 'early'; lastDay?: string; reason: string }) => unwrap<LeaveRequest>(await api.post(`/leave/requests/${id}/cancel-request`, body)));
+export const useWithdrawCancel = () =>
+  useLeaveMutation(async (id: string) => unwrap<LeaveRequest>(await api.post(`/leave/requests/${id}/cancel-request/withdraw`)));
+/** Whoever approved the leave (or HR) agrees to the cancellation, or keeps the leave. */
+export const useDecideCancel = () =>
+  useLeaveMutation(async ({ id, approve, note }: { id: string; approve: boolean; note?: string }) => unwrap<LeaveRequest>(await api.post(`/leave/requests/${id}/cancel-request/${approve ? 'approve' : 'reject'}`, note ? { note } : {})));
+
+/** The person answers an approver's question on their own pending request. */
+export const useReplyLeave = () =>
+  useLeaveMutation(async ({ id, body }: { id: string; body: string }) => unwrap<LeaveRequest>(await api.post(`/leave/requests/${id}/reply`, { body })));
 
 export const useRemindLapse = () =>
   useMutation({ mutationFn: async ({ id, year }: { id: string; year: number }) => unwrap<{ sent: number }>(await api.post(`/leave/types/${id}/year-end/remind`, null, { params: { year } })) });
@@ -302,7 +558,68 @@ export async function openLeaveDocument(id: string): Promise<void> {
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
-export type LeaveTypeInput = Omit<LeaveType, 'id'>;
+// ─── Grants ─────────────────────────────────────────────────
+
+const multipart = { headers: { 'Content-Type': 'multipart/form-data' } };
+
+/** HR gives a grant-only type to one or more people (document optional unless the type needs one). */
+export const useCreateGrant = () =>
+  useLeaveMutation(async (v: { employeeIds: string[]; leaveTypeId: string; days: number; validFrom: string; validTo: string; reason: string; file?: File | null }) => {
+    const form = new FormData();
+    form.append('employeeIds', JSON.stringify(v.employeeIds));
+    form.append('leaveTypeId', v.leaveTypeId);
+    form.append('days', String(v.days));
+    form.append('validFrom', v.validFrom);
+    form.append('validTo', v.validTo);
+    form.append('reason', v.reason);
+    if (v.file) form.append('file', v.file);
+    return unwrap<LeaveGrant[]>(await api.post('/leave/grants', form, multipart));
+  });
+
+/** Extend / shorten / change days — with a reason. */
+export const useUpdateGrant = () =>
+  useLeaveMutation(async ({ id, ...body }: { id: string; days?: number; validTo?: string; note: string }) => unwrap<LeaveGrant>(await api.patch(`/leave/grants/${id}`, body)));
+
+export const useRevokeGrant = () => useLeaveMutation(async ({ id, note }: { id: string; note: string }) => unwrap<LeaveGrant>(await api.post(`/leave/grants/${id}/revoke`, { note })));
+
+/** The employee asks HR for a grant-only type. */
+export const useAskForGrant = () =>
+  useLeaveMutation(async (v: { leaveTypeId: string; fromDate: string; toDate: string; note: string; file?: File | null }) => {
+    const form = new FormData();
+    form.append('leaveTypeId', v.leaveTypeId);
+    form.append('fromDate', v.fromDate);
+    form.append('toDate', v.toDate);
+    form.append('note', v.note);
+    if (v.file) form.append('file', v.file);
+    return unwrap<LeaveGrantRequest>(await api.post('/leave/grant-requests', form, multipart));
+  });
+
+export const useDecideGrantRequest = () =>
+  useLeaveMutation(async ({ id, ...v }: { id: string } & ({ approve: true; days: number; validFrom: string; validTo: string; note?: string } | { approve: false; note: string })) =>
+    v.approve
+      ? unwrap<LeaveGrantRequest>(await api.post(`/leave/grant-requests/${id}/approve`, { days: v.days, validFrom: v.validFrom, validTo: v.validTo, note: v.note || null }))
+      : unwrap<LeaveGrantRequest>(await api.post(`/leave/grant-requests/${id}/reject`, { note: v.note })),
+  );
+
+export const useCancelGrantRequest = () => useLeaveMutation(async (id: string) => unwrap<LeaveGrantRequest>(await api.post(`/leave/grant-requests/${id}/cancel`)));
+
+/** Opens a grant's or a grant request's document in a new tab. */
+export async function openGrantDocument(kind: 'grants' | 'grant-requests', id: string): Promise<void> {
+  const res = await api.get(`/leave/${kind}/${id}/document`, { responseType: 'blob' });
+  const url = URL.createObjectURL(res.data as Blob);
+  window.open(url, '_blank', 'noopener');
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+/** Date key a number of months later, minus a day (12 months from 1 Nov → 31 Oct). */
+export function monthsLater(key: string, months: number): string {
+  const d = new Date(`${key}T00:00:00Z`);
+  d.setUTCMonth(d.getUTCMonth() + months);
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
+
+export type LeaveTypeInput = Omit<LeaveTypeAdmin, 'id'>;
 export const useSaveLeaveType = () =>
   useLeaveMutation(async ({ id, ...body }: LeaveTypeInput & { id?: string }) =>
     unwrap<LeaveType>(id ? await api.patch(`/leave/types/${id}`, body) : await api.post('/leave/types', body)),

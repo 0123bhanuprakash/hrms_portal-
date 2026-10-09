@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { AccessScope } from '@hrms/types';
 import { api } from '@/lib/api';
 import { accessKeys } from '@/lib/access/use-access';
@@ -89,8 +89,14 @@ export interface MyDelegations {
 const delegationKeys = { mine: ['delegations', 'mine'] as const, all: ['delegations', 'all'] as const };
 
 export const useMyDelegations = () => useQuery({ queryKey: delegationKeys.mine, queryFn: async () => unwrap<MyDelegations>(await api.get('/delegations')) });
-export const useAllDelegations = (enabled: boolean) =>
-  useQuery({ queryKey: delegationKeys.all, queryFn: async () => unwrap<Delegation[]>(await api.get('/delegations/all')), enabled });
+/** Current and upcoming hand-overs in the company, 25 at a time. */
+export const useAllDelegations = (enabled: boolean, page = 1) =>
+  useQuery({
+    queryKey: [...delegationKeys.all, page],
+    queryFn: async () => unwrap<{ rows: Delegation[]; meta: { total: number; page: number; limit: number; totalPages: number } }>(await api.get('/delegations/all', { params: { page } })),
+    enabled,
+    placeholderData: keepPreviousData,
+  });
 
 function useDelegationMutation<V, R>(fn: (v: V) => Promise<R>) {
   const qc = useQueryClient();
@@ -155,7 +161,7 @@ export const useDelegationTimeline = (from: string, to: string) =>
   useQuery({ queryKey: ['delegations', 'timeline', from, to], queryFn: async () => unwrap<{ from: string; to: string; rows: TimelineRow[] }>(await api.get('/delegations/timeline', { params: { from, to } })) });
 export const useDelegationRecap = () => useQuery({ queryKey: ['delegations', 'recap'], queryFn: async () => unwrap<RecapItem[]>(await api.get('/delegations/recap')) });
 export const useDelegationGaps = (enabled: boolean) =>
-  useQuery({ queryKey: ['delegations', 'gaps'], queryFn: async () => unwrap<Array<{ userId: string; name: string; from: string; to: string }>>(await api.get('/delegations/gaps')), enabled });
+  useQuery({ queryKey: ['delegations', 'gaps'], queryFn: async () => unwrap<{ rows: Array<{ userId: string; name: string; from: string; to: string }>; total: number }>(await api.get('/delegations/gaps')), enabled });
 
 // ─── Bulk import ────────────────────────────────────────────
 
@@ -170,6 +176,8 @@ export interface ImportRow {
   designation?: string;
   location?: string;
   managerEmail?: string;
+  /** Work experience before joining, in years ("4.5", "2y 6m") */
+  experience?: string;
 }
 
 export interface ImportPreview {
@@ -210,6 +218,7 @@ export const IMPORT_COLUMNS: Array<{ key: keyof ImportRow; header: string; alias
   { key: 'designation', header: 'Job title', aliases: ['job title', 'title', 'designation', 'role title'], example: 'Software Engineer' },
   { key: 'location', header: 'Location', aliases: ['location', 'office', 'branch'], example: 'Bengaluru HQ' },
   { key: 'managerEmail', header: 'Manager email', aliases: ['manager email', 'manager', 'reporting manager', 'reporting manager email', 'manageremail'], example: 'lead@yourcompany.com' },
+  { key: 'experience', header: 'Experience before joining (years)', aliases: ['experience before joining (years)', 'experience before joining', 'experience', 'prior experience', 'previous experience', 'years of experience', 'experience (years)', 'total experience'], example: '4.5' },
 ];
 
 /** Minimal RFC 4180 CSV parser (quotes, escaped quotes, commas / newlines in quotes, BOM). */

@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { TicketMessageKind, TicketPriority, TicketStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { AUTO_CLOSE_DAYS, QUEUE_LABEL, QUEUE_PERMISSION } from './sla';
+import { AUTO_CLOSE_DAYS } from './sla';
 import { TicketsService } from './tickets.service';
 import { HelpdeskTeamsService } from './teams.service';
 
@@ -58,7 +58,7 @@ export class HelpdeskRemindersService implements OnApplicationBootstrap, OnModul
         if (!agents.has(key)) {
           // Unowned tickets: the team head (or backup) when the team has one, else everyone in the queue
           const { onDuty } = await this.teams.leads(t.companyId, t.queue);
-          agents.set(key, onDuty.length ? onDuty : await this.notifications.companyWideApprovers(t.companyId, QUEUE_PERMISSION[t.queue]));
+          agents.set(key, onDuty.length ? onDuty : await this.teams.agentIds(t.companyId, t.queue));
         }
         const to = t.assigneeId ? [t.assigneeId] : agents.get(key)!;
         const response = !t.firstRespondedAt && t.firstResponseDueAt < now;
@@ -68,7 +68,7 @@ export class HelpdeskRemindersService implements OnApplicationBootstrap, OnModul
             companyId: t.companyId,
             userIds: to,
             type: 'ticket.sla',
-            title: `No reply yet on #${t.number} (${QUEUE_LABEL[t.queue]}): ${t.subject}`,
+            title: `No reply yet on #${t.number} (${(await this.teams.catalog(t.companyId)).label(t.queue)}): ${t.subject}`,
             body: 'The first-response target has passed.',
             link: `/app/helpdesk/${t.id}`,
             actionLabel: 'Open ticket',
@@ -103,7 +103,7 @@ export class HelpdeskRemindersService implements OnApplicationBootstrap, OnModul
           userIds: onDuty,
           type: 'ticket.unassigned',
           title: `#${t.number} still has no owner (${t.priority === TicketPriority.URGENT ? 'Urgent' : 'High'}): ${t.subject}`,
-          body: `Assign it to someone in the ${QUEUE_LABEL[t.queue]} team.`,
+          body: `Assign it to someone in the ${(await this.teams.catalog(t.companyId)).label(t.queue)} team.`,
           link: `/app/helpdesk/${t.id}`,
           actionLabel: 'Assign',
           email: false,

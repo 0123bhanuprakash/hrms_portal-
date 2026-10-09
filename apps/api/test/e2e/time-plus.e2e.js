@@ -90,6 +90,10 @@ const nextDow = (from, dow) => {
     // Insights look at this month only
     const thisMonth = days3[0].slice(0, 7) === today.slice(0, 7);
     check('Insights: many corrections this month', r.status === 200 && (thisMonth ? r.data.manyCorrections.some((x) => x.employee.id === P.emp.id && x.count === 3) : Array.isArray(r.data.manyCorrections)), JSON.stringify(r.body).slice(0, 300));
+    check('Insights: counts for everyone + ids to nudge', r.data?.counts && r.data.counts.manyCorrections === (thisMonth ? r.data.manyCorrections.length : r.data.counts.manyCorrections) && Array.isArray(r.data.missingCheckoutIds) && r.data.missingCheckoutIds.length === r.data.counts.missingCheckout, JSON.stringify(r.data?.counts));
+    r = await call(S.mgr, 'GET', '/attendance/insights?list=manyCorrections&limit=1');
+    check('Insights: "See all" pages one list', r.status === 200 && Array.isArray(r.data.rows) && r.data.rows.length <= 1 && r.data.meta.limit === 1 && r.data.list === 'manyCorrections', JSON.stringify(r.data?.meta));
+    check('Insights: unknown list → 400', (await call(S.mgr, 'GET', '/attendance/insights?list=salary')).status === 400);
     check('Insights need a team → employee 200 with nobody', (await call(S.emp, 'GET', '/attendance/insights')).data?.manyCorrections?.length === 0);
 
     // ── Nudges: lead / manager / HR only, for people they look after

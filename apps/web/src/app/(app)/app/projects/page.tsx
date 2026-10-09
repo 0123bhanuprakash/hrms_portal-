@@ -6,7 +6,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Flag, FolderKanban, GanttChart, Kanban, LayoutGrid, Plus, Search, ShieldCheck, Users } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
-import { Card, EmptyState, ErrorState, Skeleton, Tabs } from '@/components/ui/feedback';
+import { Card, EmptyState, ErrorState, Pagination, Skeleton, Tabs } from '@/components/ui/feedback';
 import { Input, inputClass } from '@/components/ui/field';
 import { PersonAvatar } from '@/components/profile/person-avatar';
 import { ProjectDialog } from '@/components/projects/project-dialog';
@@ -14,13 +14,13 @@ import { MyProjects } from '@/components/projects/my-projects';
 import { ProjectTimeline } from '@/components/projects/project-timeline';
 import { HEALTH, HealthPill, MilestoneBar, TypeBadge, daysFrom, projectColor, shortDate } from '@/components/projects/project-ui';
 import { useAccess } from '@/lib/access/use-access';
-import { usePeoplePicker } from '@/lib/company/org';
+import { PersonSearch } from '@/components/people/person-search';
 import { PROJECT_STATUS, usePortfolio, usePortfolioSummary, type Health, type LimitedProject, type PortfolioProject, type PortfolioQuery, type ProjectStatus, type ProjectType } from '@/lib/company/projects';
 import { useUiState } from '@/lib/preferences/ui-state';
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatRelative } from '@/lib/format';
 import { cn } from '@/lib/cn';
-import { PersonSelect, Select } from '@/components/ui/pickers';
+import { Select } from '@/components/ui/pickers';
 
 type Tab = 'mine' | 'all';
 type View = 'cards' | 'board' | 'timeline';
@@ -78,16 +78,18 @@ function Portfolio({ pmo }: { pmo: boolean }) {
     const t = setTimeout(() => setDebounced(search.trim()), 300);
     return () => clearTimeout(t);
   }, [search]);
-  const query = { ...q, search: debounced || undefined };
+  const [page, setPage] = useState(1);
+  const shownView: View = pmo ? view : 'cards';
+  // The board shows every column at once, so it takes up to 100; cards page by 24
+  const query = { ...q, search: debounced || undefined, page: shownView === 'board' ? 1 : page, limit: shownView === 'board' ? 100 : 24 };
+  // Any new filter starts again on page 1
+  useEffect(() => setPage(1), [q, debounced, shownView]);
   const list = usePortfolio(query);
-  const all = usePortfolio({}, pmo);
   const summary = usePortfolioSummary(pmo);
-  const chart = usePeoplePicker();
-  const counts = (h: Health) => (all.data?.data ?? []).filter((p): p is PortfolioProject => !p.limited && p.status === 'ACTIVE' && p.health.level === h).length;
+  const counts = (h: Health) => list.data?.meta.health[h as 'on_track' | 'at_risk' | 'off_track'] ?? 0;
   const rows = list.data?.data ?? [];
   const full = rows.filter((p): p is PortfolioProject => !p.limited);
   const limited = rows.filter((p): p is LimitedProject => p.limited);
-  const shownView: View = pmo ? view : 'cards';
   const s = summary.data;
   const change = s ? Math.round((s.billing.billablePct - s.billingLastMonth.billablePct) * 10) / 10 : 0;
 
@@ -128,7 +130,7 @@ function Portfolio({ pmo }: { pmo: boolean }) {
           <option value="">Any status</option>
           {Object.entries(PROJECT_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
         </Select>}
-        {pmo && <PersonSelect className="w-44 text-xs" aria-label="Project manager" value={q.managerId ?? ''} onChange={(v) => setQ({ ...q, managerId: v || undefined })} emptyLabel="Any manager" people={[...(chart.data?.employees ?? [])].sort((a, b) => a.firstName.localeCompare(b.firstName))} />}
+        {pmo && <PersonSearch className="w-44 text-xs" aria-label="Project manager" value={q.managerId ?? ''} onChange={(v) => setQ({ ...q, managerId: v || undefined })} emptyLabel="Any manager" />}
         {pmo && <Select className={cn(inputClass, 'h-9 w-auto text-xs')} value={q.sort} onChange={(e) => setQ({ ...q, sort: e.target.value as PortfolioQuery['sort'] })} aria-label="Sort">
           <option value="attention">Needs attention first</option>
           <option value="end">Ending soonest</option>
@@ -153,7 +155,10 @@ function Portfolio({ pmo }: { pmo: boolean }) {
       ) : !rows.length ? (
         <EmptyState icon={<FolderKanban />} title={debounced || q.health || q.type || q.status || q.managerId ? 'No projects match' : 'No projects yet'} description={pmo ? 'Create a project, then assign people with their role, team lead and allocation.' : 'Your PMO hasn’t set up any projects.'} />
       ) : shownView === 'board' ? (
-        <Board projects={full} today={list.data!.meta.today} />
+        <>
+          <Board projects={full} today={list.data!.meta.today} />
+          {list.data!.meta.total > rows.length && <p className="text-center text-xs text-muted-foreground">Showing the first {rows.length} of {list.data!.meta.total} projects — search or filter to narrow the board, or switch to cards to page through all.</p>}
+        </>
       ) : (
         <div className="space-y-5">
           {full.length > 0 && (
@@ -178,6 +183,11 @@ function Portfolio({ pmo }: { pmo: boolean }) {
               </ul>
               <p className="px-1 text-xs text-muted-foreground">You see the team, timeline and status of projects you’re on.</p>
             </section>
+          )}
+          {list.data!.meta.totalPages > 1 && (
+            <Card className="overflow-hidden p-0">
+              <Pagination page={list.data!.meta.page} totalPages={list.data!.meta.totalPages} total={list.data!.meta.total} limit={list.data!.meta.limit} onPageChange={setPage} />
+            </Card>
           )}
         </div>
       )}

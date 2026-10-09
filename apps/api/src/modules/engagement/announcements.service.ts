@@ -7,8 +7,8 @@ import { holds, type AccessContext } from '../access/access.types';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrivateFilesService } from '../employee-profile/private-files.service';
 import { detectFileType, DOCUMENT_TYPES } from '../employee-profile/file-types';
-import { wordsWhere } from '../../common/word-search';
-import { ANNOUNCEMENT_REACTIONS, type AnnouncementAudienceDto, type AnnouncementQueryDto, type SaveAnnouncementDto } from './dto';
+import { searchWords, wordsWhere } from '../../common/word-search';
+import { ANNOUNCEMENT_REACTIONS, type AnnouncementAudienceDto, type AnnouncementQueryDto, type ReportQueryDto, type SaveAnnouncementDto } from './dto';
 import { StorageService } from '../storage/storage.service';
 
 const ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
@@ -426,7 +426,7 @@ export class AnnouncementsService implements OnApplicationBootstrap, OnModuleDes
   }
 
   /** Who in the audience has read / confirmed / replied (the post's managers). */
-  async report(companyId: string, access: AccessContext, id: string) {
+  async report(companyId: string, access: AccessContext, id: string, q: ReportQueryDto = {}) {
     const row = await this.prisma.announcement.findFirst({ where: { id, companyId, deletedAt: null }, select: SELECT });
     if (!row) throw new NotFoundException('Announcement not found');
     if (!this.canManage(row, access)) throw new ForbiddenException('Only the person who posted it (or HR) can see this');
@@ -443,16 +443,39 @@ export class AnnouncementsService implements OnApplicationBootstrap, OnModuleDes
       select: { id: true, firstName: true, lastName: true, email: true, avatarUrl: true, employee: { select: { id: true, employeeId: true, avatarUrl: true, department: { select: { id: true, name: true } } } } },
       orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
     });
+    const all = people.map((p) => ({ ...p, readAt: byUser.get(p.id)?.readAt ?? null, acknowledgedAt: byUser.get(p.id)?.acknowledgedAt ?? null, rsvp: replies.get(p.id) ?? null }));
+    const done = (p: (typeof all)[number]) => (row.requiresAck ? Boolean(p.acknowledgedAt) : Boolean(p.readAt));
+    // By department, for everyone
+    const depts = new Map<string, { name: string; total: number; read: number; done: number }>();
+    for (const p of all) {
+      const k = p.employee?.department?.name ?? 'No department';
+      const d = depts.get(k) ?? { name: k, total: 0, read: 0, done: 0 };
+      d.total++;
+      if (p.readAt) d.read++;
+      if (p.acknowledgedAt) d.done++;
+      depts.set(k, d);
+    }
+    // One tab, searched and a page at a time
+    const tab = q.tab ?? 'waiting';
+    const words = searchWords(q.search).map((w) => w.toLowerCase());
+    const inTab = all.filter((p) => (tab === 'rsvp' ? Boolean(p.rsvp) : tab === 'done' ? done(p) : !done(p)));
+    const found = words.length ? inTab.filter((p) => words.every((w) => `${p.firstName} ${p.lastName} ${p.email} ${p.employee?.department?.name ?? ''}`.toLowerCase().includes(w))) : inTab;
+    const limit = q.limit ?? 25;
+    const totalPages = Math.max(1, Math.ceil(found.length / limit));
+    const page = Math.min(q.page ?? 1, totalPages);
     return {
       id,
       requiresAck: row.requiresAck,
       ackDueAt: row.ackDueAt,
       lastNudgedAt: row.lastNudgedAt,
       sendEmail: row.sendEmail,
-      total: people.length,
-      read: people.filter((p) => byUser.has(p.id)).length,
-      acknowledged: people.filter((p) => byUser.get(p.id)?.acknowledgedAt).length,
-      people: people.map((p) => ({ ...p, readAt: byUser.get(p.id)?.readAt ?? null, acknowledgedAt: byUser.get(p.id)?.acknowledgedAt ?? null, rsvp: replies.get(p.id) ?? null })),
+      total: all.length,
+      read: all.filter((p) => p.readAt).length,
+      acknowledged: all.filter((p) => p.acknowledgedAt).length,
+      counts: { waiting: all.filter((p) => !done(p)).length, done: all.filter(done).length, rsvp: all.filter((p) => p.rsvp).length },
+      byDepartment: [...depts.values()].sort((x, y) => y.total - x.total),
+      people: found.slice((page - 1) * limit, page * limit),
+      meta: { total: found.length, page, limit, totalPages },
     };
   }
 

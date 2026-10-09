@@ -1,10 +1,10 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Put, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Audit, CurrentAccess, RequireFeature, RequirePermission, TenantCtx } from '../../common';
 import type { AccessContext } from '../access/access.types';
 import type { TenantContext } from '../../common/types/request.types';
 import { companyOf } from '../user-management/company-context';
-import { ReorderOrgLevelsDto, ReportingLineDto, SaveOrgLevelDto } from './dto';
+import { PeopleQueryDto, ReorderOrgLevelsDto, ReportingLineDto, SaveOrgLevelDto } from './dto';
 import { OrgService } from './org.service';
 import { Live } from '../realtime/live.decorator';
 
@@ -74,9 +74,9 @@ export class OrgController {
 
   @Get('people')
   @RequirePermission('org.view')
-  @ApiOperation({ summary: 'Light list of current people for pickers (name, photo, title, department)' })
-  people(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext) {
-    return this.org.people(companyOf(ctx), access);
+  @ApiOperation({ summary: 'People pickers: search current people (20 at a time) or fetch chosen ones by id' })
+  people(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Query() q: PeopleQueryDto) {
+    return this.org.people(companyOf(ctx), access, q);
   }
 
   @Get('chart')

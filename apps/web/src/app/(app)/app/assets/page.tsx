@@ -11,7 +11,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { StatCard } from '@/components/ui/stat-card';
-import { Card, EmptyState, ErrorState, Pagination, Skeleton, Tabs } from '@/components/ui/feedback';
+import { Card, EmptyState, ErrorState, LoadMore, Pagination, Skeleton, Tabs } from '@/components/ui/feedback';
 import { Field, Input, inputClass } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { PersonAvatar } from '@/components/profile/person-avatar';
@@ -27,7 +27,7 @@ import {
   useAssetTypes,
   useAssets,
   useBulkMove,
-  useCheckOverview,
+  useCheckOverview, useCheckReports,
   useCloseCheck,
   useRemindCheck,
   useStartCheck,
@@ -391,6 +391,7 @@ function ByPerson() {
 function ReturnsAndChecks() {
   const returns = useAssetReturns();
   const checks = useCheckOverview();
+  const [allReports, setAllReports] = useState(false);
   const start = useStartCheck();
   const remind = useRemindCheck();
   const close = useCloseCheck();
@@ -464,6 +465,10 @@ function ReturnsAndChecks() {
                       ))}
                     </ul>
                   )}
+                  {c.progress.reportsTotal > c.progress.reports.length && (
+                    <button type="button" onClick={() => setAllReports(true)} className="text-xs font-semibold text-primary hover:underline">See all {c.progress.reportsTotal} problems</button>
+                  )}
+                  {allReports && <CheckReportsDialog checkId={c.open.id} onClose={() => setAllReports(false)} />}
                 </>
               )}
               <div className="flex flex-wrap gap-2">
@@ -507,5 +512,31 @@ function ReturnsAndChecks() {
         </div>
       </Modal>
     </div>
+  );
+}
+
+/** Every problem reported in the open check, 25 at a time. */
+function CheckReportsDialog({ checkId, onClose }: { checkId: string; onClose: () => void }) {
+  const q = useCheckReports(checkId);
+  const rows = q.data?.pages.flatMap((p) => p.rows) ?? [];
+  return (
+    <Modal open onClose={onClose} title="Problems reported" icon={<ClipboardCheck />} size="sm">
+      {q.isLoadingError ? (
+        <ErrorState message={getApiErrorMessage(q.error, 'Could not load')} onRetry={() => void q.refetch()} />
+      ) : !q.data ? (
+        <Skeleton className="h-40" />
+      ) : (
+        <>
+          <ul className="space-y-1.5">
+            {rows.map((rep, i) => (
+              <li key={i} className="rounded-lg bg-warning-soft/50 px-3 py-2 text-xs">
+                <b>{rep.employee?.firstName} {rep.employee?.lastName}</b> · {rep.asset ? <Link className="font-mono hover:underline" href={`/app/assets/${rep.asset.id}`}>{rep.asset.tag}</Link> : 'an asset'} · {rep.answer === 'PROBLEM' ? 'has a problem' : 'not with them'}{rep.note && ` — “${rep.note}”`}
+              </li>
+            ))}
+          </ul>
+          <LoadMore shown={rows.length} total={q.data.pages[0]?.meta.total ?? 0} loading={q.isFetchingNextPage} onMore={() => void q.fetchNextPage()} />
+        </>
+      )}
+    </Modal>
   );
 }

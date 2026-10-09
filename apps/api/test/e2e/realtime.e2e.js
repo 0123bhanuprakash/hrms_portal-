@@ -321,8 +321,9 @@ async function cleanup() {
     const B2 = await tab(boss.token);
     tabs.push(B2);
     const progressId = '11111111-2222-4333-8444-555555555555';
-    const imp = await call(boss.h, 'POST', '/employees/import', { rows: [{ firstName: 'Imp', lastName: 'One', email: `imp1@${SLUG}.test`, joiningDate: '2026-01-05' }, { firstName: 'Imp', lastName: 'Two', email: `imp2@${SLUG}.test`, joiningDate: '2026-01-05' }], sendInvites: false, progressId });
+    const imp = await call(boss.h, 'POST', '/employees/import', { rows: [{ firstName: 'Imp', lastName: 'One', email: `imp1@${SLUG}.test`, joiningDate: '2026-01-05', experience: '2y 6m' }, { firstName: 'Imp', lastName: 'Two', email: `imp2@${SLUG}.test`, joiningDate: '2026-01-05' }], sendInvites: false, progressId });
     check('Import ran', imp.status === 200 && imp.data?.created === 2, `${imp.status} ${JSON.stringify(imp.body).slice(0, 160)}`);
+    check('Import saves experience before joining (2y 6m = 30 months)', (await p.employee.findFirst({ where: { email: `imp1@${SLUG}.test` }, select: { priorExperienceMonths: true } }))?.priorExperienceMonths === 30);
     await wait(500);
     const prog = B2.got.filter((g) => g.event === 'progress' && g.data.id === progressId).map((g) => g.data);
     check('Importer saw progress up to 2 of 2', prog.length >= 2 && prog[prog.length - 1].done === 2 && prog[prog.length - 1].total === 2, JSON.stringify(prog));

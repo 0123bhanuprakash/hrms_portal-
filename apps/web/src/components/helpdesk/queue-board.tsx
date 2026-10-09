@@ -11,9 +11,9 @@ import { Skeleton } from '@/components/ui/feedback';
 import { Textarea } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { PersonAvatar } from '@/components/profile/person-avatar';
-import { QUEUE_EMOJI, TargetRing } from '@/components/helpdesk/ticket-visuals';
+import { TargetRing } from '@/components/helpdesk/ticket-visuals';
 import { api } from '@/lib/api';
-import { PRIORITY, dueText, helpdeskKeys, usePostMessage, useResolveTicket, useTickets, type HelpdeskTeam, type Priority, type Queue, type Ticket } from '@/lib/company/helpdesk';
+import { PRIORITY, dueText, helpdeskKeys, usePostMessage, useResolveTicket, useTicketPages, useTickets, type HelpdeskTeam, type Priority, type Queue, type Ticket } from '@/lib/company/helpdesk';
 import { useAuthStore } from '@/store/useAuthStore';
 import { getApiErrorMessage } from '@/lib/errors';
 import { cn } from '@/lib/cn';
@@ -30,9 +30,12 @@ const laneOf = (t: Ticket): Lane => (t.status === 'RESOLVED' ? 'resolved' : t.st
 /** Same filters as the list; lanes by status, or (for team heads) by owner. Drag a card to move it. */
 export function QueueBoard({ filters, teamOf, groupBy }: { filters: { queue?: Queue; priority?: Priority; search?: string }; teamOf: Map<Queue, HelpdeskTeam>; groupBy: 'status' | 'owner' }) {
   const me = useAuthStore((s) => s.user?.id);
-  const active = useTickets({ view: 'queue', status: 'active', limit: 100, ...filters });
+  // Open tickets 100 at a time ("Load more"); the latest 30 resolved
+  const active = useTicketPages({ view: 'queue', status: 'active', ...filters });
   const resolved = useTickets({ view: 'queue', status: 'RESOLVED', limit: 30, ...filters });
-  const all = useMemo(() => [...(active.data?.data ?? []), ...(resolved.data?.data ?? [])], [active.data, resolved.data]);
+  const open = useMemo(() => active.data?.pages.flatMap((p) => p.data) ?? [], [active.data]);
+  const openTotal = active.data?.pages[0]?.meta.total ?? 0;
+  const all = useMemo(() => [...open, ...(resolved.data?.data ?? [])], [open, resolved.data]);
   const [drag, setDrag] = useState<Ticket | null>(null);
   const [over, setOver] = useState<string | null>(null);
   const [ask, setAsk] = useState<{ t: Ticket; to: 'waiting' | 'resolved' } | null>(null);
@@ -99,6 +102,12 @@ export function QueueBoard({ filters, teamOf, groupBy }: { filters: { queue?: Qu
           );
         })}
       </div>
+      {openTotal > open.length && (
+        <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground">
+          Showing {open.length} of {openTotal} open tickets
+          <Button size="sm" variant="secondary" loading={active.isFetchingNextPage} onClick={() => void active.fetchNextPage()}>Load more</Button>
+        </div>
+      )}
       {ask && <AskDialog t={ask.t} to={ask.to} onClose={() => setAsk(null)} />}
     </>
   );
@@ -158,7 +167,7 @@ function BoardCard({ t, me, dragging, onDragStart, onDragEnd }: { t: Ticket; me?
       </div>
       <p className="line-clamp-2 text-[13px] font-medium leading-snug">{t.subject}</p>
       <div className="flex items-center gap-1.5 text-muted-foreground">
-        <span aria-hidden>{QUEUE_EMOJI[t.queue]}</span>
+        <span aria-hidden>{t.queueEmoji}</span>
         <PersonAvatar person={t.employee} size="xs" />
         {t.assignee && <><span aria-hidden>→</span><PersonAvatar person={t.assignee} size="xs" />{t.assignee.id === me && <span className="text-2xs font-medium text-primary">you</span>}</>}
       </div>

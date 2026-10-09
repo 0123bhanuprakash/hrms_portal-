@@ -2,13 +2,13 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { AlarmClock, CalendarCheck, Clock, Home, Plane } from 'lucide-react';
+import { AlarmClock, CalendarCheck, ChevronRight, Clock, Home, Plane } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Card, ErrorState, Skeleton } from '@/components/ui/feedback';
+import { Card, ErrorState, LoadMore, Skeleton } from '@/components/ui/feedback';
 import { Drawer } from '@/components/ui/modal';
 import { PersonAvatar } from '@/components/profile/person-avatar';
 import { Breakdown, Kpi } from '@/components/reports/charts';
-import { useAttendanceDay, useAttendanceReport, type AttendanceDay, type AttendanceReport, type DayPerson, type ReportFilters } from '@/lib/company/reports';
+import { useAttendanceDay, useAttendanceDayGroup, useAttendanceReport, useLeaveLeft, useLeaveLeftType, type AttendanceDay, type AttendanceReport, type DayGroup, type DayPerson, type LeaveLeftPerson, type ReportFilters } from '@/lib/company/reports';
 import { fmtHours } from '@/lib/company/timesheets';
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatDate } from '@/lib/format';
@@ -68,8 +68,43 @@ function AttendanceCalendar({ r, onDay }: { r: AttendanceReport; onDay: (date: s
   );
 }
 
+function DayRow({ p, late, time }: { p: DayPerson; late: boolean; time: (p: DayPerson) => string }) {
+  return (
+    <li>
+      <Link href={`/app/employees/${p.id}`} className="flex items-center gap-3 py-2 text-sm hover:bg-subtle">
+        <PersonAvatar person={p} size="sm" />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-medium">{p.firstName} {p.lastName}</span>
+          <span className="block truncate text-xs text-muted-foreground">{p.department ?? p.employeeId}</span>
+        </span>
+        <span className="shrink-0 text-xs text-muted-foreground">{late ? `${time(p)} · ${lateBy(p.lateMinutes)} late` : time(p)}</span>
+      </Link>
+    </li>
+  );
+}
+
+/** Everyone in one group of the day, 25 at a time. */
+function DayGroupList({ date, group, filters, time }: { date: string; group: DayGroup; filters: ReportFilters; time: (p: DayPerson) => string }) {
+  const q = useAttendanceDayGroup({ date, group, ...filters });
+  if (q.isLoadingError) return <ErrorState message={getApiErrorMessage(q.error, 'Could not load')} onRetry={() => void q.refetch()} />;
+  if (!q.data) return <div className="space-y-2">{Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-10" />)}</div>;
+  const rows = q.data.pages.flatMap((p) => p.rows);
+  return (
+    <>
+      <ul className="divide-y divide-border">{rows.map((p) => <DayRow key={p.id} p={p} late={group === 'late'} time={time} />)}</ul>
+      <LoadMore shown={rows.length} total={q.data.pages[0]?.meta.total ?? 0} loading={q.isFetchingNextPage} onMore={() => void q.fetchNextPage()} />
+    </>
+  );
+}
+
 function DayDrawer({ date, filters, onClose }: { date: string | null; filters: ReportFilters; onClose: () => void }) {
   const q = useAttendanceDay(date ? { date, ...filters } : null);
+  const [open, setOpen] = useState<DayGroup | null>(null);
+  const [lastDate, setLastDate] = useState(date);
+  if (date !== lastDate) {
+    setLastDate(date);
+    setOpen(null);
+  }
   const d = q.data;
   const groups: Array<[keyof Pick<AttendanceDay, 'present' | 'late' | 'wfh' | 'leave' | 'absent' | 'notRecorded'>, string, 'success' | 'warning' | 'info' | 'primary' | 'danger' | 'neutral']> = [
     ['late', 'Late', 'warning'],
@@ -93,29 +128,25 @@ function DayDrawer({ date, filters, onClose }: { date: string | null; filters: R
       ) : (
         <div className="space-y-4">
           {groups.map(([key, title, tone]) => {
-            const list = d[key];
-            if (!list.length) return null;
+            const count = d.counts[key];
+            if (!count) return null;
             return (
               <section key={key}>
-                <h3 className="mb-1.5 flex items-center gap-2 text-sm font-semibold"><Badge tone={tone}>{list.length}</Badge>{title}</h3>
-                <ul className="divide-y divide-border">
-                  {list.map((p) => (
-                    <li key={p.id}>
-                      <Link href={`/app/employees/${p.id}`} className="flex items-center gap-3 py-2 text-sm hover:bg-subtle">
-                        <PersonAvatar person={p} size="sm" />
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate font-medium">{p.firstName} {p.lastName}</span>
-                          <span className="block truncate text-xs text-muted-foreground">{p.department ?? p.employeeId}</span>
-                        </span>
-                        <span className="shrink-0 text-xs text-muted-foreground">{key === 'late' ? `${time(p)} · ${lateBy(p.lateMinutes)} late` : time(p)}</span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
+                <h3 className="mb-1.5 flex items-center gap-2 text-sm font-semibold"><Badge tone={tone}>{count}</Badge>{title}</h3>
+                {open === key ? <DayGroupList date={d.date} group={key} filters={filters} time={time} /> : (
+                  <>
+                    <ul className="divide-y divide-border">
+                      {d[key].map((p) => <DayRow key={p.id} p={p} late={key === 'late'} time={time} />)}
+                    </ul>
+                    {count > d[key].length && (
+                      <button type="button" onClick={() => setOpen(key)} className="mt-1 text-xs font-semibold text-primary hover:underline">Show all {count}</button>
+                    )}
+                  </>
+                )}
               </section>
             );
           })}
-          {groups.every(([key]) => !d[key].length) && <p className="py-6 text-center text-sm text-muted-foreground">Nobody to show for this day.</p>}
+          {groups.every(([key]) => !d.counts[key]) && <p className="py-6 text-center text-sm text-muted-foreground">Nobody to show for this day.</p>}
         </div>
       )}
     </Drawer>
@@ -145,7 +176,7 @@ function LateByWeekday({ r }: { r: AttendanceReport }) {
   );
 }
 
-function BalancesCard({ r }: { r: AttendanceReport }) {
+function BalancesCard({ r, onPlenty }: { r: AttendanceReport; onPlenty: () => void }) {
   const b = r.leaveBalances;
   const tones = ['bg-primary', 'bg-info', 'bg-success', 'bg-warning'];
   return (
@@ -164,20 +195,85 @@ function BalancesCard({ r }: { r: AttendanceReport }) {
         <p className="text-sm text-muted-foreground">No leave balances for this year yet.</p>
       )}
       {b.plentyLeft.length > 0 && (
-        <details className="rounded-lg border border-warning/30 bg-warning-soft/40 px-3 py-2 text-xs">
-          <summary className="cursor-pointer font-semibold text-warning">{b.plentyLeft.length} {b.plentyLeft.length === 1 ? 'person has' : 'people have'} 15+ days of one type left</summary>
-          <ul className="mt-2 space-y-1.5">
-            {b.plentyLeft.map((p) => p.employee && (
-              <li key={p.employee.id} className="flex items-center gap-2">
-                <PersonAvatar person={p.employee} size="xs" />
-                <span className="flex-1 truncate">{p.employee.firstName} {p.employee.lastName}</span>
-                <span className="text-muted-foreground">{p.days} days · {p.type}</span>
-              </li>
-            ))}
-          </ul>
-        </details>
+        <button type="button" onClick={onPlenty} className="group flex items-center gap-2 rounded-lg border border-warning/30 bg-warning-soft/40 px-3 py-2 text-left text-xs transition-colors hover:border-warning/60">
+          <span className="flex -space-x-1.5">{b.plentyLeft.slice(0, 4).map((p) => p.employee && <PersonAvatar key={p.employee.id} person={p.employee} size="xs" className="ring-2 ring-surface" />)}</span>
+          <span className="flex-1 font-semibold text-warning">{b.plentyCount ?? b.plentyLeft.length} {(b.plentyCount ?? b.plentyLeft.length) === 1 ? 'person has' : 'people have'} 15+ days of one type left</span>
+          <ChevronRight className="h-4 w-4 text-warning transition-transform group-hover:translate-x-0.5" />
+        </button>
       )}
     </Card>
+  );
+}
+
+function LeaveLeftRow({ p }: { p: LeaveLeftPerson }) {
+  return (
+    <li>
+      <Link href={`/app/employees/${p.id}`} className="flex items-center gap-3 py-2 text-sm hover:bg-subtle">
+        <PersonAvatar person={p} size="sm" />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-medium">{p.firstName} {p.lastName}</span>
+          <span className="block truncate text-xs text-muted-foreground">{p.department ?? p.employeeId}</span>
+        </span>
+        <span className="shrink-0 text-xs text-muted-foreground"><b className="text-foreground">{p.days}</b> of {p.entitled} days left</span>
+      </Link>
+    </li>
+  );
+}
+
+/** Everyone with 15+ days of one leave type, 25 at a time. */
+function LeaveLeftTypeList({ typeId, filters }: { typeId: string; filters: ReportFilters }) {
+  const q = useLeaveLeftType({ typeId, ...filters });
+  if (q.isLoadingError) return <ErrorState message={getApiErrorMessage(q.error, 'Could not load')} onRetry={() => void q.refetch()} />;
+  if (!q.data) return <div className="space-y-2">{Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-10" />)}</div>;
+  const rows = q.data.pages.flatMap((p) => p.rows);
+  return (
+    <>
+      <ul className="divide-y divide-border">{rows.map((p) => <LeaveLeftRow key={p.id} p={p} />)}</ul>
+      <LoadMore shown={rows.length} total={q.data.pages[0]?.meta.total ?? 0} loading={q.isFetchingNextPage} onMore={() => void q.fetchNextPage()} />
+    </>
+  );
+}
+
+/** "15+ days left": a section per leave type (count + the first few), "Show all" per type — like the day drawer. */
+function LeaveLeftDrawer({ open, filters, onClose }: { open: boolean; filters: ReportFilters; onClose: () => void }) {
+  const q = useLeaveLeft(filters, open);
+  const [all, setAll] = useState<string | null>(null);
+  const d = q.data;
+  return (
+    <Drawer
+      open={open}
+      onClose={() => { setAll(null); onClose(); }}
+      icon={<Plane />}
+      title="15+ days of leave left"
+      description={d ? `${d.people} ${d.people === 1 ? 'person' : 'people'} · left in ${d.year}` : undefined}
+    >
+      {q.isLoadingError ? (
+        <ErrorState message={getApiErrorMessage(q.error, 'Could not load')} onRetry={() => void q.refetch()} />
+      ) : !d ? (
+        <div className="space-y-2">{Array.from({ length: 5 }, (_, i) => <Skeleton key={i} className="h-10" />)}</div>
+      ) : (
+        <div className="space-y-4">
+          {d.types.map((t) => (
+            <section key={t.type.id}>
+              <h3 className="mb-1.5 flex items-center gap-2 text-sm font-semibold">
+                <Badge tone="warning">{t.count}</Badge>
+                {t.type.color && <i className="h-2.5 w-2.5 rounded-full" style={{ background: t.type.color }} />}
+                {t.type.name}
+              </h3>
+              {all === t.type.id ? <LeaveLeftTypeList typeId={t.type.id} filters={filters} /> : (
+                <>
+                  <ul className="divide-y divide-border">{t.rows.map((p) => <LeaveLeftRow key={p.id} p={p} />)}</ul>
+                  {t.count > t.rows.length && (
+                    <button type="button" onClick={() => setAll(t.type.id)} className="mt-1 text-xs font-semibold text-primary hover:underline">Show all {t.count}</button>
+                  )}
+                </>
+              )}
+            </section>
+          ))}
+          {!d.types.length && <p className="py-6 text-center text-sm text-muted-foreground">Nobody has 15+ days of one type left.</p>}
+        </div>
+      )}
+    </Drawer>
   );
 }
 
@@ -206,6 +302,7 @@ export function AttendanceTab({ params }: { params: ReportParams }) {
   const filters = { departmentId: params.departmentId, locationId: params.locationId };
   const q = useAttendanceReport({ from: params.from, to: params.to, ...filters });
   const [day, setDay] = useState<string | null>(null);
+  const [plenty, setPlenty] = useState(false);
   if (q.isError) return <ErrorState message={getApiErrorMessage(q.error, 'Could not load the report')} onRetry={() => void q.refetch()} />;
   const r = q.data;
   if (!r) return <Skeleton className="h-96" />;
@@ -224,7 +321,7 @@ export function AttendanceTab({ params }: { params: ReportParams }) {
         </Card>
         <div className="space-y-4">
           <LateByWeekday r={r} />
-          <BalancesCard r={r} />
+          <BalancesCard r={r} onPlenty={() => setPlenty(true)} />
         </div>
       </div>
       <div className="grid gap-4 md:grid-cols-3">
@@ -233,6 +330,7 @@ export function AttendanceTab({ params }: { params: ReportParams }) {
         <Ranked title="Most often late" empty="Nobody was late" rows={r.topLate.map((x) => ({ employee: x.employee, value: `${x.count}× · ${x.minutes} min` }))} />
       </div>
       <DayDrawer date={day} filters={filters} onClose={() => setDay(null)} />
+      <LeaveLeftDrawer open={plenty} filters={filters} onClose={() => setPlenty(false)} />
     </div>
   );
 }

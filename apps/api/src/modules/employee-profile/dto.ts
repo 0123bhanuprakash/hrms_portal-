@@ -1,9 +1,10 @@
 import { Transform, Type } from 'class-transformer';
-import { IsBoolean, IsDateString, IsEmail, IsEnum, IsIn, IsInt, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min, MinLength, ValidateNested, IsArray, ArrayMaxSize } from 'class-validator';
+import { IsBoolean, IsDateString, IsEmail, IsEnum, IsIn, IsInt, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min, MinLength, ValidateNested, IsArray, ArrayMaxSize, ValidateIf } from 'class-validator';
 import { Gender, TaxRegime } from '@prisma/client';
 
 /** '' → null (clear the field), trims strings. */
 const blankToNull = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() || null : value);
+const trim = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value);
 /** Same, upper-cased and without spaces (PAN, IFSC, Aadhaar "1234 5678 9012"). */
 const compactUpper = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.replace(/\s+/g, '').toUpperCase() || null : value;
@@ -33,6 +34,13 @@ export class AddressDto {
 /** Skills on the profile */
 export class UpdateSkillsDto {
   @IsArray() @ArrayMaxSize(40) @IsString({ each: true }) @MaxLength(40, { each: true }) skills!: string[];
+  /** Work experience before joining, in months (null clears it; omitted = unchanged) */
+  @IsOptional() @ValidateIf((_, v) => v !== null) @IsInt() @Min(0) @Max(600) priorExperienceMonths?: number | null;
+}
+
+/** HR turns down experience the person entered */
+export class RejectExperienceDto {
+  @Transform(trim) @IsString() @MinLength(3) @MaxLength(300) reason!: string;
 }
 
 export class UpdatePersonalDto {
@@ -100,6 +108,10 @@ export class DirectoryQueryDto {
   @IsOptional() @IsIn(['name', 'joined']) sort?: 'name' | 'joined';
   /** First letter of the first name (A–Z rail) */
   @IsOptional() @Matches(/^[A-Za-z]$/) letter?: string;
+  /** Teams view: the first N people of every team (meta.teams has each team's real size) */
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(50) perTeam?: number;
+  /** Only people without a department ("No team yet" → View all) */
+  @IsOptional() @IsIn(['true']) noTeam?: 'true';
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(200) limit?: number;
 }

@@ -6,7 +6,7 @@ import { AlertTriangle, CheckCircle2, Loader2, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Field, Input, inputClass, FormError } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
-import { usePeoplePicker } from '@/lib/company/org';
+import { PersonSearch } from '@/components/people/person-search';
 import { ROLE_LABEL, useCapacity, useSaveMember, type Assignment, type ProjectDetail, type ProjectRole } from '@/lib/company/projects';
 import { getApiErrorMessage } from '@/lib/errors';
 import { DateInput, PersonSelect, Select } from '@/components/ui/pickers';
@@ -25,7 +25,6 @@ interface Form {
 /** Assign someone (or edit an assignment): role, team lead, allocation % with live free capacity. */
 export function MemberDialog({ project, value, onClose, preset }: { project: ProjectDetail; value: Assignment | 'new' | null; onClose: () => void; preset?: { employeeId: string; allocation?: number; startDate?: string } }) {
   const save = useSaveMember(project.id);
-  const chart = usePeoplePicker();
   const [f, setF] = useState<Form>({ employeeId: '', role: 'MEMBER', leadEmployeeId: '', allocation: 100, nightShift: false, billed: true, startDate: project.startDate, endDate: project.endDate ?? '' });
   const client = (project as ProjectDetail & { type?: string }).type === 'CLIENT';
   const [error, setError] = useState<string | null>(null);
@@ -50,10 +49,6 @@ export function MemberDialog({ project, value, onClose, preset }: { project: Pro
   const leads = useMemo(
     () => project.members.filter((m) => m.role === 'TEAM_LEAD' && m.employee.id !== f.employeeId && (m.active || m.upcoming)),
     [project.members, f.employeeId],
-  );
-  const people = useMemo(
-    () => [...(chart.data?.employees ?? [])].sort((a, b) => a.firstName.localeCompare(b.firstName)),
-    [chart.data],
   );
 
   if (!value) return null;
@@ -102,7 +97,7 @@ export function MemberDialog({ project, value, onClose, preset }: { project: Pro
       <form id="member-form" onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
         <FormError className="sm:col-span-2">{error}</FormError>
         <Field label="Person" htmlFor="pm-person" required className="sm:col-span-2">
-          <PersonSelect id="pm-person" value={f.employeeId} onChange={(v) => set('employeeId', v)} disabled={Boolean(editing)} placeholder="Choose someone" people={people.map((p) => ({ ...p, sub: p.designation?.name ?? null }))} />
+          <PersonSearch id="pm-person" value={f.employeeId} onChange={(v) => set('employeeId', v)} disabled={Boolean(editing)} placeholder="Choose someone" />
         </Field>
         <Field label="Role on the project" htmlFor="pm-role">
           <Select id="pm-role" className={inputClass} value={f.role} onChange={(e) => set('role', e.target.value as ProjectRole)}>

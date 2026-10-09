@@ -65,6 +65,14 @@ const D = (k) => new Date(`${k}T00:00:00Z`);
     check('Filter: my team (manager, same-manager colleagues)', mine === 'ben,cara,dev,mgr', mine);
     r = await call(S.eva, 'GET', `/people?departmentId=${eng.id}&search=engineering`);
     check('Search matches the team name too', r.data?.length === 4);
+    // Teams view: the first N of every team, with each team's real size
+    r = await call(S.eva, 'GET', '/people?perTeam=2');
+    const tEng = r.body.meta?.teams?.find((t) => t.id === eng.id);
+    const tNone = r.body.meta?.teams?.find((t) => t.id === null);
+    check('Teams: Engineering has 4, only 2 sent', tEng?.total === 4 && r.data.filter((x) => x.department?.id === eng.id).length === 2, JSON.stringify(r.body.meta?.teams));
+    check('Teams: sizes add up; "No team yet" comes last', r.body.meta.teams.reduce((n, t) => n + t.total, 0) === r.body.meta.total && r.body.meta.teams[r.body.meta.teams.length - 1].id === null && tNone?.name === 'No team yet');
+    r = await call(S.eva, 'GET', '/people?noTeam=true&limit=50');
+    check('View all of "No team yet"', r.data?.length === tNone?.total && r.data.every((x) => !x.department));
     r = await call(S.eva, 'GET', '/people?search=' + encodeURIComponent('ana t'));
     check('Full-name search (first + last)', r.data?.length === 1 && r.data[0].firstName === 'ana', JSON.stringify(r.data?.map((x) => x.firstName)));
     r = await call(S.eva, 'GET', '/people?search=' + encodeURIComponent('  T   ana '));

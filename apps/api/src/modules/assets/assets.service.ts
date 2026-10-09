@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { AssetCondition, AssetRequestStatus, AssetStatus, EmploymentStatus, Prisma, TicketQueue } from '@prisma/client';
+import { AssetCondition, AssetRequestStatus, AssetStatus, EmploymentStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AccessService } from '../access/access.service';
 import { holds, type AccessContext } from '../access/access.types';
@@ -332,7 +332,7 @@ export class AssetsService {
     const a = await this.myOpenAssignment(companyId, access, assignmentId);
     const subject = `Problem with ${a.asset.tag} — ${a.asset.name}`.slice(0, 150);
     if (this.tickets && access.features.has('ops.helpdesk')) {
-      const t = await this.tickets.create(companyId, access, { queue: TicketQueue.IT, subject, description: dto.description });
+      const t = await this.tickets.create(companyId, access, { queue: 'IT', subject, description: dto.description });
       await this.prisma.ticket.update({ where: { id: t.id }, data: { assetId: a.asset.id } });
       return { ticket: { id: t.id, number: t.number } };
     }

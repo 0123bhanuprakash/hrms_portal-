@@ -106,3 +106,12 @@ export class ReportQueryDto {
   @Matches(DATE) from!: string;
   @Matches(DATE) to!: string;
 }
+
+export const REPORT_BREAKDOWNS = ['category', 'employee', 'project', 'department'] as const;
+
+/** "See all" for one breakdown of the report, a page at a time. */
+export class BreakdownQueryDto extends ReportQueryDto {
+  @IsIn(REPORT_BREAKDOWNS) by!: (typeof REPORT_BREAKDOWNS)[number];
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit?: number;
+}

@@ -117,6 +117,10 @@ const eventually = async (fn) => {
     const r = rep.data;
     check('Report: exceptions', r?.exceptions.overLimit.items === 2 && r.exceptions.rejectedItems.items === 1 && r.exceptions.rejectedItems.paise === 25000, JSON.stringify(r?.exceptions));
     check('Report: month, department, pipeline, timing', r?.byMonth.length >= 1 && r.byDepartment.length >= 1 && r.pipeline.waitingPaise === 160000 && r.pipeline.toBePaidPaise === 240000 && typeof r.timing.avgDaysToApprove === 'number', JSON.stringify({ m: r?.byMonth, p: r?.pipeline, t: r?.timing }));
+    check('Report: rows per breakdown counted', r?.breakdownCounts && r.breakdownCounts.employee >= 1 && r.byEmployee.filter((x) => x.key !== '__others').length === Math.min(10, r.breakdownCounts.employee), JSON.stringify(r?.breakdownCounts));
+    const bd = await call(S.fin, 'GET', `/expenses/report/breakdown?from=${addDays(today, -30)}&to=${today}&by=employee&limit=1`);
+    check('Report: "See all" one breakdown, a page at a time', bd.data?.rows.length === 1 && bd.data.meta.total === r.breakdownCounts.employee && bd.data.rows[0].approvedPaise === r.byEmployee[0].approvedPaise, JSON.stringify(bd.data?.meta));
+    check('Report: unknown breakdown → 400', (await call(S.fin, 'GET', `/expenses/report/breakdown?from=${today}&to=${today}&by=salary`)).status === 400);
     const csv = await fetch(`${B}/expenses/export?from=${addDays(today, -30)}&to=${today}`, { headers: S.fin });
     check('CSV has the over-limit reason', (await csv.text()).includes('Client joined, 5 people'));
     void company;

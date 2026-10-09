@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { Emoji } from '@/components/motion/emoji';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
@@ -8,8 +8,9 @@ import { BellRing, Check, ChevronDown, ChevronLeft, ChevronRight, ClipboardCheck
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, EmptyState, ErrorState, Skeleton, Tabs } from '@/components/ui/feedback';
+import { Card, EmptyState, ErrorState, Pagination, Skeleton, Tabs } from '@/components/ui/feedback';
 import { Field, Textarea } from '@/components/ui/field';
+import { SearchField, useDebounced } from '@/components/ui/list-tools';
 import { Modal } from '@/components/ui/modal';
 import { PersonAvatar } from '@/components/profile/person-avatar';
 import { blockColor, GENERAL_COLOR } from '@/components/timesheets/week-calendar';
@@ -29,6 +30,7 @@ import {
   useNudge,
   useSendBackTime,
   useTeamWeek,
+  type TeamWeekShow,
   useWeek,
   weekLabel,
   type CellState,
@@ -94,8 +96,13 @@ function TeamGrid() {
   const raw = params.get('week');
   const weekStart = raw && /^\d{4}-\d{2}-\d{2}$/.test(raw) ? mondayOf(raw) : thisWeek;
   const go = (w: string) => router.replace(`${pathname}${w === thisWeek ? '' : `?week=${w}`}`, { scroll: false });
-  const q = useTeamWeek(weekStart);
-  const [filter, setFilter] = useState<'waiting' | 'all' | 'missing'>('all');
+  const [filter, setFilter] = useState<TeamWeekShow>('all');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const typed = useDebounced(search.trim());
+  // A new week, search or filter starts again on page 1
+  useEffect(() => setPage(1), [weekStart, typed, filter]);
+  const q = useTeamWeek(weekStart, { search: typed || undefined, show: filter, page });
   const [open, setOpen] = useState<string | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const approve = useApproveTime();
@@ -103,10 +110,7 @@ function TeamGrid() {
   const dates = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   useEffect(() => setPicked(new Set()), [weekStart]);
 
-  const rows = useMemo(() => {
-    const all = q.data?.people ?? [];
-    return filter === 'waiting' ? all.filter((r) => r.waitingDays) : filter === 'missing' ? all.filter((r) => r.missingDays) : all;
-  }, [q.data, filter]);
+  const rows = q.data?.people ?? [];
 
   const bulk = async () => {
     try {
@@ -140,9 +144,10 @@ function TeamGrid() {
         <Button size="icon-sm" variant="secondary" aria-label="Next week" disabled={weekStart >= thisWeek} onClick={() => go(addDays(weekStart, 7))}><ChevronRight /></Button>
         {(['all', 'waiting', 'missing'] as const).map((f) => (
           <button key={f} type="button" onClick={() => setFilter(f)} aria-pressed={filter === f} className={cn('rounded-full border px-3 py-1 text-xs font-semibold', filter === f ? 'border-primary bg-primary-soft text-primary-soft-foreground' : 'border-border hover:bg-subtle')}>
-            {f === 'all' ? `Everyone · ${q.data?.people.length ?? 0}` : f === 'waiting' ? `Waiting on me · ${s?.waitingPeople ?? 0}` : `Not logged · ${s?.notLogged ?? 0}`}
+            {f === 'all' ? `Everyone · ${q.data?.counts.all ?? 0}` : f === 'waiting' ? `Waiting on me · ${q.data?.counts.waiting ?? 0}` : `Not logged · ${q.data?.counts.missing ?? 0}`}
           </button>
         ))}
+        <SearchField value={search} onChange={setSearch} placeholder="Name or ID" label="Search people" className="w-full sm:w-48" />
         {picked.size > 0 && (
           <div className="ml-auto flex items-center gap-2 rounded-xl bg-foreground px-3 py-1.5 text-xs text-background">
             <b>{picked.size} selected</b>
@@ -153,10 +158,10 @@ function TeamGrid() {
 
       {q.isLoading ? (
         <Skeleton className="h-72 w-full" />
-      ) : q.isError ? (
+      ) : q.isLoadingError ? (
         <ErrorState message={getApiErrorMessage(q.error, 'Could not load')} onRetry={() => void q.refetch()} />
       ) : !rows.length ? (
-        <EmptyState icon={<ClipboardCheck />} title={filter === 'all' ? 'Nobody’s time comes to you' : 'Nobody here'} description={filter === 'all' ? 'People show up here when you’re their team lead on a project, their PM (no lead set) or their manager.' : undefined} />
+        <EmptyState icon={<ClipboardCheck />} title={typed ? 'Nobody matches that search' : filter === 'all' ? 'Nobody’s time comes to you' : 'Nobody here'} description={filter === 'all' && !typed ? 'People show up here when you’re their team lead on a project, their PM (no lead set) or their manager.' : undefined} />
       ) : (
         <Card className="overflow-x-auto p-0">
           <div className="min-w-[860px]">
@@ -229,6 +234,7 @@ function TeamGrid() {
               );
             })}
           </div>
+          {q.data && <Pagination page={q.data.meta.page} totalPages={q.data.meta.totalPages} total={q.data.meta.total} limit={q.data.meta.limit} onPageChange={setPage} />}
         </Card>
       )}
       <p className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">

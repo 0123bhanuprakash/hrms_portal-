@@ -27,7 +27,7 @@ export function KudosCard({ k, compact, onRemoved }: { k: KudosItem; compact?: b
         <div className="flex items-start gap-3">
           <div className="flex -space-x-2">{k.recipients.slice(0, 3).map((r) => <PersonAvatar key={r.id} person={r} size="sm" className="ring-2 ring-surface" />)}</div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm"><span className="font-semibold">{k.from.firstName} {k.from.lastName}</span><span className="text-muted-foreground"> gave kudos to </span><span className="font-semibold">{k.recipients.map((r) => r.firstName).join(', ')}</span></p>
+            <p className="text-sm"><span className="font-semibold">{k.from.firstName} {k.from.lastName}</span><span className="text-muted-foreground"> gave a shout-out to </span><span className="font-semibold">{k.recipients.map((r) => r.firstName).join(', ')}</span></p>
             {k.value && <ValuePill value={k.value} className="mt-1" />}
             <p className="mt-1.5 line-clamp-3 whitespace-pre-line text-sm">{k.message}</p>
             <p className="mt-1 text-xs text-muted-foreground">{formatRelative(k.createdAt)}</p>
@@ -82,11 +82,11 @@ export function KudosCard({ k, compact, onRemoved }: { k: KudosItem; compact?: b
             <Button
               size="icon-sm"
               variant="ghost"
-              aria-label="Remove kudos"
+              aria-label="Remove shout-out"
               onClick={async () => {
                 try {
                   await remove.mutateAsync(k.id);
-                  toast.success('Kudos removed');
+                  toast.success('Shout-out removed');
                   onRemoved?.();
                 } catch (err) {
                   toast.error(getApiErrorMessage(err, 'Could not remove'));
