@@ -1,6 +1,6 @@
 # HRMS Portal — handoff for the next Claude session
 
-Last updated **2026-10-07 (evening IST)** at the end of the Claude profile used from 2026-10-05 to 2026-10-07, so a new Claude profile can continue without anything missing.
+Last updated **2026-10-10** after the leave rounds (eligibility rules, grants, lending / extra days, leave statement). Previous update: 2026-10-07.
 **New session: read this file first, then every file in `docs/handoff/memory/` (the decision log; start with `MEMORY.md`), then `docs/realtime.md`, then work.**
 
 ---
@@ -53,7 +53,7 @@ Git: work happens on `feat/super-admin-portal`, then merged into `main` and push
 pnpm dev                                      # turbo: API :4000 (nest --watch) + web :3000 (next dev --turbo)
 pnpm verify:fast                              # typecheck + lint + unit tests (pre-push hook)
 pnpm --filter @hrms/api build                 # needed before e2e (runner uses apps/api/dist)
-pnpm --filter @hrms/api test:e2e              # all API e2e suites (33 files) — own :4001 API, console email
+pnpm --filter @hrms/api test:e2e              # all API e2e suites (36 files) — own :4001 API, console email
 pnpm --filter @hrms/api test:e2e resources    # one suite
 pnpm verify                                   # everything above in one go
 ```
@@ -61,7 +61,9 @@ Notes:
 - If a stale server holds :4001, kill that PID first.
 - **Turbopack gotcha (Next 14 `--turbo`)**: after hours of hot reloads a page can fail with `TypeError: Cannot read properties of null (reading 'useContext')` in `usePathname`/`ErrorBoundary`. It is a stale build of that one page, not a code bug. Fix: stop `pnpm dev`, `Remove-Item -Recurse -Force apps\web\.next` (PowerShell), start again. Launch config `web` without turbo is the slower but safer fallback.
 - The user's terminal is **PowerShell** — give PowerShell commands, not bash (`rm -rf` fails there).
-- Prisma migration recipe: edit `schema.prisma` → `npx prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --script > prisma/migrations/<ts>_<name>/migration.sql` → `npx prisma migrate deploy`. `prisma generate` may print a harmless EPERM on Windows. 47 migrations, dev DB up to date (last: `20261027100000_resource_requests`).
+- Prisma migration recipe: edit `schema.prisma` → `npx prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --script > prisma/migrations/<ts>_<name>/migration.sql` → `npx prisma migrate deploy`. `prisma generate` fails with EPERM on Windows while the dev API holds the engine DLL — stop only the API child process (`node … dist\apps\api\src\main`), run `npx prisma generate`, and `nest --watch` restarts it. 56 migrations, dev DB up to date (last: `20261104100001_leave_owed_days`).
+- Bash heredocs with an unbalanced `'` in the body break in this environment — write edit scripts to the scratchpad with the Write tool instead.
+- Don't run Prettier on whole files: much of the code is deliberately wider than the 100-column `.prettierrc`, so it rewrites hundreds of lines.
 - API error text is in `body.detail`; validation errors in `errors`. Notifications are fire-and-forget → poll with `eventually()` in tests.
 - e2e helpers in `apps/api/test/e2e/lib.js`: `makeCompany`, `call`, `dropCompany`, `mailSnapshot`, `todayIn`, `addDays`.
 - If an e2e run is killed mid-way, `system.e2e` may leave maintenance mode ON in the shared DB ("Back soon (e2e)") → set platformSetting `maintenance`.enabled = false.
@@ -71,9 +73,34 @@ Notes:
 
 ## 4. State at handoff
 
-**Everything is committed and merged into `main` and pushed** (this commit). Nothing important is left only in the working tree.
+**Everything is committed and merged into `main` and pushed** — `89b0d42` on `feat/super-admin-portal`, merge `97aa16e` on `main` (2026-10-10). Nothing important is left only in the working tree (this handoff update itself may still need committing).
 
-### Built since the last handoff (2026-10-05 → 2026-10-07)
+### Built 2026-10-08 → 2026-10-10
+| Area | Notes / where |
+|---|---|
+| Celebration wishes (not kudos), one person per slide, counts only for the celebrant | `memory/celebration-wishes.md` |
+| Pagination / search round (B, A1–A14, C) — page rows, KPIs stay on everyone; `PersonSearch` picker, `list-tools.tsx` | `memory/pagination-review.md` |
+| Helpdesk: company-made teams (archive only, no delete), resolved tickets lock topic/team, Enter sends; Kudos shown as "Shout-outs" | `memory/helpdesk-custom-teams.md` |
+| Leave: approvals search/filters, questions + replies, cancel requests for started leave ("came back early"), experience before joining + HR verification, branding favicon | `memory/uncommitted-2026-10-09.md` |
+| **Leave "Who can use it" + grants** | below, `docs/plans/2026-10-09-leave-eligibility-grants.md` |
+| **Ask for more days, lend / give extra, year-end take-back, leave statement** | below, `docs/plans/2026-10-09-leave-adjustments-ledger.md` |
+| Leave types page: Active section first, Inactive below; year-end preview "+N more" expands | `app/(app)/app/leave/types/page.tsx` |
+
+### Leave eligibility + grants (2026-10-09)
+- Each leave type: **Everyone / Only some people (rules) / Only when granted**. Rules = gender, departments, offices, designations, employment type, minimum service months, manager's team (optionally all levels), project team, named include / exclude. Pure logic in `leave-rules.ts` (`matchesRules`, `isEligible`), facts loaded in bulk by `leave-eligibility.ts`. Live "Applies to N of M people" via `POST leave/types/eligible-preview`. Employees never see rules (`publicType`).
+- **Grants** (`leave-grants.service.ts`): HR (company-scope `leave.adjust_balance`) grants a grant-only type to one or more people for a window that may cross the year; document required when the type says so. Change / extend (never below what's taken) / withdraw (only if unused), history events, reminder 14 days before the end. Employees who match the rules see **Ask HR** (dates + note + document); HR approves into a grant in Leave types → **Grants** tab. Leave applied under a grant links `leaveGrantId`; what's left = grant days − pending/approved leave.
+- **Maternity** = grant-only, women can ask, document required (new companies by default). aakash-portal, resources-demo and seedsai were switched on 2026-10-09 with `apps/api/prisma/scripts/switch-maternity-to-grants.cjs`; SeedsAI's Esha Pereira got a grant for her existing maternity leave. Marital status is deliberately **not** a rule (Maternity Benefit Act; adoption / surrogacy).
+- Tests: `eligibility.spec.ts`, `leave-grants.e2e.js` (48 checks).
+
+### Asking for more days, lending, statement (2026-10-09)
+- Out of balance → the apply dialog shows **Ask HR for more days** (pre-filled days short + dates). Permission `leave.extra_request` (everyone, own).
+- Deciders hold **`leave.extra_decide`** (HR company-wide by default; any role can get it with any reach). They work in **Leave approvals → Extra leave** (`?tab=extra`): **Lend days** (may go N below 0; hard cap = next year's quota), **Give extra** (kept) or **Decline**; a **Lend / give days** shortcut without a request; **Owed to next year** list with **Waive** (reason) and a "Leaving" flag.
+- Adjust on a profile now has kinds: Give extra / Lend / Correction / Deduction (`LeaveAdjustmentKind`).
+- **Year close** runs lazily in `ensure()` the first time a balance is touched once the new year has begun: writes carried / lapsed / owed on last year's row, takes owed days back with a `TAKEN_BACK` entry (never below 0; the rest stays `owedLeft` into the following year) and notifies the person. A minus balance is no longer forgiven (per-type `recoverNegative`, default on). The migration marked all past years closed, so nothing is taken back retroactively.
+- **Leave statement** (`GET leave/ledger`) replaces the old adjustments-only history: opening, monthly credits, carried in / expired, every adjustment (who + why), leave, year end, with a running balance. On My leave ("Statement") and on the profile's Leave tab.
+- Tests: `year-close.spec.ts`, `leave-extra.e2e.js` (38 checks, incl. simulated year closes and a team-only decider role).
+
+### Built 2026-10-05 → 2026-10-07
 | Area | Notes / where |
 |---|---|
 | Helpdesk round | `memory/helpdesk-design.md` |
@@ -104,10 +131,16 @@ Decisions in `memory/resource-requests-design.md` (13 answered questions). Desig
 
 ## 5. What's next (open items, in rough order)
 
+0. **From the leave rounds (small):**
+   - Restore SeedsAI test data moved for the wishes demo (birthdays / anniversaries moved to 10-08 — originals listed in `memory/celebration-wishes.md`) when the user asks.
+   - Leavers owing days: today only a "Leaving" flag on the Owed list; turn into a pay deduction once Payroll exists. "Paid leave" unticked = loss of pay — payroll should use `isPaid` too.
+   - Not built on purpose: bulk extra days for many people (user: one person at a time for now); auto-apply leave after HR approves extra days (dropped); a separate plan/feature switch for rules + grants (they come with the Leave module).
 1. **Small follow-up from the error round:** ~50 older pages already had error states but replace loaded data with an error when a background refresh fails. One-word change per page (`isError` → `isLoadingError`). The user hasn't said go yet.
 2. **Session/workspace decision (open question to the user):** separate sign-in session per browser tab, or one shared session with the known bugs fixed (Claude recommended the shared session). Steps 1–4 and 6 of that plan wait on this answer.
-3. **Full API + access audit** — planned, not started. See `memory/api-access-audit.md` (per-role network calls, routes without `@RequirePermission` returning only own data, unbounded `findMany` lists, over-fetching like `/reports/people`).
+3. **Full API + access audit** — DONE 2026-10-11: `docs/audit/2026-10-11-api-access-audit.md`; findings #1–#9 fixed (`6e71134`), only #10 (list sizes, for very large companies) left. See `memory/api-access-audit.md` (per-role network calls, routes without `@RequirePermission` returning only own data, unbounded `findMany` lists, over-fetching like `/reports/people`).
 4. **SeedsAI browser walk-through** per role (API checks passed, the browser walk-through was never done).
+4b. **Security: refresh token → httpOnly cookie** — BUILT 2026-10-10, committed `6a6f7f3`, see `memory/future-plans.md` item 5 and `docs/demo-guide/03-security.md`. **Redis + multi-process scaling** — planned, not started (item 6). Load-test tools: `apps/api/test/perf/` (`load-multi.js`).
+4c. **Automated UI tests (Playwright)** — planned 2026-10-11, not started: today only the API is tested automatically; see `memory/future-plans.md` item 7.
 5. Next module enhancement rounds the user names (Attendance, Leave, People, Reports…), same "design → answers → build" flow.
 6. Bigger roadmap: UI phase 2 (every module's UI, 2–3 whole-UI themes), phase 3 fonts, "getting ready for real users" (`memory/next-session-plan.md`, `memory/ui-roadmap-phases.md`).
 7. Parked: Payroll, Redis, 2FA (`memory/two-step-sign-in-later.md`), Super Admin "What's new" + Support inbox (`memory/super-admin-upcoming.md`).
@@ -131,13 +164,13 @@ Artifacts on claude.ai belong to the account that made them; a different Claude 
 
 ## 7. Claude memory (decision log)
 
-Claude Code memory lives on this PC in `C:\Users\bhanu.prakash\.claude\projects\C--Users-bhanu-prakash-Desktop-hrms-portal\memory\`. An exact copy (29 files, 2026-10-07) is in `docs/handoff/memory/`.
+Claude Code memory lives on this PC in `C:\Users\bhanu.prakash\.claude\projects\C--Users-bhanu-prakash-Desktop-hrms-portal\memory\`. An exact copy (37 files, 2026-10-10) is in `docs/handoff/memory/`.
 - Same Windows user + same folder → the new profile will probably load it automatically.
 - If it doesn't: tell the new session "read `docs/handoff/memory/` and save these as your memories".
-- Note: some memory notes say "uncommitted" — that was true when written; as of this handoff **everything is committed**.
+- Note: some memory notes say "uncommitted" — that was true when written; as of 2026-10-11 **everything is committed** on `feat/super-admin-portal`: internship `f33b2b2`, load tests `2141fab`, cookie session `6a6f7f3`, Postman `ed03100`, audit fixes `6e71134`, e2e fixes `2a7bf32`, docs (this commit) — merged to `main` the same day.
 
 ---
 
 ## 8. First message to paste into the new Claude session
 
-> Continue my HRMS project in this folder. First read `docs/handoff/HANDOFF.md`, every file in `docs/handoff/memory/`, and `docs/realtime.md`, then summarise in 5 lines what you understood and what's next. Follow the rules in section 2 (no secrets, no emails on :4000, sidebar frozen except the Work section, commit only when I ask). Design boards are in `docs/design/` — publish them as a new Design artifact so we can keep using the canvas.
+> Continue my HRMS project in this folder. First read `docs/handoff/HANDOFF.md`, every file in `docs/handoff/memory/`, `docs/realtime.md` and the two leave plans in `docs/plans/2026-10-09-*.md`, then summarise in 5 lines what you understood and what's next. Follow the rules in section 2 (no secrets, no emails on :4000, sidebar frozen except the Work section, commit only when I ask). Design boards are in `docs/design/` — publish them as a new Design artifact so we can keep using the canvas.
