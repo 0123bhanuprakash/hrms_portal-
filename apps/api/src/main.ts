@@ -149,8 +149,11 @@ Attempting to access another company's data returns \`404 Not Found\`
           bearerFormat: 'JWT',
           description: 'Enter your access token',
         },
-        'access-token',
+        'bearer',
       )
+      // Send the token on every endpoint (public ones ignore it), so controllers
+      // without @ApiBearerAuth() still work from "Try it out".
+      .addSecurityRequirements('bearer')
       .addTag('Health', 'Liveness and readiness probes')
       .addTag('Auth', 'Login, logout, token refresh, password reset')
       .addTag('Companies', 'Super Admin — company management')
