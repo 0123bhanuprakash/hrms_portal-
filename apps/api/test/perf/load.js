@@ -26,7 +26,7 @@ const month = today.slice(0, 7);
 const SHELL = ['/auth/me', '/access/me', '/users/me/preferences', '/notifications/unread-count', '/announcements?limit=1', '/leave/requests/pending-count', '/attendance/regularisations/pending-count', '/expenses/claims/pending-count', '/assets/requests/pending-count', '/helpdesk/counts', '/timesheets/pending-count'];
 const PAGES = {
   emp: [['/people/me', '/people/spotlight', '/attendance/today'], ['/leave/balances', '/leave/requests?view=mine'], ['/notifications?limit=20'], ['/helpdesk/tickets?view=mine'], ['/people?limit=24']],
-  manager: [['/attendance/team'], ['/leave/requests?view=review'], [`/leave/calendar?month=${month}`], ['/timesheets?view=review'], ['/employees?page=1&limit=20']],
+  manager: [['/attendance/team'], ['/leave/requests?view=review'], [`/leave/calendar?month=${month}`], ['/timesheets?view=team'], ['/employees?page=1&limit=20']],
   hr: [['/employees?page=1&limit=20'], ['/leave/requests?view=all'], ['/reports/people'], [`/reports/attendance?month=${month}`], ['/assets?page=1&limit=25'], ['/helpdesk/tickets?view=queue&status=active'], ['/expenses/claims?view=all']],
 };
 

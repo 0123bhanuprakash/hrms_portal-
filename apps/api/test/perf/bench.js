@@ -102,7 +102,7 @@ function plan(ids) {
       ['leave approvals', '/leave/requests?view=review'],
       ['team leave', '/leave/requests?view=all'],
       ['who’s off', `/leave/calendar?month=${month}`],
-      ['timesheet approvals', '/timesheets?view=review'],
+      ['timesheet approvals', '/timesheets?view=team'],
       ['timesheet compliance', `/timesheets/compliance?weekStart=${addDays(monday, -7)}`],
       ['expense approvals', '/expenses/claims?view=review'],
       ['employees list', '/employees?page=1&limit=20'],
