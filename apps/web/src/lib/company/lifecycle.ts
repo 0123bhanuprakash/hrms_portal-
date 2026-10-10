@@ -31,7 +31,7 @@ export type ExitReason = (typeof EXIT_REASONS)[number]['id'];
 export const exitReasonLabel = (r: string | null | undefined) => EXIT_REASONS.find((x) => x.id === r)?.label ?? null;
 
 export interface AttentionItem {
-  key: 'probation' | 'exits' | 'no-manager' | 'profiles';
+  key: 'probation' | 'internships' | 'exits' | 'no-manager' | 'profiles';
   tone: 'warning' | 'danger' | 'info' | 'primary';
   title: string;
   detail: string;
@@ -43,9 +43,21 @@ export interface LifecycleSummary {
   seesExits: boolean;
   counts: { all: number; joining: number; probation: number; active: number; notice: number | null; left: number | null };
   attention: AttentionItem[];
+  /** When an internship ends: remind HR, or convert to Full-time automatically */
+  internshipEndAction: InternshipEndAction;
+  /** May change internshipEndAction (HR / Company Admin) */
+  managesInternships: boolean;
 }
 
-export interface BoardPerson extends Pick<Employee, 'id' | 'firstName' | 'lastName' | 'avatarUrl' | 'employeeId' | 'employmentStatus' | 'employmentType' | 'joiningDate' | 'confirmationDate' | 'terminationDate' | 'exitReason' | 'stage' | 'profilePercent' | 'checklist'> {
+export type InternshipEndAction = 'remind' | 'convert';
+export const CONVERT_TYPES = [
+  { id: 'FULL_TIME', label: 'Full-time' },
+  { id: 'PART_TIME', label: 'Part-time' },
+  { id: 'CONTRACT', label: 'Contract' },
+] as const;
+export type ConvertType = (typeof CONVERT_TYPES)[number]['id'];
+
+export interface BoardPerson extends Pick<Employee, 'id' | 'firstName' | 'lastName' | 'avatarUrl' | 'employeeId' | 'employmentStatus' | 'employmentType' | 'joiningDate' | 'confirmationDate' | 'internshipEndDate' | 'terminationDate' | 'exitReason' | 'stage' | 'profilePercent' | 'checklist'> {
   userId: string;
   designation: { name: string } | null;
   department: { name: string } | null;
@@ -148,6 +160,12 @@ export const useConfirmProbation = () =>
   useLifecycleMutation(async ({ id, note }: { id: string; note?: string }) => unwrap(await api.post(`/employees/${id}/confirm`, { note })));
 export const useExtendProbation = () =>
   useLifecycleMutation(async ({ id, until, note }: { id: string; until: string; note?: string }) => unwrap(await api.post(`/employees/${id}/extend-probation`, { until, note })));
+export const useConvertIntern = () =>
+  useLifecycleMutation(async ({ id, ...body }: { id: string; employmentType: ConvertType; startDate?: string; probationEnd?: string; designationId?: string; note?: string }) => unwrap(await api.post(`/employees/${id}/convert`, body)));
+export const useExtendInternship = () =>
+  useLifecycleMutation(async ({ id, until, note }: { id: string; until: string; note?: string }) => unwrap(await api.post(`/employees/${id}/extend-internship`, { until, note })));
+export const useInternshipSettings = () =>
+  useLifecycleMutation(async (internshipEndAction: InternshipEndAction) => unwrap<{ internshipEndAction: InternshipEndAction }>(await api.put('/employees/internship-settings', { internshipEndAction })));
 export const useStartNotice = () =>
   useLifecycleMutation(async ({ id, ...body }: { id: string; lastDay: string; reason: ExitReason; note?: string }) => unwrap(await api.post(`/employees/${id}/notice`, body)));
 export const useWithdrawNotice = () =>

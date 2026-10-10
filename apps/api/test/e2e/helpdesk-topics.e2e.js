@@ -120,6 +120,10 @@ async function raise(h, fields) {
     check('Quick answer found while typing', a1.data?.topics[0]?.id === vpn.id, JSON.stringify(a1.data));
     check('Too-short search refused', (await call(H.emp, 'GET', '/helpdesk/answers?q=a')).status === 400);
     check('“That helped” counts', (await call(H.emp, 'POST', `/helpdesk/categories/${vpn.id}/helped`)).status === 200 && (await p.ticketCategory.findUnique({ where: { id: vpn.id } })).helpedCount === 1);
+    for (let i = 0; i < 3; i++) await call(H.emp, 'POST', `/helpdesk/categories/${vpn.id}/helped`);
+    check('…once per person (pressing again doesn’t pump it)', (await p.ticketCategory.findUnique({ where: { id: vpn.id } })).helpedCount === 1);
+    await call(H.other, 'POST', `/helpdesk/categories/${vpn.id}/helped`);
+    check('…another person still counts', (await p.ticketCategory.findUnique({ where: { id: vpn.id } })).helpedCount === 2);
 
     // ── Raising a ticket on the topic ──
     const fields = { queue: 'IT', categoryId: vpn.id, subject: 'VPN keeps dropping', description: 'Every 20 minutes since the update' };

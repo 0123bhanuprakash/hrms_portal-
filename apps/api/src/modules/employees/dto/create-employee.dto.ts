@@ -72,4 +72,14 @@ export class CreateEmployeeDto {
   @IsOptional()
   @IsDateString()
   confirmationDate?: string;
+
+  /** Internship end (required when employmentType is INTERN) */
+  @IsOptional()
+  @IsDateString()
+  internshipEndDate?: string;
+
+  /** Interns: never convert automatically */
+  @IsOptional()
+  @IsBoolean()
+  skipAutoConvert?: boolean;
 }

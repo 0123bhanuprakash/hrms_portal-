@@ -108,6 +108,8 @@ export class ProjectPlanningService implements OnApplicationBootstrap, OnModuleD
    * employee.view reaches them (their managers, HR).
    */
   async assertCanSeePerson(companyId: string, access: AccessContext, employeeId: string) {
+    // Company first: the PMO shortcut below must never reach another company's people
+    if (!(await this.prisma.employee.count({ where: { id: employeeId, companyId } }))) throw new NotFoundException('Employee not found');
     if (this.pmo(access) || access.employee?.id === employeeId) return;
     const scope = this.access?.employeeScope(access, 'employee.view');
     if (scope && (await this.prisma.employee.count({ where: { AND: [{ id: employeeId, companyId }, scope] } }))) return;

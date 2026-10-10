@@ -1,9 +1,10 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { AttendanceStatus, EmploymentStatus, Prisma } from '@prisma/client';
+import { AttendanceStatus, EmploymentStatus, EmploymentType, Prisma, RoleStatus, UserStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AccessService } from '../access/access.service';
 import { HierarchyService } from '../access/hierarchy.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { CompanyRolesService } from '../access/company-roles.service';
 import { holds, type AccessContext } from '../access/access.types';
 import { COMPLETION_SELECT, completionOf } from '../employee-profile/profile-completion';
 import { addDays, dateFromKey, isValidTimeZone, keyFromDate, localDateKey } from '../attendance/time-zone';
@@ -57,6 +58,12 @@ const PRESENTISH: AttendanceStatus[] = [AttendanceStatus.PRESENT, AttendanceStat
 export const WIDE_SPAN = 8;
 
 const name = (p: { firstName: string; lastName: string }) => `${p.firstName} ${p.lastName}`.trim();
+/** Heads-up this many days before an internship ends */
+export const INTERNSHIP_NOTICE_DAYS = 14;
+/** Still undecided this many days after the end → Company Admins are told */
+export const INTERNSHIP_ESCALATE_DAYS = 7;
+/** Interns still with us (not on notice, not left) */
+export const CURRENT_INTERN: Prisma.EmployeeWhereInput = { employmentType: EmploymentType.INTERN, employmentStatus: { notIn: [EmploymentStatus.NOTICE_PERIOD, EmploymentStatus.TERMINATED] } };
 const PERSON = { id: true, firstName: true, lastName: true, avatarUrl: true, employeeId: true } as const;
 
 export interface Today {
@@ -73,6 +80,7 @@ export class EmployeeLifecycleService {
     private readonly access: AccessService,
     private readonly hierarchy: HierarchyService,
     private readonly notifications: NotificationsService,
+    private readonly companyRoles: CompanyRolesService,
   ) {}
 
   // ─── Who sees what ────────────────────────────────────────
@@ -220,6 +228,30 @@ export class EmployeeLifecycleService {
       });
     }
 
+    // Internships ending in the next 14 days, overdue, or with no end date
+    const interns = ownOnly ? [] : await this.prisma.employee.findMany({
+      where: { AND: [{ companyId }, scope, CURRENT_INTERN, { OR: [{ internshipEndDate: null }, { internshipEndDate: { lte: dateFromKey(addDays(key, INTERNSHIP_NOTICE_DAYS)) } }] }] },
+      orderBy: { internshipEndDate: { sort: 'asc', nulls: 'first' } },
+      select: { ...PERSON, internshipEndDate: true },
+      take: 20,
+    });
+    if (interns.length) {
+      const dated = interns.filter((p) => p.internshipEndDate);
+      const overdue = dated.filter((p) => p.internshipEndDate! < today).length;
+      const undated = interns.length - dated.length;
+      const bits = [overdue && `${overdue} overdue`, undated && `${undated} with no end date`].filter(Boolean);
+      attention.push({
+        key: 'internships',
+        tone: overdue ? 'danger' : 'warning',
+        title: dated.length
+          ? `${dated.length} internship${dated.length === 1 ? ' ends' : 's end'} soon${bits.length ? ` · ${bits.join(' · ')}` : ''}`
+          : `${undated} intern${undated === 1 ? ' has' : 's have'} no end date`,
+        detail: interns.slice(0, 3).map((p) => `${p.firstName} (${p.internshipEndDate ? fmt(p.internshipEndDate) : 'no date'})`).join(', ') + (interns.length > 3 ? ` +${interns.length - 3}` : '') + ' — convert, extend or end',
+        people: interns.map((p) => list(p, p.internshipEndDate)),
+        action: 'internships',
+      });
+    }
+
     if (sees && !ownOnly) {
       const exits = await this.prisma.employee.findMany({
         where: { AND: [{ companyId }, scope, { employmentStatus: EmploymentStatus.NOTICE_PERIOD }, { OR: [{ terminationDate: null }, { terminationDate: { lte: in30 } }] }] },
@@ -283,10 +315,13 @@ export class EmployeeLifecycleService {
       }
     }
 
+    const settings = await this.prisma.companySettings.findUnique({ where: { companyId }, select: { internshipEndAction: true } });
     return {
       seesExits: sees,
       counts: { all, joining, probation, active, notice, left },
       attention,
+      internshipEndAction: (settings?.internshipEndAction ?? 'remind') as 'remind' | 'convert',
+      managesInternships: this.managesCompany(access),
     };
   }
 
@@ -304,6 +339,7 @@ export class EmployeeLifecycleService {
       employmentType: true,
       joiningDate: true,
       confirmationDate: true,
+      internshipEndDate: true,
       terminationDate: true,
       exitReason: true,
       designation: { select: { name: true } },
@@ -330,7 +366,7 @@ export class EmployeeLifecycleService {
     const scope = this.access.requireEmployeeScope(access, permission);
     const e = await this.prisma.employee.findFirst({
       where: { AND: [{ id, companyId }, scope] },
-      select: { id: true, userId: true, firstName: true, lastName: true, employmentStatus: true, joiningDate: true, confirmationDate: true, terminationDate: true, exitReason: true },
+      select: { id: true, userId: true, firstName: true, lastName: true, employmentStatus: true, employmentType: true, joiningDate: true, confirmationDate: true, internshipEndDate: true, terminationDate: true, exitReason: true },
     });
     if (!e) throw new NotFoundException('Employee not found');
     if (e.userId === access.userId && !access.isSuperAdmin) throw new ForbiddenException('You can’t change your own employment status');
@@ -362,6 +398,120 @@ export class EmployeeLifecycleService {
       await this.record(tx, { companyId, employeeId: id, actor: access.userId, kind: 'probation_extended', from: e.confirmationDate ? fmt(e.confirmationDate) : null, to: fmt(date), effectiveOn: date, note });
     });
     return { id, confirmationDate: until };
+  }
+
+  // ─── Internships ───────────────────────────────────────────
+
+  /** HR converts an intern: new type, optional probation and title; the Intern role makes way for Employee. */
+  async convertIntern(
+    companyId: string,
+    id: string,
+    access: AccessContext,
+    dto: { employmentType: 'FULL_TIME' | 'PART_TIME' | 'CONTRACT'; startDate?: string; probationEnd?: string; designationId?: string; note?: string },
+  ) {
+    const e = await this.target(companyId, id, access, 'employee.edit');
+    if (!this.canEditOthers(access)) throw new ForbiddenException('You do not have permission to convert interns');
+    this.assertCurrentIntern(e);
+    const { key } = await this.today(companyId);
+    const start = dto.startDate ?? key;
+    if (start < keyFromDate(e.joiningDate)) throw new BadRequestException('The new role can’t start before they joined');
+    if (dto.probationEnd && dto.probationEnd <= start) throw new BadRequestException('Probation must end after the new role starts');
+    let title: string | null = null;
+    if (dto.designationId) {
+      const d = await this.prisma.designation.findFirst({ where: { id: dto.designationId, companyId }, select: { name: true } });
+      if (!d) throw new NotFoundException('Job title not found');
+      title = d.name;
+    }
+    await this.prisma.$transaction((tx) => this.applyConversion(tx, companyId, e, { ...dto, startDate: start, title, actor: access.userId }));
+    this.notifyConverted(companyId, e.userId, dto.employmentType, dto.probationEnd ?? null);
+    return { id, employmentType: dto.employmentType, employmentStatus: dto.probationEnd ? EmploymentStatus.PROBATION : EmploymentStatus.ACTIVE };
+  }
+
+  async extendInternship(companyId: string, id: string, access: AccessContext, until: string, note?: string) {
+    const e = await this.target(companyId, id, access, 'employee.edit');
+    if (!this.canEditOthers(access)) throw new ForbiddenException('You do not have permission to extend internships');
+    this.assertCurrentIntern(e);
+    const { key } = await this.today(companyId);
+    if (until <= key) throw new BadRequestException('Pick a date after today');
+    const date = dateFromKey(until);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.employee.update({ where: { id }, data: { internshipEndDate: date } });
+      await this.record(tx, { companyId, employeeId: id, actor: access.userId, kind: 'internship_extended', from: e.internshipEndDate ? fmt(e.internshipEndDate) : null, to: fmt(date), effectiveOn: date, note });
+    });
+    void this.notifications.notify({ companyId, userIds: [e.userId], type: 'employee.internship_extended', title: `Your internship now runs until ${fmt(date)}`, body: note ?? null, link: '/app/profile' });
+    return { id, internshipEndDate: until };
+  }
+
+  private assertCurrentIntern(e: { firstName: string; employmentType: EmploymentType; employmentStatus: EmploymentStatus }) {
+    if (e.employmentType !== EmploymentType.INTERN) throw new BadRequestException(`${e.firstName} isn’t an intern`);
+    if (e.employmentStatus === EmploymentStatus.NOTICE_PERIOD || e.employmentStatus === EmploymentStatus.TERMINATED) throw new BadRequestException(`${e.firstName} is leaving — withdraw the notice first`);
+  }
+
+  /**
+   * The conversion itself (HR or the automatic switch): type, status, title,
+   * roles and one history row. `actor` null = done by the system.
+   */
+  async applyConversion(
+    tx: Prisma.TransactionClient,
+    companyId: string,
+    e: { id: string; userId: string },
+    c: { employmentType: 'FULL_TIME' | 'PART_TIME' | 'CONTRACT'; startDate: string; probationEnd?: string; designationId?: string; title?: string | null; note?: string; actor: string | null },
+  ) {
+    await tx.employee.update({
+      where: { id: e.id },
+      data: {
+        employmentType: c.employmentType,
+        employmentStatus: c.probationEnd ? EmploymentStatus.PROBATION : EmploymentStatus.ACTIVE,
+        confirmationDate: c.probationEnd ? dateFromKey(c.probationEnd) : null,
+        internshipEndDate: null,
+        skipAutoConvert: false,
+        ...(c.designationId && { designationId: c.designationId }),
+      },
+    });
+    await this.swapInternRole(tx, companyId, e.userId, c.actor);
+    const detail = [c.title && `as ${c.title}`, c.probationEnd && `probation until ${fmt(dateFromKey(c.probationEnd))}`].filter(Boolean).join(', ');
+    const note = [detail && detail.charAt(0).toUpperCase() + detail.slice(1), c.note?.trim()].filter(Boolean).join(' — ');
+    await this.record(tx, { companyId, employeeId: e.id, actor: c.actor, kind: 'converted', from: 'Intern', to: pretty(c.employmentType), effectiveOn: dateFromKey(c.startDate), note: note || null });
+  }
+
+  /** Drops the company's "Intern" role (made from a template, so matched by name) and makes sure they hold Employee. */
+  async swapInternRole(tx: Prisma.TransactionClient, companyId: string, userId: string, actor: string | null) {
+    await tx.userRole.deleteMany({ where: { userId, role: { companyId, isOwner: false, OR: [{ key: 'intern' }, { name: { equals: 'Intern', mode: 'insensitive' } }] } } });
+    const employeeRole = await this.companyRoles.roleId(tx, companyId, 'employee');
+    await tx.userRole.upsert({ where: { userId_roleId: { userId, roleId: employeeRole } }, update: {}, create: { userId, roleId: employeeRole, companyId, assignedBy: actor } });
+  }
+
+  notifyConverted(companyId: string, userId: string, type: string, probationEnd: string | null) {
+    void this.notifications.notify({
+      companyId,
+      userIds: [userId],
+      type: 'employee.converted',
+      title: `Welcome aboard — you’re now ${type === 'FULL_TIME' ? 'a full-time employee' : type === 'PART_TIME' ? 'a part-time employee' : 'on contract'}!`,
+      body: probationEnd ? `Your probation runs until ${fmt(dateFromKey(probationEnd))}.` : null,
+      link: '/app/profile',
+    });
+  }
+
+  /** employee.edit over the whole company (HR, Company Admin) — sets the company's internship rule. */
+  managesCompany(access: AccessContext): boolean {
+    const scope = this.access.employeeScope(access, 'employee.edit');
+    return Boolean(scope) && Object.keys(scope!).length === 0 && this.canEditOthers(access);
+  }
+
+  async setInternshipEndAction(companyId: string, access: AccessContext, action: 'remind' | 'convert') {
+    if (!this.managesCompany(access)) throw new ForbiddenException('Only HR can change what happens when internships end');
+    await this.prisma.companySettings.upsert({ where: { companyId }, update: { internshipEndAction: action }, create: { companyId, internshipEndAction: action } });
+    return { internshipEndAction: action };
+  }
+
+  /** Company Admins (owner role) — told when an internship decision is overdue. */
+  async companyAdmins(companyId: string): Promise<string[]> {
+    const users = await this.prisma.user.findMany({
+      where: { companyId, status: UserStatus.ACTIVE, userRoles: { some: { role: { isOwner: true, status: RoleStatus.ACTIVE } } } },
+      select: { id: true },
+      take: 10,
+    });
+    return users.map((u) => u.id);
   }
 
   async startNotice(companyId: string, id: string, access: AccessContext, dto: { lastDay: string; reason: ExitReason; note?: string }) {
@@ -451,7 +601,7 @@ export class EmployeeLifecycleService {
     const scope = this.access.requireEmployeeScope(access, 'employee.view');
     const e = await this.prisma.employee.findFirst({
       where: { AND: [{ id, companyId }, scope] },
-      select: { id: true, userId: true, employmentStatus: true, joiningDate: true, confirmationDate: true, terminationDate: true, exitReason: true, employmentType: true, designation: { select: { name: true } }, department: { select: { name: true } }, location: { select: { name: true } } },
+      select: { id: true, userId: true, employmentStatus: true, joiningDate: true, confirmationDate: true, internshipEndDate: true, terminationDate: true, exitReason: true, employmentType: true, designation: { select: { name: true } }, department: { select: { name: true } }, location: { select: { name: true } } },
     });
     if (!e) throw new NotFoundException('Employee not found');
     const sees = this.seesExits(access) || e.userId === access.userId;
@@ -480,6 +630,9 @@ export class EmployeeLifecycleService {
     if (e.employmentStatus === EmploymentStatus.PROBATION && e.confirmationDate) {
       items.push({ id: 'upcoming-probation', kind: 'upcoming', title: e.confirmationDate < today ? 'Probation review is overdue' : 'Probation review due', detail: `Confirm or extend by ${fmt(e.confirmationDate)}`, at: e.confirmationDate.toISOString(), effectiveOn: keyFromDate(e.confirmationDate), by: null, upcoming: true });
     }
+    if (e.employmentType === EmploymentType.INTERN && e.internshipEndDate && e.employmentStatus !== EmploymentStatus.NOTICE_PERIOD && e.employmentStatus !== EmploymentStatus.TERMINATED) {
+      items.push({ id: 'upcoming-internship', kind: 'upcoming', title: e.internshipEndDate < today ? 'Internship has ended — decision overdue' : 'Internship ends', detail: `Convert, extend or end by ${fmt(e.internshipEndDate)}`, at: e.internshipEndDate.toISOString(), effectiveOn: keyFromDate(e.internshipEndDate), by: null, upcoming: true });
+    }
     if (sees && e.employmentStatus === EmploymentStatus.NOTICE_PERIOD && e.terminationDate) {
       items.push({ id: 'upcoming-last-day', kind: 'upcoming', title: 'Last day', detail: fmt(e.terminationDate), at: e.terminationDate.toISOString(), effectiveOn: keyFromDate(e.terminationDate), by: null, upcoming: true });
     }
@@ -498,6 +651,8 @@ export class EmployeeLifecycleService {
       case 'status': return 'Status changed';
       case 'confirmed': return 'Probation confirmed';
       case 'probation_extended': return 'Probation extended';
+      case 'converted': return 'Converted from intern';
+      case 'internship_extended': return 'Internship extended';
       case 'notice': return 'Notice period started';
       case 'notice_withdrawn': return 'Notice withdrawn — staying on';
       case 'left': return 'Left the company';

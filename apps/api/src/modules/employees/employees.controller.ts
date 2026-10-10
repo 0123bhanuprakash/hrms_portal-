@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Put,
   Body,
   Param,
   ParseUUIDPipe,
@@ -19,7 +20,7 @@ import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { QueryEmployeesDto } from './dto/query-employee.dto';
 import { EmployeeLifecycleService } from './lifecycle.service';
-import { AddChecklistItemDto, BulkEmployeesDto, ChecklistQueryDto, ExtendProbationDto, MarkLeftDto, NoteDto, StartNoticeDto, TickChecklistDto } from './dto/lifecycle.dto';
+import { AddChecklistItemDto, BulkEmployeesDto, ChecklistQueryDto, ConvertInternDto, ExtendInternshipDto, InternshipSettingsDto, ExtendProbationDto, MarkLeftDto, NoteDto, StartNoticeDto, TickChecklistDto } from './dto/lifecycle.dto';
 import { RequirePermission, RequireFeature, Audit, TenantCtx, CurrentAccess } from '../../common';
 import type { TenantContext } from '../../common/types/request.types';
 import type { AccessContext } from '../access/access.types';
@@ -96,6 +97,14 @@ export class EmployeesController {
     return this.lifecycle.summary(ctx.companyId!, access);
   }
 
+  /** What happens when an internship ends: remind HR, or convert to Full-time automatically. */
+  @RequirePermission('employee.edit')
+  @Audit('employee:internship-settings', 'company_settings')
+  @Put('internship-settings')
+  internshipSettings(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Body() dto: InternshipSettingsDto) {
+    return this.lifecycle.setInternshipEndAction(ctx.companyId!, access, dto.internshipEndAction);
+  }
+
   @RequirePermission('employee.view')
   @Get('board')
   board(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext) {
@@ -149,6 +158,22 @@ export class EmployeesController {
   @HttpCode(HttpStatus.OK)
   extendProbation(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ExtendProbationDto) {
     return this.lifecycle.extendProbation(ctx.companyId!, id, access, dto.until, dto.note);
+  }
+
+  @RequirePermission('employee.edit')
+  @Audit('employee:convert-intern', 'employee')
+  @Post(':id/convert')
+  @HttpCode(HttpStatus.OK)
+  convertIntern(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ConvertInternDto) {
+    return this.lifecycle.convertIntern(ctx.companyId!, id, access, dto);
+  }
+
+  @RequirePermission('employee.edit')
+  @Audit('employee:extend-internship', 'employee')
+  @Post(':id/extend-internship')
+  @HttpCode(HttpStatus.OK)
+  extendInternship(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ExtendInternshipDto) {
+    return this.lifecycle.extendInternship(ctx.companyId!, id, access, dto.until, dto.note);
   }
 
   @RequirePermission('employee.terminate')
@@ -207,12 +232,6 @@ export class EmployeesController {
     @Query() query: QueryEmployeesDto,
   ) {
     return this.employeesService.findAll(ctx.companyId!, query, access);
-  }
-
-  @RequirePermission('org.view')
-  @Get('org-chart')
-  async getOrgChart(@TenantCtx() ctx: TenantContext) {
-    return this.employeesService.getOrgChart(ctx.companyId!);
   }
 
   @RequirePermission('employee.view')

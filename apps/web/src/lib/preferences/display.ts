@@ -57,12 +57,12 @@ export function cachedDisplay(userId: string): DisplayPrefs | null {
 
 /**
  * Runs in <head> before first paint (portal pages only): reads the signed-in
- * user from the auth store and applies their cached settings, so pages never
+ * user's saved profile hint from the auth store and applies their cached settings, so pages never
  * flash at the wrong size. Keep in sync with applyDisplay().
  */
 export const DISPLAY_BOOT_SCRIPT = `(function(){try{
 var p=location.pathname;if(p.indexOf('/app')!==0&&p.indexOf('/super-admin')!==0)return;
-var a=JSON.parse(localStorage.getItem('hrms-auth-storage')||'null');var id=a&&a.state&&a.state.user&&a.state.user.id;if(!id)return;
+var a=JSON.parse(localStorage.getItem('hrms-auth-storage')||'null');var id=a&&a.state&&a.state.profile&&a.state.profile.id;if(!id)return;
 var d=JSON.parse(localStorage.getItem('hrms-display-'+id)||'null');if(!d)return;var h=document.documentElement;
 if(/^(compact|normal|spacious)$/.test(d.density))h.setAttribute('data-density',d.density);
 if(/^(sm|md|lg|xl)$/.test(d.textSize))h.setAttribute('data-text-size',d.textSize);

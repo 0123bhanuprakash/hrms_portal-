@@ -542,6 +542,8 @@ model CompanySettings {
   defaultBackdropLevel String   @default("lively") @map("default_backdrop_level")
   /// Company defaults for view settings (same keys as UserPreferences.uiState)
   uiDefaults           Json     @default("{}") @map("ui_defaults")
+  /// When an internship ends: remind (HR decides) | convert (to Full-time automatically)
+  internshipEndAction  String   @default("remind") @map("internship_end_action")
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
@@ -772,6 +774,10 @@ model Employee {
   shiftId                      String?          @map("shift_id") @db.Uuid
   joiningDate                  DateTime         @map("joining_date") @db.Date
   confirmationDate             DateTime?        @map("confirmation_date") @db.Date
+  /// Interns: when the internship ends (HR converts, extends or ends it then)
+  internshipEndDate            DateTime?        @map("internship_end_date") @db.Date
+  /// Interns: never convert automatically, even when the company turns that on
+  skipAutoConvert              Boolean          @default(false) @map("skip_auto_convert")
   terminationDate              DateTime?        @map("termination_date") @db.Date
   /// Opt-in: show day + month of birth to colleagues (Spotlight)
   showBirthday                 Boolean          @default(false) @map("show_birthday")
@@ -922,7 +928,7 @@ model EmployeeEvent {
   id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   companyId   String    @map("company_id") @db.Uuid
   employeeId  String    @map("employee_id") @db.Uuid
-  /// joined | manager | department | title | location | type | status | confirmed | probation_extended | notice | notice_withdrawn | left
+  /// joined | manager | department | title | location | type | status | confirmed | probation_extended | converted | internship_extended | notice | notice_withdrawn | left
   kind        String
   fromLabel   String?   @map("from_label")
   toLabel     String?   @map("to_label")
@@ -2585,15 +2591,28 @@ model TicketCategory {
   questions       Json?
   /// Shown while the employee types — many problems never need a ticket
   quickAnswer     String?         @map("quick_answer")
-  /// Times an employee said the quick answer helped
+  /// Times an employee said the quick answer helped (each person once — TicketCategoryHelp)
   helpedCount     Int             @default(0) @map("helped_count")
   createdAt       DateTime        @default(now()) @map("created_at")
   updatedAt       DateTime        @updatedAt @map("updated_at")
 
   tickets Ticket[]
+  helps   TicketCategoryHelp[]
 
   @@unique([companyId, queue, name])
   @@map("ticket_categories")
+}
+
+/// Who said a topic's quick answer helped — one per person, so helpedCount can't be pumped
+model TicketCategoryHelp {
+  categoryId String   @map("category_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  category TicketCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([categoryId, userId])
+  @@map("ticket_category_helps")
 }
 
 /// One per queue when the company uses team heads: new tickets go to the head,

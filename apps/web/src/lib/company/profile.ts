@@ -1,6 +1,7 @@
 'use client';
 
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuthStore } from '@/store/useAuthStore';
 import { api } from '@/lib/api';
 import { LIVE } from '@/lib/live';
 import { orgKeys } from '@/lib/company/org';
@@ -189,7 +190,9 @@ const unwrap = <T,>(r: { data: { data: T } }) => r.data.data;
 // ─── Queries ────────────────────────────────────────────────
 
 export function useMyCard(enabled = true) {
-  return useQuery({ queryKey: profileKeys.me, queryFn: async () => unwrap<MyCard>(await api.get('/people/me')), enabled, staleTime: 60_000 });
+  // Waits for the session to be restored on page load (otherwise it goes out without a token, gets 401 and retries)
+  const signedIn = useAuthStore((s) => s.isAuthenticated);
+  return useQuery({ queryKey: profileKeys.me, queryFn: async () => unwrap<MyCard>(await api.get('/people/me')), enabled: enabled && signedIn, staleTime: 60_000 });
 }
 
 export function usePrivateProfile(id: string | undefined, enabled = true) {
@@ -366,6 +369,10 @@ export interface EmployeeRecord extends PersonBasic {
   employmentStatus: string;
   joiningDate: string;
   confirmationDate: string | null;
+  /** Interns: when the internship ends */
+  internshipEndDate?: string | null;
+  skipAutoConvert?: boolean;
+  designationId?: string | null;
   terminationDate: string | null;
   reportingManager: { id: string; employeeId: string; firstName: string; lastName: string; email: string } | null;
   subordinates: Array<{ id: string; employeeId: string; firstName: string; lastName: string; email: string; designation: { name: string } | null }>;

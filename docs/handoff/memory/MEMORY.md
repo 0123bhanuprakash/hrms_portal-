@@ -22,8 +22,17 @@
 - [Settings design](settings-design.md) — Settings round + seasonal themes BUILT 2026-10-06 (uncommitted)
 - [Perf findings](perf-findings.md) — fixes 1–5 DONE (turbo dev, light pending count, deduped calls, /org/people, quicker motion)
 - [Design director agent](design-director-agent.md) — tried + rejected 2026-10-06; paused, use hrms-designer again
-- [API + access audit](api-access-audit.md) — PLANNED (asked 2026-10-07): per-role network calls, unguarded routes, unbounded lists; pending-count leak already fixed
+- [API + access audit](api-access-audit.md) — DONE 2026-10-11, report docs/audit/2026-10-11-api-access-audit.md; #1–#9 FIXED, committed 6e71134; only #10 (list sizes) left
 - [UI polish round](ui-polish-round.md) — dropdowns, branding, theme reveal, chart motion, instant nav, Rail removed, Glide + Peek menus BUILT (uncommitted)
 - [Resource requests design](resource-requests-design.md) — Lead→PM→DD→PMO requests, hold, release, PMO reporting layer; screens in design (2026-10-07), build after approval
 - [SeedsAI test company](seedsai-test-company.md) — full-year seed for 136 people, all modules; run db:seed-seedsai after the resource-request session finishes
 - [Celebration wishes](celebration-wishes.md) — wishes ≠ kudos; grouped festive notification, no self-wish, /app/wishes; BUILT 2026-10-08 (uncommitted)
+- [Pagination review](pagination-review.md) — B, A1–A14, C all BUILT 2026-10-09 (uncommitted); org chart kept whole (37 KB gz)
+- [Browser test company](browser-test-company.md) — throwaway company via e2e makeCompany for browser checks; clipboard paste doesn't reach the pane
+- [Future plans](future-plans.md) — deferred 2026-10-09: stale-error pages, API/access audit, SeedsAI walk-through, multi-tab sessions
+- [Helpdesk custom teams](helpdesk-custom-teams.md) — BUILT 2026-10-09 (uncommitted): picked members, Admin+HR manage, built-in 4 fixed, archive only — NO delete
+- [Uncommitted work 2026-10-09](uncommitted-2026-10-09.md) — all COMMITTED in 89b0d42 and merged to main 97aa16e (pushed 2026-10-10)
+- [Leave eligibility + grants](leave-eligibility-grants.md) — BUILT + COMMITTED 89b0d42, merged to main 97aa16e + pushed 2026-10-10: who-can-use rules, grants, grant requests
+- [Leave adjustments + ledger](leave-adjustments-ledger.md) — BUILT + COMMITTED 89b0d42, merged to main 97aa16e + pushed 2026-10-10: ask for more days, lend/give, year-end take-back, statement
+- [Internship conversion](internship-conversion.md) — BUILT 2026-10-10, COMMITTED f33b2b2: end date, convert/extend/end, remind vs auto-convert rule
+- [Postman collection](postman-collection.md) — generated docs/postman via `pnpm --filter @hrms/api postman`; Swagger auth + dto.ts plugin fixes — COMMITTED ed03100

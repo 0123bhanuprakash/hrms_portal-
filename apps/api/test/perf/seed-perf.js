@@ -3,6 +3,8 @@
 //
 //   node test/perf/seed-perf.js            # (re)create it
 //   node test/perf/seed-perf.js --drop     # remove it
+//   node test/perf/seed-perf.js --companies 5 --size 250   # perf-bench-1 … perf-bench-5, ~250 people each
+//   node test/perf/seed-perf.js --drop --companies 5
 //
 // ~500 employees in a 4-level tree, 6 months of attendance, leave, projects,
 // 8 weeks of timesheets, expenses, assets, tickets, notifications and
@@ -12,7 +14,14 @@ const { randomUUID } = require('crypto');
 const bcrypt = require('bcryptjs');
 const { prisma: p, dropCompany } = require('../e2e/lib');
 
-const SLUG = 'perf-bench';
+const arg = (n, d) => {
+  const i = process.argv.indexOf(`--${n}`);
+  return i >= 0 ? Number(process.argv[i + 1]) : d;
+};
+const COMPANIES = arg('companies', 1);
+const SIZE = arg('size', 500);
+// One company keeps the original slug; several are numbered
+const slugs = COMPANIES === 1 ? ['perf-bench'] : Array.from({ length: COMPANIES }, (_, i) => `perf-bench-${i + 1}`);
 const PASSWORD = process.env.PERF_PASSWORD ?? 'Perf-Bench-2026!';
 const TZ = 'Asia/Kolkata';
 const D = (k) => new Date(`${k}T00:00:00Z`);
@@ -34,16 +43,13 @@ const FIRST = ['Aarav', 'Vivaan', 'Aditya', 'Vihaan', 'Arjun', 'Sai', 'Reyansh',
 const LAST = ['Sharma', 'Verma', 'Iyer', 'Nair', 'Reddy', 'Gupta', 'Mehta', 'Khan', 'Das', 'Joshi', 'Rao', 'Patel', 'Singh', 'Menon', 'Kulkarni', 'Bose', 'Chopra', 'Pillai'];
 const DEPTS = [['ENG', 'Engineering'], ['QA', 'Quality'], ['DES', 'Design'], ['PRD', 'Product'], ['SAL', 'Sales'], ['MKT', 'Marketing'], ['SUP', 'Support'], ['OPS', 'Operations'], ['HR', 'People'], ['FIN', 'Finance']];
 
-(async () => {
+async function build(SLUG, TARGET) {
   const t0 = Date.now();
+  const f = TARGET / 500; // volume of everything else scales with headcount
   await dropCompany(SLUG);
-  if (process.argv.includes('--drop')) {
-    console.log('perf-bench removed');
-    return p.$disconnect();
-  }
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
   const enterprise = await p.plan.findUniqueOrThrow({ where: { key: 'enterprise' } });
-  const company = await p.company.create({ data: { name: 'Perf Bench', slug: SLUG, email: `x@${SLUG}.test`, planId: enterprise.id, settings: { create: { timezone: TZ } }, branding: { create: { displayName: 'Perf Bench' } } } });
+  const company = await p.company.create({ data: { name: SLUG, slug: SLUG, email: `x@${SLUG}.test`, planId: enterprise.id, settings: { create: { timezone: TZ } }, branding: { create: { displayName: SLUG } } } });
   const cid = company.id;
   const templates = await p.role.findMany({ where: { isTemplate: true }, include: { rolePermissions: true } });
   const roles = {};
@@ -82,11 +88,14 @@ const DEPTS = [['ENG', 'Engineering'], ['QA', 'Quality'], ['DES', 'Design'], ['P
   const ceo = add('ceo', ['employee', 'manager'], depts[7], titles[0], null);
   const heads = depts.map((d, i) => add(`head${i + 1}`, ['employee', 'manager', ...(d.code === 'HR' ? ['hr'] : []), ...(d.code === 'FIN' ? ['finance'] : [])], d, titles[0], ceo));
   const leads = [];
+  const perHead = TARGET >= 400 ? 4 : 2;
   heads.forEach((h, i) => {
-    for (let j = 0; j < 4; j++) leads.push({ id: add(`lead${i * 4 + j + 1}`, ['employee', 'team_lead'], depts[i], titles[1], h), dept: depts[i] });
+    for (let j = 0; j < perHead; j++) leads.push({ id: add(`lead${i * perHead + j + 1}`, ['employee', 'team_lead'], depts[i], titles[1], h), dept: depts[i] });
   });
   let m = 0;
-  for (const l of leads) for (let k = 0; k < 11; k++) add(`m${++m}`, ['employee'], l.dept, pick(titles.slice(2)), l.id);
+  // ceo + heads + leads + pmo + itadmin are already counted; the rest are team members
+  const perLead = Math.max(1, Math.ceil((TARGET - 1 - heads.length - leads.length - 2) / leads.length));
+  for (const l of leads) for (let k = 0; k < perLead; k++) add(`m${++m}`, ['employee'], l.dept, pick(titles.slice(2)), l.id);
   // Named accounts for the benchmark
   const hrHead = people.find((x) => x.local === 'head9');
   hrHead.local = 'hr';
@@ -215,7 +224,7 @@ const DEPTS = [['ENG', 'Engineering'], ['QA', 'Quality'], ['DES', 'Design'], ['P
   const claims = [];
   const items = [];
   const expApprovals = [];
-  for (let i = 0; i < 800; i++) {
+  for (let i = 0; i < Math.round(800 * f); i++) {
     const x = pick(people.filter((q) => q.managerId));
     const id = randomUUID();
     const status = pick(['PENDING', 'APPROVED', 'PAID', 'PAID', 'PAID', 'DRAFT']);
@@ -233,16 +242,17 @@ const DEPTS = [['ENG', 'Engineering'], ['QA', 'Quality'], ['DES', 'Design'], ['P
   await chunked('expenseItem', items);
   await chunked('expenseApproval', expApprovals);
   console.log(`expense claims: ${claims.length}`);
+  const nAssets = Math.round(600 * f);
 
   // ── Assets: 600, 450 assigned
   const atypes = [['Laptop', 'LAP'], ['Monitor', 'MON'], ['Phone', 'PHN']].map(([name, prefix], i) => ({ id: randomUUID(), companyId: cid, name, prefix, sortOrder: i * 10 }));
   await p.assetType.createMany({ data: atypes });
   const assets = [];
   const assigns = [];
-  for (let i = 0; i < 600; i++) {
+  for (let i = 0; i < nAssets; i++) {
     const t = atypes[i % 3];
     const id = randomUUID();
-    const holder = i < 450 ? people[i % people.length] : null;
+    const holder = i < nAssets * 0.75 ? people[i % people.length] : null;
     assets.push({ id, companyId: cid, typeId: t.id, tag: `${t.prefix}-${String(i + 1).padStart(4, '0')}`, name: `${t.name} ${i + 1}`, status: holder ? 'ASSIGNED' : 'AVAILABLE', warrantyUntil: D(addDays(today, Math.floor(rnd() * 700) - 100)) });
     if (holder) assigns.push({ companyId: cid, assetId: id, employeeId: holder.id, conditionOut: 'GOOD', acknowledgedAt: rnd() < 0.8 ? new Date() : null });
   }
@@ -253,7 +263,7 @@ const DEPTS = [['ENG', 'Engineering'], ['QA', 'Quality'], ['DES', 'Design'], ['P
   const tickets = [];
   const msgs = [];
   const itAdmin = people.find((x) => x.local === 'itadmin');
-  for (let i = 0; i < 1500; i++) {
+  for (let i = 0; i < Math.round(1500 * f); i++) {
     const x = pick(people);
     const id = randomUUID();
     const created = new Date(Date.now() - Math.floor(rnd() * 90) * 86400_000);
@@ -277,7 +287,17 @@ const DEPTS = [['ENG', 'Engineering'], ['QA', 'Quality'], ['DES', 'Design'], ['P
   for (const x of people) for (let i = 0; i < 40; i++) notes.push({ companyId: cid, userId: x.userId, type: pick(['leave.approved', 'timesheet.reminder', 'ticket.reply', 'announcement.posted']), title: `Notification ${i + 1}`, link: '/app', readAt: i < 30 ? new Date() : null, createdAt: new Date(Date.now() - i * 3600_000) });
   await chunked('notification', notes);
 
-  console.log(`done in ${Math.round((Date.now() - t0) / 1000)}s — sign in as hr@ / manager@ / lead@ / emp@ / pmo@${SLUG}.test`);
+  console.log(`${SLUG}: ${people.length} people, done in ${Math.round((Date.now() - t0) / 1000)}s — sign in as hr@ / manager@ / lead@ / emp@ / pmo@${SLUG}.test`);
+}
+
+(async () => {
+  if (process.argv.includes('--drop')) {
+    // Also clears the other numbering (single vs several), so nothing is left behind
+    for (const s of new Set([...slugs, 'perf-bench', ...Array.from({ length: 10 }, (_, i) => `perf-bench-${i + 1}`)])) await dropCompany(s);
+    console.log('perf-bench companies removed');
+    return p.$disconnect();
+  }
+  for (const s of slugs) await build(s, SIZE);
   await p.$disconnect();
 })().catch(async (e) => {
   console.error(e);

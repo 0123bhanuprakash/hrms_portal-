@@ -197,13 +197,19 @@ export class EmployeesService {
    * 3. Create Employee profile
    * 4. Send welcome email with login credentials
    */
-  async create(companyId: string, dto: CreateEmployeeDto, opts: { sendWelcome?: boolean; actorUserId?: string } = {}) {
+  async create(companyId: string, dto: CreateEmployeeDto, opts: { sendWelcome?: boolean; actorUserId?: string; importing?: boolean } = {}) {
     const emailLower = dto.email.toLowerCase().trim();
     if (dto.employmentStatus && !(['ACTIVE', 'PROBATION'] as string[]).includes(dto.employmentStatus)) {
       throw new BadRequestException('A new employee starts as Active or on Probation');
     }
     if (dto.confirmationDate && dto.confirmationDate <= dto.joiningDate.slice(0, 10)) {
       throw new BadRequestException('Probation must end after the joining date');
+    }
+    const intern = dto.employmentType === 'INTERN';
+    // Imports may leave it out — Employees then flags the intern as having no end date
+    if (intern && !dto.internshipEndDate && !opts.importing) throw new BadRequestException('Add the date the internship ends');
+    if (intern && dto.internshipEndDate && dto.internshipEndDate.slice(0, 10) <= dto.joiningDate.slice(0, 10)) {
+      throw new BadRequestException('The internship must end after the joining date');
     }
 
     // Check user email uniqueness
@@ -271,6 +277,8 @@ export class EmployeesService {
           reportsToPmo: Boolean(dto.reportsToPmo && !dto.reportingManagerId),
           joiningDate: new Date(dto.joiningDate),
           confirmationDate: dto.confirmationDate ? new Date(dto.confirmationDate) : null,
+          internshipEndDate: intern && dto.internshipEndDate ? new Date(dto.internshipEndDate) : null,
+          skipAutoConvert: intern && Boolean(dto.skipAutoConvert),
         },
         include: {
           department: true,
@@ -378,6 +386,7 @@ export class EmployeesService {
       joined: [{ joiningDate: 'asc' }],
       joined_desc: [{ joiningDate: 'desc' }],
       probation: [{ confirmationDate: { sort: 'asc', nulls: 'last' } }],
+      internship: [{ internshipEndDate: { sort: 'asc', nulls: 'first' } }],
       last_day: [{ terminationDate: { sort: 'asc', nulls: 'last' } }],
     };
 
@@ -507,6 +516,14 @@ export class EmployeesService {
     if (dto.employmentStatus && dto.employmentStatus !== existing.employmentStatus && (exitStatus(dto.employmentStatus) || exitStatus(existing.employmentStatus)) && !this.lifecycle.seesExits(access)) {
       throw new ForbiddenException('Only HR can start or end a notice period');
     }
+    // Internship end: interns only, after joining; leaving Intern clears it
+    const intern = (dto.employmentType ?? existing.employmentType) === 'INTERN';
+    if (dto.internshipEndDate && !intern) throw new BadRequestException('Only interns have an internship end date');
+    if (intern && dto.employmentType === 'INTERN' && existing.employmentType !== 'INTERN' && !dto.internshipEndDate && !existing.internshipEndDate) {
+      throw new BadRequestException('Add the date the internship ends');
+    }
+    const joinKey = (dto.joiningDate ?? existing.joiningDate.toISOString()).slice(0, 10);
+    if (dto.internshipEndDate && dto.internshipEndDate.slice(0, 10) <= joinKey) throw new BadRequestException('The internship must end after the joining date');
     const managerChanged =
       dto.reportingManagerId !== undefined &&
       (dto.reportingManagerId ?? null) !== existing.reportingManagerId;
@@ -567,6 +584,12 @@ export class EmployeesService {
           ...(dto.terminationDate && {
             terminationDate: new Date(dto.terminationDate),
           }),
+          ...(intern
+            ? {
+                ...(dto.internshipEndDate && { internshipEndDate: new Date(dto.internshipEndDate) }),
+                ...(dto.skipAutoConvert !== undefined && { skipAutoConvert: dto.skipAutoConvert }),
+              }
+            : { internshipEndDate: null, skipAutoConvert: false }),
         },
         include: {
           department: true,
@@ -575,6 +598,8 @@ export class EmployeesService {
           reportingManager: true,
         },
       });
+      // No longer an intern → the Intern role makes way for Employee
+      if (existing.employmentType === 'INTERN' && dto.employmentType && dto.employmentType !== 'INTERN') await this.lifecycle.swapInternRole(tx, companyId, existing.userId, access.userId);
       await this.lifecycle.recordChanges(tx, companyId, access.userId, before, await this.jobSnapshot(id, tx));
       return updated;
     });
@@ -663,43 +688,5 @@ export class EmployeesService {
     } catch (err) {
       this.logger.error(`Could not warn about assets of ${employeeId}`, err as Error);
     }
-  }
-
-  /**
-   * Get complete Org Chart tree for company
-   */
-  async getOrgChart(companyId: string) {
-    const employees = await this.prisma.employee.findMany({
-      where: { companyId, employmentStatus: EmploymentStatus.ACTIVE },
-      select: {
-        id: true,
-        employeeId: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        avatarUrl: true,
-        reportingManagerId: true,
-        department: { select: { name: true } },
-        designation: { select: { name: true } },
-      },
-    });
-
-    // Build tree
-    const map = new Map<string, any>();
-    const roots: any[] = [];
-
-    employees.forEach((emp) => {
-      map.set(emp.id, { ...emp, subordinates: [] });
-    });
-
-    employees.forEach((emp) => {
-      if (emp.reportingManagerId && map.has(emp.reportingManagerId)) {
-        map.get(emp.reportingManagerId).subordinates.push(map.get(emp.id));
-      } else {
-        roots.push(map.get(emp.id));
-      }
-    });
-
-    return roots;
   }
 }

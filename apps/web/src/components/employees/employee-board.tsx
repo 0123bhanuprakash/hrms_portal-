@@ -8,7 +8,7 @@ import { PersonAvatar } from '@/components/profile/person-avatar';
 import { STAGES, exitReasonLabel, useEmployeeBoard, type BoardPerson } from '@/lib/company/lifecycle';
 import { getApiErrorMessage } from '@/lib/errors';
 import { cn } from '@/lib/cn';
-import { ProfileMeter, stageText, type LifecycleAction } from './lifecycle-ui';
+import { ProfileMeter, internshipText, stageText, type LifecycleAction } from './lifecycle-ui';
 
 export interface BoardHandlers {
   canEditOthers: boolean;
@@ -50,6 +50,10 @@ export function EmployeeBoard({ canEditOthers, seesExits, onAction, onChecklist 
                   {stageText(p)}
                   {lane.stage === 'left' && exitReasonLabel(p.exitReason) ? ` · ${exitReasonLabel(p.exitReason)}` : ''}
                 </p>
+                {(() => {
+                  const intern = internshipText({ ...p, stage: lane.stage });
+                  return intern && <p className={cn('-mt-1 text-xs', intern.overdue ? 'font-semibold text-destructive' : 'text-muted-foreground')}>{intern.text}</p>;
+                })()}
                 {p.profilePercent !== null && p.profilePercent !== undefined && p.profilePercent < 100 && lane.stage !== 'left' && <ProfileMeter percent={p.profilePercent} />}
                 <CardActions person={p} stage={lane.stage} canEditOthers={canEditOthers} seesExits={seesExits} onAction={onAction} onChecklist={onChecklist} />
               </article>
@@ -68,6 +72,14 @@ export function EmployeeBoard({ canEditOthers, seesExits, onAction, onChecklist 
 
 function CardActions({ person, stage, canEditOthers, seesExits, onAction, onChecklist }: { person: BoardPerson; stage: string } & BoardHandlers) {
   const btn = 'flex-1 rounded-md border px-2 py-1 text-xs font-semibold transition-colors';
+  if (canEditOthers && person.employmentType === 'INTERN' && (stage === 'active' || stage === 'probation')) {
+    return (
+      <div className="flex gap-1.5">
+        <button type="button" className={cn(btn, 'border-primary bg-primary text-primary-foreground hover:bg-primary/90')} onClick={() => onAction('convert', person)}>Convert</button>
+        <button type="button" className={cn(btn, 'border-border hover:bg-subtle')} onClick={() => onAction('extend-internship', person)}>Extend</button>
+      </div>
+    );
+  }
   if (stage === 'probation' && canEditOthers) {
     return (
       <div className="flex gap-1.5">

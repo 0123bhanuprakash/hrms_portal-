@@ -147,11 +147,17 @@ export class TicketCategoriesService {
     return this.list(companyId, true, dto.queue, true);
   }
 
-  /** "That helped" on a quick answer. */
-  async helped(companyId: string, id: string) {
-    const { count } = await this.prisma.ticketCategory.updateMany({ where: { id, companyId, isActive: true, quickAnswer: { not: null } }, data: { helpedCount: { increment: 1 } } });
-    if (!count) throw new NotFoundException('Category not found');
-    return { ok: true };
+  /** "That helped" on a quick answer — each person counts once per topic. */
+  async helped(companyId: string, id: string, userId: string) {
+    const topic = await this.prisma.ticketCategory.findFirst({ where: { id, companyId, isActive: true, quickAnswer: { not: null } }, select: { id: true } });
+    if (!topic) throw new NotFoundException('Category not found');
+    const counted = await this.prisma.$transaction(async (tx) => {
+      // Already said it helped → nothing changes (the button can't pump the number)
+      const added = await tx.$executeRaw`INSERT INTO "ticket_category_helps" ("category_id", "user_id") VALUES (${id}::uuid, ${userId}::uuid) ON CONFLICT DO NOTHING`;
+      if (added) await tx.ticketCategory.update({ where: { id }, data: { helpedCount: { increment: 1 } } });
+      return added > 0;
+    });
+    return { ok: true, counted };
   }
 
   /**

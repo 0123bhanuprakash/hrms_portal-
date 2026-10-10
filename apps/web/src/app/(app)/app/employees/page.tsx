@@ -15,6 +15,7 @@ import {
   DoorOpen,
   Download,
   Eye,
+  GraduationCap,
   KanbanSquare,
   List,
   Mail,
@@ -24,6 +25,7 @@ import {
   Pencil,
   RotateCcw,
   Search,
+  Settings2,
   ShieldCheck,
   Trash2,
   Upload,
@@ -43,11 +45,11 @@ import { PersonAvatar } from '@/components/profile/person-avatar';
 import { EmployeeDrawer } from '@/components/employees/employee-drawer';
 import { AddEmployeeWizard } from '@/components/employees/add-employee-wizard';
 import { EmployeeBoard } from '@/components/employees/employee-board';
-import { ChecklistDrawer, LifecycleDialog, ProfileMeter, StagePill, type LifecycleAction, type LifecycleTarget } from '@/components/employees/lifecycle-ui';
+import { ChecklistDrawer, InternshipSettingsDialog, LifecycleDialog, ProfileMeter, StagePill, internshipText, isCurrentIntern, type LifecycleAction, type LifecycleTarget } from '@/components/employees/lifecycle-ui';
 import { useAccess, SCOPE_LABELS } from '@/lib/access/use-access';
 import { useDepartments, useEmployees, useLocations, type Employee, type EmployeesQuery, type EmployeeStage } from '@/lib/company/org';
 import { PersonSearch } from '@/components/people/person-search';
-import { downloadEmployeesCsv, exitReasonLabel, tenure, useBulkEmployees, useLifecycleSummary, type AttentionItem } from '@/lib/company/lifecycle';
+import { downloadEmployeesCsv, exitReasonLabel, tenure, useBulkEmployees, useLifecycleSummary, type AttentionItem, type InternshipEndAction } from '@/lib/company/lifecycle';
 import { useUiState } from '@/lib/preferences/ui-state';
 import { getApiErrorMessage } from '@/lib/errors';
 import { cn } from '@/lib/cn';
@@ -105,6 +107,7 @@ function EmployeesContent() {
   const [checklist, setChecklist] = useState<{ person: { id: string; firstName: string; lastName: string }; kind: 'joining' | 'exit' } | null>(null);
   const [bulk, setBulk] = useState<'manager' | 'department' | 'location' | 'remind' | null>(null);
   const [remindIds, setRemindIds] = useState<string[] | null>(null);
+  const [internSettings, setInternSettings] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(f.search.trim()), 300);
@@ -146,6 +149,7 @@ function EmployeesContent() {
 
   const onAttention = (a: AttentionItem) => {
     if (a.key === 'probation') setF({ ...NO_FILTERS, stage: 'probation', sort: 'probation' });
+    if (a.key === 'internships') setF({ ...NO_FILTERS, employmentType: 'INTERN', sort: 'internship' });
     if (a.key === 'exits') setF({ ...NO_FILTERS, stage: 'notice', sort: 'last_day' });
     if (a.key === 'no-manager') {
       setF({ ...NO_FILTERS, managerId: 'none' });
@@ -162,6 +166,14 @@ function EmployeesContent() {
     if (canEditOthers && e.stage === 'probation') {
       items.push('separator', { label: 'Confirm probation', icon: <UserCheck />, onSelect: () => setLifecycle({ action: 'confirm', person: target }) }, { label: 'Extend probation', icon: <CalendarClock />, onSelect: () => setLifecycle({ action: 'extend', person: target }) });
     }
+    if (canEditOthers && isCurrentIntern(e)) {
+      items.push(
+        'separator',
+        { label: 'Convert to employee', icon: <GraduationCap />, onSelect: () => setLifecycle({ action: 'convert', person: target }) },
+        { label: 'Extend internship', icon: <CalendarClock />, onSelect: () => setLifecycle({ action: 'extend-internship', person: target }) },
+        ...(seesExits ? [{ label: 'End internship', icon: <DoorOpen />, danger: true, onSelect: () => setLifecycle({ action: 'end-internship', person: target }) }] : []),
+      );
+    }
     if (canEditOthers && e.stage === 'joining') items.push('separator', { label: 'Joining checklist', icon: <ClipboardList />, onSelect: () => setChecklist({ person: e, kind: 'joining' }) });
     if (seesExits && e.stage === 'notice') {
       items.push(
@@ -171,7 +183,7 @@ function EmployeesContent() {
         { label: 'Mark as left', icon: <DoorOpen />, danger: true, onSelect: () => setLifecycle({ action: 'left', person: target }) },
       );
     }
-    if (seesExits && (e.stage === 'active' || e.stage === 'probation')) {
+    if (seesExits && (e.stage === 'active' || e.stage === 'probation') && !isCurrentIntern(e)) {
       items.push('separator', { label: 'Start notice period', icon: <DoorOpen />, danger: true, onSelect: () => setLifecycle({ action: 'notice', person: target }) });
     }
     return items;
@@ -232,7 +244,9 @@ function EmployeesContent() {
         />
       )}
 
-      {!ownOnly && summary.data && summary.data.attention.length > 0 && <AttentionCard items={summary.data.attention} onAct={onAttention} canEditOthers={canEditOthers} />}
+      {!ownOnly && summary.data && summary.data.attention.length > 0 && (
+        <AttentionCard items={summary.data.attention} onAct={onAttention} canEditOthers={canEditOthers} internshipRule={summary.data.managesInternships ? { value: summary.data.internshipEndAction, onChange: () => setInternSettings(true) } : null} />
+      )}
 
       {view === 'board' && !ownOnly ? (
         <EmployeeBoard
@@ -260,6 +274,7 @@ function EmployeesContent() {
                   <option value="joined_desc">Newest joiners</option>
                   <option value="joined">Longest serving</option>
                   <option value="probation">Probation ends</option>
+                  <option value="internship">Internship ends</option>
                   {seesExits && <option value="last_day">Last day</option>}
                 </Select>
                 {filtered && (
@@ -278,6 +293,13 @@ function EmployeesContent() {
             )}
           </div>
 
+          {f.employmentType === 'INTERN' && summary.data?.managesInternships && (
+            <div className="flex flex-wrap items-center gap-2 border-b border-border bg-subtle/60 px-4 py-2 text-xs text-muted-foreground">
+              <GraduationCap className="h-3.5 w-3.5" />
+              When an internship ends: <b className="text-foreground">{summary.data.internshipEndAction === 'convert' ? 'converted to Full-time automatically' : 'HR is reminded to decide'}</b>
+              <button type="button" onClick={() => setInternSettings(true)} className="font-semibold text-primary hover:underline">Change</button>
+            </div>
+          )}
           {list.isError ? (
             <ErrorState message={getApiErrorMessage(list.error, 'Could not load employees')} onRetry={() => list.refetch()} />
           ) : list.isLoading ? (
@@ -339,7 +361,14 @@ function EmployeesContent() {
                           {e.reportingManager ? <span className="text-muted-foreground">{e.reportingManager.firstName} {e.reportingManager.lastName}</span> : <Badge tone="warning">No manager</Badge>}
                         </td>
                       )}
-                      {show('type') && <td className="hidden px-4 py-3 text-muted-foreground xl:table-cell">{typeLabel(e.employmentType)}</td>}
+                      {show('type') && (
+                        <td className="hidden px-4 py-3 text-muted-foreground xl:table-cell">
+                          {(() => {
+                            const intern = internshipText(e);
+                            return intern ? <span className={cn(intern.overdue && 'font-medium text-destructive')}>{intern.text}</span> : typeLabel(e.employmentType);
+                          })()}
+                        </td>
+                      )}
                       {show('status') && (
                         <td className="hidden px-4 py-3 sm:table-cell">
                           <StagePill person={e} />
@@ -389,6 +418,7 @@ function EmployeesContent() {
       <AddEmployeeWizard open={adding} onClose={() => setAdding(false)} />
       <EmployeeDrawer state={editing ? { mode: 'edit', employee: editing } : null} onClose={() => setEditing(null)} ownOnly={scopeOf('employee.edit') === 'own'} />
       <LifecycleDialog action={lifecycle?.action ?? null} person={lifecycle?.person ?? null} onClose={() => setLifecycle(null)} />
+      <InternshipSettingsDialog open={internSettings} value={summary.data?.internshipEndAction ?? 'remind'} onClose={() => setInternSettings(false)} />
       {checklist && <ChecklistDrawer person={checklist.person} kind={checklist.kind} onClose={() => setChecklist(null)} />}
       <BulkDialog
         action={bulk}
@@ -446,10 +476,10 @@ const TONE: Record<AttentionItem['tone'], string> = {
   info: 'bg-info-soft text-info',
   primary: 'bg-primary-soft text-primary-soft-foreground',
 };
-const ACTION_LABEL: Record<AttentionItem['key'], string> = { probation: 'Review', exits: 'See exits', 'no-manager': 'Assign', profiles: 'Send reminder' };
-const ICONS: Record<AttentionItem['key'], React.ReactNode> = { probation: <CalendarClock />, exits: <DoorOpen />, 'no-manager': <Users />, profiles: <ClipboardList /> };
+const ACTION_LABEL: Record<AttentionItem['key'], string> = { probation: 'Review', internships: 'Review', exits: 'See exits', 'no-manager': 'Assign', profiles: 'Send reminder' };
+const ICONS: Record<AttentionItem['key'], React.ReactNode> = { probation: <CalendarClock />, internships: <GraduationCap />, exits: <DoorOpen />, 'no-manager': <Users />, profiles: <ClipboardList /> };
 
-function AttentionCard({ items, onAct, canEditOthers }: { items: AttentionItem[]; onAct: (a: AttentionItem) => void; canEditOthers: boolean }) {
+function AttentionCard({ items, onAct, canEditOthers, internshipRule }: { items: AttentionItem[]; onAct: (a: AttentionItem) => void; canEditOthers: boolean; internshipRule: { value: InternshipEndAction; onChange: () => void } | null }) {
   const [open, setOpen] = useUiState<boolean>('employees:attention-open', true, (v): v is boolean => typeof v === 'boolean');
   return (
     <Card className="p-4">
@@ -473,6 +503,11 @@ function AttentionCard({ items, onAct, canEditOthers }: { items: AttentionItem[]
                   return <PersonAvatar key={p.id} person={{ firstName: first ?? '', lastName: rest.join(' '), avatarUrl: p.avatarUrl }} size="sm" className="h-7 w-7 border-2 border-surface text-[10px]" />;
                 })}
               </div>
+              {a.key === 'internships' && internshipRule && (
+                <Button variant="ghost" size="icon-sm" onClick={internshipRule.onChange} aria-label="When an internship ends" title={internshipRule.value === 'convert' ? 'Converted automatically — change' : 'HR is reminded — change'}>
+                  <Settings2 />
+                </Button>
+              )}
               {(a.key !== 'profiles' || canEditOthers) && (
                 <Button variant="secondary" size="sm" onClick={() => onAct(a)}>{ACTION_LABEL[a.key]}</Button>
               )}

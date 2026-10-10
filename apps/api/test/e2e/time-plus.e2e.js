@@ -162,7 +162,8 @@ const nextDow = (from, dow) => {
     check('Sandwich rule: Fri + Mon counts Sat & Sun (4 days)', r.data?.days === 4 && r.data.warnings.some((w) => /weekend/i.test(w)), JSON.stringify(r.body));
     await call(S.hr, 'POST', '/leave/balances/adjust', { employeeId: P.emp.id, leaveTypeId: T_.CL.id, year, days: -10, reason: 'Test: only 2 left' });
     r = await call(S.emp, 'POST', '/leave/requests/preview', { leaveTypeId: T_.CL.id, startDate: fri, endDate: mon });
-    check('Negative balance: 2 days in advance allowed with a warning', r.data?.errors?.length === 0 && r.data.warnings.some((w) => /advance/i.test(w)), JSON.stringify(r.body));
+    // Days below 0 are taken from next year's balance (wording since the lend / owed-days work)
+    check('Negative balance: 2 days in advance allowed with a warning', r.data?.errors?.length === 0 && r.data.warnings.some((w) => /below 0/i.test(w)), JSON.stringify(r.body));
     r = await call(S.emp, 'POST', '/leave/requests/preview', { leaveTypeId: T_.CL.id, startDate: fri, endDate: addDays(mon, 3) });
     check('…but not further', r.data?.errors?.some((e) => /balance/i.test(e)));
 

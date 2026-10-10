@@ -44,12 +44,6 @@ export class LoginDto {
   companySlug?: string;
 }
 
-export class RefreshTokenDto {
-  @ApiProperty({ description: 'The refresh token returned from /auth/login' })
-  @IsString()
-  refresh_token!: string;
-}
-
 export class ForgotPasswordDto {
   @ApiProperty({ example: 'user@example.com' })
   @IsEmail({}, { message: 'Please provide a valid email address' })
@@ -91,16 +85,15 @@ export class AuthUserResponse {
   @ApiProperty({ type: [String] }) permissions!: string[];
 }
 
+/** The refresh token is never in a body — it is set as an httpOnly cookie (refresh-cookie.ts). */
 export class LoginResponse {
   @ApiProperty() access_token!: string;
-  @ApiProperty() refresh_token!: string;
   @ApiProperty() expires_in!: number;
   @ApiProperty({ type: AuthUserResponse }) user!: AuthUserResponse;
 }
 
 export class RefreshResponse {
   @ApiProperty() access_token!: string;
-  @ApiProperty() refresh_token!: string;
   @ApiProperty() expires_in!: number;
 }
 
