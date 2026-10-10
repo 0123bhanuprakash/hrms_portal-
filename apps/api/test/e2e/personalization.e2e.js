@@ -1,5 +1,5 @@
 // Personal colour theme & menu style: company rules, employee choices, validation, tenant isolation.
-const { prisma: p, suite, call, makeCompany, dropCompany } = require('./lib');
+const { prisma: p, suite, call, makeCompany, dropCompany, wait } = require('./lib');
 
 const SLUG = 'personal-e2e';
 const OTHER = 'personal-e2e-other';
@@ -45,7 +45,13 @@ const { check } = t;
     r = await call(S.admin, 'PUT', `/companies/${cid}/personalization`, { allowedThemes: ['ocean', 'forest', 'ocean'], defaultMenuStyle: 'collapsible' });
     check('Admin limits themes + sets default menu', r.status === 200 && r.data?.allowedThemes?.length === 2 && r.data?.defaultMenuStyle === 'collapsible', JSON.stringify(r.body));
     check('Rules show on the theme', (await call(S.emp, 'GET', `/companies/${cid}/theme`)).data?.personalization?.defaultMenuStyle === 'collapsible');
-    check('Change is audited', (await p.auditLog.count({ where: { companyId: cid, action: 'company:personalization:update' } })) >= 1);
+    // The audit row is written just after the response (fire-and-forget) — give it a moment
+    let audited = 0;
+    for (let i = 0; i < 10 && !audited; i++) {
+      audited = await p.auditLog.count({ where: { companyId: cid, action: 'company:personalization:update' } });
+      if (!audited) await wait(200);
+    }
+    check('Change is audited', audited >= 1);
 
     check('Theme not on offer → 400', (await call(S.emp, 'PATCH', '/users/me/preferences', { colorTheme: 'sunset' })).status === 400);
     check('Theme on offer → 200', (await call(S.emp, 'PATCH', '/users/me/preferences', { colorTheme: 'forest' })).status === 200);
