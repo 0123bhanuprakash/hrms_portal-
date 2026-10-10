@@ -1,11 +1,14 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { useAuthStore } from '@/store/useAuthStore';
+import { sameLoopbackHost, useAuthStore } from '@/store/useAuthStore';
 import { loginPathFor } from '@/lib/auth/workspace';
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:4000/api/v1';
 
+/** Where auth calls go — the refresh cookie needs the same site name as the page (dev: localhost vs 127.0.0.1). */
+const AUTH_BASE_URL = sameLoopbackHost(API_BASE_URL);
+
 export const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: AUTH_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -35,24 +38,35 @@ api.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
-// ─── Response Interceptor (Token Refresh & Error Handling) ───
-let isRefreshing = false;
-let failedQueue: Array<{
-  resolve: (token: string) => void;
-  reject: (error: any) => void;
-}> = [];
+// ─── Token refresh ────────────────────────────────────────────
+// The refresh token is an httpOnly cookie: this code never sees it, it just
+// asks the API for a new access token and the browser sends the cookie along.
+let refreshing: Promise<string> | null = null;
 
-const processQueue = (error: any, token: string | null = null) => {
-  failedQueue.forEach((promise) => {
-    if (error) {
-      promise.reject(error);
-    } else if (token) {
-      promise.resolve(token);
-    }
+/**
+ * A new access token from the refresh cookie. One request at a time — in this
+ * tab (shared promise) and across tabs (Web Locks): each refresh rotates the
+ * cookie, and sending an already-rotated one would look like token theft and
+ * end the session everywhere.
+ */
+export function refreshAccessToken(): Promise<string> {
+  refreshing ??= (async () => {
+    const run = async () => {
+      const { data } = await axios.post(`${AUTH_BASE_URL}/auth/refresh`, null, {
+        withCredentials: true,
+        headers: { 'X-HRMS-CSRF': '1' },
+      });
+      const token: string = data.data.access_token;
+      useAuthStore.getState().setAccessToken(token);
+      return token;
+    };
+    const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined;
+    return locks ? locks.request('hrms-auth-refresh', run) : run();
+  })().finally(() => {
+    refreshing = null;
   });
-
-  failedQueue = [];
-};
+  return refreshing;
+}
 
 /** Fired when the server reports different access (role edit, feature toggle, reporting change). */
 export const ACCESS_CHANGED_EVENT = 'hrms:access-changed';
@@ -106,69 +120,31 @@ api.interceptors.response.use(
       _retry?: boolean;
     };
 
-    // Only attempt refresh on 401 Unauthorized errors for non-auth endpoints
+    // 401 → get a new access token from the refresh cookie and try once more
     if (
       error.response?.status === 401 &&
       originalRequest &&
       !originalRequest._retry &&
       !originalRequest.url?.includes('/auth/login') &&
-      !originalRequest.url?.includes('/auth/refresh')
+      !originalRequest.url?.includes('/auth/refresh') &&
+      // Nobody signed in on this browser — nothing to refresh, no sign-in page to send them to
+      useAuthStore.getState().signedIn
     ) {
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
-          .then((token) => {
-            if (originalRequest.headers) {
-              originalRequest.headers.Authorization = `Bearer ${token}`;
-            }
-            return api(originalRequest);
-          })
-          .catch((err) => Promise.reject(err));
-      }
-
       originalRequest._retry = true;
-      isRefreshing = true;
-
-      const { refreshToken, setTokens, logout, user } = useAuthStore.getState();
-      // Decided before logout() clears the user
-      const signInPath = loginPathFor(user);
-
-      if (!refreshToken) {
-        isRefreshing = false;
-        logout();
-        if (typeof window !== 'undefined') {
-          window.location.href = signInPath;
-        }
-        return Promise.reject(error);
-      }
-
       try {
-        // API contract (snake_case): body { refresh_token } → { data: { access_token, refresh_token } }
-        const { data } = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-          refresh_token: refreshToken,
-        });
-
-        const newAccessToken: string = data.data.access_token;
-        const newRefreshToken: string = data.data.refresh_token;
-
-        setTokens(newAccessToken, newRefreshToken);
-        processQueue(null, newAccessToken);
-
-        if (originalRequest.headers) {
-          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-        }
-
+        const token = await refreshAccessToken();
+        if (originalRequest.headers) originalRequest.headers.Authorization = `Bearer ${token}`;
         return api(originalRequest);
       } catch (refreshError) {
-        processQueue(refreshError, null);
-        logout();
-        if (typeof window !== 'undefined') {
-          window.location.href = signInPath;
-        }
+        // API unreachable — not a reason to sign anyone out
+        if (axios.isAxiosError(refreshError) && !refreshError.response) return Promise.reject(error);
+        const { user, clearSession } = useAuthStore.getState();
+        // Decided before the session is cleared
+        const signInPath = loginPathFor(user);
+        // The server already ended the session (and cleared the cookie)
+        clearSession();
+        if (typeof window !== 'undefined') window.location.href = signInPath;
         return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
       }
     }
 

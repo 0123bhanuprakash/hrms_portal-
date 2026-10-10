@@ -88,7 +88,7 @@ export class AuthService {
     password: string,
     device: SessionDevice = {},
     scope: LoginScope = {},
-  ): Promise<LoginResponse> {
+  ): Promise<LoginResponse & { refresh_token: string }> {
     // 1. Find user by email
     const user = await this.prisma.user.findUnique({
       where: { email: email.toLowerCase().trim() },
@@ -221,7 +221,7 @@ export class AuthService {
 
   // ─── Refresh token rotation ─────────────────────────────────
 
-  async refresh(rawRefreshToken: string, device: SessionDevice = {}): Promise<RefreshResponse> {
+  async refresh(rawRefreshToken: string, device: SessionDevice = {}): Promise<RefreshResponse & { refresh_token: string }> {
     // 1. Hash the incoming token to look it up in DB
     const tokenHash = this.hashToken(rawRefreshToken);
 

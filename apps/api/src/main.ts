@@ -79,6 +79,7 @@ async function bootstrap(): Promise<void> {
       'X-Request-ID',
       'X-Tenant-ID',
       'X-Reauth',
+      'X-HRMS-CSRF', // cookie-using auth calls (refresh / sign-out)
     ],
     exposedHeaders: ['X-Request-ID', 'X-Access-Version', 'Retry-After', ...(dbTraceEnabled() ? ['Server-Timing', 'X-DB-Queries'] : [])],
   });
@@ -130,9 +131,9 @@ This API serves the HRMS Portal frontend. All tenant-scoped endpoints
 require a valid JWT Bearer token containing the \`company_id\` claim.
 
 ### Authentication
-- \`POST /api/v1/auth/login\` → returns \`access_token\` + \`refresh_token\`
+- \`POST /api/v1/auth/login\` → returns \`access_token\`; the refresh token is set as an httpOnly cookie
 - Include \`Authorization: Bearer <access_token>\` on all protected requests
-- Refresh tokens via \`POST /api/v1/auth/refresh\`
+- Refresh via \`POST /api/v1/auth/refresh\` (cookie + header \`X-HRMS-CSRF: 1\`)
 
 ### Multi-tenancy
 Every authenticated request is scoped to a single company.
