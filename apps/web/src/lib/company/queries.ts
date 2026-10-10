@@ -1,6 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuthStore } from '@/store/useAuthStore';
 import type { BackdropLevel, BackdropPack, CompanyPersonalization, MenuStyle, ThemeRef, ThemeTokens } from '@hrms/types';
 import { api } from '@/lib/api';
 import { resolveTheme } from '@/lib/theme/presets';
@@ -169,9 +170,12 @@ export function useCompanyStats(companyId: string | null | undefined) {
 }
 
 export function usePreferences() {
+  // Waits for the session to be restored on page load (otherwise it goes out without a token, gets 401 and retries)
+  const signedIn = useAuthStore((s) => s.isAuthenticated);
   return useQuery({
     queryKey: companyKeys.preferences,
     queryFn: () => unwrap<UserPreferences>(api.get('/users/me/preferences')),
+    enabled: signedIn,
   });
 }
 

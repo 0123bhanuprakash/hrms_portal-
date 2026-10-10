@@ -74,8 +74,10 @@ export class CompaniesController {
   }
 
   /**
-   * Get company by ID
+   * Get company by ID — the full record (plan, limits, contact email, settings) is
+   * admin information; the portal itself only needs /branding, /theme and /stats
    */
+  @RequirePermission('settings.view')
   @Get(':id')
   async findOne(
     @Param('id') id: string,
@@ -182,6 +184,7 @@ export class CompaniesController {
   /**
    * Get company operational settings
    */
+  @RequirePermission('settings.view')
   @Get(':id/settings')
   async getSettings(
     @Param('id') id: string,

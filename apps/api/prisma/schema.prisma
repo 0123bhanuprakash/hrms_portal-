@@ -2591,17 +2591,29 @@ model TicketCategory {
   questions       Json?
   /// Shown while the employee types — many problems never need a ticket
   quickAnswer     String?         @map("quick_answer")
-  /// Times an employee said the quick answer helped
+  /// Times an employee said the quick answer helped (each person once — TicketCategoryHelp)
   helpedCount     Int             @default(0) @map("helped_count")
   createdAt       DateTime        @default(now()) @map("created_at")
   updatedAt       DateTime        @updatedAt @map("updated_at")
 
   tickets Ticket[]
+  helps   TicketCategoryHelp[]
 
   @@unique([companyId, queue, name])
   @@map("ticket_categories")
 }
 
+/// Who said a topic's quick answer helped — one per person, so helpedCount can't be pumped
+model TicketCategoryHelp {
+  categoryId String   @map("category_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  category TicketCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([categoryId, userId])
+  @@map("ticket_category_helps")
+}
 
 /// One per queue when the company uses team heads: new tickets go to the head,
 /// who assigns them to people in the team (anyone with the queue permission).

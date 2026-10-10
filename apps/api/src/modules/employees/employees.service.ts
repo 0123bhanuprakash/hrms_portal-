@@ -689,42 +689,4 @@ export class EmployeesService {
       this.logger.error(`Could not warn about assets of ${employeeId}`, err as Error);
     }
   }
-
-  /**
-   * Get complete Org Chart tree for company
-   */
-  async getOrgChart(companyId: string) {
-    const employees = await this.prisma.employee.findMany({
-      where: { companyId, employmentStatus: EmploymentStatus.ACTIVE },
-      select: {
-        id: true,
-        employeeId: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        avatarUrl: true,
-        reportingManagerId: true,
-        department: { select: { name: true } },
-        designation: { select: { name: true } },
-      },
-    });
-
-    // Build tree
-    const map = new Map<string, any>();
-    const roots: any[] = [];
-
-    employees.forEach((emp) => {
-      map.set(emp.id, { ...emp, subordinates: [] });
-    });
-
-    employees.forEach((emp) => {
-      if (emp.reportingManagerId && map.has(emp.reportingManagerId)) {
-        map.get(emp.reportingManagerId).subordinates.push(map.get(emp.id));
-      } else {
-        roots.push(map.get(emp.id));
-      }
-    });
-
-    return roots;
-  }
 }

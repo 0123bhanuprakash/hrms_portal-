@@ -394,7 +394,19 @@ export class ExpenseClaimsService {
     const yearStart = `${today.slice(0, 4)}-01-01`;
     const [claims, cats] = await Promise.all([
       this.prisma.expenseClaim.findMany({
-        where: { companyId, employeeId, status: { not: ExpenseClaimStatus.CANCELLED } },
+        where: {
+          companyId,
+          employeeId,
+          status: { not: ExpenseClaimStatus.CANCELLED },
+          // Only claims that can move a number: still open (any age), paid this year, or
+          // with items from this year. Older paid claims add nothing — skipping them keeps
+          // this page as fast in year five as in year one.
+          OR: [
+            { status: { in: [ExpenseClaimStatus.DRAFT, ExpenseClaimStatus.PENDING, ExpenseClaimStatus.APPROVED, ExpenseClaimStatus.REJECTED] } },
+            { paymentDate: { gte: dateFromKey(yearStart) } },
+            { items: { some: { date: { gte: dateFromKey(yearStart) } } } },
+          ],
+        },
         select: { status: true, questionOpenById: true, submittedAt: true, paymentDate: true, items: { select: { date: true, amountPaise: true, approvedPaise: true, categoryId: true } } },
       }),
       this.categories.list(companyId),

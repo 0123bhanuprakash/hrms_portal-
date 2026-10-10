@@ -234,12 +234,6 @@ export class EmployeesController {
     return this.employeesService.findAll(ctx.companyId!, query, access);
   }
 
-  @RequirePermission('org.view')
-  @Get('org-chart')
-  async getOrgChart(@TenantCtx() ctx: TenantContext) {
-    return this.employeesService.getOrgChart(ctx.companyId!);
-  }
-
   @RequirePermission('employee.view')
   @Get(':id')
   async findOne(

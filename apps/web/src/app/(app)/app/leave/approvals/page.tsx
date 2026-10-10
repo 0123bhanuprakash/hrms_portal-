@@ -147,7 +147,8 @@ function LeaveApprovals() {
       </div>
 
       {view === 'extra' ? (
-        <ExtraLeavePanel />
+        // The tab is the fallback while access is still loading — only lenders ever load its HR lists
+        lender ? <ExtraLeavePanel /> : <Skeleton className="h-64 w-full" />
       ) : (
       <>
       <Filters

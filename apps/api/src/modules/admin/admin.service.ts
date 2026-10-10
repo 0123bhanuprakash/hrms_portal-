@@ -48,6 +48,9 @@ const ADMIN_USER_SELECT = {
   createdAt: true,
 } satisfies Prisma.UserSelect;
 
+/** How long the audit-log filter's action list is reused before it is read again. */
+const AUDIT_ACTIONS_TTL_MS = 10 * 60_000;
+
 @Injectable()
 export class AdminService {
   private readonly logger = new Logger(AdminService.name);
@@ -495,14 +498,23 @@ export class AdminService {
     };
   }
 
-  /** Distinct action names, for the audit log filter dropdown. */
+  /**
+   * Distinct action names, for the audit log filter dropdown. Finding them reads the
+   * whole audit log (every company — the fastest-growing table), so the list is kept
+   * for a few minutes instead of re-scanned on every page open. Read from the data,
+   * not the @Audit labels: older and seeded rows use names no label has any more.
+   */
+  private auditActions: { at: number; list: string[] } | null = null;
+
   async listAuditActions(): Promise<string[]> {
+    if (this.auditActions && Date.now() - this.auditActions.at < AUDIT_ACTIONS_TTL_MS) return this.auditActions.list;
     const rows = await this.prisma.auditLog.findMany({
       distinct: ['action'],
       select: { action: true },
       orderBy: { action: 'asc' },
     });
-    return rows.map((r) => r.action);
+    this.auditActions = { at: Date.now(), list: rows.map((r) => r.action) };
+    return this.auditActions.list;
   }
 
   // ─── Helpers ───────────────────────────────────────────────

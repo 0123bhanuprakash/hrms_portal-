@@ -864,7 +864,7 @@ export class ResourceRequestsService implements OnApplicationBootstrap, OnModule
   async history(companyId: string, access: AccessContext, employeeId: string) {
     await this.assertSeesHistory(companyId, access, employeeId);
     const logs = await this.prisma.assignmentLog.findMany({ where: { companyId, employeeId }, orderBy: { createdAt: 'desc' }, take: 200 });
-    const person = await this.prisma.employee.findUnique({ where: { id: employeeId }, select: { skills: true, priorExperienceMonths: true, priorExperiencePendingMonths: true, priorExperienceSubmittedAt: true, priorExperienceVerifiedAt: true, joiningDate: true, firstName: true, lastName: true, designation: { select: { name: true } } } });
+    const person = await this.prisma.employee.findFirst({ where: { id: employeeId, companyId }, select: { skills: true, priorExperienceMonths: true, priorExperiencePendingMonths: true, priorExperienceSubmittedAt: true, priorExperienceVerifiedAt: true, joiningDate: true, firstName: true, lastName: true, designation: { select: { name: true } } } });
     const [users, projects] = await Promise.all([
       this.usersById(logs.map((l) => l.actorUserId)),
       this.prisma.project.findMany({ where: { id: { in: [...new Set(logs.map((l) => l.projectId).filter((x): x is string => Boolean(x)))] } }, select: { id: true, name: true, code: true, color: true } }),
@@ -886,6 +886,8 @@ export class ResourceRequestsService implements OnApplicationBootstrap, OnModule
   }
 
   private async assertSeesHistory(companyId: string, access: AccessContext, employeeId: string) {
+    // Company first: the PMO shortcut below must never reach another company's people
+    if (!(await this.prisma.employee.count({ where: { id: employeeId, companyId } }))) throw new NotFoundException('Employee not found');
     if (this.pmo(access) || access.employee?.id === employeeId) return;
     const scope = this.access?.employeeScope(access, 'employee.view');
     if (scope && (await this.prisma.employee.count({ where: { AND: [{ id: employeeId, companyId }, scope] } }))) return;

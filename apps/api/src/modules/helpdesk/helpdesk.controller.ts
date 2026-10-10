@@ -84,8 +84,8 @@ export class HelpdeskController {
   @RequirePermission('ticket.view')
   @HttpCode(HttpStatus.OK)
   @Post('categories/:id/helped')
-  helped(@TenantCtx() ctx: TenantContext, @Param('id', ParseUUIDPipe) id: string) {
-    return this.categories.helped(ctx.companyId!, id);
+  helped(@TenantCtx() ctx: TenantContext, @CurrentAccess() access: AccessContext, @Param('id', ParseUUIDPipe) id: string) {
+    return this.categories.helped(ctx.companyId!, id, access.userId);
   }
 
   @Audit('helpdesk:category:reorder', 'ticket_category')
