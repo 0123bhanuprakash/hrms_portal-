@@ -11,6 +11,7 @@ import {
   ClipboardList,
   DoorOpen,
   FolderKanban,
+  GraduationCap,
   Heart,
   Mail,
   MapPin,
@@ -35,7 +36,7 @@ import type { EmployeeStage } from '@/lib/company/org';
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatDate, formatRelative } from '@/lib/format';
 import { cn } from '@/lib/cn';
-import { StagePill, type LifecycleAction } from './lifecycle-ui';
+import { StagePill, internshipText, isCurrentIntern, type LifecycleAction } from './lifecycle-ui';
 
 /** Stage from the record (the API has already hidden what this viewer may not see). */
 export function stageOfRecord(e: Pick<EmployeeRecord, 'employmentStatus' | 'joiningDate'>): EmployeeStage {
@@ -62,8 +63,15 @@ export function EmployeeHero({ e, perms, onAction, onEdit, onChecklist }: { e: E
   const person = { ...e, stage };
   const others = !perms.isSelf;
 
+  const intern = isCurrentIntern(person) && stage !== 'joining';
+  const internLine = internshipText(person);
   const primary: React.ReactNode =
-    others && perms.canEditOthers && stage === 'probation' ? (
+    others && perms.canEditOthers && intern ? (
+      <>
+        <Button onClick={() => onAction('convert')}><GraduationCap /> Convert to employee</Button>
+        <Button variant="secondary" onClick={() => onAction('extend-internship')}><CalendarClock /> Extend</Button>
+      </>
+    ) : others && perms.canEditOthers && stage === 'probation' ? (
       <>
         <Button onClick={() => onAction('confirm')}><UserCheck /> Confirm probation</Button>
         <Button variant="secondary" onClick={() => onAction('extend')}><CalendarClock /> Extend</Button>
@@ -77,7 +85,8 @@ export function EmployeeHero({ e, perms, onAction, onEdit, onChecklist }: { e: E
   const menu: Array<MenuItem | 'separator'> = [];
   if (perms.canEdit) menu.push({ label: 'Edit details', icon: <Pencil />, onSelect: onEdit });
   if (stage !== 'left' && !perms.isSelf) menu.push({ label: 'Give a shout-out', icon: <Heart />, onSelect: () => { window.location.href = `/app/kudos?to=${e.id}`; } });
-  if (others && perms.seesExits && (stage === 'active' || stage === 'probation')) menu.push('separator', { label: 'Start notice period', icon: <DoorOpen />, danger: true, onSelect: () => onAction('notice') });
+  if (others && perms.seesExits && intern) menu.push('separator', { label: 'End internship', icon: <DoorOpen />, danger: true, onSelect: () => onAction('end-internship') });
+  else if (others && perms.seesExits && (stage === 'active' || stage === 'probation')) menu.push('separator', { label: 'Start notice period', icon: <DoorOpen />, danger: true, onSelect: () => onAction('notice') });
   if (others && perms.seesExits && stage === 'notice') {
     menu.push('separator', { label: 'Withdraw notice', icon: <RotateCcw />, onSelect: () => onAction('withdraw') }, { label: 'Mark as left', icon: <DoorOpen />, danger: true, onSelect: () => onAction('left') });
   }
@@ -104,6 +113,12 @@ export function EmployeeHero({ e, perms, onAction, onEdit, onChecklist }: { e: E
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="truncate text-xl font-semibold tracking-tight sm:text-2xl">{e.firstName} {e.lastName}</h1>
               {stage !== 'active' && <StagePill person={person} />}
+              {internLine && (
+                <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium', internLine.overdue ? 'bg-destructive-soft text-destructive' : 'bg-info-soft text-info')}>
+                  <GraduationCap className="h-3 w-3" />
+                  {internLine.text}
+                </span>
+              )}
               {card.data && <StatusPill today={card.data.today} className="shadow-none ring-1 ring-border" />}
             </div>
             <p className="mt-0.5 text-sm text-muted-foreground">

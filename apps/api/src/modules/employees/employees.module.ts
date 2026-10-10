@@ -3,6 +3,7 @@ import { EmployeesService } from './employees.service';
 import { EmployeesController } from './employees.controller';
 import { EmployeeImportService } from './employee-import.service';
 import { EmployeeLifecycleService } from './lifecycle.service';
+import { InternshipRemindersService } from './internship-reminders.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { EmailModule } from '../email/email.module';
 import { AssetsModule } from '../assets/assets.module';
@@ -10,7 +11,7 @@ import { AssetsModule } from '../assets/assets.module';
 @Module({
   imports: [PrismaModule, EmailModule, AssetsModule],
   controllers: [EmployeesController],
-  providers: [EmployeesService, EmployeeImportService, EmployeeLifecycleService],
-  exports: [EmployeesService, EmployeeLifecycleService],
+  providers: [EmployeesService, EmployeeImportService, EmployeeLifecycleService, InternshipRemindersService],
+  exports: [EmployeesService, EmployeeLifecycleService, InternshipRemindersService],
 })
 export class EmployeesModule {}

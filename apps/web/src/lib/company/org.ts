@@ -103,6 +103,10 @@ export interface Employee {
   reportingManager: { id: string; firstName: string; lastName: string; email: string } | null;
   userId?: string;
   confirmationDate?: string | null;
+  /** Interns: when the internship ends */
+  internshipEndDate?: string | null;
+  /** Interns: never converted automatically */
+  skipAutoConvert?: boolean;
   terminationDate?: string | null;
   exitReason?: string | null;
   /** Lifecycle stage as this viewer may see it */
@@ -250,7 +254,7 @@ export interface EmployeesQuery {
   stage?: EmployeeStage | 'current' | 'all';
   /** Direct reports of / "none" */
   managerId?: string;
-  sort?: 'recent' | 'name' | 'joined' | 'joined_desc' | 'probation' | 'last_day';
+  sort?: 'recent' | 'name' | 'joined' | 'joined_desc' | 'probation' | 'internship' | 'last_day';
   page?: number;
   limit?: number;
 }
@@ -283,6 +287,9 @@ export type EmployeeInput = {
   reportsToPmo?: boolean;
   employmentStatus?: string;
   confirmationDate?: string;
+  /** Interns: required */
+  internshipEndDate?: string;
+  skipAutoConvert?: boolean;
 };
 
 export const useCreateEmployee = () => useOrgMutation(async (body: EmployeeInput) => unwrap<Employee>(await api.post('/employees', body)));

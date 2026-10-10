@@ -214,7 +214,7 @@ export class EmployeeImportService {
               locationId: p.resolved.locationId ?? undefined,
               reportingManagerId: reportingManagerId ?? undefined,
             },
-            { sendWelcome: sendInvites },
+            { sendWelcome: sendInvites, importing: true },
           );
           created.set(p.row, e.id);
           // Entered by HR in the file: counts as verified

@@ -29,6 +29,9 @@ interface Form {
   locationId: string;
   reportingManagerId: string;
   reportsToPmo: boolean;
+  /** Interns only */
+  internshipEndDate: string;
+  skipAutoConvert: boolean;
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -57,6 +60,7 @@ export function EmployeeDrawer({
       setForm({
         firstName: '', lastName: '', email: '', phone: '', joiningDate: today(), employmentType: 'FULL_TIME', employmentStatus: 'ACTIVE',
         departmentId: '', designationId: '', locationId: locations.data?.find((l) => l.isDefault)?.id ?? '', reportingManagerId: '', reportsToPmo: false,
+        internshipEndDate: '', skipAutoConvert: false,
       });
     } else {
       const e = state.employee;
@@ -64,6 +68,7 @@ export function EmployeeDrawer({
         firstName: e.firstName, lastName: e.lastName, email: e.email, phone: e.phone ?? '', joiningDate: e.joiningDate?.slice(0, 10) ?? today(),
         employmentType: e.employmentType, employmentStatus: e.employmentStatus, departmentId: e.departmentId ?? '', designationId: e.designationId ?? '',
         locationId: e.locationId ?? '', reportingManagerId: e.reportingManagerId ?? '', reportsToPmo: Boolean(e.reportsToPmo),
+        internshipEndDate: e.internshipEndDate?.slice(0, 10) ?? '', skipAutoConvert: Boolean(e.skipAutoConvert),
       });
     }
   }, [state, locations.data]);
@@ -72,6 +77,8 @@ export function EmployeeDrawer({
   const isAdd = state.mode === 'add';
   const busy = create.isPending || update.isPending;
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm({ ...form, [k]: v });
+  const intern = form.employmentType === 'INTERN';
+  const internFields = intern ? { internshipEndDate: form.internshipEndDate || undefined, skipAutoConvert: form.skipAutoConvert } : {};
 
   const submit = async (ev: React.FormEvent) => {
     ev.preventDefault();
@@ -83,6 +90,7 @@ export function EmployeeDrawer({
           joiningDate: form.joiningDate, employmentType: form.employmentType,
           departmentId: form.departmentId || undefined, designationId: form.designationId || undefined,
           locationId: form.locationId || undefined, reportingManagerId: form.reportsToPmo ? undefined : form.reportingManagerId || undefined, reportsToPmo: form.reportsToPmo,
+          ...internFields,
         });
         toast.success(`${e.firstName} added — welcome email sent to ${e.email}`);
       } else {
@@ -95,6 +103,7 @@ export function EmployeeDrawer({
                 employmentType: form.employmentType, employmentStatus: form.employmentStatus,
                 departmentId: form.departmentId || null, designationId: form.designationId || null,
                 locationId: form.locationId || null, reportingManagerId: form.reportsToPmo ? null : form.reportingManagerId || null, reportsToPmo: form.reportsToPmo,
+                ...internFields,
               },
         );
         toast.success('Employee updated');
@@ -164,6 +173,20 @@ export function EmployeeDrawer({
             </Select>
           </Field>
         </div>
+        {intern && (
+          <div className="grid items-end gap-4 sm:grid-cols-2">
+            <Field label="Internship ends" htmlFor="e-intern-end" required hint="HR and the manager are reminded 14 days before.">
+              <DateInput id="e-intern-end" value={form.internshipEndDate} min={form.joiningDate} onChange={(e) => set('internshipEndDate', e.target.value)} disabled={lock} />
+            </Field>
+            <label className="flex items-start gap-2 pb-2 text-sm">
+              <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[hsl(var(--primary))]" checked={form.skipAutoConvert} onChange={(e) => set('skipAutoConvert', e.target.checked)} disabled={lock} />
+              <span>
+                Don’t convert automatically
+                <span className="block text-xs text-muted-foreground">Only matters if the company converts interns automatically.</span>
+              </span>
+            </label>
+          </div>
+        )}
         {!isAdd && (
           <Field label="Status" htmlFor="e-status" hint="Notice period and leaving are in the row’s ⋯ menu.">
             <Select id="e-status" className={inputClass} value={form.employmentStatus} onChange={(e) => set('employmentStatus', e.target.value)} disabled={lock}>

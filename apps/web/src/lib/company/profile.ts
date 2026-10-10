@@ -366,6 +366,10 @@ export interface EmployeeRecord extends PersonBasic {
   employmentStatus: string;
   joiningDate: string;
   confirmationDate: string | null;
+  /** Interns: when the internship ends */
+  internshipEndDate?: string | null;
+  skipAutoConvert?: boolean;
+  designationId?: string | null;
   terminationDate: string | null;
   reportingManager: { id: string; employeeId: string; firstName: string; lastName: string; email: string } | null;
   subordinates: Array<{ id: string; employeeId: string; firstName: string; lastName: string; email: string; designation: { name: string } | null }>;

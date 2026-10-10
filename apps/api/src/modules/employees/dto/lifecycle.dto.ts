@@ -15,6 +15,37 @@ export class ExtendProbationDto extends NoteDto {
   until!: string;
 }
 
+export class ConvertInternDto extends NoteDto {
+  /** The new employment type (anything but Intern) */
+  @IsIn(['FULL_TIME', 'PART_TIME', 'CONTRACT'])
+  employmentType!: 'FULL_TIME' | 'PART_TIME' | 'CONTRACT';
+
+  /** First day in the new role (history); default today */
+  @IsOptional()
+  @Matches(DATE, { message: 'startDate must be YYYY-MM-DD' })
+  startDate?: string;
+
+  /** Probation end in the new role; none = Active straight away */
+  @IsOptional()
+  @Matches(DATE, { message: 'probationEnd must be YYYY-MM-DD' })
+  probationEnd?: string;
+
+  /** New job title */
+  @IsOptional()
+  @IsUUID()
+  designationId?: string;
+}
+
+export class InternshipSettingsDto {
+  @IsIn(['remind', 'convert'])
+  internshipEndAction!: 'remind' | 'convert';
+}
+
+export class ExtendInternshipDto extends NoteDto {
+  @Matches(DATE, { message: 'until must be YYYY-MM-DD' })
+  until!: string;
+}
+
 export class StartNoticeDto extends NoteDto {
   @Matches(DATE, { message: 'lastDay must be YYYY-MM-DD' })
   lastDay!: string;

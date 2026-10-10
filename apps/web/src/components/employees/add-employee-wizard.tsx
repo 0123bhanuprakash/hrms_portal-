@@ -36,13 +36,16 @@ interface Draft {
   joiningDate: string;
   probation: 'none' | '3' | '6' | 'custom';
   probationEnd: string;
+  /** Interns: how long the internship runs */
+  internship?: '3' | '6' | 'custom';
+  internshipEnd?: string;
   reportingManagerId: string;
   reportsToPmo: boolean;
 }
 
 const blank = (locationId = ''): Draft => ({
   firstName: '', lastName: '', email: '', phone: '', designationId: '', departmentId: '', locationId,
-  employmentType: 'FULL_TIME', joiningDate: addDaysKey(0), probation: '6', probationEnd: '', reportingManagerId: '', reportsToPmo: false,
+  employmentType: 'FULL_TIME', joiningDate: addDaysKey(0), probation: '6', probationEnd: '', internship: '6', internshipEnd: '', reportingManagerId: '', reportsToPmo: false,
 });
 
 function readDraft(): Draft | null {
@@ -89,7 +92,11 @@ export function AddEmployeeWizard({ open, onClose }: { open: boolean; onClose: (
   }, [d, open]);
 
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((x) => ({ ...x, [k]: v }));
-  const probationEnd = d.probation === 'none' ? null : d.probation === 'custom' ? d.probationEnd || null : addMonthsKey(Number(d.probation), d.joiningDate || addDaysKey(0));
+  const intern = d.employmentType === 'INTERN';
+  // Interns have an internship end instead of a probation
+  const probationEnd = intern || d.probation === 'none' ? null : d.probation === 'custom' ? d.probationEnd || null : addMonthsKey(Number(d.probation), d.joiningDate || addDaysKey(0));
+  const internship = d.internship ?? '6';
+  const internshipEnd = !intern ? null : internship === 'custom' ? d.internshipEnd || null : addMonthsKey(Number(internship), d.joiningDate || addDaysKey(0));
   const title = designations.data?.find((x) => x.id === d.designationId)?.name;
   const dept = departments.data?.find((x) => x.id === d.departmentId);
   const loc = locations.data?.find((x) => x.id === d.locationId);
@@ -105,7 +112,8 @@ export function AddEmployeeWizard({ open, onClose }: { open: boolean; onClose: (
     }
     if (s === 1) {
       if (!d.joiningDate) return 'Pick a joining date';
-      if (d.probation === 'custom' && (!d.probationEnd || d.probationEnd <= d.joiningDate)) return 'Probation must end after the joining date';
+      if (!intern && d.probation === 'custom' && (!d.probationEnd || d.probationEnd <= d.joiningDate)) return 'Probation must end after the joining date';
+      if (intern && (!internshipEnd || internshipEnd <= d.joiningDate)) return 'The internship must end after the joining date';
     }
     return null;
   };
@@ -130,6 +138,7 @@ export function AddEmployeeWizard({ open, onClose }: { open: boolean; onClose: (
         firstName: d.firstName.trim(), lastName: d.lastName.trim(), email: d.email.trim(), phone: d.phone.trim() || undefined,
         joiningDate: d.joiningDate, employmentType: d.employmentType,
         employmentStatus: probationEnd ? 'PROBATION' : 'ACTIVE', confirmationDate: probationEnd ?? undefined,
+        internshipEndDate: internshipEnd ?? undefined,
         departmentId: d.departmentId || undefined, designationId: d.designationId || undefined,
         locationId: d.locationId || undefined, reportingManagerId: d.reportsToPmo ? undefined : d.reportingManagerId || undefined, reportsToPmo: d.reportsToPmo,
       });
@@ -229,6 +238,19 @@ export function AddEmployeeWizard({ open, onClose }: { open: boolean; onClose: (
                   </Field>
                   <Field label="Joining date" htmlFor="w-join" required><DateInput id="w-join" value={d.joiningDate} onChange={(e) => set('joiningDate', e.target.value)} /></Field>
                 </div>
+                {intern ? (
+                <Field label="Internship ends" htmlFor="w-intern" required hint="HR and their manager are reminded 14 days before, to convert, extend or end it.">
+                  <div id="w-intern" className="flex flex-wrap items-center gap-2" role="radiogroup">
+                    {([['3', '3 months'], ['6', '6 months'], ['custom', 'Pick a date']] as const).map(([v, l]) => (
+                      <button key={v} type="button" role="radio" aria-checked={internship === v} onClick={() => set('internship', v)} className={cn('rounded-full border px-3 py-1 text-xs font-medium transition-colors', internship === v ? 'border-primary bg-primary-soft text-primary-soft-foreground' : 'border-border hover:bg-subtle')}>
+                        {l}
+                      </button>
+                    ))}
+                    {internship === 'custom' && <DateInput className="h-8 w-40" value={d.internshipEnd ?? ''} min={d.joiningDate} onChange={(e) => set('internshipEnd', e.target.value)} aria-label="Internship end date" />}
+                    {internshipEnd && <span className="text-xs text-muted-foreground">ends {formatDate(internshipEnd)}</span>}
+                  </div>
+                </Field>
+                ) : (
                 <Field label="Probation" htmlFor="w-prob">
                   <div id="w-prob" className="flex flex-wrap items-center gap-2" role="radiogroup">
                     {([['none', 'None'], ['3', '3 months'], ['6', '6 months'], ['custom', 'Pick a date']] as const).map(([v, l]) => (
@@ -240,6 +262,7 @@ export function AddEmployeeWizard({ open, onClose }: { open: boolean; onClose: (
                     {probationEnd && <span className="text-xs text-muted-foreground">ends {formatDate(probationEnd)}</span>}
                   </div>
                 </Field>
+                )}
               </>
             )}
             {step === 2 && (
@@ -271,7 +294,7 @@ export function AddEmployeeWizard({ open, onClose }: { open: boolean; onClose: (
                   ['Job', [title, dept?.name, loc?.name].filter(Boolean).join(' · ') || '—'],
                   ['Type', TYPES.find((t) => t[0] === d.employmentType)?.[1]],
                   ['Joins', formatDate(d.joiningDate)],
-                  ['Probation', probationEnd ? `Until ${formatDate(probationEnd)}` : 'None — starts as Active'],
+                  intern ? ['Internship', internshipEnd ? `Until ${formatDate(internshipEnd)}` : '—'] : ['Probation', probationEnd ? `Until ${formatDate(probationEnd)}` : 'None — starts as Active'],
                   ['Reports to', d.reportsToPmo ? 'The PMO (pool)' : manager ? `${manager.firstName} ${manager.lastName}` : 'Nobody'],
                 ].map(([k, v]) => (
                   <div key={k} className="flex gap-3 px-3 py-2">

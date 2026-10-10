@@ -78,4 +78,14 @@ export class UpdateEmployeeDto {
   @IsOptional()
   @IsDateString()
   terminationDate?: string;
+
+  /** Internship end (interns only) */
+  @IsOptional()
+  @IsDateString()
+  internshipEndDate?: string;
+
+  /** Interns: never convert automatically */
+  @IsOptional()
+  @IsBoolean()
+  skipAutoConvert?: boolean;
 }

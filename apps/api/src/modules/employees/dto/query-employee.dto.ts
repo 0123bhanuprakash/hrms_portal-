@@ -51,6 +51,6 @@ export class QueryEmployeesDto {
   managerId?: string;
 
   @IsOptional()
-  @IsIn(['recent', 'name', 'joined', 'joined_desc', 'probation', 'last_day'])
-  sort?: 'recent' | 'name' | 'joined' | 'joined_desc' | 'probation' | 'last_day';
+  @IsIn(['recent', 'name', 'joined', 'joined_desc', 'probation', 'internship', 'last_day'])
+  sort?: 'recent' | 'name' | 'joined' | 'joined_desc' | 'probation' | 'internship' | 'last_day';
 }

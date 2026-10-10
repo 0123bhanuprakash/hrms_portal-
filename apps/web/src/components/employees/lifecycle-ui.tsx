@@ -2,28 +2,34 @@
 
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { CalendarClock, CheckCircle2, Circle, ClipboardList, DoorOpen, Plus, RotateCcw, UserCheck } from 'lucide-react';
+import { CalendarClock, CheckCircle2, Circle, ClipboardList, DoorOpen, GraduationCap, Plus, RotateCcw, Settings2, UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Modal, Drawer } from '@/components/ui/modal';
 import { Field, Input, inputClass, FormError } from '@/components/ui/field';
 import { Skeleton } from '@/components/ui/feedback';
 import {
+  CONVERT_TYPES,
   EXIT_REASONS,
   daysUntil,
   stageMeta,
   useAddChecklistItem,
   useChecklist,
   useConfirmProbation,
+  useConvertIntern,
+  useExtendInternship,
   useExtendProbation,
+  useInternshipSettings,
   useMarkLeft,
   useStartNotice,
   useTickChecklist,
   useWithdrawNotice,
   type ChecklistKind,
+  type ConvertType,
   type ExitReason,
+  type InternshipEndAction,
 } from '@/lib/company/lifecycle';
-import type { EmployeeStage } from '@/lib/company/org';
+import { useDesignations, type EmployeeStage } from '@/lib/company/org';
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatDate, formatRelative } from '@/lib/format';
 import { cn } from '@/lib/cn';
@@ -68,6 +74,17 @@ export function StagePill({ person, className }: { person: StagePerson; classNam
   );
 }
 
+/** Interns still with us: "Intern · ends 12 Nov", "Internship ended — decide", "Intern · no end date". */
+export function internshipText(p: { employmentType?: string; internshipEndDate?: string | null; stage?: EmployeeStage }): { text: string; overdue: boolean } | null {
+  if (p.employmentType !== 'INTERN' || p.stage === 'notice' || p.stage === 'left') return null;
+  if (!p.internshipEndDate) return { text: 'Intern · no end date', overdue: false };
+  const d = daysUntil(p.internshipEndDate)!;
+  return d < 0 ? { text: 'Internship ended — decide', overdue: true } : { text: `Intern · ends ${short(p.internshipEndDate)}`, overdue: false };
+}
+
+/** Whether this person is an intern HR can still convert / extend / end. */
+export const isCurrentIntern = (p: { employmentType?: string; stage?: EmployeeStage }) => p.employmentType === 'INTERN' && p.stage !== 'notice' && p.stage !== 'left';
+
 /** Thin profile-completeness bar + percent. */
 export function ProfileMeter({ percent, className }: { percent: number | null | undefined; className?: string }) {
   if (percent === null || percent === undefined) return <span className="text-xs text-muted-foreground">—</span>;
@@ -84,13 +101,15 @@ export function ProfileMeter({ percent, className }: { percent: number | null | 
 
 // ─── Confirm / extend / notice / withdraw / left ─────────────
 
-export type LifecycleAction = 'confirm' | 'extend' | 'notice' | 'withdraw' | 'left';
+export type LifecycleAction = 'confirm' | 'extend' | 'convert' | 'extend-internship' | 'end-internship' | 'notice' | 'withdraw' | 'left';
 export interface LifecycleTarget {
   id: string;
   firstName: string;
   lastName: string;
   joiningDate: string;
   confirmationDate?: string | null;
+  internshipEndDate?: string | null;
+  designationId?: string | null;
   terminationDate?: string | null;
   exitReason?: string | null;
 }
@@ -98,6 +117,9 @@ export interface LifecycleTarget {
 const COPY: Record<LifecycleAction, { title: string; icon: React.ReactNode; cta: string }> = {
   confirm: { title: 'Confirm probation', icon: <UserCheck />, cta: 'Confirm' },
   extend: { title: 'Extend probation', icon: <CalendarClock />, cta: 'Extend' },
+  convert: { title: 'Convert to employee', icon: <GraduationCap />, cta: 'Convert' },
+  'extend-internship': { title: 'Extend internship', icon: <CalendarClock />, cta: 'Extend' },
+  'end-internship': { title: 'End internship', icon: <DoorOpen />, cta: 'Start notice period' },
   notice: { title: 'Start notice period', icon: <DoorOpen />, cta: 'Start notice period' },
   withdraw: { title: 'Withdraw notice', icon: <RotateCcw />, cta: 'Withdraw notice' },
   left: { title: 'Mark as left', icon: <DoorOpen />, cta: 'Mark as left' },
@@ -106,6 +128,12 @@ const COPY: Record<LifecycleAction, { title: string; icon: React.ReactNode; cta:
 export function LifecycleDialog({ action, person, onClose }: { action: LifecycleAction | null; person: LifecycleTarget | null; onClose: () => void }) {
   const confirm = useConfirmProbation();
   const extend = useExtendProbation();
+  const convert = useConvertIntern();
+  const extendIntern = useExtendInternship();
+  const designations = useDesignations();
+  const [type, setType] = useState<ConvertType>('FULL_TIME');
+  const [probation, setProbation] = useState('');
+  const [title, setTitle] = useState('');
   const notice = useStartNotice();
   const withdraw = useWithdrawNotice();
   const left = useMarkLeft();
@@ -119,14 +147,25 @@ export function LifecycleDialog({ action, person, onClose }: { action: Lifecycle
     setNote('');
     if (!action || !person) return;
     if (action === 'extend') setDate(addMonthsKey(3, person.confirmationDate && person.confirmationDate > addDaysKey(0) ? person.confirmationDate : addDaysKey(0)));
+    const internEnd = person.internshipEndDate?.slice(0, 10) ?? null;
+    if (action === 'extend-internship') setDate(addMonthsKey(3, internEnd && internEnd > addDaysKey(0) ? internEnd : addDaysKey(0)));
+    if (action === 'convert') {
+      // The day after the internship, or today if it has already ended
+      const start = internEnd && internEnd >= addDaysKey(0) ? addDaysKey(1, new Date(`${internEnd}T00:00:00`)) : addDaysKey(0);
+      setDate(start);
+      setType('FULL_TIME');
+      setProbation('');
+      setTitle(person.designationId ?? '');
+    }
     if (action === 'notice') setDate(addDaysKey(30));
+    if (action === 'end-internship') setDate(internEnd && internEnd >= addDaysKey(0) ? internEnd : addDaysKey(0));
     if (action === 'left') setDate(person.terminationDate && person.terminationDate.slice(0, 10) <= addDaysKey(0) ? person.terminationDate.slice(0, 10) : addDaysKey(0));
-    setReason((person.exitReason as ExitReason) || 'resigned');
+    setReason(action === 'end-internship' ? 'contract_end' : (person.exitReason as ExitReason) || 'resigned');
   }, [action, person]);
 
   if (!action || !person) return null;
   const name = `${person.firstName} ${person.lastName}`;
-  const busy = confirm.isPending || extend.isPending || notice.isPending || withdraw.isPending || left.isPending;
+  const busy = confirm.isPending || extend.isPending || convert.isPending || extendIntern.isPending || notice.isPending || withdraw.isPending || left.isPending;
   const c = COPY[action];
 
   const submit = async () => {
@@ -135,13 +174,17 @@ export function LifecycleDialog({ action, person, onClose }: { action: Lifecycle
       const n = note.trim() || undefined;
       if (action === 'confirm') await confirm.mutateAsync({ id: person.id, note: n });
       if (action === 'extend') await extend.mutateAsync({ id: person.id, until: date, note: n });
-      if (action === 'notice') await notice.mutateAsync({ id: person.id, lastDay: date, reason, note: n });
+      if (action === 'convert') await convert.mutateAsync({ id: person.id, employmentType: type, startDate: date, probationEnd: probation || undefined, designationId: title && title !== person.designationId ? title : undefined, note: n });
+      if (action === 'extend-internship') await extendIntern.mutateAsync({ id: person.id, until: date, note: n });
+      if (action === 'notice' || action === 'end-internship') await notice.mutateAsync({ id: person.id, lastDay: date, reason, note: n });
       if (action === 'withdraw') await withdraw.mutateAsync({ id: person.id, note: n });
       if (action === 'left') await left.mutateAsync({ id: person.id, lastDay: date, reason, note: n });
       toast.success(
         action === 'confirm' ? `${person.firstName} is confirmed — they’ve been told`
         : action === 'extend' ? `Probation extended to ${formatDate(date)}`
-        : action === 'notice' ? `Notice period started — last day ${formatDate(date)}`
+        : action === 'convert' ? `${person.firstName} is now ${CONVERT_TYPES.find((t) => t.id === type)!.label.toLowerCase()} — they’ve been told`
+        : action === 'extend-internship' ? `Internship extended to ${formatDate(date)}`
+        : action === 'notice' || action === 'end-internship' ? `Notice period started — last day ${formatDate(date)}`
         : action === 'withdraw' ? `${person.firstName} is staying on`
         : `${person.firstName} is marked as left`,
       );
@@ -161,6 +204,9 @@ export function LifecycleDialog({ action, person, onClose }: { action: Lifecycle
       description={
         action === 'confirm' ? `${person.firstName} becomes Active from today. ${person.confirmationDate ? `Probation was due to end ${formatDate(person.confirmationDate)}.` : ''}`
         : action === 'extend' ? `Currently ends ${person.confirmationDate ? formatDate(person.confirmationDate) : '—'}. Pick the new review date.`
+        : action === 'convert' ? `${person.firstName}’s internship ${person.internshipEndDate ? `${person.internshipEndDate.slice(0, 10) < addDaysKey(0) ? 'ended' : 'ends'} ${formatDate(person.internshipEndDate)}` : 'has no end date'}. They keep their manager, team, leave and history.`
+        : action === 'extend-internship' ? `Currently ends ${person.internshipEndDate ? formatDate(person.internshipEndDate) : '—'}. Pick the new end date — reminders start again 14 days before it.`
+        : action === 'end-internship' ? 'They leave on the last day, with an exit checklist like any other exit. Only HR sees this until then.'
         : action === 'notice' ? 'Only HR sees this — colleagues and managers keep seeing them as Active until their last day.'
         : action === 'withdraw' ? 'They go back to Active and the exit checklist is cleared.'
         : 'They disappear from People and the org chart. HR can still find them under “Left”.'
@@ -189,7 +235,61 @@ export function LifecycleDialog({ action, person, onClose }: { action: Lifecycle
             <Field label="New end date" htmlFor="lc-date" required><DateInput id="lc-date" value={date} min={addDaysKey(1)} onChange={(e) => setDate(e.target.value)} /></Field>
           </>
         )}
-        {(action === 'notice' || action === 'left') && (
+        {action === 'convert' && (
+          <>
+            <Field label="New employment type" htmlFor="lc-type" required>
+              <div id="lc-type" className="flex flex-wrap gap-2" role="radiogroup">
+                {CONVERT_TYPES.map((t) => (
+                  <button key={t.id} type="button" role="radio" aria-checked={type === t.id} onClick={() => setType(t.id)} className={cn('rounded-full border px-3 py-1 text-xs font-medium transition-colors', type === t.id ? 'border-primary bg-primary-soft text-primary-soft-foreground' : 'border-border hover:bg-subtle')}>
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </Field>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Starts in the new role" htmlFor="lc-date" required hint="Recorded in their history.">
+                <DateInput id="lc-date" value={date} min={person.joiningDate.slice(0, 10)} onChange={(e) => setDate(e.target.value)} />
+              </Field>
+              <Field label="Job title" htmlFor="lc-title">
+                <Select id="lc-title" className={inputClass} value={title} onChange={(e) => setTitle(e.target.value)}>
+                  <option value="">Keep the current title</option>
+                  {(designations.data ?? []).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </Select>
+              </Field>
+            </div>
+            <Field label="Probation" htmlFor="lc-probation" hint={probation ? 'They start on probation and you’ll be reminded to confirm it.' : 'None — they’re Active straight away.'}>
+              <div className="flex flex-wrap items-center gap-2">
+                {[0, 3, 6].map((m) => {
+                  const k = m ? addMonthsKey(m, date || addDaysKey(0)) : '';
+                  return (
+                    <button key={m} type="button" onClick={() => setProbation(k)} className={cn('rounded-full border px-3 py-1 text-xs font-medium transition-colors', probation === k ? 'border-primary bg-primary-soft text-primary-soft-foreground' : 'border-border hover:bg-subtle')}>
+                      {m ? `${m} months` : 'No probation'}
+                    </button>
+                  );
+                })}
+                {probation && <DateInput id="lc-probation" className="w-40" value={probation} min={date} onChange={(e) => setProbation(e.target.value)} aria-label="Probation ends" />}
+              </div>
+            </Field>
+            <p className="rounded-lg bg-info-soft p-3 text-xs text-info">If they have the Intern access role, it’s swapped for Employee so they see the usual employee pages.</p>
+          </>
+        )}
+        {action === 'extend-internship' && (
+          <>
+            <div className="flex flex-wrap gap-2">
+              {[1, 3, 6].map((m) => {
+                const base = person.internshipEndDate && person.internshipEndDate.slice(0, 10) > addDaysKey(0) ? person.internshipEndDate : addDaysKey(0);
+                const k = addMonthsKey(m, base);
+                return (
+                  <button key={m} type="button" onClick={() => setDate(k)} className={cn('rounded-full border px-3 py-1 text-xs font-medium transition-colors', date === k ? 'border-primary bg-primary-soft text-primary-soft-foreground' : 'border-border hover:bg-subtle')}>
+                    +{m} month{m > 1 ? 's' : ''}
+                  </button>
+                );
+              })}
+            </div>
+            <Field label="New end date" htmlFor="lc-date" required><DateInput id="lc-date" value={date} min={addDaysKey(1)} onChange={(e) => setDate(e.target.value)} /></Field>
+          </>
+        )}
+        {(action === 'notice' || action === 'left' || action === 'end-internship') && (
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Last day" htmlFor="lc-date" required>
               <DateInput id="lc-date" value={date} max={action === 'left' ? addDaysKey(0) : undefined} onChange={(e) => setDate(e.target.value)} />
@@ -201,12 +301,61 @@ export function LifecycleDialog({ action, person, onClose }: { action: Lifecycle
             </Field>
           </div>
         )}
-        {action === 'notice' && (
+        {(action === 'notice' || action === 'end-internship') && (
           <p className="rounded-lg bg-info-soft p-3 text-xs text-info">An exit checklist is created (handover, assets, access, final settlement). IT is told if they still hold company assets.</p>
         )}
         <Field label="Note" htmlFor="lc-note" hint="Kept in their employment history.">
-          <textarea id="lc-note" className={cn(inputClass, 'min-h-[72px] py-2')} value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} placeholder={action === 'confirm' ? 'e.g. Great first six months' : 'Optional'} />
+          <textarea id="lc-note" className={cn(inputClass, 'min-h-[72px] py-2')} value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} placeholder={action === 'confirm' ? 'e.g. Great first six months' : action === 'convert' ? 'e.g. Offer accepted on 3 Nov' : 'Optional'} />
         </Field>
+      </div>
+    </Modal>
+  );
+}
+
+// ─── What happens when an internship ends ───────────────────
+
+export function InternshipSettingsDialog({ open, value, onClose }: { open: boolean; value: InternshipEndAction; onClose: () => void }) {
+  const save = useInternshipSettings();
+  const [choice, setChoice] = useState<InternshipEndAction>(value);
+  useEffect(() => { if (open) setChoice(value); }, [open, value]);
+  if (!open) return null;
+  const OPTIONS: Array<{ id: InternshipEndAction; title: string; body: string }> = [
+    { id: 'remind', title: 'Remind HR (recommended)', body: 'HR and the manager hear 14 days before. Nobody changes until someone converts, extends or ends the internship. Company Admins hear if it’s still open 7 days after.' },
+    { id: 'convert', title: 'Convert to Full-time automatically', body: 'On the end date they become Full-time and Active. HR still gets the heads-up first, and can exclude anyone from their profile.' },
+  ];
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      busy={save.isPending}
+      icon={<Settings2 />}
+      title="When an internship ends"
+      description="Applies to every intern in the company."
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={save.isPending}>Cancel</Button>
+          <Button
+            loading={save.isPending}
+            disabled={choice === value}
+            onClick={() => save.mutate(choice, { onSuccess: () => { toast.success(choice === 'convert' ? 'Interns are now converted automatically' : 'HR is reminded — nobody changes automatically'); onClose(); }, onError: (e) => toast.error(getApiErrorMessage(e, 'Could not save')) })}
+          >
+            Save
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-2" role="radiogroup" aria-label="When an internship ends">
+        {OPTIONS.map((o) => (
+          <button key={o.id} type="button" role="radio" aria-checked={choice === o.id} onClick={() => setChoice(o.id)} className={cn('flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-colors', choice === o.id ? 'border-primary bg-primary-soft/50' : 'border-border hover:bg-subtle')}>
+            <span className={cn('mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border', choice === o.id ? 'border-primary' : 'border-muted-foreground')}>
+              {choice === o.id && <span className="h-2 w-2 rounded-full bg-primary" />}
+            </span>
+            <span>
+              <span className="block text-sm font-semibold">{o.title}</span>
+              <span className="block text-xs text-muted-foreground">{o.body}</span>
+            </span>
+          </button>
+        ))}
       </div>
     </Modal>
   );
