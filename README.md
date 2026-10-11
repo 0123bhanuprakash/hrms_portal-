@@ -34,6 +34,8 @@ No containers are needed for local development — only Node.js, pnpm and a Supa
 pnpm install
 ```
 
+This also generates the Prisma database client (`apps/api` runs `prisma generate` after install). Run it again with `pnpm --filter @hrms/api db:generate` after changing `schema.prisma`, with the API stopped (Windows locks the engine file while it runs).
+
 ### 2. Configure environment variables
 
 ```bash
