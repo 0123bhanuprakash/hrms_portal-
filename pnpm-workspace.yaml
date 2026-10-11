@@ -2,8 +2,18 @@ packages:
   - 'apps/*'
   - 'packages/*'
 
+# pnpm 11 reads allowBuilds (onlyBuiltDependencies below is the older name).
+# @prisma/engines fetches the database engine. The client itself is generated
+# by apps/api's postinstall (`prisma generate` — the schema lives in
+# apps/api/prisma); the install steps of prisma / @prisma/client would run it
+# from the repo root and leave a broken copy there, so they stay off.
 allowBuilds:
   '@nestjs/core': true
+  '@prisma/client': false
+  '@prisma/engines': true
+  prisma: false
+  esbuild: true
+  '@scarf/scarf': true
   msgpackr-extract: true
   unrs-resolver: false
 
@@ -15,3 +25,7 @@ onlyBuiltDependencies:
   - 'esbuild'
   - '@scarf/scarf'
   - 'msgpackr-extract'
+
+# Prisma in a pnpm monorepo: keep the client and its runtime side by side at the top level
+publicHoistPattern:
+  - '*prisma*'

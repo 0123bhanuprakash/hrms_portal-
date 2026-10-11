@@ -15,6 +15,7 @@
     "test:watch": "vitest",
     "test:e2e": "node test/e2e/run.js",
     "clean": "rimraf dist",
+    "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
