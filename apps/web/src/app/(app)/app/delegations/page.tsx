@@ -57,7 +57,7 @@ export default function DelegationsPage() {
   const formRef = useRef<HTMLDivElement>(null);
   const [prefill, setPrefill] = useState<{ from: string; to: string; reason: string } | null>(null);
 
-  if (me.isError) return <ErrorState message={getApiErrorMessage(me.error, 'Could not load delegations')} onRetry={() => me.refetch()} />;
+  if (me.isLoadingError) return <ErrorState message={getApiErrorMessage(me.error, 'Could not load delegations')} onRetry={() => me.refetch()} />;
 
   const covering = me.data?.received.filter((d) => d.status === 'active' || d.status === 'upcoming') ?? [];
   const uncovered = (away.data ?? []).find((l) => !l.coveredBy);

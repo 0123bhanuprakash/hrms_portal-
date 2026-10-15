@@ -133,9 +133,9 @@ function Timesheet() {
         </div>
       </div>
 
-      {q.isLoading || (!week && !q.isError) ? (
+      {q.isLoading || (!week && !q.isLoadingError) ? (
         <Skeleton className="h-[560px] w-full" />
-      ) : q.isError || !week ? (
+      ) : q.isLoadingError || !week ? (
         <ErrorState message={getApiErrorMessage(q.error, 'Could not load the timesheet')} onRetry={() => void q.refetch()} />
       ) : (
         <div className={cn('grid gap-4', own && 'lg:grid-cols-[260px_minmax(0,1fr)]')}>

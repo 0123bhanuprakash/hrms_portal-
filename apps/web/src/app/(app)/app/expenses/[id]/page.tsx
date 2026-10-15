@@ -56,7 +56,7 @@ export default function ClaimPage() {
     </Button>
   );
   if (q.isLoading) return <Skeleton className="h-96 w-full" />;
-  if (q.isError) {
+  if (q.isLoadingError) {
     const status = (q.error as { response?: { status?: number } })?.response?.status;
     return status === 404 ? <EmptyState icon={<SearchX />} title="Claim not found" action={back} /> : <ErrorState message={getApiErrorMessage(q.error)} onRetry={() => q.refetch()} />;
   }

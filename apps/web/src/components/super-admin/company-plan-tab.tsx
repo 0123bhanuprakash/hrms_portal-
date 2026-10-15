@@ -39,7 +39,7 @@ export function CompanyPlanTab({ companyId }: { companyId: string }) {
     if (ent.data?.plan) setPlanChoice(ent.data.plan.id);
   }, [ent.data?.plan]);
 
-  if (ent.isError) return <ErrorState message={getApiErrorMessage(ent.error, 'Could not load features')} onRetry={() => ent.refetch()} />;
+  if (ent.isLoadingError) return <ErrorState message={getApiErrorMessage(ent.error, 'Could not load features')} onRetry={() => ent.refetch()} />;
   if (ent.isLoading || !ent.data) {
     return (
       <div className="space-y-4">

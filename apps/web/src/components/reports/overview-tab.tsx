@@ -63,7 +63,7 @@ function Bridge({ b }: { b: ReportsOverview['bridge'] }) {
 
 export function OverviewTab({ params, onTab }: { params: ReportParams; onTab: (tab: string) => void }) {
   const q = useReportsOverview({ from: params.from, to: params.to, departmentId: params.departmentId, locationId: params.locationId });
-  if (q.isError) return <ErrorState message={getApiErrorMessage(q.error, 'Could not load the overview')} onRetry={() => void q.refetch()} />;
+  if (q.isLoadingError) return <ErrorState message={getApiErrorMessage(q.error, 'Could not load the overview')} onRetry={() => void q.refetch()} />;
   const o = q.data;
   if (!o) {
     return (

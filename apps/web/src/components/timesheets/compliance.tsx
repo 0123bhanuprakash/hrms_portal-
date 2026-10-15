@@ -47,7 +47,7 @@ export function Compliance() {
       </div>
       {q.isLoading ? (
         <Skeleton className="h-64 w-full" />
-      ) : q.isError ? (
+      ) : q.isLoadingError ? (
         <ErrorState message={getApiErrorMessage(q.error, 'Could not load')} onRetry={() => void q.refetch()} />
       ) : !q.data?.data.length ? (
         <EmptyState icon={<UserX />} title="Nobody here" />

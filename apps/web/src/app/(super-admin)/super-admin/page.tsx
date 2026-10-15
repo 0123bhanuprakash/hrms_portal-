@@ -44,7 +44,7 @@ export default function SuperAdminDashboard() {
 
   return (
     <div className="space-y-5">
-      {stats.isError && (
+      {stats.isLoadingError && (
         <Card>
           <ErrorState message={getApiErrorMessage(stats.error, 'Could not load platform stats')} onRetry={() => stats.refetch()} />
         </Card>

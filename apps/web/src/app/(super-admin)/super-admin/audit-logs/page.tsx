@@ -69,7 +69,7 @@ function AuditLogsView() {
     router.replace(`${pathname}${qs ? `?${qs}` : ''}`, { scroll: false });
   };
 
-  const { data, isLoading, isError, error, refetch, isFetching } = useAuditLogs(query);
+  const { data, isLoading, isLoadingError, error, refetch, isFetching } = useAuditLogs(query);
   const actions = useAuditActions();
   // Companies are searched on the server (20 at a time); the chosen one is fetched by id
   const [companyQ, setCompanyQ] = useState('');
@@ -197,7 +197,7 @@ function AuditLogsView() {
       </Card>
 
       <Card className={cn('overflow-hidden transition-opacity', isFetching && !isLoading && 'opacity-70')}>
-        {isError ? (
+        {isLoadingError ? (
           <ErrorState message={getApiErrorMessage(error, 'Could not load audit logs')} onRetry={() => refetch()} />
         ) : isLoading ? (
           <div className="space-y-2 p-4">{Array.from({ length: 8 }, (_, i) => <Skeleton key={i} className="h-10" />)}</div>

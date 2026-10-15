@@ -44,7 +44,7 @@ export function SeasonsTab() {
   const [deleting, setDeleting] = useState<Season | null>(null);
   const [dismissed, setDismissed] = useUiState<string[]>('season.dismissed', [], isList);
 
-  if (seasons.isError) return <ErrorState message={getApiErrorMessage(seasons.error, 'Could not load seasons')} onRetry={() => seasons.refetch()} />;
+  if (seasons.isLoadingError) return <ErrorState message={getApiErrorMessage(seasons.error, 'Could not load seasons')} onRetry={() => seasons.refetch()} />;
   if (!seasons.data || !presets.data) return <Skeleton className="h-96" />;
 
   const { today, seasons: list, suggestions } = seasons.data;

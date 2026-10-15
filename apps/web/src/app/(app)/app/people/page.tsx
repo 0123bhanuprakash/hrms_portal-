@@ -199,7 +199,7 @@ export default function PeopleDirectoryPage() {
 
       {list.isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-72 w-full" />)}</div>
-      ) : list.isError ? (
+      ) : list.isLoadingError ? (
         <ErrorState message={getApiErrorMessage(list.error, 'Could not load the directory')} onRetry={() => list.refetch()} />
       ) : !list.data?.data.length ? (
         <EmptyState icon={<Users />} title="No one found" description={debounced || chip !== 'everyone' || letter ? 'Try another name or clear the filters.' : undefined} />

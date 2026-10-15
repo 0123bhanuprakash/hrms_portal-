@@ -124,7 +124,7 @@ export default function AttendanceApprovalsPage() {
 
       {list.isLoading ? (
         <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-32 w-full" />)}</div>
-      ) : list.isError ? (
+      ) : list.isLoadingError ? (
         <ErrorState message={getApiErrorMessage(list.error, 'Could not load requests')} onRetry={() => list.refetch()} />
       ) : !swipe.rows.length ? (
         <div className="relative overflow-hidden">

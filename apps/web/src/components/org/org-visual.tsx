@@ -218,7 +218,7 @@ export function OrgVisual({ canManage, onOpenDepartments }: { canManage: boolean
     }
   };
 
-  if (chart.isError) return <ErrorState message={getApiErrorMessage(chart.error, 'Could not load the org chart')} onRetry={() => chart.refetch()} />;
+  if (chart.isLoadingError) return <ErrorState message={getApiErrorMessage(chart.error, 'Could not load the org chart')} onRetry={() => chart.refetch()} />;
   if (chart.isLoading) return <Skeleton className="h-[560px]" />;
   if (!employees.length) return <EmptyState icon={<Network />} title="No employees yet" description="Add employees and set their reporting managers — the chart builds itself." />;
 

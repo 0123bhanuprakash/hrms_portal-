@@ -66,7 +66,7 @@ export default function PlansPage() {
 
       <Summary plans={ordered} overview={overview.data} featureCount={available.length} />
 
-      {plans.isError ? (
+      {plans.isLoadingError ? (
         <ErrorState message={getApiErrorMessage(plans.error, 'Could not load plans')} onRetry={() => plans.refetch()} />
       ) : plans.isLoading || catalog.isLoading ? (
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">{Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-96" />)}</div>

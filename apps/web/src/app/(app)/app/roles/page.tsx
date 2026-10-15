@@ -166,7 +166,7 @@ export default function RolesPage() {
         </div>
       </div>
 
-      {roles.isError ? (
+      {roles.isLoadingError ? (
         <ErrorState message={getApiErrorMessage(roles.error, 'Could not load roles')} onRetry={() => roles.refetch()} />
       ) : roles.isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

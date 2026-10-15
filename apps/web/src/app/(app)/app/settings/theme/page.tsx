@@ -82,7 +82,7 @@ function ThemePage() {
 function LookTab({ companyId, brand }: { companyId: string | null; brand: string | null }) {
   const theme = useCompanyTheme(companyId);
   if (theme.isLoading || !companyId) return <Skeleton className="h-[70vh] rounded-xl" />;
-  if (theme.isError || !theme.data) {
+  if (theme.isLoadingError || !theme.data) {
     return <Card><ErrorState message={getApiErrorMessage(theme.error, 'Could not load your theme')} onRetry={() => theme.refetch()} /></Card>;
   }
   return (

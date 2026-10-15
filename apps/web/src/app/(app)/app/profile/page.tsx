@@ -28,7 +28,7 @@ export default function MyProfilePage() {
       </div>
     );
   }
-  if (me.isError) return <ErrorState message={getApiErrorMessage(me.error, 'Could not load your profile')} onRetry={() => me.refetch()} />;
+  if (me.isLoadingError) return <ErrorState message={getApiErrorMessage(me.error, 'Could not load your profile')} onRetry={() => me.refetch()} />;
   const employee = me.data?.employee;
   if (!employee) {
     return (

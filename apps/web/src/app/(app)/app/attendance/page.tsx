@@ -63,7 +63,7 @@ function Attendance() {
   }
 
   // Accounts without an employee profile (e.g. a company admin) have no attendance of their own
-  if (!employeeId && cal.isError && /no employee profile/i.test(getApiErrorMessage(cal.error, ''))) {
+  if (!employeeId && cal.isLoadingError && /no employee profile/i.test(getApiErrorMessage(cal.error, ''))) {
     return (
       <div className="space-y-6">
         <PageHeader eyebrow="Time" title="My attendance" description="Check in, see your month and fix missed punches." />
@@ -100,7 +100,7 @@ function Attendance() {
       {isMine && can('attendance.mark') ? (
         <div className="grid gap-4 xl:grid-cols-[1.25fr_1fr]">
           <TodayHero />
-          {data ? <MonthInsights data={data} /> : !cal.isError && <Skeleton className="h-56 w-full rounded-2xl" />}
+          {data ? <MonthInsights data={data} /> : !cal.isLoadingError && <Skeleton className="h-56 w-full rounded-2xl" />}
         </div>
       ) : (
         data && <MonthInsights data={data} person />
@@ -147,7 +147,7 @@ function Attendance() {
 
         {cal.isLoading ? (
           <div className="px-5 pb-5"><Skeleton className="h-80 w-full" /></div>
-        ) : cal.isError ? (
+        ) : cal.isLoadingError ? (
           <div className="px-5 pb-5"><ErrorState message={getApiErrorMessage(cal.error, 'Could not load attendance')} onRetry={() => cal.refetch()} /></div>
         ) : data ? (
           <div className="grid gap-5 px-5 pb-5 xl:grid-cols-[1fr_300px]">

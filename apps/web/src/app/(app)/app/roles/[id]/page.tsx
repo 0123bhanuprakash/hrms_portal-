@@ -202,7 +202,7 @@ function RoleEditor() {
   const roleLook = { key: role.data?.key ?? null, name: name || 'New role', isOwner: locked };
 
   if (!accessLoading && !can('role.view')) return <EmptyState icon={<ShieldCheck />} title="No access" description="You don't have permission to view roles." />;
-  if (role.isError) return <ErrorState message={getApiErrorMessage(role.error, 'Could not load the role')} onRetry={() => role.refetch()} />;
+  if (role.isLoadingError) return <ErrorState message={getApiErrorMessage(role.error, 'Could not load the role')} onRetry={() => role.refetch()} />;
   const loading = catalog.isLoading || (!isNew && role.isLoading);
   const holders = role.data?.holders ?? [];
 

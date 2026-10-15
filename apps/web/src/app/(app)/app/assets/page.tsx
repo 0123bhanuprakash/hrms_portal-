@@ -234,7 +234,7 @@ function AssetTable({ attention, onClearAttention, manage }: { attention: Attent
 
       {list.isLoading ? (
         <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}</div>
-      ) : list.isError ? (
+      ) : list.isLoadingError ? (
         <ErrorState message={getApiErrorMessage(list.error, 'Could not load assets')} onRetry={() => void list.refetch()} />
       ) : !rows.length ? (
         <EmptyState icon={<HardDrive />} title={debounced || status || typeId || attention || employeeId || locationId ? 'No assets match' : 'No assets yet'} description={manage && !debounced ? 'Add your laptops, phones and ID cards — or import a spreadsheet.' : undefined} />
@@ -349,7 +349,7 @@ function ByPerson() {
       </div>
       {people.isLoading ? (
         <Skeleton className="h-64 w-full" />
-      ) : people.isError ? (
+      ) : people.isLoadingError ? (
         <ErrorState message={getApiErrorMessage(people.error, 'Could not load')} onRetry={() => void people.refetch()} />
       ) : !people.data?.data.length ? (
         <EmptyState icon={<Users />} title={debounced ? 'Nobody matches' : 'Nobody holds anything yet'} />
@@ -406,7 +406,7 @@ function ReturnsAndChecks() {
     <div className="grid gap-4 lg:grid-cols-2">
       <Card className="space-y-3 p-5">
         <h2 className="flex items-center gap-2 text-sm font-semibold"><Undo2 className="size-4 text-primary" /> To collect</h2>
-        {returns.isLoading ? <Skeleton className="h-40" /> : returns.isError ? <ErrorState message={getApiErrorMessage(returns.error, 'Could not load')} onRetry={() => void returns.refetch()} /> : r && (
+        {returns.isLoading ? <Skeleton className="h-40" /> : returns.isLoadingError ? <ErrorState message={getApiErrorMessage(returns.error, 'Could not load')} onRetry={() => void returns.refetch()} /> : r && (
           <>
             <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">People leaving · {r.leavers.length}</p>
             {!r.leavers.length ? <p className="text-sm text-muted-foreground">Nobody leaving holds company assets.</p> : (
@@ -448,7 +448,7 @@ function ReturnsAndChecks() {
 
       <Card className="space-y-3 p-5">
         <h2 className="flex items-center gap-2 text-sm font-semibold"><ClipboardCheck className="size-4 text-primary" /> Yearly “still have it?” check</h2>
-        {checks.isLoading ? <Skeleton className="h-40" /> : checks.isError ? <ErrorState message={getApiErrorMessage(checks.error, 'Could not load')} onRetry={() => void checks.refetch()} /> : c && (
+        {checks.isLoading ? <Skeleton className="h-40" /> : checks.isLoadingError ? <ErrorState message={getApiErrorMessage(checks.error, 'Could not load')} onRetry={() => void checks.refetch()} /> : c && (
           c.open ? (
             <div className="space-y-3">
               <p className="text-sm"><b>{c.open.name}</b> · answers due {formatDate(c.open.dueOn)}</p>

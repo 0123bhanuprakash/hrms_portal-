@@ -165,7 +165,7 @@ export function PasswordCard({ changedAt, secure }: { changedAt: string | null; 
 }
 
 function DevicesCard() {
-  const { data, isLoading, isError, error, refetch } = useSessions();
+  const { data, isLoading, isLoadingError, error, refetch } = useSessions();
   const signIns = useMySignIns('success');
   const revoke = useRevokeSession();
   const revokeOthers = useRevokeOtherSessions();
@@ -198,7 +198,7 @@ function DevicesCard() {
         </Button>
       </div>
       <div className="mt-4">
-        {isError ? (
+        {isLoadingError ? (
           <ErrorState message={getApiErrorMessage(error, 'Could not load sessions')} onRetry={() => refetch()} />
         ) : isLoading ? (
           <div className="space-y-3">{[0, 1].map((i) => <Skeleton key={i} className="h-16" />)}</div>
@@ -319,7 +319,7 @@ function ProtectionCard({ overview }: { overview: AccountOverview }) {
 
 export function SecuritySection({ secure }: { secure: boolean }) {
   const o = useAccountOverview();
-  if (o.isError) return <ErrorState message={getApiErrorMessage(o.error, 'Could not load your account')} onRetry={() => o.refetch()} />;
+  if (o.isLoadingError) return <ErrorState message={getApiErrorMessage(o.error, 'Could not load your account')} onRetry={() => o.refetch()} />;
   if (!o.data) return <Skeleton className="h-96" />;
   return (
     <div className="space-y-5">

@@ -50,7 +50,7 @@ export default function TicketPage() {
   const { id } = useParams<{ id: string }>();
   const q = useTicket(id);
   if (q.isLoading) return <Skeleton className="h-96 w-full" />;
-  if (q.isError) return (q.error as { response?: { status?: number } })?.response?.status === 404 ? <EmptyState icon={<LifeBuoy />} title="Ticket not found" /> : <ErrorState message={getApiErrorMessage(q.error, 'Could not load the ticket')} onRetry={() => void q.refetch()} />;
+  if (q.isLoadingError) return (q.error as { response?: { status?: number } })?.response?.status === 404 ? <EmptyState icon={<LifeBuoy />} title="Ticket not found" /> : <ErrorState message={getApiErrorMessage(q.error, 'Could not load the ticket')} onRetry={() => void q.refetch()} />;
   return <TicketView t={q.data!} />;
 }
 

@@ -296,7 +296,7 @@ function RecentActionsCard() {
 
 export function AccountSection() {
   const o = useAccountOverview();
-  if (o.isError) return <ErrorState message={getApiErrorMessage(o.error, 'Could not load your account')} onRetry={() => o.refetch()} />;
+  if (o.isLoadingError) return <ErrorState message={getApiErrorMessage(o.error, 'Could not load your account')} onRetry={() => o.refetch()} />;
   if (!o.data) return <Skeleton className="h-96" />;
   return (
     <div className="space-y-5">

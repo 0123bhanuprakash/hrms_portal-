@@ -14,7 +14,7 @@ import { BillingBar, HEALTH, HealthPill, TypeBadge, daysFrom, projectColor, shor
 /** The employee's view: my assignments, who leads me there, what's coming, who's away. */
 export function MyProjects() {
   const q = useMyOverview();
-  if (q.isError) return <ErrorState message={getApiErrorMessage(q.error, 'Could not load your projects')} onRetry={() => q.refetch()} />;
+  if (q.isLoadingError) return <ErrorState message={getApiErrorMessage(q.error, 'Could not load your projects')} onRetry={() => q.refetch()} />;
   if (!q.data) return <div className="grid gap-4 lg:grid-cols-[1fr_320px]"><Skeleton className="h-72 rounded-2xl" /><Skeleton className="h-72 rounded-2xl" /></div>;
   const d = q.data;
   const booked = 100 - d.billing.bench;

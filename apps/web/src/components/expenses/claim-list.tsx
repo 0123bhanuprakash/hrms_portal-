@@ -23,7 +23,7 @@ export function ClaimList({
   onSelect,
   showFlags,
 }: {
-  query: { isLoading: boolean; isError: boolean; error: unknown; refetch: () => unknown; data?: { data: Claim[]; meta: { total: number; page: number; limit: number; totalPages: number } } };
+  query: { isLoading: boolean; isLoadingError: boolean; error: unknown; refetch: () => unknown; data?: { data: Claim[]; meta: { total: number; page: number; limit: number; totalPages: number } } };
   showEmployee?: boolean;
   empty: string;
   page: number;
@@ -35,7 +35,7 @@ export function ClaimList({
   showFlags?: boolean;
 }) {
   if (query.isLoading) return <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-28 w-full" />)}</div>;
-  if (query.isError) return <ErrorState message={getApiErrorMessage(query.error, 'Could not load claims')} onRetry={() => query.refetch()} />;
+  if (query.isLoadingError) return <ErrorState message={getApiErrorMessage(query.error, 'Could not load claims')} onRetry={() => query.refetch()} />;
   if (!query.data?.data.length) return <EmptyState icon={<Receipt />} title={empty} />;
   return (
     <div className="space-y-2.5">

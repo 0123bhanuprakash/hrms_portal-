@@ -303,7 +303,7 @@ export function AttendanceTab({ params }: { params: ReportParams }) {
   const q = useAttendanceReport({ from: params.from, to: params.to, ...filters });
   const [day, setDay] = useState<string | null>(null);
   const [plenty, setPlenty] = useState(false);
-  if (q.isError) return <ErrorState message={getApiErrorMessage(q.error, 'Could not load the report')} onRetry={() => void q.refetch()} />;
+  if (q.isLoadingError) return <ErrorState message={getApiErrorMessage(q.error, 'Could not load the report')} onRetry={() => void q.refetch()} />;
   const r = q.data;
   if (!r) return <Skeleton className="h-96" />;
   return (

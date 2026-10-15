@@ -123,7 +123,7 @@ export function UtilisationTab({ params, canExport }: { params: ReportParams; ca
   useEffect(() => setList((l) => ({ ...l, page: 1 })), [params.from, params.to, params.departmentId, params.locationId]);
   const q = useUtilisationReport({ from: params.from, to: params.to, ...filters, search: search || undefined, show: list.show, sort: list.sort, page: list.page });
   const [busy, setBusy] = useState(false);
-  if (q.isError) return <ErrorState message={getApiErrorMessage(q.error, 'Could not load the report')} onRetry={() => void q.refetch()} />;
+  if (q.isLoadingError) return <ErrorState message={getApiErrorMessage(q.error, 'Could not load the report')} onRetry={() => void q.refetch()} />;
   const r = q.data;
   if (!r) return <Skeleton className="h-96" />;
   return (

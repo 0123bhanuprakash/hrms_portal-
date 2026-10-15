@@ -43,7 +43,7 @@ export default function KudosInsightsPage() {
           </div>
         }
       />
-      {q.isError ? (
+      {q.isLoadingError ? (
         <ErrorState message={getApiErrorMessage(q.error, 'Could not load insights')} onRetry={() => q.refetch()} />
       ) : !q.data ? (
         <Skeleton className="h-96" />

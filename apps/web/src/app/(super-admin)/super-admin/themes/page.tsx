@@ -210,7 +210,7 @@ export default function ThemesPage() {
         </div>
       </Card>
 
-      {settings.isError && (
+      {settings.isLoadingError && (
         <Card>
           <ErrorState message={getApiErrorMessage(settings.error, 'Could not load theme settings')} onRetry={() => settings.refetch()} />
         </Card>
@@ -251,7 +251,7 @@ export default function ThemesPage() {
         </div>
         {custom.isLoading ? (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{[0, 1].map((i) => <Skeleton key={i} className="h-60 rounded-xl" />)}</div>
-        ) : custom.isError ? (
+        ) : custom.isLoadingError ? (
           <Card><ErrorState message={getApiErrorMessage(custom.error, 'Could not load custom themes')} onRetry={() => custom.refetch()} /></Card>
         ) : customs.length === 0 ? (
           <Card>

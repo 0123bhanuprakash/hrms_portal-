@@ -255,7 +255,7 @@ export function LedgerDialog({ employeeId, balance, year, onClose }: { employeeI
       </div>
       {q.isLoading ? (
         <Skeleton className="h-40 w-full" />
-      ) : q.isError ? (
+      ) : q.isLoadingError ? (
         <ErrorState message={getApiErrorMessage(q.error)} onRetry={() => q.refetch()} />
       ) : !l?.entries.length ? (
         <p className="text-sm text-muted-foreground">Nothing recorded for {y}.</p>
@@ -305,7 +305,7 @@ export function ExtraLeavePanel() {
           <h2 className="flex flex-1 items-center gap-2 text-sm font-semibold"><Inbox className="h-4 w-4 text-muted-foreground" /> Asking for more days {!!requests.data?.length && <Badge tone="warning">{requests.data.length}</Badge>}</h2>
           <Button size="sm" onClick={() => setLending({})}><HandCoins /> Lend / give days</Button>
         </div>
-        {requests.isError ? (
+        {requests.isLoadingError ? (
           <ErrorState message={getApiErrorMessage(requests.error)} onRetry={() => requests.refetch()} />
         ) : !requests.data ? (
           <Skeleton className="h-24 w-full" />
@@ -330,7 +330,7 @@ export function ExtraLeavePanel() {
       <Card className="p-5">
         <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold"><Undo2 className="h-4 w-4 text-muted-foreground" /> Owed to next year</h2>
         <p className="mb-3 text-xs text-muted-foreground">People below 0 or with lent days. If nothing changes, these days are taken from their {year + 1} balance.</p>
-        {owed.isError ? (
+        {owed.isLoadingError ? (
           <ErrorState message={getApiErrorMessage(owed.error)} onRetry={() => owed.refetch()} />
         ) : !owed.data ? (
           <Skeleton className="h-24 w-full" />

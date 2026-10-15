@@ -20,7 +20,7 @@ export interface BoardHandlers {
 /** Joining soon → Probation → Active → Notice → Left, with the next step on each card. */
 export function EmployeeBoard({ canEditOthers, seesExits, onAction, onChecklist }: BoardHandlers) {
   const board = useEmployeeBoard();
-  if (board.isError) return <ErrorState message={getApiErrorMessage(board.error, 'Could not load the board')} onRetry={() => board.refetch()} />;
+  if (board.isLoadingError) return <ErrorState message={getApiErrorMessage(board.error, 'Could not load the board')} onRetry={() => board.refetch()} />;
   if (board.isLoading || !board.data) {
     return <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">{Array.from({ length: 5 }, (_, i) => <Skeleton key={i} className="h-96 rounded-xl" />)}</div>;
   }

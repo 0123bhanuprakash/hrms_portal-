@@ -44,7 +44,7 @@ function ThemeEditorLoader() {
   if ((id && editing.isLoading) || (fromCustomId && source.isLoading)) {
     return <Skeleton className="h-[70vh] rounded-xl" />;
   }
-  if (id && editing.isError) {
+  if (id && editing.isLoadingError) {
     return <Card><ErrorState message={getApiErrorMessage(editing.error, 'Theme not found')} onRetry={() => editing.refetch()} /></Card>;
   }
 

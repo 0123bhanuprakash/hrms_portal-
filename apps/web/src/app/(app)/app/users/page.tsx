@@ -313,7 +313,7 @@ export default function UsersPage() {
           </div>
         )}
 
-        {users.isError ? (
+        {users.isLoadingError ? (
           <ErrorState message={getApiErrorMessage(users.error, 'Could not load users')} onRetry={() => users.refetch()} />
         ) : users.isLoading ? (
           <div className="space-y-2 p-4">{Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-12" />)}</div>

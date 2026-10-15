@@ -12,7 +12,7 @@ export default function EditAnnouncementPage() {
   const { id } = useParams<{ id: string }>();
   const q = useAnnouncement(id);
   if (q.isLoading) return <Skeleton className="h-96 w-full" />;
-  if (q.isError) {
+  if (q.isLoadingError) {
     const status = (q.error as { response?: { status?: number } })?.response?.status;
     return status === 404 ? <EmptyState icon={<SearchX />} title="Announcement not found" /> : <ErrorState message={getApiErrorMessage(q.error)} onRetry={() => q.refetch()} />;
   }

@@ -187,7 +187,7 @@ function TodayView({ team, tz, onEdit }: { team: TeamQuery; tz: string; onEdit: 
   };
 
   if (team.isLoading) return <Skeleton className="h-96 w-full" />;
-  if (team.isError) return <ErrorState message={getApiErrorMessage(team.error, 'Could not load attendance')} onRetry={() => team.refetch()} />;
+  if (team.isLoadingError) return <ErrorState message={getApiErrorMessage(team.error, 'Could not load attendance')} onRetry={() => team.refetch()} />;
   if (!rows.length) return <EmptyState icon={<Users />} title="No one here" description="Try another day, filter or search." />;
 
   return (
@@ -373,7 +373,7 @@ function MonthGrid({ departmentId, search, tz }: { departmentId: string; search:
       </div>
       {q.isLoading ? (
         <Skeleton className="h-72 w-full" />
-      ) : q.isError ? (
+      ) : q.isLoadingError ? (
         <ErrorState message={getApiErrorMessage(q.error, 'Could not load the month')} onRetry={() => q.refetch()} />
       ) : !d?.data.length ? (
         <EmptyState icon={<Users />} title="No one here" description="Try another filter or search." />
@@ -460,7 +460,7 @@ function ListView({ team, tz, status, setStatus, page, setPage, onEdit }: { team
       <Card className="overflow-hidden">
         {team.isLoading ? (
           <div className="space-y-2 p-5">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
-        ) : team.isError ? (
+        ) : team.isLoadingError ? (
           <ErrorState message={getApiErrorMessage(team.error, 'Could not load attendance')} onRetry={() => team.refetch()} />
         ) : !data?.data.length ? (
           <EmptyState icon={<Users />} title="No one here" description="Try another day, filter or search." />

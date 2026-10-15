@@ -98,7 +98,7 @@ export default function HolidaysPage() {
 
       {holidays.isLoading ? (
         <Skeleton className="h-80 w-full" />
-      ) : holidays.isError ? (
+      ) : holidays.isLoadingError ? (
         <ErrorState message={getApiErrorMessage(holidays.error, 'Could not load holidays')} onRetry={() => holidays.refetch()} />
       ) : !all.length ? (
         <Card>

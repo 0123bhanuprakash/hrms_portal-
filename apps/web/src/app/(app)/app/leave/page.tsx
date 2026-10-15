@@ -133,7 +133,7 @@ function MyLeave() {
         </div>
         {list.isLoading ? (
           <Skeleton className="h-64 w-full" />
-        ) : list.isError ? (
+        ) : list.isLoadingError ? (
           <ErrorState message={getApiErrorMessage(list.error, 'Could not load your requests')} onRetry={() => list.refetch()} />
         ) : !list.data?.data.length ? (
           <EmptyState icon={<Plane />} title="No leave requests" description={status === 'ALL' ? 'When you apply for leave it will show up here.' : undefined} />
@@ -293,8 +293,8 @@ function BalanceRings({ year }: { year: number }) {
   const q = useLeaveBalances(undefined, year);
   const [statement, setStatement] = useState<LeaveBalance | null>(null);
   const [asking, setAsking] = useState<AskExtraInit | null>(null);
-  if (q.isLoading || (!q.data && !q.isError)) return <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 w-full" />)}</div>;
-  if (q.isError) return <ErrorState message={getApiErrorMessage(q.error, 'Could not load balances')} onRetry={() => q.refetch()} />;
+  if (q.isLoading || (!q.data && !q.isLoadingError)) return <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 w-full" />)}</div>;
+  if (q.isLoadingError) return <ErrorState message={getApiErrorMessage(q.error, 'Could not load balances')} onRetry={() => q.refetch()} />;
   return (
     <div className="m-stagger grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {(q.data?.balances ?? []).map((b) => {

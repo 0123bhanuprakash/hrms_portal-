@@ -112,7 +112,7 @@ function ExplainUserPanel() {
         </div>
       </div>
 
-      {explain.isError ? (
+      {explain.isLoadingError ? (
         <ErrorState message={getApiErrorMessage(explain.error, 'Could not explain access')} onRetry={() => explain.refetch()} />
       ) : !d ? (
         <Skeleton className="h-80" />
@@ -353,7 +353,7 @@ function WhoCanAccessPanel() {
         <span>?</span>
       </Card>
 
-      {who.isError ? (
+      {who.isLoadingError ? (
         <ErrorState message={getApiErrorMessage(who.error, 'Could not check access')} onRetry={() => who.refetch()} />
       ) : !who.data ? (
         <Skeleton className="h-60" />
@@ -424,7 +424,7 @@ function SensitivePanel() {
   const check = useSensitiveCheck(true);
   const roles = useRoles();
   const [open, setOpen] = useState<string | null>(null);
-  if (check.isError) return <ErrorState message={getApiErrorMessage(check.error, 'Could not run the check')} onRetry={() => check.refetch()} />;
+  if (check.isLoadingError) return <ErrorState message={getApiErrorMessage(check.error, 'Could not run the check')} onRetry={() => check.refetch()} />;
   if (!check.data) return <Skeleton className="h-80" />;
   const items = [...check.data].sort((a, b) => b.holders.length - a.holders.length);
   return (

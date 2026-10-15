@@ -87,7 +87,7 @@ function LeaveTypes() {
       )}
       {tab === 'grants' && mayGrant ? (
         types.data ? <GrantsPanel types={types.data} /> : <Skeleton className="h-48 w-full" />
-      ) : types.isError ? (
+      ) : types.isLoadingError ? (
         <ErrorState message={getApiErrorMessage(types.error)} onRetry={() => types.refetch()} />
       ) : !types.data ? (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-36 w-full" />)}</div>

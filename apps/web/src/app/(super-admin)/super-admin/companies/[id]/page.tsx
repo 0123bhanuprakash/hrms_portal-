@@ -81,7 +81,7 @@ function CompanyDetailView() {
   const params = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  const { data, isLoading, isError, error, refetch } = useCompany(id);
+  const { data, isLoading, isLoadingError, error, refetch } = useCompany(id);
   const [statusOpen, setStatusOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
 
@@ -98,7 +98,7 @@ function CompanyDetailView() {
     );
   }
 
-  if (isError || !data) {
+  if (isLoadingError || !data) {
     return (
       <Card>
         <ErrorState message={getApiErrorMessage(error, 'Could not load this company')} onRetry={() => refetch()} />
@@ -647,7 +647,7 @@ function AddAdminModal({ companyId, open, onClose }: { companyId: string; open: 
 function ActivityTab({ companyId }: { companyId: string }) {
   const [limit, setLimit] = useState(15);
   const [selected, setSelected] = useState<AuditLogEntry | null>(null);
-  const { data, isLoading, isError, error, refetch, isFetching } = useAuditLogs({ companyId, limit });
+  const { data, isLoading, isLoadingError, error, refetch, isFetching } = useAuditLogs({ companyId, limit });
 
   return (
     <Card className="p-5">
@@ -660,7 +660,7 @@ function ActivityTab({ companyId }: { companyId: string }) {
           <FileText className="h-3.5 w-3.5" /> Open in audit logs
         </Link>
       </div>
-      {isError ? (
+      {isLoadingError ? (
         <ErrorState message={getApiErrorMessage(error, 'Could not load activity')} onRetry={() => refetch()} />
       ) : isLoading ? (
         <div className="space-y-3">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-12" />)}</div>

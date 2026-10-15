@@ -99,7 +99,7 @@ export default function MyAssetsPage() {
         <h2 className="text-sm font-semibold">With you now{current.length ? ` · ${current.length}` : ''}</h2>
         {mine.isLoading ? (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-56" />)}</div>
-        ) : mine.isError ? (
+        ) : mine.isLoadingError ? (
           <ErrorState message={getApiErrorMessage(mine.error, 'Could not load your assets')} onRetry={() => void mine.refetch()} />
         ) : !current.length ? (
           <EmptyState icon={<PackageOpen />} title="Nothing with you" description="When IT hands you something, it shows up here." />

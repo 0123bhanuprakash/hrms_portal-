@@ -120,7 +120,7 @@ export default function AnnouncementsPage() {
 
           {list.isLoading ? (
             <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-28 w-full rounded-2xl" />)}</div>
-          ) : list.isError ? (
+          ) : list.isLoadingError ? (
             <ErrorState message={getApiErrorMessage(list.error, 'Could not load announcements')} onRetry={() => list.refetch()} />
           ) : !rows.length && !featured.length ? (
             <EmptyState

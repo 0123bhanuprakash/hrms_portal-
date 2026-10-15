@@ -150,7 +150,7 @@ function Portfolio({ pmo }: { pmo: boolean }) {
         <ProjectTimeline />
       ) : list.isLoading ? (
         <div className="grid gap-3 md:grid-cols-2">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-2xl" />)}</div>
-      ) : list.isError ? (
+      ) : list.isLoadingError ? (
         <ErrorState message={getApiErrorMessage(list.error, 'Could not load projects')} onRetry={() => list.refetch()} />
       ) : !rows.length ? (
         <EmptyState icon={<FolderKanban />} title={debounced || q.health || q.type || q.status || q.managerId ? 'No projects match' : 'No projects yet'} description={pmo ? 'Create a project, then assign people with their role, team lead and allocation.' : 'Your PMO hasn’t set up any projects.'} />
