@@ -249,7 +249,7 @@ export function PeopleTab({ filters, canExport }: { filters: ReportFilters; canE
   const q = usePeopleReport(filters);
   const [drill, setDrill] = useState<Drill | null>(null);
   const [busy, setBusy] = useState(false);
-  if (q.isError) return <ErrorState message={getApiErrorMessage(q.error, 'Could not load the report')} onRetry={() => void q.refetch()} />;
+  if (q.isLoadingError) return <ErrorState message={getApiErrorMessage(q.error, 'Could not load the report')} onRetry={() => void q.refetch()} />;
   const r = q.data;
   if (!r) return <Skeleton className="h-96" />;
   const lastMonth = r.trend[r.trend.length - 1]?.month;

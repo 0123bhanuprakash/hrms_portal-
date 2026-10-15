@@ -234,7 +234,7 @@ export default function TicketQueuePage() {
         <div className="space-y-3">
           {list.isLoading ? (
             <Skeleton className="h-96 w-full" />
-          ) : list.isError ? (
+          ) : list.isLoadingError ? (
             <ErrorState message={getApiErrorMessage(list.error, 'Could not load tickets')} onRetry={() => void list.refetch()} />
           ) : !rows.length ? (
             <EmptyState icon={<span className="text-4xl motion-safe:animate-[a3-float_8s_ease-in-out_infinite]" aria-hidden>🌤️</span>} title={view === 'me' ? 'Nothing assigned to you' : view === 'unassigned' ? 'Every ticket has an owner' : view === 'overdue' ? 'Nothing overdue' : 'Nothing waiting. Nice work, team.'} />

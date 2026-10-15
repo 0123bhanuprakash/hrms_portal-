@@ -154,7 +154,7 @@ export default function PlanEditorPage() {
       },
     );
 
-  if (plan.isError) return <ErrorState message={getApiErrorMessage(plan.error, 'Could not load the plan')} onRetry={() => plan.refetch()} />;
+  if (plan.isLoadingError) return <ErrorState message={getApiErrorMessage(plan.error, 'Could not load the plan')} onRetry={() => plan.refetch()} />;
   const loading = catalog.isLoading || (!isNew && plan.isLoading);
   const selectedCount = draft.features.filter((k) => byKey.get(k) && byKey.get(k)!.stage !== 'coming_soon').length;
   const availableCount = features.filter((f) => f.stage !== 'coming_soon').length;

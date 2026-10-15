@@ -63,7 +63,7 @@ export function OrgChart({ canManage }: { canManage: boolean }) {
   const matches = (e: ChartEmployee) =>
     !q || `${e.firstName} ${e.lastName}`.toLowerCase().includes(q) || e.designation?.name.toLowerCase().includes(q) || e.department?.name.toLowerCase().includes(q);
 
-  if (chart.isError) return <ErrorState message={getApiErrorMessage(chart.error, 'Could not load the org chart')} onRetry={() => chart.refetch()} />;
+  if (chart.isLoadingError) return <ErrorState message={getApiErrorMessage(chart.error, 'Could not load the org chart')} onRetry={() => chart.refetch()} />;
   if (chart.isLoading) return <Skeleton className="h-96" />;
   if (!employees.length) {
     return <EmptyState icon={<Network />} title="No employees yet" description="Add employees and set their reporting managers — the chart builds itself." />;

@@ -195,7 +195,7 @@ export function EmploymentHistory({ employeeId }: { employeeId: string }) {
       <div className="px-5 pb-5">
         {history.isLoading ? (
           <div className="space-y-3">{Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-12" />)}</div>
-        ) : history.isError ? (
+        ) : history.isLoadingError ? (
           <p className="text-sm text-muted-foreground">{getApiErrorMessage(history.error, 'Could not load the history')}</p>
         ) : (
           <ol className="relative">

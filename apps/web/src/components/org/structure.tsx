@@ -67,7 +67,7 @@ export function DepartmentsPanel({ canManage }: { canManage: boolean }) {
     return kids;
   }, [depts.data]);
 
-  if (depts.isError) return <ErrorState message={getApiErrorMessage(depts.error, 'Could not load departments')} onRetry={() => depts.refetch()} />;
+  if (depts.isLoadingError) return <ErrorState message={getApiErrorMessage(depts.error, 'Could not load departments')} onRetry={() => depts.refetch()} />;
 
   const render = (parent: string | null, depth: number): React.ReactNode =>
     (tree.get(parent) ?? []).map((d) => (
@@ -219,7 +219,7 @@ export function LevelsPanel({ canManage }: { canManage: boolean }) {
   const [level, setLevel] = useState<Partial<OrgLevel> | null>(null);
   const [title, setTitle] = useState<Partial<Designation> | null>(null);
 
-  if (levels.isError) return <ErrorState message={getApiErrorMessage(levels.error, 'Could not load levels')} onRetry={() => levels.refetch()} />;
+  if (levels.isLoadingError) return <ErrorState message={getApiErrorMessage(levels.error, 'Could not load levels')} onRetry={() => levels.refetch()} />;
   const list = levels.data ?? [];
 
   const move = (i: number, dir: -1 | 1) => {
@@ -417,7 +417,7 @@ export function LocationsPanel({ canManage }: { canManage: boolean }) {
   const locations = useLocations();
   const remove = useDeleteLocation();
   const [editing, setEditing] = useState<Partial<OfficeLocation> | null>(null);
-  if (locations.isError) return <ErrorState message={getApiErrorMessage(locations.error, 'Could not load locations')} onRetry={() => locations.refetch()} />;
+  if (locations.isLoadingError) return <ErrorState message={getApiErrorMessage(locations.error, 'Could not load locations')} onRetry={() => locations.refetch()} />;
   return (
     <Card>
       <CardHeader title="Locations" description="Offices and sites. Roles can use a “Location” scope (e.g. branch HR)." icon={<MapPin />}

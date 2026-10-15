@@ -29,7 +29,7 @@ export function ProjectTimeline() {
   const pos = (k: string) => Math.max(0, Math.min(100, ((ms(k) - (t ? ms(t.from) : 0)) / span) * 100));
   const monthCols = useMemo(() => (t ? Array.from({ length: months }, (_, i) => shiftMonth(t.from.slice(0, 7), i)) : []), [t, months]);
 
-  if (q.isError) return <ErrorState message={getApiErrorMessage(q.error, 'Could not load the timeline')} onRetry={() => q.refetch()} />;
+  if (q.isLoadingError) return <ErrorState message={getApiErrorMessage(q.error, 'Could not load the timeline')} onRetry={() => q.refetch()} />;
   if (!t) return <Skeleton className="h-96 rounded-2xl" />;
 
   return (

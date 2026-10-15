@@ -71,7 +71,7 @@ export default function MyTicketsPage() {
         <div className="space-y-3">
           {list.isLoading ? (
             Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-[132px] w-full" />)
-          ) : list.isError ? (
+          ) : list.isLoadingError ? (
             <ErrorState message={getApiErrorMessage(list.error, 'Could not load tickets')} onRetry={() => void list.refetch()} />
           ) : !list.data?.data.length ? (
             <EmptyState icon={<LifeBuoy />} title={status === 'active' ? 'No open tickets' : 'Nothing here'} description={status === 'active' && canCreate ? 'Stuck with something? Ask above, or raise a ticket and the right team will pick it up.' : undefined} />

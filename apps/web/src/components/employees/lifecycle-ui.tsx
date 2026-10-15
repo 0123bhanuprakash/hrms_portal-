@@ -383,7 +383,7 @@ export function ChecklistDrawer({ person, kind, onClose }: { person: { id: strin
     >
       {list.isLoading ? (
         <div className="space-y-2">{Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-10" />)}</div>
-      ) : list.isError ? (
+      ) : list.isLoadingError ? (
         <p className="text-sm text-destructive">{getApiErrorMessage(list.error, 'Could not load the checklist')}</p>
       ) : (
         <div className="space-y-4">

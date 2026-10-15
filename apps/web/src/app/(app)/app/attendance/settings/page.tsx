@@ -62,7 +62,7 @@ export default function AttendanceSettingsPage() {
   }, [policy.data]);
 
   if (!accessLoading && !allowed) return <EmptyState icon={<ShieldCheck />} title="No access" description="You can’t change attendance settings." />;
-  if (policy.isLoading || !f) return policy.isError ? <ErrorState message={getApiErrorMessage(policy.error)} onRetry={() => policy.refetch()} /> : <Skeleton className="h-96 w-full" />;
+  if (policy.isLoading || !f) return policy.isLoadingError ? <ErrorState message={getApiErrorMessage(policy.error)} onRetry={() => policy.refetch()} /> : <Skeleton className="h-96 w-full" />;
 
   const set = <K extends keyof Form>(key: K, value: Form[K]) => setF((prev) => (prev ? { ...prev, [key]: value } : prev));
   const toggleDay = (d: number) => set('workDays', f.workDays.includes(d) ? f.workDays.filter((x) => x !== d) : [...f.workDays, d].sort());

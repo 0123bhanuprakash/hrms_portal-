@@ -29,7 +29,7 @@ export default function KudosDetailPage() {
   );
   if (!accessLoading && !(hasFeature('engage.kudos') && can('kudos.view'))) return <EmptyState icon={<ShieldCheck />} title="Shout-outs aren’t available" />;
   if (q.isLoading || accessLoading || leaving) return <Skeleton className="h-64 w-full" />;
-  if (q.isError) {
+  if (q.isLoadingError) {
     const status = (q.error as { response?: { status?: number } })?.response?.status;
     return status === 404
       ? <EmptyState icon={<SearchX />} title="Shout-out not found" description="It may have been removed." action={back} />

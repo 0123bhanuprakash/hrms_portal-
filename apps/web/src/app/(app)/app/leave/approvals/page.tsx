@@ -182,7 +182,7 @@ function LeaveApprovals() {
         <div>
           {list.isLoading ? (
             <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-36 w-full" />)}</div>
-          ) : list.isError ? (
+          ) : list.isLoadingError ? (
             <ErrorState message={getApiErrorMessage(list.error, 'Could not load requests')} onRetry={() => list.refetch()} />
           ) : !swipe.rows.length && filtered ? (
             <EmptyState icon={<SearchX />} title="No requests match these filters" description="Try another name, leave type or dates." action={<Button variant="secondary" onClick={clearFilters}>Clear filters</Button>} />

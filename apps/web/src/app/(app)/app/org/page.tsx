@@ -81,7 +81,7 @@ function OrganisationContent() {
 function Insights({ onDepartments }: { onDepartments: () => void }) {
   const health = useOrgHealth();
   const [move, setMove] = useState<MoveRequest | null>(null);
-  if (health.isError) return <ErrorState message={getApiErrorMessage(health.error, 'Could not load insights')} onRetry={() => health.refetch()} />;
+  if (health.isLoadingError) return <ErrorState message={getApiErrorMessage(health.error, 'Could not load insights')} onRetry={() => health.refetch()} />;
   if (health.isLoading || !health.data) return <Skeleton className="h-80" />;
   const s = health.data.stats;
   // How many direct reports each manager has (counted on the server)

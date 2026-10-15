@@ -27,7 +27,7 @@ export default function AssetPage() {
   const [status, setStatus] = useState<'AVAILABLE' | 'IN_REPAIR' | 'LOST' | 'RETIRED' | null>(null);
 
   if (q.isLoading) return <Skeleton className="h-96 w-full" />;
-  if (q.isError) return (q.error as { response?: { status?: number } })?.response?.status === 404 ? <EmptyState icon={<HardDrive />} title="Asset not found" /> : <ErrorState message={getApiErrorMessage(q.error, 'Could not load the asset')} onRetry={() => void q.refetch()} />;
+  if (q.isLoadingError) return (q.error as { response?: { status?: number } })?.response?.status === 404 ? <EmptyState icon={<HardDrive />} title="Asset not found" /> : <ErrorState message={getApiErrorMessage(q.error, 'Could not load the asset')} onRetry={() => void q.refetch()} />;
   const a = q.data!;
   const m = a.canManage;
 

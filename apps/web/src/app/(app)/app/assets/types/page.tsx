@@ -40,7 +40,7 @@ export default function AssetTypesPage() {
       {tab === 'types' ? (
         types.isLoading ? (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-40" />)}</div>
-        ) : types.isError ? (
+        ) : types.isLoadingError ? (
           <ErrorState message={getApiErrorMessage(types.error, 'Could not load types')} onRetry={() => void types.refetch()} />
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -206,7 +206,7 @@ function Kits({ onEdit }: { onEdit: (k: KitRule) => void }) {
   const depts = useDepartments();
   const roles = useRoleOptions();
   if (kits.isLoading) return <Skeleton className="h-48 w-full" />;
-  if (kits.isError) return <ErrorState message={getApiErrorMessage(kits.error, 'Could not load starter kits')} onRetry={() => void kits.refetch()} />;
+  if (kits.isLoadingError) return <ErrorState message={getApiErrorMessage(kits.error, 'Could not load starter kits')} onRetry={() => void kits.refetch()} />;
   const who = (k: KitRule) => {
     if (k.isBase) return 'Everyone who joins';
     const parts = [

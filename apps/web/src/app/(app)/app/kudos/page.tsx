@@ -80,7 +80,7 @@ export default function KudosPage() {
           </div>
           {feed.isLoading ? (
             <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-36 w-full" />)}</div>
-          ) : feed.isError ? (
+          ) : feed.isLoadingError ? (
             <ErrorState message={getApiErrorMessage(feed.error, 'Could not load shout-outs')} onRetry={() => feed.refetch()} />
           ) : !feed.data?.data.length ? (
             <EmptyState icon={<Heart />} title={filter === 'all' && !valueId ? 'No shout-outs yet' : 'Nothing here yet'} description={filter === 'all' && !valueId ? 'Be the first to thank a colleague.' : 'Try another filter.'} />

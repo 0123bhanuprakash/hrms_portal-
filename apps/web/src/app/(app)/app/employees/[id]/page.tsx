@@ -37,7 +37,7 @@ export default function EmployeeDetailPage() {
   );
 
   if (record.isLoading) return <Skeleton className="h-40 w-full" />;
-  if (record.isError) {
+  if (record.isLoadingError) {
     const status = (record.error as { response?: { status?: number } })?.response?.status;
     return status === 404 ? (
       <EmptyState icon={<SearchX />} title="Employee not found" description="They don’t exist, or they’re outside the people you can see." action={back} />

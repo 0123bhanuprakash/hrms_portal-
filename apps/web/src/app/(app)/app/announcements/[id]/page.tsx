@@ -47,7 +47,7 @@ export default function AnnouncementPage() {
     </Button>
   );
   if (q.isLoading) return <Skeleton className="h-80 w-full" />;
-  if (q.isError) {
+  if (q.isLoadingError) {
     const status = (q.error as { response?: { status?: number } })?.response?.status;
     return status === 404 ? <EmptyState icon={<SearchX />} title="Announcement not found" action={back} /> : <ErrorState message={getApiErrorMessage(q.error)} onRetry={() => q.refetch()} />;
   }

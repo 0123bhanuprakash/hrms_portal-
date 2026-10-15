@@ -108,7 +108,7 @@ function PlannerContent() {
         </div>
       </div>
 
-      {q.isError ? (
+      {q.isLoadingError ? (
         <ErrorState message={getApiErrorMessage(q.error, 'Could not load the planner')} onRetry={() => q.refetch()} />
       ) : !d ? (
         <Skeleton className="h-96 rounded-2xl" />

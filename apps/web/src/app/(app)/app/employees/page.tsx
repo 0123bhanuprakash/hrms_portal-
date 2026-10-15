@@ -300,7 +300,7 @@ function EmployeesContent() {
               <button type="button" onClick={() => setInternSettings(true)} className="font-semibold text-primary hover:underline">Change</button>
             </div>
           )}
-          {list.isError ? (
+          {list.isLoadingError ? (
             <ErrorState message={getApiErrorMessage(list.error, 'Could not load employees')} onRetry={() => list.refetch()} />
           ) : list.isLoading ? (
             <div className="space-y-2 p-4">{Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-12" />)}</div>

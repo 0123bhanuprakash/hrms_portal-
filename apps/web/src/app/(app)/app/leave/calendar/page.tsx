@@ -79,7 +79,7 @@ export default function WhosOffPage() {
 
       {q.isLoading ? (
         <Skeleton className="h-[480px] w-full" />
-      ) : q.isError ? (
+      ) : q.isLoadingError ? (
         <ErrorState message={getApiErrorMessage(q.error, 'Could not load leave')} onRetry={() => q.refetch()} />
       ) : view === 'timeline' ? (
         <Timeline keys={keys} leaves={q.data?.leaves ?? []} holidays={holidays} today={todayKey} />

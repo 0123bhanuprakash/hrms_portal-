@@ -83,7 +83,7 @@ export default function RequestAssetPage() {
 
       {catalog.isLoading ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-40" />)}</div>
-      ) : catalog.isError ? (
+      ) : catalog.isLoadingError ? (
         <ErrorState message={getApiErrorMessage(catalog.error, 'Could not load the catalogue')} onRetry={() => void catalog.refetch()} />
       ) : !catalog.data?.length ? (
         <EmptyState icon={<PackagePlus />} title="Nothing can be requested" description="IT hasn’t opened any asset types for requests yet." />
@@ -129,7 +129,7 @@ export default function RequestAssetPage() {
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Who approves</p>
             {preview.isLoading ? (
               <Skeleton className="h-28" />
-            ) : preview.isError ? (
+            ) : preview.isLoadingError ? (
               <p className="text-sm text-destructive">{getApiErrorMessage(preview.error, 'Could not work out the approvers')}</p>
             ) : (
               <ol className="space-y-2.5">

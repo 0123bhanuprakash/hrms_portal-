@@ -89,7 +89,7 @@ function useUrlQuery(): [CompaniesQuery, (patch: Partial<CompaniesQuery>) => voi
 
 function CompaniesView() {
   const [query, update] = useUrlQuery();
-  const { data, isLoading, isError, error, refetch, isFetching } = useCompanies(query);
+  const { data, isLoading, isLoadingError, error, refetch, isFetching } = useCompanies(query);
   const summary = useCompaniesSummary();
   const plans = usePlans();
   const tags = useCompanyTagList();
@@ -224,7 +224,7 @@ function CompaniesView() {
 
       {/* Results */}
       <Card className={cn('overflow-hidden transition-opacity', isFetching && !isLoading && 'opacity-70')}>
-        {isError ? (
+        {isLoadingError ? (
           <ErrorState message={getApiErrorMessage(error, 'Could not load companies')} onRetry={() => refetch()} />
         ) : isLoading ? (
           <div className="space-y-3 p-4">{Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-12" />)}</div>

@@ -488,7 +488,7 @@ export function GrantsPanel({ types }: { types: LeaveTypeAdmin[] }) {
           </Select>
           <Button size="sm" onClick={() => setGranting(true)}><Plus /> Grant leave</Button>
         </div>
-        {grants.isError ? (
+        {grants.isLoadingError ? (
           <ErrorState message={getApiErrorMessage(grants.error)} onRetry={() => grants.refetch()} />
         ) : !grants.data ? (
           <Skeleton className="h-32 w-full" />

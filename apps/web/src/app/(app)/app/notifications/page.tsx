@@ -52,7 +52,7 @@ export default function NotificationsPage() {
       <Card className="overflow-hidden">
         {list.isLoading ? (
           <div className="space-y-2 p-5">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}</div>
-        ) : list.isError ? (
+        ) : list.isLoadingError ? (
           <ErrorState message={getApiErrorMessage(list.error, 'Could not load notifications')} onRetry={() => list.refetch()} />
         ) : !list.data?.data.length ? (
           <EmptyState icon={<Inbox />} title={filter === 'unread' ? 'Nothing unread' : 'No notifications yet'} description="Leave and attendance updates will show up here." />

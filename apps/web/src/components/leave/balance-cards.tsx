@@ -27,7 +27,7 @@ export function BalanceCards({ employeeId, year, canAdjust = false }: { employee
   const grantable = (types.data ?? []).filter((t) => t.availability === 'GRANT_ONLY' && t.isActive);
 
   if (q.isLoading) return <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32 w-full" />)}</div>;
-  if (q.isError) return <ErrorState message={getApiErrorMessage(q.error, 'Could not load balances')} onRetry={() => q.refetch()} />;
+  if (q.isLoadingError) return <ErrorState message={getApiErrorMessage(q.error, 'Could not load balances')} onRetry={() => q.refetch()} />;
 
   return (
     <>

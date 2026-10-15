@@ -45,7 +45,7 @@ export function DocumentsSection({ employeeId }: { employeeId: string }) {
   };
 
   if (docs.isLoading) return <Skeleton className="h-48 w-full" />;
-  if (docs.isError) return <ErrorState message={getApiErrorMessage(docs.error, 'Could not load documents')} onRetry={() => docs.refetch()} />;
+  if (docs.isLoadingError) return <ErrorState message={getApiErrorMessage(docs.error, 'Could not load documents')} onRetry={() => docs.refetch()} />;
   const { documents, canUpload } = docs.data!;
 
   return (

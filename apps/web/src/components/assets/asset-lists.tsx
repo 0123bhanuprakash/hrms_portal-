@@ -116,7 +116,7 @@ export function RequestSteps({ r }: { r: AssetRequest }) {
 
 // ─── Requests ───────────────────────────────────────────────
 
-type PageQuery = { isLoading: boolean; isError: boolean; error: unknown; refetch: () => unknown; data?: { data: AssetRequest[]; meta: { total: number; page: number; limit: number; totalPages: number } } };
+type PageQuery = { isLoading: boolean; isLoadingError: boolean; error: unknown; refetch: () => unknown; data?: { data: AssetRequest[]; meta: { total: number; page: number; limit: number; totalPages: number } } };
 
 export function RequestList({ query, showEmployee, empty, page, onPage }: { query: PageQuery; showEmployee?: boolean; empty: string; page: number; onPage: (p: number) => void }) {
   const [deciding, setDeciding] = useState<{ r: AssetRequest; approve: boolean } | null>(null);
@@ -124,7 +124,7 @@ export function RequestList({ query, showEmployee, empty, page, onPage }: { quer
   const cancel = useCancelAssetRequest();
 
   if (query.isLoading) return <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 w-full" />)}</div>;
-  if (query.isError) return <ErrorState message={getApiErrorMessage(query.error, 'Could not load requests')} onRetry={() => query.refetch()} />;
+  if (query.isLoadingError) return <ErrorState message={getApiErrorMessage(query.error, 'Could not load requests')} onRetry={() => query.refetch()} />;
   if (!query.data?.data.length) return <EmptyState icon={<PackageOpen />} title={empty} />;
 
   return (
