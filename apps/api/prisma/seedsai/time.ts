@@ -315,9 +315,9 @@ export async function seedTime(ctx: Ctx) {
 
   // Leave balances (2025 and 2026), consistent with the requests
   const balances: object[] = [];
-  const adjustments: Array<{ key: string; type: string; year: number; days: number; reason: string; by: string; at: Date }> = [
-    { key: 'e08', type: 'CL', year: 2026, days: 1, reason: 'Extra day for covering the 30 May go-live (management approval)', by: 'hrm', at: stamp('2026-06-03', 15) },
-    { key: 'e14', type: 'EL', year: 2026, days: -3, reason: 'Notice-period recovery — EL encashed instead', by: 'hr5', at: stamp('2026-09-20', 12) },
+  const adjustments: Array<{ key: string; type: string; year: number; days: number; reason: string; by: string; at: Date; kind?: string }> = [
+    { key: 'e08', type: 'CL', year: 2026, days: 1, reason: 'Extra day for covering the 30 May go-live (management approval)', by: 'hrm', at: stamp('2026-06-03', 15), kind: 'EXTRA' },
+    { key: 'e14', type: 'EL', year: 2026, days: -3, reason: 'Notice-period recovery — EL encashed instead', by: 'hr5', at: stamp('2026-09-20', 12), kind: 'DEDUCTION' },
     { key: 'dv3', type: 'SL', year: 2026, days: 2, reason: 'Hospitalisation — approved by HR Manager', by: 'hrm', at: stamp('2026-04-15', 11) },
     { key: 'e25', type: 'EL', year: 2026, days: -1, reason: 'Correction: leave on 2 Jan was missed in the old system', by: 'hr1', at: stamp('2026-01-20', 16) },
   ];
@@ -348,7 +348,7 @@ export async function seedTime(ctx: Ctx) {
   }
   const adjRows: object[] = [];
   for (const b of balances as Array<Record<string, unknown>>) {
-    for (const a of b._adj as typeof adjustments) adjRows.push({ balanceId: b.id, days: a.days, reason: a.reason, adjustedById: p(ctx, a.by).userId, createdAt: a.at });
+    for (const a of b._adj as typeof adjustments) adjRows.push({ balanceId: b.id, kind: a.kind ?? 'CORRECTION', days: a.days, reason: a.reason, adjustedById: p(ctx, a.by).userId, createdAt: a.at });
     delete b._adj;
   }
   await chunked(balances, 1000, (part) => prisma.leaveBalance.createMany({ data: part as never }));

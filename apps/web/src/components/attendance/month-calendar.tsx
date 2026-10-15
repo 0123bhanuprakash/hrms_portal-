@@ -6,7 +6,7 @@ import { STATUS_META, clock, hours, type CalendarDay, type DayStatus, lateBy } f
 import { STATUS_BG } from '@/components/time/visuals';
 
 const HEAD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const LEGEND: DayStatus[] = ['PRESENT', 'HALF_DAY', 'ABSENT', 'MISSING_CHECKOUT', 'ON_LEAVE', 'WORK_FROM_HOME', 'HOLIDAY', 'WEEKEND'];
+const LEGEND: DayStatus[] = ['PRESENT', 'HALF_DAY', 'ABSENT', 'MISSING_CHECKOUT', 'ON_LEAVE', 'WORK_FROM_HOME', 'WFH_NOT_CHECKED_IN', 'HOLIDAY', 'WEEKEND'];
 
 /** Month grid (Monday first). Each day shows its status, in / out and flags. */
 export function MonthCalendar({

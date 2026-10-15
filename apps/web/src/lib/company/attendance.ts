@@ -23,6 +23,7 @@ export type DayStatus =
   | 'WORKING'
   | 'MISSING_CHECKOUT'
   | 'NOT_CHECKED_IN'
+  | 'WFH_NOT_CHECKED_IN'
   | 'UPCOMING'
   | 'NOT_JOINED';
 
@@ -255,6 +256,7 @@ export const STATUS_META: Record<DayStatus, { label: string; short: string; cell
   MISSING_CHECKOUT: { label: 'Missing check-out', short: '!', cell: 'bg-destructive-soft/60 text-destructive ring-1 ring-inset ring-destructive/40', tone: 'danger' },
   ON_LEAVE: { label: 'On leave', short: 'L', cell: 'bg-info-soft text-info', tone: 'info' },
   WORK_FROM_HOME: { label: 'Work from home', short: 'WFH', cell: 'bg-info-soft text-info', tone: 'info' },
+  WFH_NOT_CHECKED_IN: { label: 'WFH, not checked in', short: 'W!', cell: 'bg-info-soft/60 text-destructive ring-1 ring-inset ring-destructive/40', tone: 'danger' },
   HOLIDAY: { label: 'Holiday', short: 'H', cell: 'bg-primary-soft text-primary-soft-foreground', tone: 'primary' },
   WEEKEND: { label: 'Weekly off', short: 'W', cell: 'bg-muted text-muted-foreground', tone: 'neutral' },
   WORKING: { label: 'Checked in', short: '●', cell: 'bg-primary/15 text-primary ring-1 ring-inset ring-primary/40', tone: 'primary' },

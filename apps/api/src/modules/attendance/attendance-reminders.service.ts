@@ -12,6 +12,8 @@ import { AttendanceService } from './attendance.service';
 const EVERY_MS = 15 * 60_000;
 /** Local hour from which yesterday's missing check-outs are reminded */
 const REMIND_FROM_HOUR = 10;
+/** Work from home: nudge this long after the person's shift start (+ grace) if they haven't checked in */
+const WFH_NUDGE_AFTER_MINUTES = 30;
 
 /**
  * Periodic attendance reminders. Safe to run on several API instances:
@@ -53,8 +55,11 @@ export class AttendanceRemindersService implements OnApplicationBootstrap, OnMod
       for (const { id } of companies) {
         const policy = await this.policies.get(id);
         if (policy.autoCloseAfterMinutes !== null) sent += await this.autoClose(id, now);
+        sent += await this.wfhCheckIn(id, now);
         if (wallClock(now, policy.timeZone).hour < REMIND_FROM_HOUR) continue;
         const yesterday = addDays(localDateKey(now, policy.timeZone), -1);
+        // Last 3 days, so a Friday missed is still reminded on Monday (once per day — dedupe key)
+        for (let back = 1; back <= 3; back++) sent += await this.wfhMissed(id, addDays(localDateKey(now, policy.timeZone), -back), localDateKey(now, policy.timeZone));
         const open = await this.prisma.attendanceRecord.findMany({
           // Never checked out, or closed for them automatically — either way they should fix it
           where: { companyId: id, date: dateFromKey(yesterday), checkIn: { not: null }, OR: [{ checkOut: null }, { autoClosed: true }] },
@@ -72,13 +77,55 @@ export class AttendanceRemindersService implements OnApplicationBootstrap, OnMod
           dedupeKey: `missing-checkout:${yesterday}`,
         });
       }
-      if (sent) this.logger.log(`Sent ${sent} missing check-out reminder(s)`);
+      if (sent) this.logger.log(`Sent ${sent} attendance reminder(s)`);
     } catch (err) {
       this.logger.error('Attendance reminders failed', err as Error);
     } finally {
       this.running = false;
     }
     return sent;
+  }
+
+  /** Working from home today and not checked in yet, a little after their shift starts. */
+  async wfhCheckIn(companyId: string, now = new Date()): Promise<number> {
+    const policy = await this.policies.get(companyId);
+    const todayKey = localDateKey(now, policy.timeZone);
+    const people = await this.attendance.wfhWithoutCheckIn(companyId, todayKey, todayKey, policy);
+    if (!people.length) return 0;
+    const shiftOf = await this.shifts.hoursFor(companyId, people.map((p) => p.employeeId));
+    const due = people.filter((p) => {
+      const rules = withShift(policy, shiftOf.get(p.employeeId) ?? null);
+      return now >= new Date(zonedInstant(todayKey, rules.shiftStart, policy.timeZone).getTime() + (policy.graceMinutes + WFH_NUDGE_AFTER_MINUTES) * 60_000);
+    });
+    if (!due.length) return 0;
+    return this.notifications.notify({
+      companyId,
+      userIds: due.map((p) => p.userId),
+      type: 'attendance.wfh_check_in',
+      title: 'Working from home today? Check in',
+      body: 'Work from home days count only when you check in and out.',
+      link: '/app/attendance',
+      actionLabel: 'Check in',
+      email: false,
+      dedupeKey: `wfh-check-in:${todayKey}`,
+    });
+  }
+
+  /** A recent work-from-home day with no check-in — ask for a correction. */
+  async wfhMissed(companyId: string, dateKey: string, todayKey: string): Promise<number> {
+    const policy = await this.policies.get(companyId);
+    const people = await this.attendance.wfhWithoutCheckIn(companyId, dateKey, todayKey, policy);
+    if (!people.length) return 0;
+    return this.notifications.notify({
+      companyId,
+      userIds: people.map((p) => p.userId),
+      type: 'attendance.wfh_not_checked_in',
+      title: `You didn't check in while working from home on ${dateRange(dateKey, dateKey)}`,
+      body: 'The day doesn’t count as worked yet. Request a correction with your times.',
+      link: '/app/attendance',
+      actionLabel: 'Fix my attendance',
+      dedupeKey: `wfh-not-checked-in:${dateKey}`,
+    });
   }
 
   /**

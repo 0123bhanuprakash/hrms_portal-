@@ -415,7 +415,7 @@ function MonthGrid({ departmentId, search, tz }: { departmentId: string; search:
             </table>
           </div>
           <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-            {(['PRESENT', 'HALF_DAY', 'ABSENT', 'MISSING_CHECKOUT', 'ON_LEAVE', 'WORK_FROM_HOME', 'HOLIDAY', 'WEEKEND'] as const).map((s) => (
+            {(['PRESENT', 'HALF_DAY', 'ABSENT', 'MISSING_CHECKOUT', 'ON_LEAVE', 'WORK_FROM_HOME', 'WFH_NOT_CHECKED_IN', 'HOLIDAY', 'WEEKEND'] as const).map((s) => (
               <span key={s} className="inline-flex items-center gap-1"><span className={cn('h-2.5 w-2.5 rounded-[3px]', STATUS_BG[s])} />{STATUS_META[s].label}</span>
             ))}
             <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-[3px] ring-2 ring-inset ring-warning" />Late</span>

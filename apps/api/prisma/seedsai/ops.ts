@@ -1,6 +1,6 @@
 /* Payroll, expenses, assets and the helpdesk. */
 import { type Ctx, type Row, employedOn, fullName, p, salaryParts } from './org';
-import { D, PRIVATE, addDays, chunked, daysBetween, eachDay, pdf, pick, rint, rnd, stamp, uuid, weekday, writeFile } from './util';
+import { D, PRIVATE, addDays, chunked, daysBetween, eachDay, pdf, pick, rint, rnd, shuffle, stamp, uuid, weekday, writeFile } from './util';
 
 // ─── Payroll ────────────────────────────────────────────────
 
@@ -419,6 +419,19 @@ const CATEGORIES: Array<[string, string, string, string | null, string | null, s
   ['DEVOPS', 'Repo & CI/CD access', '🔧', 'GitHub teams, runners, secrets', 'MEDIUM', null],
   ['DEVOPS', 'Servers & databases', '🗄️', 'DB access, environments, logs', 'MEDIUM', null],
   ['DEVOPS', 'Other', '⚙️', null, null, null],
+  ['TFACIL1', 'Desk & seating', '🪑', 'Desk moves, chairs, lockers', 'LOW', 'Need a locker? Pick a free one on the 9th-floor board and tell the front desk the number.'],
+  ['TFACIL1', 'Cab & transport', '🚕', 'Night cabs and shuttle routes', 'MEDIUM', 'Night cabs after 9 pm are booked from the transport sheet pinned in #hyd-office.'],
+  ['TFACIL1', 'Pantry & cafeteria', '☕', 'Food, coffee machines, water', 'LOW', null],
+  ['TFACIL1', 'Other', '🏢', null, null, null],
+  ['TTRAVEL1', 'Flights & hotels', '✈️', 'Bookings for client visits', 'MEDIUM', 'Book at least 7 days ahead for client trips — the travel policy covers economy and 3-star hotels.'],
+  ['TTRAVEL1', 'Visa & forex', '🛂', 'Visa letters, forex cards', 'HIGH', null],
+  ['TTRAVEL1', 'Other', '🧳', null, null, null],
+];
+/** Company-made teams (picked members), next to the built-in four */
+const CUSTOM_TEAMS = [
+  { queue: 'TFACIL1', label: 'Facilities', emoji: '🏢', description: 'Office, seating, cabs and the pantry', head: 'hr2', backup: 'hr6', members: ['hr2', 'hr6', 'it5'] },
+  { queue: 'TTRAVEL1', label: 'Travel desk', emoji: '✈️', description: 'Flights, hotels and visas for client visits', head: 'fi2', backup: 'hr1', members: ['fi2', 'hr1'] },
+  { queue: 'TMOVE25', label: 'Pune office move', emoji: '📦', description: 'Questions about the 2025 Pune office move', head: 'hr2', backup: null, members: ['hr2'], archivedAt: '2025-12-15' },
 ];
 const SLA: Record<string, [number, number]> = { URGENT: [1, 8], HIGH: [4, 24], MEDIUM: [8, 72], LOW: [24, 120] };
 
@@ -447,6 +460,12 @@ const TICKET_TEMPLATES: Array<[string, string, string, string, string[]]> = [
   ['DEVOPS', 'Deployments & releases', 'Rollback Orbit API to 4.12.1', 'The 4.13.0 release broke statement downloads for some accounts — need an urgent rollback.', ['Rolled back to 4.12.1 at 21:42. Error rate back to normal.', 'Post-mortem doc shared in #orbit-incidents.']],
   ['DEVOPS', 'Repo & CI/CD access', 'GitHub Actions runner stuck', 'Our self-hosted runner has been queued for 40 minutes on the ledger repo.', ['Runner disk was full — cleaned the Docker cache, jobs are picking up again.']],
   ['DEVOPS', 'Servers & databases', 'Read replica for the Pulse reporting DB', 'Reporting queries are slowing down the primary. Can we get a read replica?', ['Replica is up — connection string is in Vault under pulse/reporting.']],
+  ['TFACIL1', 'Desk & seating', 'Chair is broken', 'The chair at desk 9-114 wobbles and the height lever is stuck.', ['Replaced the chair this morning.']],
+  ['TFACIL1', 'Cab & transport', 'Night cab for the release on Friday', 'Four of us from Orbit will be in till midnight on Friday — can we get two cabs?', ['Booked two cabs for 00:15 from the main gate.']],
+  ['TFACIL1', 'Pantry & cafeteria', 'Coffee machine on 9th floor not working', 'The bean-to-cup machine shows a descaling error since yesterday.', ['Vendor visit is scheduled for tomorrow 10 am.', 'Machine serviced — back to normal.']],
+  ['TFACIL1', 'Desk & seating', 'Need a desk near the Helix team', 'I moved to Helix this month and sit two floors away from the team.', ['Desk 7-031 is free from Monday — your access card is updated.']],
+  ['TTRAVEL1', 'Flights & hotels', 'Flight to Mumbai for Kaveri Bank workshop', 'Need a return flight Hyderabad–Mumbai for the workshop next Thursday.', ['Booked the 07:10 IndiGo out and 20:45 back. Tickets on email.']],
+  ['TTRAVEL1', 'Visa & forex', 'Visa invitation letter for Singapore', 'Client in Singapore needs me on-site for two weeks — need an invitation and cover letter.', ['Can you share the client contact and dates?', 'Cover letter signed and shared; the client is sending the invitation.']],
   ['DEVOPS', 'Servers & databases', 'Staging DB refresh for Ledger', 'Please refresh ledger-staging from last night’s prod snapshot (masked).', ['Refreshed with the masked snapshot from 02:00.']],
 ];
 
@@ -458,7 +477,29 @@ export async function seedHelpdesk(ctx: Ctx) {
   }
   const teams: Record<string, [string, string]> = { IT: ['ith', 'it1'], HR: ['hrm', 'hr1'], FINANCE: ['fih', 'fi1'], DEVOPS: ['dvh', 'dv1'] };
   for (const [queue, [head, backup]] of Object.entries(teams)) await prisma.helpdeskTeam.create({ data: { companyId, queue: queue as never, headId: p(ctx, head).userId, backupId: p(ctx, backup).userId } });
-  const agents: Record<string, string[]> = { IT: ['it1', 'it2', 'it3', 'it4', 'it5'], HR: ['hr1', 'hr2', 'hr5', 'hr6'], FINANCE: ['fi1', 'fi2', 'fi4'], DEVOPS: ['dv1', 'dv2', 'dv3', 'dv4'] };
+  for (const t of CUSTOM_TEAMS) {
+    await prisma.helpdeskTeam.create({
+      data: {
+        companyId, queue: t.queue, custom: true, label: t.label, emoji: t.emoji, description: t.description, memberIds: t.members.map((k) => p(ctx, k).userId),
+        headId: p(ctx, t.head).userId, backupId: t.backup ? p(ctx, t.backup).userId : null, archivedAt: t.archivedAt ? stamp(t.archivedAt, 12) : null, createdAt: stamp('2025-09-20', 11),
+      },
+    });
+  }
+  // "This answered my question" — one row per person, matching helpedCount
+  const askers = [...ctx.people.values()].filter((r) => employedOn(r, today));
+  const helps: object[] = [];
+  for (const [i, [queue, name, , , , quickAnswer]] of CATEGORIES.entries()) {
+    if (!quickAnswer) continue;
+    const id = cat.get(`${queue}:${name}`)!;
+    const who = shuffle('help' + i, askers).slice(0, rint(name, 4, 40));
+    for (const [j, r] of who.entries()) {
+      const day = addDays(today, -rint(name + j, 1, 300));
+      helps.push({ categoryId: id, userId: r.userId, createdAt: stamp(day < r.join ? r.join : day, 11, j % 60) });
+    }
+    await prisma.ticketCategory.update({ where: { id }, data: { helpedCount: who.length } });
+  }
+  await prisma.ticketCategoryHelp.createMany({ data: helps as never });
+  const agents: Record<string, string[]> = { IT: ['it1', 'it2', 'it3', 'it4', 'it5'], HR: ['hr1', 'hr2', 'hr5', 'hr6'], FINANCE: ['fi1', 'fi2', 'fi4'], DEVOPS: ['dv1', 'dv2', 'dv3', 'dv4'], TFACIL1: ['hr2', 'hr6', 'it5'], TTRAVEL1: ['fi2', 'hr1'] };
   const people = [...ctx.people.values()].filter((r) => r.type !== 'IN' || rnd(r.key + 'tk') < 0.5);
   let number = 0;
   const span = daysBetween(start, today);

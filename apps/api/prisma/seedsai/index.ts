@@ -18,6 +18,7 @@ import { seedWork } from './work';
 import { seedTime } from './time';
 import { seedAssets, seedExpenses, seedHelpdesk, seedPayroll } from './ops';
 import { seedEngagement, seedPlatform } from './engage';
+import { seedExtras } from './extras';
 import { todayKey, uuid } from './util';
 
 async function main() {
@@ -54,6 +55,7 @@ async function main() {
   await step('Helpdesk', () => seedHelpdesk(ctx));
   await step('Announcements and kudos', () => seedEngagement(ctx));
   await step('Notifications, reports, activity, audit', () => seedPlatform(ctx));
+  await step('Wishes, leave rules and grants, interns, experience', () => seedExtras(ctx));
   await prisma.$disconnect();
   console.log(`\n✅ SeedsAI ready (company id ${ctx.companyId}, today ${today})`);
   console.table(ctx.count);

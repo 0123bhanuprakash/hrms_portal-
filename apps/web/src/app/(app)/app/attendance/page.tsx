@@ -76,7 +76,7 @@ function Attendance() {
   const tz = data?.policy.timeZone ?? 'Asia/Kolkata';
   const isMine = !employeeId;
   const name = data ? `${data.employee.firstName} ${data.employee.lastName}` : '';
-  const missed = isMine ? data?.days.filter((d) => (d.status === 'MISSING_CHECKOUT' || d.autoClosed) && d.correction?.status !== 'PENDING' && d.correction?.status !== 'APPROVED') ?? [] : [];
+  const missed = isMine ? data?.days.filter((d) => (d.status === 'MISSING_CHECKOUT' || d.status === 'WFH_NOT_CHECKED_IN' || d.autoClosed) && d.correction?.status !== 'PENDING' && d.correction?.status !== 'APPROVED') ?? [] : [];
   const fix = (d: CalendarDay) => {
     setSelected(d);
     setDialog('request');
@@ -110,8 +110,8 @@ function Attendance() {
         <div className="m-rise flex flex-wrap items-center gap-3 rounded-xl border border-violet-500/30 bg-violet-500/10 px-4 py-3 text-sm">
           <AlertTriangle className="h-4 w-4 shrink-0 text-violet-600" />
           <p className="min-w-0 flex-1">
-            <b>{missed[0].autoClosed ? `We closed ${dayLabel(missed[0].date)} for you at ${clock(missed[0].checkOut, tz)}.` : `You didn’t check out on ${dayLabel(missed[0].date)}.`}</b>{' '}
-            Tell us when you left and your approver will fix it.{missed.length > 1 && ` (${missed.length - 1} more day${missed.length === 2 ? '' : 's'} this month)`}
+            <b>{missed[0].status === 'WFH_NOT_CHECKED_IN' ? `You didn’t check in while working from home on ${dayLabel(missed[0].date)}.` : missed[0].autoClosed ? `We closed ${dayLabel(missed[0].date)} for you at ${clock(missed[0].checkOut, tz)}.` : `You didn’t check out on ${dayLabel(missed[0].date)}.`}</b>{' '}
+            {missed[0].status === 'WFH_NOT_CHECKED_IN' ? 'Tell us your times and your approver will fix it.' : 'Tell us when you left and your approver will fix it.'}{missed.length > 1 && ` (${missed.length - 1} more day${missed.length === 2 ? '' : 's'} this month)`}
           </p>
           <Button size="sm" onClick={() => fix(missed[0]!)}><ClipboardEdit /> Fix it</Button>
         </div>
@@ -185,7 +185,7 @@ function Attendance() {
   );
 }
 
-const BAR_LEGEND: DayStatus[] = ['PRESENT', 'HALF_DAY', 'MISSING_CHECKOUT', 'WORK_FROM_HOME', 'ON_LEAVE', 'ABSENT'];
+const BAR_LEGEND: DayStatus[] = ['PRESENT', 'HALF_DAY', 'MISSING_CHECKOUT', 'WORK_FROM_HOME', 'WFH_NOT_CHECKED_IN', 'ON_LEAVE', 'ABSENT'];
 
 /** On-time days, average check-in, average hours, and hours per day as bars. */
 function MonthInsights({ data, person }: { data: CalendarMonth; person?: boolean }) {
