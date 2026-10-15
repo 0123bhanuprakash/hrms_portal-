@@ -11,24 +11,41 @@ A full-featured, multi-tenant Human Resource Management System built as a produc
 | UI | Tailwind CSS |
 | Backend | NestJS + TypeScript |
 | ORM | Prisma |
-| Database | PostgreSQL ([Supabase](https://supabase.com)) |
+| Database | PostgreSQL (local, or hosted on [Supabase](https://supabase.com)) |
 | Queue | BullMQ + Redis *(optional)* |
 | Search | Elasticsearch *(optional, Phase 2+)* |
 | Storage | Local disk, or MinIO / S3 *(optional)* |
-| CI/CD | GitHub Actions |
+| Checks | Git pre-push hook (`pnpm verify:fast`) + `pnpm verify` locally — see [CONTRIBUTING.md](CONTRIBUTING.md) |
 
-No containers are needed for local development — only Node.js, pnpm and a Supabase project.
+No containers are needed for local development — only Node.js, pnpm and a PostgreSQL database.
 
 ## Prerequisites
 
 - Node.js 20+
-- pnpm 11+
-- A free [Supabase](https://supabase.com) project (used only as a hosted PostgreSQL database)
+- pnpm 11+ (`npm install -g pnpm`)
 - Git
+- PostgreSQL — installed locally (recommended, fastest), or a free [Supabase](https://supabase.com) project
 
 ## Local Setup
 
-### 1. Install dependencies
+### 1. Create the database
+
+Install PostgreSQL and create an empty database called `hrms`:
+
+```sql
+CREATE DATABASE hrms;
+```
+
+Using Supabase instead? Skip this step — see the Supabase URLs in step 4.
+
+### 2. Clone the repo
+
+```bash
+git clone <repo-url>
+cd hrms_portal
+```
+
+### 3. Install dependencies
 
 ```bash
 pnpm install
@@ -36,7 +53,11 @@ pnpm install
 
 This also generates the Prisma database client (`apps/api` runs `prisma generate` after install). Run it again with `pnpm --filter @hrms/api db:generate` after changing `schema.prisma`, with the API stopped (Windows locks the engine file while it runs).
 
-### 2. Configure environment variables
+### 4. Configure environment variables
+
+The env files are never committed. If a teammate sent you theirs, put them at `apps/api/.env` and `apps/web/.env.local`, change the database password in `DATABASE_URL` / `DIRECT_URL` if yours differs, and go to step 5.
+
+Otherwise, copy the templates:
 
 ```bash
 cp apps/api/.env.example apps/api/.env
@@ -45,22 +66,45 @@ cp apps/web/.env.example apps/web/.env.local
 
 In `apps/api/.env`, set:
 
-- `DATABASE_URL` and `DIRECT_URL` — Supabase dashboard → **Connect** → **Direct** → **Session pooler**.
-  Replace `[YOUR-PASSWORD]` (URL-encode special characters, e.g. `@` → `%40`) and keep `?schema=hrms` at the end.
-- `JWT_SECRET`, `JWT_REFRESH_SECRET` — random strings of 32+ characters.
+- `DATABASE_URL` and `DIRECT_URL` — URL-encode special characters in the password (`@` → `%40`, `!` → `%21`) and keep `?schema=hrms`.
+  - **Local PostgreSQL:** both are `postgresql://postgres:<password>@localhost:5432/hrms?schema=hrms`
+  - **Supabase** (dashboard → **Connect**): `DATABASE_URL` = **Transaction pooler** (port 6543, keep `&pgbouncer=true&connection_limit=10`); `DIRECT_URL` = **Session pooler** (port 5432). Don't use the session pooler for `DATABASE_URL` — it allows only ~15 clients and requests fail with `EMAXCONNSESSION`.
+- `JWT_SECRET`, `JWT_REFRESH_SECRET` — two different random strings:
+  `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`
+- `PII_ENCRYPTION_KEY` — **required**, the API won't start without it:
+  `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`
+  Keep it safe: data encrypted with one key can't be read with another, so anyone sharing or restoring your database needs the same key.
 - `SUPER_ADMIN_EMAIL`, `SUPER_ADMIN_PASSWORD` — the platform admin account created by the seed.
 
 Everything else works with the defaults.
 
-### 3. Set up the database (first time only)
+### 5. Set up the database (first time only)
 
 ```bash
 pnpm db:setup
 ```
 
-This applies all Prisma migrations to Supabase (schema `hrms`) and seeds permissions, default roles and the Super Admin.
+This applies all Prisma migrations (schema `hrms`) and seeds permissions, default roles and the Super Admin. It creates **empty tables** — it does not copy anyone's existing data.
 
-### 4. Start the apps
+Optional — fill a company with demo data (~12 people with reporting lines, departments, two projects, 30 days of attendance, announcements):
+
+1. Start the API once (`pnpm dev`) so the default roles exist, sign in as Super Admin and create a company — note its slug (e.g. `acme-portal`).
+2. From `apps/api`, run it with a password for the demo accounts and the slug:
+
+```bash
+DEMO_PASSWORD='choose-a-password' node prisma/seed-demo.cjs acme-portal
+```
+
+The accounts are `<first>.<slug prefix>@yopmail.com` (e.g. `ravi.acme@yopmail.com`), all with `DEMO_PASSWORD`. Safe to run twice. (PowerShell: `$env:DEMO_PASSWORD='…'; node prisma/seed-demo.cjs acme-portal`.)
+
+To copy real data from another machine instead, restore a dump into the empty `hrms` database and **skip `db:setup`** (the dump already has the tables):
+
+```bash
+pg_dump -U postgres -d hrms -n hrms -F c -f hrms_backup.dump   # on the source machine
+pg_restore -U postgres -d hrms hrms_backup.dump                 # on the new machine
+```
+
+### 6. Start the apps
 
 ```bash
 pnpm dev
@@ -69,11 +113,22 @@ pnpm dev
 | App | URL |
 |---|---|
 | Frontend (Next.js) | `http://localhost:3000` |
-| Backend (NestJS) | `http://localhost:4000/api/v1` |
+| Backend API (base URL) | `http://localhost:4000/api/v1` |
 | API Docs (Swagger) | `http://localhost:4000/api/docs` |
 | Health check | `http://localhost:4000/health/ready` |
 
 Log in at `http://localhost:3000/login` with the `SUPER_ADMIN_EMAIL` / `SUPER_ADMIN_PASSWORD` from `apps/api/.env`.
+
+### 7. Postman collection (optional)
+
+With `pnpm dev` running, regenerate the collection in `docs/postman/`:
+
+```bash
+pnpm --filter @hrms/api postman             # build from the running API
+pnpm --filter @hrms/api postman --capture   # also save real example responses from your database
+```
+
+`--capture` signs in with the Super Admin from `apps/api/.env`, so run `db:setup` first.
 
 ## How local development works without extra services
 
@@ -104,7 +159,7 @@ hrms-portal/
 │   └── api/          ← NestJS Backend (Prisma schema + migrations in apps/api/prisma)
 ├── packages/
 │   ├── types/        ← Shared TypeScript types & Zod schemas
-│   └── config/       ← Shared ESLint, TypeScript, Tailwind configs
+│   └── config/       ← Shared ESLint configs
 ├── turbo.json
 └── pnpm-workspace.yaml
 ```
@@ -130,6 +185,3 @@ pnpm format       # Format all files with Prettier
 - **Import**: 8-stage secure pipeline with strict tenant isolation
 - **India Payroll**: PF, PT (state-wise), TDS, ESI with configurable slabs
 
-## Implementation Progress
-
-See [task.md](/.gemini/antigravity/brain/96fa451d-46af-4ec9-b53e-0168fc51b6b2/task.md) for current Phase 1 progress.
