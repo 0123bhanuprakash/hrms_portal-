@@ -57,9 +57,10 @@ export function withShift<T extends PolicyRules>(policy: T, shift: ShiftHours | 
 /**
  * What a day looks like on the calendar. Stored statuses plus states that
  * only exist when looking at a day:
- *   WORKING           checked in today, not out yet
+ *   WORKING           checked in today, not out yet (WORK_FROM_HOME instead on a WFH day)
  *   MISSING_CHECKOUT  a past day with a check-in but no check-out
- *   NOT_CHECKED_IN    today, nothing yet
+ *   NOT_CHECKED_IN    today, nothing yet (also on a work-from-home day)
+ *   WFH_NOT_CHECKED_IN  a past work-from-home day with no check-in (doesn't count as worked)
  *   UPCOMING          a future working day
  *   NOT_JOINED        before the joining date
  */
@@ -68,6 +69,7 @@ export type DayStatus =
   | 'WORKING'
   | 'MISSING_CHECKOUT'
   | 'NOT_CHECKED_IN'
+  | 'WFH_NOT_CHECKED_IN'
   | 'UPCOMING'
   | 'NOT_JOINED';
 
@@ -95,7 +97,7 @@ export interface DayRecord {
 
 /** Approved leave covering a day (from the leave module). */
 export interface DayLeave {
-  /** Work from home: the day counts as worked */
+  /** Work from home: the day counts as worked once the person checks in */
   countsAsPresent: boolean;
   halfDay: boolean;
 }
@@ -114,7 +116,8 @@ export function deriveDay(opts: {
   const workday = policy.workDays.includes(weekdayOfKey(dateKey));
 
   if (record?.checkIn) {
-    if (!record.checkOut) return dateKey === todayKey ? 'WORKING' : dateKey < todayKey ? 'MISSING_CHECKOUT' : 'UPCOMING';
+    // Checked in today and still working: shown as WFH on a work-from-home day
+    if (!record.checkOut) return dateKey === todayKey ? (leave?.countsAsPresent ? 'WORK_FROM_HOME' : 'WORKING') : dateKey < todayKey ? 'MISSING_CHECKOUT' : 'UPCOMING';
     // Working from home with check-in / out: shown as WFH (counts as worked)
     if (leave?.countsAsPresent) return 'WORK_FROM_HOME';
     return record.status;
@@ -122,8 +125,10 @@ export function deriveDay(opts: {
   if (record && record.status !== 'PRESENT') return record.status; // e.g. ON_LEAVE / ABSENT set by HR
   if (holiday) return 'HOLIDAY';
   if (!workday) return 'WEEKEND';
+  // Work from home (full or half day) still needs a check-in: planned ahead, waiting today, flagged after
+  if (leave?.countsAsPresent) return dateKey > todayKey ? 'WORK_FROM_HOME' : dateKey === todayKey ? 'NOT_CHECKED_IN' : 'WFH_NOT_CHECKED_IN';
   // Approved leave (past or future) — a half day off still expects a check-in for the other half
-  if (leave && !(leave.halfDay && dateKey === todayKey)) return leave.countsAsPresent ? 'WORK_FROM_HOME' : 'ON_LEAVE';
+  if (leave && !(leave.halfDay && dateKey === todayKey)) return 'ON_LEAVE';
   if (dateKey > todayKey) return 'UPCOMING';
   if (dateKey === todayKey) return 'NOT_CHECKED_IN';
   return 'ABSENT';

@@ -355,30 +355,9 @@ export function CelebrationsCard({ data, loading }: { data?: Spotlight; loading:
   const [wishing, setWishing] = useState<{ kind: WishKind; people: WishPerson[]; preselect: string[]; years?: number } | null>(null);
   const canWish = can('org.view');
 
-  if (loading) return <Skeleton className="h-72 w-full" />;
-  if (!data) return null;
-
-  if (!slides.length) {
-    // Nothing today: show what's next so the card is still useful
-    const next = [...data.birthdays.map((b) => ({ p: b, what: 'birthday', inDays: b.inDays })), ...data.anniversaries.map((a) => ({ p: a, what: `${a.years}-year work anniversary`, inDays: a.inDays }))].filter((x) => x.inDays > 0).sort((a, b) => a.inDays - b.inDays)[0];
-    return (
-      <Card>
-        <CardHeader icon={<PartyPopper />} title="Celebrations today" />
-        <div className="flex items-center gap-3 px-5 pb-5">
-          {next ? (
-            <>
-              <PersonAvatar person={next.p} size="md" />
-              <p className="text-sm text-muted-foreground">
-                Nothing today. Next: <b className="text-foreground">{next.p.firstName} {next.p.lastName}</b>’s {next.what} {next.inDays === 1 ? 'tomorrow' : `in ${next.inDays} days`}.
-              </p>
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">No birthdays or work anniversaries coming up.</p>
-          )}
-        </div>
-      </Card>
-    );
-  }
+  // Only shown on a day with something to celebrate (upcoming ones live in "Coming up").
+  // No skeleton while loading, so the column doesn't flash a card that then vanishes.
+  if (loading || !data || !slides.length) return null;
 
   const cur = slides[i % slides.length]!;
   const birthdays = slides.flatMap((x) => (x.kind === 'birthday' ? [x.person] : []));

@@ -24,6 +24,7 @@ export const STATUS_BG: Record<DayStatus, string> = {
   MISSING_CHECKOUT: 'bg-violet-500',
   ON_LEAVE: 'bg-pink-500',
   WORK_FROM_HOME: 'bg-info',
+  WFH_NOT_CHECKED_IN: 'bg-info/40 ring-1 ring-inset ring-destructive',
   HOLIDAY: 'bg-teal-500',
   WEEKEND: 'bg-muted',
   WORKING: 'bg-primary',

@@ -62,6 +62,7 @@ function summarise(statuses: Array<{ status: DayStatus; lateMinutes?: number | n
     missingCheckout: count('MISSING_CHECKOUT'),
     onLeave: count('ON_LEAVE'),
     workFromHome: count('WORK_FROM_HOME'),
+    wfhNotCheckedIn: count('WFH_NOT_CHECKED_IN'),
     holidays: count('HOLIDAY'),
     late: statuses.filter((d) => (d.lateMinutes ?? 0) > 0).length,
     averageMinutes: worked.length ? Math.round(worked.reduce((sum, d) => sum + (d.workingMinutes ?? 0), 0) / worked.length) : 0,
@@ -641,6 +642,23 @@ export class AttendanceService {
     };
   }
 
+  /**
+   * People on approved work from home on `dateKey` who haven't checked in
+   * (today: still waiting; a past day: WFH_NOT_CHECKED_IN). For reminders.
+   */
+  async wfhWithoutCheckIn(companyId: string, dateKey: string, todayKey: string, policy: CompanyPolicy) {
+    const day = dateFromKey(dateKey);
+    const wfh = await this.prisma.leaveRequest.findMany({
+      where: { companyId, status: 'APPROVED', startDate: { lte: day }, endDate: { gte: day }, leaveType: { countsAsPresent: true }, employee: { employmentStatus: { not: EmploymentStatus.TERMINATED } } },
+      select: { employee: { select: { id: true, userId: true, joiningDate: true, locationId: true } } },
+    });
+    const people = [...new Map(wfh.map((l) => [l.employee.id, l.employee])).values()];
+    if (!people.length) return [];
+    const grid = await this.statusGrid(companyId, people, dateKey, dateKey, todayKey, policy);
+    const waiting = dateKey === todayKey ? 'NOT_CHECKED_IN' : 'WFH_NOT_CHECKED_IN';
+    return people.filter((p) => grid.get(p.id)![0]?.status === waiting).map((p) => ({ employeeId: p.id, userId: p.userId }));
+  }
+
   /** Statuses per person per day (with in / out / late for the details). */
   private async statusGrid(companyId: string, employees: Array<{ id: string; joiningDate: Date; locationId: string | null }>, from: string, to: string, todayKey: string, policy: CompanyPolicy) {
     const ids = employees.map((e) => e.id);
@@ -714,7 +732,7 @@ export class AttendanceService {
     };
     const missingCheckout = people.filter((p) => grid.get(p.id)!.some((d) => d.date === yesterday && d.status === 'MISSING_CHECKOUT')).map((p) => ({ employee: person(p.id), date: yesterday }));
     const absent = people
-      .map((p) => ({ p, dates: grid.get(p.id)!.filter((d) => d.status === 'ABSENT').map((d) => d.date) }))
+      .map((p) => ({ p, dates: grid.get(p.id)!.filter((d) => d.status === 'ABSENT' || d.status === 'WFH_NOT_CHECKED_IN').map((d) => d.date) }))
       .filter((x) => x.dates.length)
       .map((x) => ({ employee: person(x.p.id), dates: x.dates }));
     const lists = {

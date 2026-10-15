@@ -209,7 +209,8 @@ export async function seedPlatform(ctx: Ctx) {
     if (rnd(s) < 0.45) continue;
     prefs.push({ userId: r.userId, theme: pick(s + 't', ['system', 'system', 'light', 'dark']), menuStyle: rnd(s + 'm') < 0.3 ? pick(s + 'ms', ['glide', 'peek', 'collapsible']) : null, density: pick(s + 'd', ['theme', 'theme', 'compact', 'spacious']), dailySummary: rnd(s + 'ds') < 0.15, emailNotifications: rnd(s + 'en') < 0.8 });
   }
-  await prisma.userPreferences.createMany({ data: prefs as never });
+  // skipDuplicates: someone may sign in (and get default preferences) while the seed is still running
+  await prisma.userPreferences.createMany({ data: prefs as never, skipDuplicates: true });
 
   // Audit trail (key actions)
   const audit: object[] = [];

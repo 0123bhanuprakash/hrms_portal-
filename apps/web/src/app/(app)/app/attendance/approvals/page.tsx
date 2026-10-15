@@ -252,7 +252,8 @@ function summarise(c: Correction) {
   const late = r.filter((d) => d.late).length;
   const missing = r.filter((d) => d.status === 'MISSING_CHECKOUT').length;
   const absent = r.filter((d) => d.status === 'ABSENT').length;
-  return [`Late ${late}×`, `${missing} missing check-out${missing === 1 ? '' : 's'}`, `${absent} absent`, `${c.monthCount ?? 0} correction${c.monthCount === 1 ? '' : 's'} this month`].join(' · ');
+  const wfh = r.filter((d) => d.status === 'WFH_NOT_CHECKED_IN').length;
+  return [`Late ${late}×`, `${missing} missing check-out${missing === 1 ? '' : 's'}`, `${absent} absent`, ...(wfh ? [`${wfh} WFH not checked in`] : []), `${c.monthCount ?? 0} correction${c.monthCount === 1 ? '' : 's'} this month`].join(' · ');
 }
 
 function RejectDialog({ correction, onClose, onDone }: { correction: Correction | null; onClose: () => void; onDone: (c: Correction) => void }) {

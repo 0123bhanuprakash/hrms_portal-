@@ -8,15 +8,14 @@
 |---|---|---|
 | Before you say "done" | `pnpm verify` — type-check, lint, unit tests, API build, **all** end-to-end suites | ~10 min |
 | On every `git push` (automatic) | `pnpm verify:fast` — type-check, lint, unit tests | ~1 min (seconds when nothing changed) |
-| On every pull request and push to `main` (GitHub Actions) | everything, against a fresh PostgreSQL | ~15 min |
 
-`main` only accepts pull requests whose checks pass.
+There is no CI on GitHub (the GitHub Actions workflow was removed), so `pnpm verify` before merging to `main` is what keeps it green.
 
 ## Setup
 
 ```bash
 pnpm install          # also turns on the pre-push hook (git config core.hooksPath .githooks)
-pnpm db:migrate       # apps/api/.env must point at your local PostgreSQL
+pnpm db:setup         # first time: migrations + seed (apps/api/.env must point at your PostgreSQL — see README)
 pnpm dev
 ```
 
@@ -46,4 +45,4 @@ Measure before optimising: `apps/api/test/perf/README.md` (benchmark company, pe
 
 ## Escape hatch
 
-`git push --no-verify` skips the local hook — for emergencies only; CI still runs everything.
+`git push --no-verify` skips the local hook — for emergencies only; run `pnpm verify` afterwards, since nothing else checks the push.
