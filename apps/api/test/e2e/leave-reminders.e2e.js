@@ -4,6 +4,9 @@ const p = new PrismaClient();
 const dist = (m) => require(require('path').resolve('dist/apps/api/src/modules', m));
 const { AttendanceRemindersService } = dist('attendance/attendance-reminders.service.js');
 const { AttendancePolicyService } = dist('attendance/policy.service.js');
+const { AttendanceService } = dist('attendance/attendance.service.js');
+const { ShiftsService } = dist('attendance/shifts.service.js');
+const { HolidaysService } = dist('attendance/holidays.service.js');
 const { NotificationsService } = dist('notifications/notifications.service.js');
 const SLUG = 'reminder-test';
 const results = [];
@@ -38,15 +41,20 @@ async function cleanup() {
     const emails = [];
     const config = { get: (k) => (k === 'webUrl' ? 'http://localhost:3000' : undefined) };
     const notifications = new NotificationsService(p, { queueNotification: async (d) => emails.push(d) }, config, new (require(require('path').resolve('dist/apps/api/src/modules/realtime/realtime.service.js')).RealtimeService)());
-    const job = new AttendanceRemindersService(p, new AttendancePolicyService(p), notifications, config);
+    const policies = new AttendancePolicyService(p);
+    const shifts = new ShiftsService(p, policies);
+    // access + approval router aren't used by the reminder paths
+    const attendance = new AttendanceService(p, null, policies, new HolidaysService(p, policies), shifts, notifications, null);
+    const job = new AttendanceRemindersService(p, policies, notifications, config, shifts, attendance);
     const before = await job.run(early);
     const mine = () => p.notification.findMany({ where: { user: { companyId: c.id } } });
     check('Before 10:00 local → nothing sent', (await mine()).length === 0, before);
     await job.run(now);
-    await new Promise((r) => setTimeout(r, 500));
+    // the email is queued in the background — wait for it rather than a fixed delay
+    for (let i = 0; i < 30 && !emails.length; i++) await new Promise((r) => setTimeout(r, 100));
     const n1 = await mine();
     check('Reminder only for the person who forgot', n1.length === 1 && n1[0].userId === forgot.userId && n1[0].type === 'attendance.missing_checkout', JSON.stringify(n1));
-    check('Reminder emailed with a link to attendance', emails.length === 1 && emails[0].actionUrl === 'http://localhost:3000/app/attendance');
+    check('Reminder emailed with a link to attendance', emails.length === 1 && emails[0].actionUrl === 'http://localhost:3000/app/attendance', JSON.stringify(emails));
     await job.run(new Date(now.getTime() + 15 * 60_000));
     check('Next run the same day → no duplicate', (await mine()).length === 1);
   } catch (e) { console.error('ERROR', e.stack); results.push(false); }
